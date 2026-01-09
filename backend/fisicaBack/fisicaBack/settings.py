@@ -94,12 +94,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'fisica',
         'USER': 'postgres',
-        'PASSWORD': 'admin',
+        'PASSWORD': 'root',
         'HOST': 'localhost',
-        'PORT': '5433',
-        'OPTIONS': {
-            'options': '-c client_encoding=UTF8'
-        }
+        'PORT': '5432',
     }
 }
 
