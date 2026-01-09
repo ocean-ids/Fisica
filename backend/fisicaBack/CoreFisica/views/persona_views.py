@@ -11,7 +11,7 @@ import json
 from django.http import HttpResponse
 from openpyxl import Workbook
 from reportlab.pdfgen import canvas
-from ..models import Cliente, Instalacion, Puesto, Persona, Horario, Asignacion
+from ..models import  Persona, Horario, Asignacion
 from reportlab.pdfgen import canvas
 
 

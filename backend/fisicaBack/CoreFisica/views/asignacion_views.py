@@ -4,8 +4,6 @@ import json
 from ..models import Asignacion
 
 def obtener_asignaciones(request,mes,anio):
-
-
     asignaciones = Asignacion.objects.raw("SELECT * FROM obtener_asignaciones(%s, %s)",[mes, anio])
     data = []
 
@@ -120,8 +118,6 @@ def editar_servicio(request, id):
             return JsonResponse({'error': str(e)}, status=400)
     else:
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-
-
 
 
 @csrf_exempt
