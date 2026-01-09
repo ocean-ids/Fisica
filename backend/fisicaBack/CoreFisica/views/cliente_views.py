@@ -2,8 +2,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 from ..models import Cliente
-@csrf_exempt
-def crear_cliente(request):
+# @csrf_exempt
+# def crear_cliente(request):
     #codigo de daniel
     # if request.method == 'POST':
     #     data = json.loads(request.body)
@@ -13,6 +13,8 @@ def crear_cliente(request):
     #         direccion=data.get('direccion')
     #     )
     #     return JsonResponse({'message': 'Cliente creado', 'id': cliente.id})
+@csrf_exempt
+def crear_cliente(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -34,8 +36,8 @@ def crear_cliente(request):
             return JsonResponse({'error': 'JSON inválido'}, status=400)
 
 
-@csrf_exempt
-def actualizar_cliente(request):
+# @csrf_exempt
+# def actualizar_cliente(request):
     #codigo daniel
     # if request.method == 'POST':
     #     try:
@@ -62,6 +64,8 @@ def actualizar_cliente(request):
 
     # return JsonResponse({'error': 'Método no permitido'}, status=405)
 
+@csrf_exempt
+def actualizar_cliente(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -95,26 +99,46 @@ def actualizar_cliente(request):
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 
+# @csrf_exempt
+# def obtener_clientes(request):
+#     if request.method == 'GET':
+#         clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'direccion')
+#         return JsonResponse(list(clientes), safe=False)
+
 @csrf_exempt
 def obtener_clientes(request):
     if request.method == 'GET':
         clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'direccion')
-        return JsonResponse(list(clientes), safe=False)
+        return JsonResponse(list(clientes), safe=False, status=200)
+    
+    return JsonResponse({'error': 'Método no permitido'}, status=405) 
 
 
-def obtener_Cliente(request,idCliente):
+# def obtener_Cliente(request,idCliente):
+#     clientes = Cliente.objects.raw("SELECT * FROM obtener_datosCliente(%s)",[idCliente])
+#     data = []
 
-
-    clientes = Cliente.objects.raw("SELECT * FROM obtener_datosCliente(%s)",[idCliente])
-    data = []
-
-    for c in clientes:
-        data.append({
-            "idCliente": c.id,
-            "razonSocial":c.razonsocial,
-            "nombre_comercial":c.nombre_comercial,
-            "direccion":c.direccion,
+#     for c in clientes:
+#         data.append({
+#             "idCliente": c.id,
+#             "razonSocial":c.razonsocial,
+#             "nombre_comercial":c.nombre_comercial,
+#             "direccion":c.direccion,
             
-        })
+#         })
 
-    return JsonResponse(data, safe=False)
+#     return JsonResponse(data, safe=False)
+
+def obtener_cliente_id(request, idcliente):
+    if request.method == 'GET':
+        try:
+            cliente = Cliente.objects.get(pk=idcliente)
+            data= {
+                "id": cliente.id,
+                "reazon_social": cliente.razon_social,
+                "nombre_comercial": cliente.nombre_comercial,       
+            }
+            return JsonResponse(data, safe=False)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+            
