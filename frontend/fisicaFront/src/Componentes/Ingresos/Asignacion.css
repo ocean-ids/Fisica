@@ -1,0 +1,70 @@
+
+  .form-container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 25px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    font-family: 'Segoe UI', sans-serif;
+    
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* ✅ 4 columnas */
+    gap: 20px;
+    align-items: start;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-group label {
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+
+  select, input[type="date"] {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+  }
+
+  .denominativo-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .submit-button {
+    background-color: #28a745;
+    color: white;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    cursor: pointer;
+    height: fit-content; /* ✅ para que no sea alto */
+    margin-top: 28px; /* Alinea con inputs */
+    transition: background-color 0.3s ease;
+  }
+
+  .submit-button:hover {
+    background-color: #218838;
+  }
+
+  @media screen and (max-width: 1000px) {
+    .form-grid {
+      grid-template-columns: repeat(2, 1fr); /* Responsive */
+    }
+  }
+
+  @media screen and (max-width: 600px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }

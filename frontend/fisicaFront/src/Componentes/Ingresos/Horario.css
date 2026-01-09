@@ -1,0 +1,102 @@
+
+
+
+.horario-container {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  padding: 16px;             /* 🔽 Reduces padding para menos altura */
+  margin: 10px auto;         /* ✅ Deja solo uno */
+  width: 98%;
+  max-width: 1800px;
+
+  height: auto;              /* ✅ Asegura que crece solo con contenido */
+  min-height: unset; 
+  margin-bottom: 20px;        /* 🔁 (Opcional) por si algún CSS externo fuerza altura */
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* espacio entre elementos */
+  margin-bottom: 20px; /* espacio antes de la tabla */
+
+}
+
+
+
+.btn-paleta {
+  background-color: #0c2f5a; /* azul Tailwind */
+  color: white;
+  border: none;
+  border-radius: 50%;   /* 🔹 botón redondo */
+  cursor: pointer;
+  font-size: 18px;      /* tamaño del icono */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 30px;   /* 🔹 botón pequeño */
+  height: 30px;  /* 🔹 alto = ancho para que sea círculo */
+}
+
+
+.filtros-container {
+  display: flex;
+  align-items: center;   /* centra verticalmente */
+  gap: 10px;             /* espacio entre los elementos */
+  margin-bottom: 10px;   /* separación con la tabla */
+
+}
+
+.agruparBoton{
+  display: flex;
+  align-items: center;   /* centra verticalmente */
+  gap: 10px;             /* espacio entre los elementos */
+  margin-bottom: 10px;   /* separación con la tabla */
+
+}
+
+
+.btn-buscar{
+  background-color: #0c2f5a;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  display: inline-block; /* evita que se expanda */
+  margin-top: 10px; /* deja espacio con la tabla */
+  width: 50px;
+}
+
+
+
+
+
+
+.horario-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+
+}
+
+.horario-tabla th,
+.horario-tabla td {
+  border: 1px solid #e0e0e0;
+  padding: 8px;
+}
+
+.horario-tabla th {
+  background-color: #f8f8f8;
+  font-weight: 600;
+}
+
+.horario-select {
+  width: 170px;
+
+}
+
+
+

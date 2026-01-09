@@ -1,44 +1,65 @@
-import React from 'react'
-import '../node_modules/bootstrap/dist/css/bootstrap.min.css'
-import './App.css'
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
-import Login from './components/Login.component'
+import React, { useState, useEffect } from 'react';
+
 function App() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
+
+  const login = async () => {
+    const res = await fetch('http://localhost:8000/api/login/', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    if (res.ok) {
+      getUser();
+    } else {
+      alert('Login failed');
+    }
+  };
+
+  const logout = async () => {
+    await fetch('http://localhost:8000/api/logout/', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    setCurrentUser(null);
+  };
+
+  const getUser = async () => {
+    const res = await fetch('http://localhost:8000/api/user/', {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setCurrentUser(data.username);
+    }
+  };
+
+  useEffect(() => {
+    getUser();
+  }, []);
+
   return (
-    <Router>
-      <div className="App">
-        <nav className="navbar navbar-expand-lg navbar-light fixed-top">
-          <div className="container">
-            <Link className="navbar-brand" to={'/sign-in'}>
-              positronX
-            </Link>
-            <div className="collapse navbar-collapse" id="navbarTogglerDemo02">
-              <ul className="navbar-nav ml-auto">
-                <li className="nav-item">
-                  <Link className="nav-link" to={'/sign-in'}>
-                    Login
-                  </Link>
-                </li>
-                <li className="nav-item">
-                  <Link className="nav-link" to={'/sign-up'}>
-                    Sign up
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </nav>
-        <div className="auth-wrapper">
-          <div className="auth-inner">
-            <Routes>
-              <Route exact path="/" element={<Login />} />
-              <Route path="/sign-in" element={<Login />} />
-              <Route path="/sign-up" element={<SignUp />} />
-            </Routes>
-          </div>
+    <div>
+      {currentUser ? (
+        <div>
+          <h1>Hola, {currentUser}</h1>
+          <button onClick={logout}>Logout</button>
         </div>
-      </div>
-    </Router>
-  )
+      ) : (
+        <div>
+          <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+          <button onClick={login}>Login</button>
+        </div>
+      )}
+    </div>
+  );
 }
-export default App
+
+export default App;
