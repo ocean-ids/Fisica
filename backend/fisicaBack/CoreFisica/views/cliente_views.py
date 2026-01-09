@@ -36,6 +36,32 @@ def crear_cliente(request):
 
 @csrf_exempt
 def actualizar_cliente(request):
+    #codigo daniel
+    # if request.method == 'POST':
+    #     try:
+    #         data = json.loads(request.body)
+    #         cliente_id = data.get('id')
+
+    #         if not cliente_id:
+    #             return JsonResponse({'error': 'ID de cliente no proporcionado'}, status=400)
+
+    #         try:
+    #             cliente = Cliente.objects.get(id=cliente_id)
+    #         except Cliente.DoesNotExist:
+    #             return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+
+    #         cliente.razon_social = data.get('razon_social', cliente.razon_social)
+    #         cliente.nombre_comercial = data.get('nombre_comercial', cliente.nombre_comercial)
+    #         cliente.direccion = data.get('direccion', cliente.direccion)
+
+    #         cliente.save()
+
+    #         return JsonResponse({'message': 'Cliente actualizado correctamente', 'id': cliente.id})
+    #     except json.JSONDecodeError:
+    #         return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    # return JsonResponse({'error': 'Método no permitido'}, status=405)
+
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -45,17 +71,24 @@ def actualizar_cliente(request):
                 return JsonResponse({'error': 'ID de cliente no proporcionado'}, status=400)
 
             try:
-                cliente = Cliente.objects.get(id=cliente_id)
+                cliente = Cliente.objects.get(pk=cliente_id)
             except Cliente.DoesNotExist:
                 return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
 
-            cliente.razon_social = data.get('razon_social', cliente.razon_social)
-            cliente.nombre_comercial = data.get('nombre_comercial', cliente.nombre_comercial)
-            cliente.direccion = data.get('direccion', cliente.direccion)
+            razon_social = data.get('razon_social', cliente.razon_social)
+            nombre_comercial = data.get('nombre_comercial', cliente.nombre_comercial)
+            direccion = data.get('direccion', cliente.direccion)
+
+            if not razon_social or not nombre_comercial or not direccion:
+                return JsonResponse({'error': 'Los campos no pueden estar vacíos'}, status=400)
+
+            cliente.razon_social = razon_social
+            cliente.nombre_comercial = nombre_comercial
+            cliente.direccion = direccion
 
             cliente.save()
 
-            return JsonResponse({'message': 'Cliente actualizado correctamente', 'id': cliente.id})
+            return JsonResponse({'message': 'Cliente actualizado correctamente', 'id': cliente.id}, status=200)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'JSON inválido'}, status=400)
 
