@@ -141,4 +141,5 @@ def obtener_cliente_id(request, idcliente):
             return JsonResponse(data, safe=False)
         except Cliente.DoesNotExist:
             return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+
             

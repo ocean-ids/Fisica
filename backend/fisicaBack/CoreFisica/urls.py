@@ -6,7 +6,7 @@ from .views.puesto_views import crear_puesto,obtener_puestos
 from .views.reportes_views import generar_pdf_Horario,generar_excel_horario,export_excel, export_pdf
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion
 from .views.horario_views import obtener_horarios ,crear_horario
-from .views.cliente_views import actualizar_cliente,obtener_clientes,crear_cliente
+from .views.cliente_views import actualizar_cliente,obtener_clientes,crear_cliente, obtener_cliente_id
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio,guardar_orden_asignacion,editar_servicio
 
 
@@ -25,6 +25,7 @@ urlpatterns = [
     path('asignar-servicio/', asignar_servicio),
     path('editar-servicio/<str:id>/', editar_servicio),
     path('clientes/', obtener_clientes),
+    path('clientes/<str:id>/', obtener_cliente_id),
     path('personas/', obtener_personas),
     path('instalaciones/', obtener_instalaciones),
     path('horarios/', obtener_horarios),
