@@ -18,15 +18,16 @@ export class ClienteService {
     return this.apiService.get<Cliente>(`/clientes/${id}/`);
   } 
 
-  CreateCliente(payload: Cliente): Observable<Cliente> {
-    return this.apiService.post<Cliente>('/clientes/', payload);
+  createCliente(payload: Cliente): Observable<Cliente> {
+    return this.apiService.post<Cliente>('/crear-cliente/', payload);
   }
 
   updateCliente(id: number, payload: Cliente): Observable<Cliente>{
-    return this.apiService.put<Cliente>(`/clientes/${id}/`, payload);
+    const body = { id, ...payload };
+    return this.apiService.post<Cliente>('/actualizar-cliente/', body);
   }
 
   deleteCliente(id: number): Observable<any> {
-    return this.apiService.delete(`/clientes/${id}/`);
+    return this.apiService.delete(`/eliminar-cliente/${id}/`);
   }
 }
