@@ -109,9 +109,7 @@ def actualizar_cliente(request):
 def obtener_clientes(request):
     if request.method == 'GET':
         clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'direccion')
-        return JsonResponse(list(clientes), safe=False, status=200)
-    
-    return JsonResponse({'error': 'Método no permitido'}, status=405) 
+        return JsonResponse(list(clientes), safe=False)
 
 
 # def obtener_Cliente(request,idCliente):
@@ -141,5 +139,16 @@ def obtener_cliente_id(request, idcliente):
             return JsonResponse(data, safe=False)
         except Cliente.DoesNotExist:
             return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+
+@csrf_exempt
+def eliminar_cliente(request, id):
+    if request.method == 'DELETE':
+        try:
+            cliente = Cliente.objects.get(pk=id)
+            cliente.delete()
+            return JsonResponse({'message': 'Cliente eliminado correctamente'}, status=200)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
 
             

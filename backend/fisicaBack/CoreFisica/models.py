@@ -48,7 +48,7 @@ class Persona(models.Model):
 class Horario(models.Model):
     hora_ingreso = models.TimeField()
     hora_salida = models.TimeField()
-    denominativo = models.CharField(max_length=25)
+    #denominativo = models.CharField(max_length=25)
 
 
     def __str__(self):
