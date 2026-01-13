@@ -26,11 +26,11 @@ def login_view(request):
 
         if user is not None:
             login(request, user)  # Crea sesión
-            return JsonResponse({"message": "Login successful."})
+            return JsonResponse({"message": "Login Exitoso."})
         else:
-            return JsonResponse({"error": "Invalid credentials."}, status=400)
+            return JsonResponse({"error": "Credenciales inválidas."}, status=400)
 
-    return JsonResponse({"error": "Only POST allowed."}, status=405)
+    
 
 @csrf_exempt
 def logout_view(request):
