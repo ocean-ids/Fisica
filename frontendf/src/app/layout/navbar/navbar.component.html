@@ -1,7 +1,25 @@
 <mat-toolbar color="primary">
-  <span>Sistema de Gestión de Personal</span>
+  <span>Sistema Gestión de Personal</span>
+
   <span class="spacer"></span>
-  <button mat-icon-button>
+
+  @if (username) {
+    <span class="username">{{ username }}</span>
+  }
+
+  <!-- Botón con menú -->
+  <button
+    mat-icon-button
+    [matMenuTriggerFor]="userMenu"
+    aria-label="Menú de usuario">
     <mat-icon>account_circle</mat-icon>
   </button>
+
+  <!-- Menú -->
+  <mat-menu #userMenu="matMenu">
+    <button mat-menu-item (click)="logout()">
+      <mat-icon color="warn">logout</mat-icon>
+      <span>Cerrar sesión</span>
+    </button>
+  </mat-menu>
 </mat-toolbar>
