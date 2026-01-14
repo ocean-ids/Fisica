@@ -29,25 +29,43 @@ def crear_instalacion(request):
         return JsonResponse({'message': 'Instalación creada', 'id': instalacion.id})
 
 @csrf_exempt
-def actualizar_instalacion(request):
-    if request.method == "Post":
-        data = json.loads(request.body)
-        instalacion_id = data.get('id')
-
+def actualizar_instalacion(request, id):
+    if request.method == 'PUT':
         try:
-            instalacion = Instalacion.objects.get(id=instalacion_id)
-            cliente = Cliente.objects.get(id=data.get('cliente'))
+            data = json.loads(request.body)
 
-            instalacion.nombre = data.get('nombre')
-            instalacion.codigo = data.get('codigo')
+            try:
+                instalacion = Instalacion.objects.get(id=id)
+            except Instalacion.DoesNotExist:
+                return JsonResponse({'error': 'Instalación no encontrada'}, status=404)
+
+            try:
+                cliente = Cliente.objects.get(id=data.get('cliente'))
+            except Cliente.DoesNotExist:
+                return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+
+            instalacion.nombre = data.get('nombre', instalacion.nombre)
+            instalacion.codigo = data.get('codigo', instalacion.codigo)
             instalacion.cliente = cliente
-            instalacion.ciudad = data.get('ciudad')
-            instalacion.provincia = data.get('provincia')
+            instalacion.ciudad = data.get('ciudad', instalacion.ciudad)
+            instalacion.provincia = data.get('provincia', instalacion.provincia)
             instalacion.save()
 
-            return JsonResponse({'message': 'Instalación actualizada'})
+            return JsonResponse({'message': 'Instalación actualizada', 'id': instalacion.id})
 
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+@csrf_exempt
+def eliminar_instalacion(request, id):
+    if request.method == 'DELETE':
+        try:
+            instalacion = Instalacion.objects.get(id=id)
+            instalacion.delete()
+            return JsonResponse({'message':'Instalación eliminada correctamente'}, status=200)
         except Instalacion.DoesNotExist:
-            return JsonResponse({'error': 'Instalacion no encontrada'}, status=400)
-
+            return JsonResponse({'error':'Instalación no encontrada'}, status=404)
+    return JsonResponse({'error':'Método no peromitido'}, status=405)
     

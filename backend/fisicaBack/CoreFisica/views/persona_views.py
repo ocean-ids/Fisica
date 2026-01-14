@@ -1,11 +1,4 @@
-from django.shortcuts import render
-from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from django.contrib.auth.models import User
-from rest_framework.response import Response
-from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.http import HttpResponse
@@ -30,17 +23,13 @@ def crear_persona(request):
 
 
 @csrf_exempt
-def actualizar_persona(request):
-    if request.method == 'POST':
+def actualizar_persona(request, id):
+    if request.method == 'PUT':
         try:
             data = json.loads(request.body)
-            persona_id = data.get('id')
-
-            if not persona_id:
-                return JsonResponse({'error': 'ID de persona no proporcionado'}, status=400)
 
             try:
-                persona = Persona.objects.get(id=persona_id)
+                persona = Persona.objects.get(id=id)
             except Persona.DoesNotExist:
                 return JsonResponse({'error': 'Persona no encontrada'}, status=404)
 
@@ -51,7 +40,7 @@ def actualizar_persona(request):
 
             persona.save()
 
-            return JsonResponse({'message': 'Persona actualizado correctamente', 'id': persona.id})
+            return JsonResponse({'message': 'Persona actualizada correctamente', 'id': persona.id})
         except json.JSONDecodeError:
             return JsonResponse({'error': 'JSON inválido'}, status=400)
 
