@@ -19,11 +19,11 @@ export class PersonaService {
   }
 
   createPersona(persona: Persona): Observable<Persona> {
-    return this.apiService.post<Persona>('/personas/', persona);
+    return this.apiService.post<Persona>('/crear-persona/', persona);
   }
 
   updatePersona(id: number, persona: Persona): Observable<Persona> {
-    return this.apiService.put<Persona>(`/personas/${id}/`, persona);
+    return this.apiService.put<Persona>(`/actualizar-persona/${id}/`, persona);
   }
 
   deletePersona(id: number): Observable<any> {

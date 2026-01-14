@@ -7,26 +7,26 @@ import { Instalacion } from '../models';
   providedIn: 'root'
 })
 export class InstalacionService {
-
-  constructor(private apiService: ApiService) { }
-
-  getInstalaciones(): Observable<Instalacion[]> {
+  constructor(private apiService: ApiService){}
+  
+  getInstalaciones(): Observable<Instalacion[]>{
     return this.apiService.get<Instalacion[]>('/instalaciones/');
   }
 
-  getInstalacion(id: number): Observable<Instalacion> {
+  getInstalacion(id: number): Observable<Instalacion>{
     return this.apiService.get<Instalacion>(`/instalaciones/${id}/`);
   }
 
-  createInstalacion(instalacion: Instalacion): Observable<Instalacion> {
-    return this.apiService.post<Instalacion>('/instalaciones/', instalacion);
+  CreateInstalacion(instalacion: any): Observable<any>{
+    return this.apiService.post<any>('/crear-instalacion/', instalacion);
   }
 
-  updateInstalacion(id: number, instalacion: Instalacion): Observable<Instalacion> {
-    return this.apiService.put<Instalacion>(`/instalaciones/${id}/`, instalacion);
+  updateInstalacion(id: number, instalacion:any): Observable<any>{
+    return this.apiService.put<any>(`/actualizar/${id}/`, instalacion);
   }
 
-  deleteInstalacion(id: number): Observable<any> {
-    return this.apiService.delete(`/instalaciones/${id}/`);
+  deleteInstalacion(id: number): Observable<any>{
+    return this.apiService.delete(`/eliminar-instalacion/${id}/`);
   }
+  
 }
