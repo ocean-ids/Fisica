@@ -23,8 +23,7 @@ export class ClienteService {
   }
 
   updateCliente(id: number, payload: Cliente): Observable<Cliente>{
-    const body = { id, ...payload };
-    return this.apiService.post<Cliente>('/actualizar-cliente/', body);
+    return this.apiService.put<Cliente>(`/actualizar-cliente/${id}/`, payload);
   }
 
   deleteCliente(id: number): Observable<any> {
