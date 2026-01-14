@@ -27,3 +27,27 @@ def crear_instalacion(request):
         )
 
         return JsonResponse({'message': 'Instalación creada', 'id': instalacion.id})
+
+@csrf_exempt
+def actualizar_instalacion(request):
+    if request.method == "Post":
+        data = json.loads(request.body)
+        instalacion_id = data.get('id')
+
+        try:
+            instalacion = Instalacion.objects.get(id=instalacion_id)
+            cliente = Cliente.objects.get(id=data.get('cliente'))
+
+            instalacion.nombre = data.get('nombre')
+            instalacion.codigo = data.get('codigo')
+            instalacion.cliente = cliente
+            instalacion.ciudad = data.get('ciudad')
+            instalacion.provincia = data.get('provincia')
+            instalacion.save()
+
+            return JsonResponse({'message': 'Instalación actualizada'})
+
+        except Instalacion.DoesNotExist:
+            return JsonResponse({'error': 'Instalacion no encontrada'}, status=400)
+
+    

@@ -4,7 +4,7 @@ from .views.auth_views import login_view, logout_view, user_view
 from .views.persona_views import obtener_personas,actualizar_persona,crear_persona
 from .views.puesto_views import crear_puesto,obtener_puestos
 from .views.reportes_views import generar_pdf_Horario,generar_excel_horario,export_excel, export_pdf
-from .views.instalacion_views import obtener_instalaciones, crear_instalacion
+from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion
 from .views.horario_views import obtener_horarios ,crear_horario
 from .views.cliente_views import actualizar_cliente,obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio,guardar_orden_asignacion,editar_servicio
@@ -32,6 +32,7 @@ urlpatterns = [
     path('horarios/', obtener_horarios),
     path('puestos/', obtener_puestos),
     path('crear-instalacion/', crear_instalacion),
+    path('actualizar-instalacion/', actualizar_instalacion),
     path('crear-puesto/', crear_puesto),
     path('asignaciones/<str:mes>/<str:anio>/', obtener_asignaciones),
     path('generar-pdf/', generar_pdf_Horario),
