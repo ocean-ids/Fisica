@@ -4,7 +4,6 @@ import json
 from ..models import  Persona
 
 
-
 @csrf_exempt
 def crear_persona(request):
     if request.method == 'POST':
@@ -20,6 +19,7 @@ def crear_persona(request):
         except json.JSONDecodeError:
             return JsonResponse({'error': 'No se creo persona'}, status=400)     
 
+
 @csrf_exempt
 def obtener_personas(request):
     if request.method == 'GET':
@@ -29,23 +29,6 @@ def obtener_personas(request):
         except PersonasSinAsignacion.DoesNotExist:
             return JsonResponse({'error': 'No se encontraron personas'}, status=404)
         
-
-
-@csrf_exempt
-def obtener_Persona(request,idPersona):
-    personas = Persona.objects.raw("SELECT * FROM obtener_datosPersona(%s)",[idPersona])
-    data = []
-
-    for p in personas:
-        data.append({
-            "idPersona": p.id,
-            "nombres":p.nombres,
-            "apellidos":p.apellidos,
-            "cedula":p.cedula,
-            "tipo":p.tipo,
-        })
-
-    return JsonResponse(data, safe=False)
 
 @csrf_exempt
 def actualizar_persona(request, id):
@@ -70,3 +53,17 @@ def actualizar_persona(request, id):
             return JsonResponse({'error': 'JSON inválido'}, status=400)
 
     return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+
+@csrf_exempt
+def eliminar_persona(request, id):
+    if request.method == 'DELETE':
+        try:
+            persona = Persona.objects.get(id=id)
+            persona.delete()
+            return JsonResponse({'message': 'Persona eliminada correctamente'}, status=200)
+        except Persona.DoesNotExist:
+            return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+    return JsonResponse({'error': 'Metodo no permitido'}, status=405)
+
+            
