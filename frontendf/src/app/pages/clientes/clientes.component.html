@@ -5,9 +5,8 @@
 
   <mat-card-content>
     <div class="actions">
-      <button mat-raised-button color="primary" (click)="openDialog()">
-        <mat-icon>add</mat-icon>
-        Nuevo Cliente
+      <button class="btn btn-primary" (click)="openDialog()">
+        <i class="bi bi-plus-circle"></i> Nuevo Cliente
       </button>
     </div>
 
@@ -30,11 +29,11 @@
       <ng-container matColumnDef="acciones">
         <th mat-header-cell *matHeaderCellDef>Acciones</th>
         <td mat-cell *matCellDef="let c">
-          <button mat-icon-button color="primary" (click)="openDialog(c)">
-            <mat-icon>edit</mat-icon>
+          <button class="btn btn-sm btn-warning me-2" (click)="openDialog(c)">
+            <i class="bi bi-pencil"></i> Editar
           </button>
-          <button mat-icon-button color="warn" (click)="deleteCliente(c.id)">
-            <mat-icon>delete</mat-icon>
+          <button class="btn btn-sm btn-danger" (click)="confirmarEliminar(c)">
+            <i class="bi bi-trash"></i> Eliminar
           </button>
         </td>
       </ng-container>
@@ -44,3 +43,23 @@
     </table>
   </mat-card-content>
 </mat-card>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade show" *ngIf="showDeleteModal" style="display: block; background-color: rgba(0,0,0,0.5);">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar Eliminación</h5>
+        <button type="button" class="btn-close" (click)="cancelarEliminar()"></button>
+      </div>
+      <div class="modal-body">
+        <p>¿Está seguro que desea eliminar al cliente <strong>{{ clienteEliminar?.razon_social }}</strong>?</p>
+        <p class="text-danger"><small>Esta acción no se puede deshacer.</small></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cancelarEliminar()">Cancelar</button>
+        <button type="button" class="btn btn-danger" (click)="eliminarCliente()">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>

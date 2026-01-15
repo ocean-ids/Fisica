@@ -3,7 +3,7 @@
   <div class="header">
     <h1>Gestión de Instalaciones</h1>
     <button class="btn btn-primary" (click)="abrirModal()">
-      + Nueva Instalación
+      <i class="bi bi-plus-circle"></i> Nueva Instalación
     </button>
   </div>
 
@@ -28,11 +28,11 @@
           <td>{{ instalacion.provincia }}</td>
           <td>{{ instalacion.ciudad }}</td>
           <td>
-            <button class="btn btn-sm btn-edit" (click)="abrirModalEditar(instalacion)">
-              Editar
+            <button class="btn btn-sm btn-warning me-2" (click)="abrirModalEditar(instalacion)">
+              <i class="bi bi-pencil"></i> Editar
             </button>
-            <button class="btn btn-sm btn-delete" (click)="confirmarEliminar(instalacion)">
-              Eliminar
+            <button class="btn btn-sm btn-danger" (click)="confirmarEliminar(instalacion)">
+              <i class="bi bi-trash"></i> Eliminar
             </button>
           </td>
         </tr>

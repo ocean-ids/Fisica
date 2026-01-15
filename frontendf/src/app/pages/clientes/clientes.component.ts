@@ -19,6 +19,8 @@ import { ClienteFormComponent } from './cliente-form/cliente-form.component';
 export class ClientesComponent implements OnInit {
   clientes: Cliente[] = [];
   displayedColumns = ['razon_social', 'nombre_comercial', 'direccion', 'acciones'];
+  showDeleteModal: boolean = false;
+  clienteEliminar: Cliente | null = null;
 
   constructor(
     private clienteService: ClienteService,
@@ -66,13 +68,26 @@ export class ClientesComponent implements OnInit {
     });
   }
 
-  deleteCliente(id?: number): void {
-    if (!id) return;
-    if (confirm('¿Eliminar este cliente?')) {
-      this.clienteService.deleteCliente(id).subscribe({
-        next: () => this.loadClientes(),
+  confirmarEliminar(cliente: Cliente): void {
+    this.clienteEliminar = cliente;
+    this.showDeleteModal = true;
+  }
+
+  eliminarCliente(): void {
+    if (this.clienteEliminar?.id) {
+      this.clienteService.deleteCliente(this.clienteEliminar.id).subscribe({
+        next: () => {
+          console.log('Cliente eliminado exitosamente');
+          this.loadClientes();
+          this.cancelarEliminar();
+        },
         error: err => console.error('Error al eliminar:', err)
       });
     }
+  }
+
+  cancelarEliminar(): void {
+    this.showDeleteModal = false;
+    this.clienteEliminar = null;
   }
 }
