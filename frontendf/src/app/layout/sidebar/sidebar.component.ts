@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 })
 export class SidebarComponent {
   menuItems = [
-    { path: '/clientes', label: 'Clientes', icon: 'business' }
+    { path: '//dashboard/clientes', label: 'Clientes', icon: 'business' },
+    { path: '/dashboard/instalaciones', label: 'Instalaciones', icon: 'location_city' }
   ];
 }

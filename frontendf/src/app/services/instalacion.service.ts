@@ -17,12 +17,12 @@ export class InstalacionService {
     return this.apiService.get<Instalacion>(`/instalaciones/${id}/`);
   }
 
-  CreateInstalacion(instalacion: any): Observable<any>{
+  createInstalacion(instalacion: any): Observable<any>{
     return this.apiService.post<any>('/crear-instalacion/', instalacion);
   }
 
   updateInstalacion(id: number, instalacion:any): Observable<any>{
-    return this.apiService.put<any>(`/actualizar/${id}/`, instalacion);
+    return this.apiService.put<any>(`/actualizar-instalacion/${id}/`, instalacion);
   }
 
   deleteInstalacion(id: number): Observable<any>{
