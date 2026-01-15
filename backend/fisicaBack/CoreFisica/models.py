@@ -24,7 +24,7 @@ class Instalacion(models.Model):
 class Puesto(models.Model):
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='puestos')
     nombre = models.CharField(max_length=100)
-    horas_trabajo = models.IntegerField()
+    #horas_trabajo = models.IntegerField(default=0)
 
     def __str__(self):
         return self.nombre

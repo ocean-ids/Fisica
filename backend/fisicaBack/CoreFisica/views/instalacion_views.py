@@ -6,8 +6,10 @@ from ..models import Cliente, Instalacion
 @csrf_exempt
 def obtener_instalaciones(request):
     if request.method == 'GET':
-        instalaciones = Instalacion.objects.all().values('id', 'nombre', 'provincia', 'ciudad', 'cliente_id')
+        instalaciones = Instalacion.objects.all().values('id', 'nombre', 'codigo', 'provincia', 'ciudad', 'cliente_id')
         return JsonResponse(list(instalaciones), safe=False)
+    
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 
 @csrf_exempt

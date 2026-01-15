@@ -82,7 +82,7 @@ def actualizar_cliente(request, id):
 
         except json.JSONDecodeError:
             return JsonResponse({'error': 'JSON inválido'}, status=400)
-
+            
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 
