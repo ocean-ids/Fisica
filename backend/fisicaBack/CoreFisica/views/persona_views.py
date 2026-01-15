@@ -24,9 +24,9 @@ def crear_persona(request):
 def obtener_personas(request):
     if request.method == 'GET':
         try:
-            PersonasSinAsignacion = Persona.objects.filter(asignacion__isnull=True).order_by('apellidos')
-            return JsonResponse(list(PersonasSinAsignacion.values('id', 'nombres', 'apellidos', 'cedula', 'tipo')), safe=False)
-        except PersonasSinAsignacion.DoesNotExist:
+            personas = Persona.objects.all().order_by('apellidos')
+            return JsonResponse(list(personas.values('id', 'nombres', 'apellidos', 'cedula', 'tipo')), safe=False)
+        except Exception as e:
             return JsonResponse({'error': 'No se encontraron personas'}, status=404)
         
 
