@@ -1,46 +1,52 @@
-<div class="instalaciones-container">
-
-  <div class="header">
-    <h1>Gestión de Instalaciones</h1>
+<div class="container-fluid p-4">
+  
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestión de Instalaciones</h2>
     <button class="btn btn-primary" (click)="abrirModal()">
       <i class="bi bi-plus-circle"></i> Nueva Instalación
     </button>
   </div>
 
-  
-  <div class="table-container">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Código</th>
-          <th>Nombre</th>
-          <th>Cliente</th>
-          <th>Provincia</th>
-          <th>Ciudad</th>
-          <th class="text-center">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let instalacion of instalaciones">
-          <td>{{ instalacion.codigo }}</td>
-          <td>{{ instalacion.nombre }}</td>
-          <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
-          <td>{{ instalacion.provincia }}</td>
-          <td>{{ instalacion.ciudad }}</td>
-          <td class="d-flex justify-content-around">
-            <button class="btn btn-sm btn-warning me-2" (click)="abrirModalEditar(instalacion)">
-              <i class="bi bi-pencil"></i> Editar
-            </button>
-            <button class="btn btn-sm btn-danger" (click)="confirmarEliminar(instalacion)">
-              <i class="bi bi-trash"></i> Eliminar
-            </button>
-          </td>
-        </tr>
-        <tr *ngIf="instalaciones.length === 0">
-          <td colspan="6" class="text-center">No hay instalaciones registradas</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Código</th>
+              <th>Nombre</th>
+              <th>Cliente</th>
+              <th>Provincia</th>
+              <th>Ciudad</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let instalacion of instalaciones">
+              <td>{{ instalacion.id }}</td>
+              <td>{{ instalacion.codigo }}</td>
+              <td>{{ instalacion.nombre }}</td>
+              <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
+              <td>{{ instalacion.provincia }}</td>
+              <td>{{ instalacion.ciudad }}</td>
+              <td class="d-flex justify-content-around">
+                <button class="btn btn-sm btn-warning me-2" (click)="abrirModalEditar(instalacion)">
+                  <i class="bi bi-pencil"></i> Editar
+                </button>
+                <button class="btn btn-sm btn-danger" (click)="confirmarEliminar(instalacion)">
+                  <i class="bi bi-trash"></i> Eliminar
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div *ngIf="instalaciones.length === 0" class="text-center text-muted py-4">
+          <p>No hay instalaciones registradas</p>
+        </div>
+      </div>
+    </div>
   </div>
 
   

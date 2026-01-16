@@ -22,15 +22,11 @@ export class NavbarComponent implements OnInit {
   ){}
 
   ngOnInit(): void {
-    this.authService.getCurrentUser().subscribe({
-      next: (user) =>{
-        this.username = user.username;
-      },
-      error: (error) =>{
-        console.error('Error obteninedo usuario', error);
-        
-      }
-    });
+    // Obtener usuario desde localStorage en lugar de hacer petición al backend
+    const user = this.authService.getUserFromStorage();
+    if (user) {
+      this.username = user.username;
+    }
   }
 
   logout(): void{

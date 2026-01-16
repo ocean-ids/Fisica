@@ -1,50 +1,50 @@
-<mat-card>
-  <mat-card-header>
-    <mat-card-title>Clientes</mat-card-title>
-  </mat-card-header>
+<div class="container-fluid p-4">
+  
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestión de Clientes</h2>
+    <button class="btn btn-primary" (click)="openDialog()">
+      <i class="bi bi-plus-circle"></i> Nuevo Cliente
+    </button>
+  </div>
 
-  <mat-card-content>
-    <div class="actions">
-      <button class="btn btn-primary" (click)="openDialog()">
-        <i class="bi bi-plus-circle"></i> Nuevo Cliente
-      </button>
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Razón Social</th>
+              <th>Nombre Comercial</th>
+              <th>Dirección</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of clientes">
+              <td>{{ c.id }}</td>
+              <td>{{ c.razon_social }}</td>
+              <td>{{ c.nombre_comercial }}</td>
+              <td>{{ c.direccion }}</td>
+              <td class="d-flex justify-content-around">
+                <button class="btn btn-sm btn-warning me-2" (click)="openDialog(c)">
+                  <i class="bi bi-pencil"></i> Editar
+                </button>
+                <button class="btn btn-sm btn-danger" (click)="confirmarEliminar(c)">
+                  <i class="bi bi-trash"></i> Eliminar
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div *ngIf="clientes.length === 0" class="text-center text-muted py-4">
+          <p>No hay clientes registrados</p>
+        </div>
+      </div>
     </div>
-
-    <table mat-table [dataSource]="clientes" class="mat-elevation-z2">
-      <ng-container matColumnDef="razon_social">
-        <th mat-header-cell *matHeaderCellDef>Razón Social</th>
-        <td mat-cell *matCellDef="let c">{{ c.razon_social }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="nombre_comercial">
-        <th mat-header-cell *matHeaderCellDef>Nombre Comercial</th>
-        <td mat-cell *matCellDef="let c">{{ c.nombre_comercial }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="direccion">
-        <th mat-header-cell *matHeaderCellDef>Dirección</th>
-        <td mat-cell *matCellDef="let c">{{ c.direccion }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="acciones">
-        <th class="text-center" mat-header-cell *matHeaderCellDef>Acciones</th>
-        <td mat-cell *matCellDef="let c">
-          <div class="d-flex justify-content-around">
-            <button class="btn btn-sm btn-warning me-2" (click)="openDialog(c)">
-            <i class="bi bi-pencil"></i> Editar
-          </button>
-          <button class="btn btn-sm btn-danger" (click)="confirmarEliminar(c)">
-            <i class="bi bi-trash"></i> Eliminar
-          </button>
-          </div>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-    </table>
-  </mat-card-content>
-</mat-card>
+  </div>
+</div>
 
 
 <div class="modal fade show" *ngIf="showDeleteModal" style="display: block; background-color: rgba(0,0,0,0.5);">
