@@ -7,6 +7,11 @@ class Cliente(models.Model):
     direccion = models.CharField(max_length=200)
     codigo = models.CharField(max_length=50, blank=True, null=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['nombre_comercial']),
+        ]
+
     def __str__(self):
         return self.nombre_comercial
 
