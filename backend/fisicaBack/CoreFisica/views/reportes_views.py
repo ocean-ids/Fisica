@@ -2,11 +2,10 @@ from django.shortcuts import render
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework import status
-from django.views.decorators.csrf import csrf_exempt
 import json
 from django.http import HttpResponse
 from openpyxl import Workbook
@@ -26,6 +25,8 @@ from openpyxl.styles import Alignment, Font
 
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def export_excel(request):
     wb = Workbook()
     ws = wb.active
@@ -51,6 +52,8 @@ def export_excel(request):
     return response
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def export_pdf(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte.pdf"'
@@ -76,6 +79,8 @@ def export_pdf(request):
 
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def generar_excel_horario(request):
     asignaciones = Asignacion.objects.all()
 
@@ -143,6 +148,8 @@ def generar_excel_horario(request):
     return response
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def generar_pdf_Horario(request):
     cm = 8.54
     asignaciones = Asignacion.objects.all()

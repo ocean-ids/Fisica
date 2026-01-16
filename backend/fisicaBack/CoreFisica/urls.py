@@ -1,5 +1,8 @@
 
 from django.urls import path
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,)
 from .views.auth_views import login_view, logout_view, user_view
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
@@ -14,6 +17,8 @@ from .views.asignacion_views import obtener_asignaciones, asignar_servicio, guar
 urlpatterns = [
     path('login/', login_view),
     path('logout/', logout_view),
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('user/', user_view),
     path('reporte/excel/', export_excel),
     path('reporte/pdf/', export_pdf),

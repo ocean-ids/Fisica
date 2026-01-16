@@ -1,9 +1,11 @@
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 import json
 from ..models import Cliente
 
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def crear_cliente(request):
     if request.method == 'POST':
         try:
@@ -26,75 +28,72 @@ def crear_cliente(request):
             return JsonResponse({'error': 'JSON inválido'}, status=400)
 
 
-@csrf_exempt
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def obtener_clientes(request):
-    if request.method == 'GET':
-        clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'direccion')
-        return JsonResponse(list(clientes), safe=False)
+    clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'direccion')
+    return JsonResponse(list(clientes), safe=False)
 
 
-@csrf_exempt
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def obtener_cliente_id(request, id):
-    if request.method == 'GET':
-        try:
-            cliente = Cliente.objects.get(pk=id)
-            data = {
-                "id": cliente.id,
-                "razon_social": cliente.razon_social,
-                "nombre_comercial": cliente.nombre_comercial,
-                "direccion": cliente.direccion
-            }
-            return JsonResponse(data)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+    try:
+        cliente = Cliente.objects.get(pk=id)
+        data = {
+            "id": cliente.id,
+            "razon_social": cliente.razon_social,
+            "nombre_comercial": cliente.nombre_comercial,
+            "direccion": cliente.direccion
+        }
+        return JsonResponse(data)
+    except Cliente.DoesNotExist:
+        return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
 
 
-@csrf_exempt
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
 def actualizar_cliente(request, id):
-    if request.method == 'PUT':
-        try:
-            data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
 
-            try:
-                cliente = Cliente.objects.get(pk=id)
-            except Cliente.DoesNotExist:
-                return JsonResponse(
-                    {'error': 'Cliente no encontrado'},
-                    status=404
-                )
-
-            cliente.razon_social = data.get(
-                'razon_social', cliente.razon_social
-            )
-            cliente.nombre_comercial = data.get(
-                'nombre_comercial', cliente.nombre_comercial
-            )
-            cliente.direccion = data.get(
-                'direccion', cliente.direccion
-            )
-
-            cliente.save()
-
-            return JsonResponse({
-                'message': 'Cliente actualizado correctamente',
-                'id': cliente.id
-            }, status=200)
-
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'JSON inválido'}, status=400)
-            
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
-
-
-@csrf_exempt
-def eliminar_cliente(request, id):
-    if request.method == 'DELETE':
         try:
             cliente = Cliente.objects.get(pk=id)
-            cliente.delete()
-            return JsonResponse({'message': 'Cliente eliminado correctamente'}, status=200)
         except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
+            return JsonResponse(
+                {'error': 'Cliente no encontrado'},
+                status=404
+            )
+
+        cliente.razon_social = data.get(
+            'razon_social', cliente.razon_social
+        )
+        cliente.nombre_comercial = data.get(
+            'nombre_comercial', cliente.nombre_comercial
+        )
+        cliente.direccion = data.get(
+            'direccion', cliente.direccion
+        )
+
+        cliente.save()
+
+        return JsonResponse({
+            'message': 'Cliente actualizado correctamente',
+            'id': cliente.id
+        }, status=200)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def eliminar_cliente(request, id):
+    try:
+        cliente = Cliente.objects.get(pk=id)
+        cliente.delete()
+        return JsonResponse({'message': 'Cliente eliminado correctamente'}, status=200)
+    except Cliente.DoesNotExist:
+        return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
 
             

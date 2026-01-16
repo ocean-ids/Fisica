@@ -1,8 +1,11 @@
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 import json
 from ..models import Asignacion
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def obtener_asignaciones(request,mes,anio):
     asignaciones = Asignacion.objects.raw("SELECT * FROM obtener_asignaciones(%s, %s)",[mes, anio])
     data = []
@@ -64,70 +67,67 @@ def obtener_asignaciones(request,mes,anio):
     return JsonResponse(data, safe=False)
 
 
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def asignar_servicio(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        print("daniel22: ",data)
-        variableContar=Asignacion.objects.count()+1
-        asignacion = Asignacion.objects.create(
-            fecha_inicio=data.get('fecha_inicio'),
-            fecha_fin=data.get('fecha_fin'),
-            cliente_id=data.get('cliente_id'),
-            horario_id=data.get('horario_id'),
-            instalacion_id=data.get('instalacion_id'),
-            puesto_id=data.get('puesto_id'),
-            persona_id=data.get('persona_id'),
-            rotativo=data.get('rotativo'),
-            mes=data.get('mes'),
-            anio=data.get('anio'),
-            orden=variableContar,
-            estado=data.get('estado'),
-            tipo=data.get('tipo')
-        )
-        return JsonResponse({'message': 'Servicio asignado', 'id': asignacion.id})
+    data = json.loads(request.body)
+    print("daniel22: ",data)
+    variableContar=Asignacion.objects.count()+1
+    asignacion = Asignacion.objects.create(
+        fecha_inicio=data.get('fecha_inicio'),
+        fecha_fin=data.get('fecha_fin'),
+        cliente_id=data.get('cliente_id'),
+        horario_id=data.get('horario_id'),
+        instalacion_id=data.get('instalacion_id'),
+        puesto_id=data.get('puesto_id'),
+        persona_id=data.get('persona_id'),
+        rotativo=data.get('rotativo'),
+        mes=data.get('mes'),
+        anio=data.get('anio'),
+        orden=variableContar,
+        estado=data.get('estado'),
+        tipo=data.get('tipo')
+    )
+    return JsonResponse({'message': 'Servicio asignado', 'id': asignacion.id})
 
 
 
-@csrf_exempt
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
 def editar_servicio(request, id):
-    if request.method == 'PUT':
-        try:
-            data = json.loads(request.body)
-            asignacion = Asignacion.objects.get(id=id)
-
-            asignacion.fecha_inicio = data.get('fecha_inicio', asignacion.fecha_inicio)
-            asignacion.fecha_fin = data.get('fecha_fin', asignacion.fecha_fin)
-            asignacion.cliente_id = data.get('cliente_id', asignacion.cliente_id)
-            asignacion.horario_id = data.get('horario_id', asignacion.horario_id)
-            asignacion.instalacion_id = data.get('instalacion_id', asignacion.instalacion_id)
-            asignacion.puesto_id = data.get('puesto_id', asignacion.puesto_id)
-            asignacion.persona_id = data.get('persona_id', asignacion.persona_id)
-            asignacion.rotativo = data.get('rotativo', asignacion.rotativo)
-            asignacion.mes = data.get('mes', asignacion.mes)
-            asignacion.anio = data.get('anio', asignacion.anio)
-            asignacion.estado = data.get('estado', asignacion.estado)
-
-            asignacion.save()
-
-            return JsonResponse({'message': 'Asignación actualizada correctamente'})
-
-        except Asignacion.DoesNotExist:
-            return JsonResponse({'error': 'La asignación no existe'}, status=404)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
-    else:
-        return JsonResponse({'error': 'Método no permitido'}, status=405)
-
-
-@csrf_exempt
-def guardar_orden_asignacion(request):
-    if request.method == 'POST':
+    try:
         data = json.loads(request.body)
-        ids_orden = data.get('orden')
-        print("ids_orden",ids_orden)
-        for index, id in enumerate(ids_orden):
-            Asignacion.objects.filter(id=id).update(orden=index)
+        asignacion = Asignacion.objects.get(id=id)
 
-        return JsonResponse({'status': 'ok'})
-    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+        asignacion.fecha_inicio = data.get('fecha_inicio', asignacion.fecha_inicio)
+        asignacion.fecha_fin = data.get('fecha_fin', asignacion.fecha_fin)
+        asignacion.cliente_id = data.get('cliente_id', asignacion.cliente_id)
+        asignacion.horario_id = data.get('horario_id', asignacion.horario_id)
+        asignacion.instalacion_id = data.get('instalacion_id', asignacion.instalacion_id)
+        asignacion.puesto_id = data.get('puesto_id', asignacion.puesto_id)
+        asignacion.persona_id = data.get('persona_id', asignacion.persona_id)
+        asignacion.rotativo = data.get('rotativo', asignacion.rotativo)
+        asignacion.mes = data.get('mes', asignacion.mes)
+        asignacion.anio = data.get('anio', asignacion.anio)
+        asignacion.estado = data.get('estado', asignacion.estado)
+
+        asignacion.save()
+
+        return JsonResponse({'message': 'Asignación actualizada correctamente'})
+
+    except Asignacion.DoesNotExist:
+        return JsonResponse({'error': 'La asignación no existe'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def guardar_orden_asignacion(request):
+    data = json.loads(request.body)
+    ids_orden = data.get('orden')
+    print("ids_orden",ids_orden)
+    for index, id in enumerate(ids_orden):
+        Asignacion.objects.filter(id=id).update(orden=index)
+
+    return JsonResponse({'status': 'ok'})
