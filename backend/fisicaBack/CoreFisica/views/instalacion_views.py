@@ -7,7 +7,7 @@ from ..models import Cliente, Instalacion
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_instalaciones(request):
-    instalaciones = Instalacion.objects.all().values('id', 'nombre', 'codigo', 'provincia', 'ciudad', 'cliente_id')
+    instalaciones = Instalacion.objects.all().values('id', 'nombre', 'provincia', 'ciudad', 'cliente_id')
     return JsonResponse(list(instalaciones), safe=False)
 
 
@@ -21,7 +21,6 @@ def crear_instalacion(request):
 
     instalacion = Instalacion.objects.create(
         nombre=data.get('nombre_instalacion'),
-        codigo=data.get('codigo'),
         cliente=cliente,
         ciudad=data.get('ciudad'),
         provincia=data.get('provincia'),
@@ -46,7 +45,6 @@ def actualizar_instalacion(request, id):
             return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
 
         instalacion.nombre = data.get('nombre', instalacion.nombre)
-        instalacion.codigo = data.get('codigo', instalacion.codigo)
         instalacion.cliente = cliente
         instalacion.ciudad = data.get('ciudad', instalacion.ciudad)
         instalacion.provincia = data.get('provincia', instalacion.provincia)

@@ -5,6 +5,7 @@ class Cliente(models.Model):
     razon_social = models.CharField(max_length=100)
     nombre_comercial = models.CharField(max_length=100)
     direccion = models.CharField(max_length=200)
+    codigo = models.CharField(max_length=50, blank=True, null=True)
 
     def __str__(self):
         return self.nombre_comercial
@@ -13,7 +14,6 @@ class Cliente(models.Model):
 class Instalacion(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='instalaciones')
     nombre = models.CharField(max_length=100)
-    codigo = models.CharField(max_length=20)
     provincia = models.CharField(max_length=50)
     ciudad = models.CharField(max_length=50)
 
