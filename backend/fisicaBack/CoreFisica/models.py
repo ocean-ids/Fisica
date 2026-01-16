@@ -40,8 +40,10 @@ class Persona(models.Model):
         ('SUPERVISOR', 'SUPERVISOR'),
         ('FIJO', 'FIJO'),
         ('FRANCO', 'FRANCO'),
+        ('SACAFRANCO', 'SACAFRANCO'),
+        ('EVENTUAL', 'EVENTUAL'),
     ]
-    tipo = models.CharField(null=True,max_length=10, choices=TIPO_CHOICES)
+    tipo = models.CharField(null=True,max_length=15, choices=TIPO_CHOICES)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     cedula = models.CharField(max_length=20, unique=True)
