@@ -8,6 +8,34 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
+}
+
+.sidebar-wrapper {
+  width: 250px;
+  transition: width 0.3s ease;
+  overflow: hidden;
+}
+
+.sidebar-wrapper.collapsed {
+  width: 0;
+}
+
+.toggle-btn {
+  position: absolute;
+  left: 250px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 0 4px 4px 0;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  transition: left 0.3s ease;
+}
+
+.sidebar-wrapper.collapsed + .toggle-btn {
+  left: 0;
 }
 
 .main-content {
