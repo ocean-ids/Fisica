@@ -21,7 +21,6 @@ export class InstalacionesComponent implements OnInit{
 
   nuevaInstalacion: any = {
     nombre_instalacion: '',
-    codigo: '',
     cliente_id: '',
     provincia: '',
     ciudad: ''
@@ -80,7 +79,6 @@ export class InstalacionesComponent implements OnInit{
   resetFormulario(): void {
     this.nuevaInstalacion = {
       nombre_instalacion: '',
-      codigo: '',
       cliente_id: '',
       provincia: '',
       ciudad: ''
@@ -116,7 +114,6 @@ export class InstalacionesComponent implements OnInit{
   actualizarInstalacion(): void {
     const payload = {
       nombre: this.instalacionSeleccionada.nombre,
-      codigo: this.instalacionSeleccionada.codigo,
       cliente: this.instalacionSeleccionada.cliente_id,
       provincia: this.instalacionSeleccionada.provincia,
       ciudad: this.instalacionSeleccionada.ciudad
