@@ -13,20 +13,18 @@
         <table class="table table-hover">
           <thead>
             <tr>
-              <th>#</th>
+              <th>Código</th>
               <th>Razón Social</th>
               <th>Nombre Comercial</th>
-              <th>Código</th>
               <th>Dirección</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let c of clientes">
-              <td>{{ c.id }}</td>
+              <td>{{ c.codigo || 'N/A' }}</td>
               <td>{{ c.razon_social }}</td>
               <td>{{ c.nombre_comercial }}</td>
-              <td>{{ c.codigo || 'N/A' }}</td>
               <td>{{ c.direccion }}</td>
               <td class="d-flex justify-content-around">
                 <button class="btn btn-sm btn-warning me-2" (click)="openDialog(c)">

@@ -3,6 +3,11 @@
 <mat-dialog-content>
   <form [formGroup]="clienteForm">
     <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Código</mat-label>
+      <input matInput formControlName="codigo">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
       <mat-label>Razón Social</mat-label>
       <input matInput formControlName="razon_social">
     </mat-form-field>
@@ -10,11 +15,6 @@
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Nombre Comercial</mat-label>
       <input matInput formControlName="nombre_comercial">
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Código</mat-label>
-      <input matInput formControlName="codigo">
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">

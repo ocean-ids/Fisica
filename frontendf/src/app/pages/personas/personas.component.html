@@ -13,7 +13,6 @@
         <table class="table table-hover">
           <thead>
             <tr>
-              <th>#</th>
               <th>Cédula</th>
               <th>Apellidos</th>
               <th>Nombres</th>
@@ -23,7 +22,6 @@
           </thead>
           <tbody>
             <tr *ngFor="let persona of personas">
-              <td>{{ persona.id }}</td>
               <td>{{ persona.cedula }}</td>
               <td>{{ persona.apellidos }}</td>
               <td>{{ persona.nombres }}</td>
@@ -98,6 +96,8 @@
                 <option value="SUPERVISOR">Supervisor</option>
                 <option value="FIJO">Fijo</option>
                 <option value="FRANCO">Franco</option>
+                <option value="SACAFRANCO">Sacafranco</option>
+                <option value="EVENTUAL">Eventual</option>
               </select>
             </div>
           </form>
