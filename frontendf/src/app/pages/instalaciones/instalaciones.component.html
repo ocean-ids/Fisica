@@ -1,5 +1,5 @@
 <div class="instalaciones-container">
-  <!-- Header con título y botón -->
+
   <div class="header">
     <h1>Gestión de Instalaciones</h1>
     <button class="btn btn-primary" (click)="abrirModal()">
@@ -7,7 +7,7 @@
     </button>
   </div>
 
-  <!-- Tabla de instalaciones -->
+  
   <div class="table-container">
     <table class="table">
       <thead>
@@ -17,7 +17,7 @@
           <th>Cliente</th>
           <th>Provincia</th>
           <th>Ciudad</th>
-          <th>Acciones</th>
+          <th class="text-center">Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -27,7 +27,7 @@
           <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
           <td>{{ instalacion.provincia }}</td>
           <td>{{ instalacion.ciudad }}</td>
-          <td>
+          <td class="d-flex justify-content-around">
             <button class="btn btn-sm btn-warning me-2" (click)="abrirModalEditar(instalacion)">
               <i class="bi bi-pencil"></i> Editar
             </button>
@@ -43,7 +43,7 @@
     </table>
   </div>
 
-  <!-- Modal para crear/editar -->
+  
   <div class="modal" *ngIf="showModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -162,7 +162,7 @@
     </div>
   </div>
 
-  <!-- Modal de confirmación de eliminación -->
+  
   <div class="modal" *ngIf="showDeleteModal">
     <div class="modal-content modal-small">
       <div class="modal-header">

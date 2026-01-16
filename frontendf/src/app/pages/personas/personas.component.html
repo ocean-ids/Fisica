@@ -18,7 +18,7 @@
               <th>Apellidos</th>
               <th>Nombres</th>
               <th>Tipo</th>
-              <th>Acciones</th>
+              <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -28,7 +28,7 @@
               <td>{{ persona.apellidos }}</td>
               <td>{{ persona.nombres }}</td>
               <td>{{ persona.tipo }}</td>
-              <td>
+              <td class="d-flex justify-content-around">
                 <button class="btn btn-sm btn-warning me-2" (click)="editarPersona(persona)">
                   <i class="bi bi-pencil"></i> Editar
                 </button>
