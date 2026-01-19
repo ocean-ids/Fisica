@@ -5,6 +5,7 @@ import { PersonasComponent } from './pages/personas/personas.component';
 import { InstalacionesComponent } from './pages/instalaciones/instalaciones.component';
 import { LoginComponent } from './pages/login/login.component';
 import { authGuard } from './guards/auth.guard';
+import { PuestosComponent } from './pages/puestos/puestos.component';
 
 export const routes: Routes = [
   {path: '', component: LoginComponent},
@@ -15,8 +16,9 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'clientes', pathMatch: 'full' },
       { path: 'clientes', component: ClientesComponent},
-      { path: 'personas', component: PersonasComponent},
       { path: 'instalaciones', component: InstalacionesComponent},
+      { path: 'puestos', component: PuestosComponent},
+      { path: 'personas', component: PersonasComponent},
     ]
   },
   { path: '**', redirectTo: ''}
