@@ -29,7 +29,7 @@ class Instalacion(models.Model):
 class Puesto(models.Model):
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='puestos')
     nombre = models.CharField(max_length=100)
-    #horas_trabajo = models.IntegerField(default=0)
+    horas_trabajo = models.IntegerField(default=0)
 
     def __str__(self):
         return self.nombre
@@ -64,56 +64,85 @@ class Horario(models.Model):
 
 
 class Asignacion(models.Model):
-    TIPO_ESTADO = [
+    ESTADO_CHOICES = [
         ('ACTIVO', 'ACTIVO'),
         ('INACTIVO', 'INACTIVO'),
     ]
-    fecha_inicio = models.DateField()
-    fecha_fin = models.DateField(null=True, blank=True)
+
     persona = models.ForeignKey(Persona, on_delete=models.CASCADE)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE)
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE)
     horario = models.ForeignKey(Horario, on_delete=models.CASCADE)
-    rotativo = models.CharField(max_length=10,null=True, blank=True)
-    mes = models.CharField(max_length=2,null=True, blank=True)
-    anio = models.CharField(max_length=4,null=True, blank=True)
-    dia_1 = models.CharField(max_length=10,null=True, blank=True)
-    dia_2 = models.CharField(max_length=10,null=True, blank=True)
-    dia_3 = models.CharField(max_length=10,null=True, blank=True)
-    dia_4 = models.CharField(max_length=10,null=True, blank=True)
-    dia_5 = models.CharField(max_length=10,null=True, blank=True)
-    dia_6 = models.CharField(max_length=10,null=True, blank=True)
-    dia_7 = models.CharField(max_length=10,null=True, blank=True)
-    dia_8 = models.CharField(max_length=10,null=True, blank=True)
-    dia_9 = models.CharField(max_length=10,null=True, blank=True)
-    dia_10 = models.CharField(max_length=10,null=True, blank=True)
-    dia_11 = models.CharField(max_length=10,null=True, blank=True)
-    dia_12 = models.CharField(max_length=10,null=True, blank=True)
-    dia_13 = models.CharField(max_length=10,null=True, blank=True)
-    dia_14 = models.CharField(max_length=10,null=True, blank=True)
-    dia_15 = models.CharField(max_length=10,null=True, blank=True)
-    dia_16 = models.CharField(max_length=10,null=True, blank=True)
-    dia_17 = models.CharField(max_length=10,null=True, blank=True)
-    dia_18 = models.CharField(max_length=10,null=True, blank=True)
-    dia_19 = models.CharField(max_length=10,null=True, blank=True)
-    dia_20 = models.CharField(max_length=10,null=True, blank=True)
-    dia_21 = models.CharField(max_length=10,null=True, blank=True)
-    dia_22 = models.CharField(max_length=10,null=True, blank=True)
-    dia_23 = models.CharField(max_length=10,null=True, blank=True)
-    dia_24 = models.CharField(max_length=10,null=True, blank=True)
-    dia_25 = models.CharField(max_length=10,null=True, blank=True)
-    dia_26 = models.CharField(max_length=10,null=True, blank=True)
-    dia_27 = models.CharField(max_length=10,null=True, blank=True)
-    dia_28 = models.CharField(max_length=10,null=True, blank=True)
-    dia_29 = models.CharField(max_length=10,null=True, blank=True)
-    dia_30 = models.CharField(max_length=10,null=True, blank=True)
-    dia_31 = models.CharField(max_length=10,null=True, blank=True)
+
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField(null=True, blank=True)
+
+    mes = models.PositiveSmallIntegerField(default=1)
+    anio = models.PositiveSmallIntegerField(default=2026)
+
+    rotativo = models.BooleanField(default=False)
+
     orden = models.PositiveIntegerField(default=0)
-    estado = models.CharField(max_length=10,null=True, blank=True, choices=TIPO_ESTADO)
+    estado = models.CharField(
+        max_length=10,
+        choices=ESTADO_CHOICES,
+        default='ACTIVO'
+    )
 
     class Meta:
-        ordering = ['orden'] 
-    
-    #def __str__(self):
-    #    return f"{self.persona} en {self.puesto} ({self.fecha_inicio} - {self.fecha_fin or 'actual'})"
+        ordering = ['orden']
+        unique_together = ('persona', 'puesto', 'mes', 'anio')
+
+    def __str__(self):
+        return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio})"
+
+
+class Asistencia(models.Model):
+
+    TURNO_CHOICES = [
+        ('D', 'Día'),
+        ('N', 'Noche'),
+    ]
+
+    ESTADO_CHOICES = [
+        ('NORMAL', 'Normal'),
+        ('FRANCO', 'Franco'),
+        ('DISPONIBLE', 'Disponible'),
+    ]
+
+    asignacion = models.ForeignKey(
+        Asignacion,
+        on_delete=models.CASCADE,
+        related_name='asistencias'
+    )
+    fecha = models.DateField()
+
+    # D / N
+    turno = models.CharField(
+        max_length=1,
+        choices=TURNO_CHOICES,
+        null=True,
+        blank=True
+    )
+
+    # S30, S31, etc
+    codigo_cliente = models.CharField(
+        max_length=10,
+        null=True,
+        blank=True
+    )
+
+    # NORMAL / FRANCO / DISPONIBLE
+    estado = models.CharField(
+        max_length=15,
+        choices=ESTADO_CHOICES,
+        default='NORMAL'
+    )
+
+    class Meta:
+        unique_together = ('asignacion', 'fecha')
+        ordering = ['fecha']
+
+    def __str__(self):
+        return f"{self.fecha} - {self.turno or ''}{self.codigo_cliente or ''}"

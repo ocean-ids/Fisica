@@ -2,77 +2,92 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import json
-from ..models import Asignacion
+from datetime import date
+import calendar
+from ..models import Asignacion, Asistencia
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def obtener_asignaciones(request,mes,anio):
-    asignaciones = Asignacion.objects.raw("SELECT * FROM obtener_asignaciones(%s, %s)",[mes, anio])
+def obtener_asignaciones(request, mes, anio):
+    """
+    Obtiene asignaciones con sus asistencias para el mes/año especificado
+    """
+    asignaciones = Asignacion.objects.filter(mes=mes, anio=anio).select_related(
+        'persona', 'cliente', 'instalacion', 'puesto', 'horario'
+    ).prefetch_related('asistencias')
+    
     data = []
+    
+    # Obtener número de días del mes
+    num_dias = calendar.monthrange(int(anio), int(mes))[1]
 
-    for a in asignaciones:
-        data.append({
-            "idAsignacion": a.id,
-            "fecha_inicio": a.fecha_inicio,
-            "fecha_fin": a.fecha_fin,
-            "nombres":a.nombres,
-            "apellidos":a.apellidos,
-            "cedula":a.cedula,
-            "denominativo":a.denominativo,
-            "horaingreso":a.horaingreso,
-            "horasalida":a.horasalida,
-            "nombreinstalacion":a.nombreinstalacion,
-            "codigo":a.codigo,
-            "razonSocial":a.razonsocial,
-            "nombrePuesto":a.nombrepuesto,
-            "dia_1": a.dia_1,
-            "dia_2": a.dia_2 ,
-            "dia_3": a.dia_3 ,
-            "dia_4": a.dia_4 ,
-            "dia_5": a.dia_5 ,
-            "dia_6": a.dia_6 ,
-            "dia_7": a.dia_7 ,
-            "dia_8": a.dia_8 ,
-            "dia_9": a.dia_9 ,
-            "dia_10": a.dia_10 ,
-            "dia_11": a.dia_11 ,
-            "dia_12": a.dia_12 ,
-            "dia_13": a.dia_13 ,
-            "dia_14": a.dia_14 ,
-            "dia_15": a.dia_15 ,
-            "dia_16": a.dia_16 ,
-            "dia_17": a.dia_17 ,
-            "dia_18": a.dia_18 ,
-            "dia_19": a.dia_19 ,
-            "dia_20": a.dia_20 ,
-            "dia_21": a.dia_21 ,
-            "dia_22": a.dia_22 ,
-            "dia_23": a.dia_23 ,
-            "dia_24": a.dia_24 ,
-            "dia_25": a.dia_25 ,
-            "dia_26": a.dia_26 ,
-            "dia_27": a.dia_27 ,
-            "dia_28": a.dia_28 ,
-            "dia_29": a.dia_29 ,
-            "dia_30": a.dia_30 ,
-            "dia_31": a.dia_31 ,
-            "mes": a.mes,
-            "anio": a.anio,
-            "rotativo": a.rotativo,
-            "orden": a.orden,
-            "estado": a.estado,
+    for asignacion in asignaciones:
+        # Construir diccionario de asistencias por día
+        asistencias_dict = {}
+        for asistencia in asignacion.asistencias.all():
+            dia = asistencia.fecha.day
+            # Formato similar al anterior: "D", "N", "DS30", etc.
+            valor = ""
+            if asistencia.turno:
+                valor += asistencia.turno
+            if asistencia.codigo_cliente:
+                valor += asistencia.codigo_cliente
+            if asistencia.estado == 'FRANCO':
+                valor += 'F'
+            elif asistencia.estado == 'DISPONIBLE':
+                valor += 'DISP'
             
-        })
-    print(data)
+            asistencias_dict[dia] = valor
+        
+        # Construir objeto con estructura compatible
+        asignacion_data = {
+            "idAsignacion": asignacion.id,
+            "fecha_inicio": asignacion.fecha_inicio.isoformat(),
+            "fecha_fin": asignacion.fecha_fin.isoformat() if asignacion.fecha_fin else None,
+            "nombres": asignacion.persona.nombres,
+            "apellidos": asignacion.persona.apellidos,
+            "cedula": asignacion.persona.cedula,
+            "denominativo": asignacion.horario.denominativo,
+            "horaingreso": asignacion.horario.hora_ingreso.isoformat(),
+            "horasalida": asignacion.horario.hora_salida.isoformat(),
+            "nombreinstalacion": asignacion.instalacion.nombre,
+            "codigo": asignacion.cliente.codigo or "",
+            "razonSocial": asignacion.cliente.razon_social,
+            "nombrePuesto": asignacion.puesto.nombre,
+            "mes": asignacion.mes,
+            "anio": asignacion.anio,
+            "rotativo": asignacion.rotativo,
+            "orden": asignacion.orden,
+            "estado": asignacion.estado,
+        }
+        
+        # Agregar días del mes
+        for dia in range(1, num_dias + 1):
+            asignacion_data[f"dia_{dia}"] = asistencias_dict.get(dia, "")
+        
+        # Agregar días restantes como vacíos si el mes tiene menos de 31 días
+        for dia in range(num_dias + 1, 32):
+            asignacion_data[f"dia_{dia}"] = ""
+        
+        data.append(asignacion_data)
+    
     return JsonResponse(data, safe=False)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def asignar_servicio(request):
+    """
+    Crea una asignación con sus registros de asistencia
+    """
     data = json.loads(request.body)
-    print("daniel22: ",data)
-    variableContar=Asignacion.objects.count()+1
+    print("Datos recibidos: ", data)
+    
+    variableContar = Asignacion.objects.count() + 1
+    mes = int(data.get('mes'))
+    anio = int(data.get('anio'))
+    
+    # Crear la asignación
     asignacion = Asignacion.objects.create(
         fecha_inicio=data.get('fecha_inicio'),
         fecha_fin=data.get('fecha_fin'),
@@ -81,13 +96,59 @@ def asignar_servicio(request):
         instalacion_id=data.get('instalacion_id'),
         puesto_id=data.get('puesto_id'),
         persona_id=data.get('persona_id'),
-        rotativo=data.get('rotativo'),
-        mes=data.get('mes'),
-        anio=data.get('anio'),
+        rotativo=data.get('rotativo', False),
+        mes=mes,
+        anio=anio,
         orden=variableContar,
-        estado=data.get('estado'),
-        tipo=data.get('tipo')
+        estado=data.get('estado', 'ACTIVO')
     )
+    
+    # Crear registros de asistencia si vienen datos de días
+    num_dias = calendar.monthrange(anio, mes)[1]
+    for dia in range(1, num_dias + 1):
+        valor_dia = data.get(f'dia_{dia}')
+        if valor_dia:
+            # Parsear el valor (ej: "D", "N", "DS30", "NF", etc.)
+            turno = None
+            codigo_cliente = None
+            estado_dia = 'NORMAL'
+            
+            valor = str(valor_dia).strip().upper()
+            
+            # Detectar turno
+            if valor.startswith('D'):
+                turno = 'D'
+                resto = valor[1:]
+            elif valor.startswith('N'):
+                turno = 'N'
+                resto = valor[1:]
+            else:
+                resto = valor
+            
+            # Detectar estado
+            if 'F' in resto or resto == 'F':
+                estado_dia = 'FRANCO'
+                resto = resto.replace('F', '')
+            elif 'DISP' in resto:
+                estado_dia = 'DISPONIBLE'
+                resto = resto.replace('DISP', '')
+            
+            # Extraer código cliente (ej: S30)
+            if resto.strip():
+                codigo_cliente = resto.strip()
+            
+            # Crear fecha
+            fecha_asistencia = date(anio, mes, dia)
+            
+            # Crear asistencia
+            Asistencia.objects.create(
+                asignacion=asignacion,
+                fecha=fecha_asistencia,
+                turno=turno,
+                codigo_cliente=codigo_cliente,
+                estado=estado_dia
+            )
+    
     return JsonResponse({'message': 'Servicio asignado', 'id': asignacion.id})
 
 
@@ -95,10 +156,14 @@ def asignar_servicio(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def editar_servicio(request, id):
+    """
+    Edita una asignación y actualiza sus asistencias
+    """
     try:
         data = json.loads(request.body)
         asignacion = Asignacion.objects.get(id=id)
 
+        # Actualizar campos básicos
         asignacion.fecha_inicio = data.get('fecha_inicio', asignacion.fecha_inicio)
         asignacion.fecha_fin = data.get('fecha_fin', asignacion.fecha_fin)
         asignacion.cliente_id = data.get('cliente_id', asignacion.cliente_id)
@@ -112,6 +177,61 @@ def editar_servicio(request, id):
         asignacion.estado = data.get('estado', asignacion.estado)
 
         asignacion.save()
+        
+        # Actualizar asistencias si vienen datos de días
+        mes = int(asignacion.mes)
+        anio = int(asignacion.anio)
+        num_dias = calendar.monthrange(anio, mes)[1]
+        
+        for dia in range(1, num_dias + 1):
+            dia_key = f'dia_{dia}'
+            if dia_key in data:
+                valor_dia = data.get(dia_key)
+                fecha_asistencia = date(anio, mes, dia)
+                
+                if valor_dia:
+                    # Parsear el valor
+                    turno = None
+                    codigo_cliente = None
+                    estado_dia = 'NORMAL'
+                    
+                    valor = str(valor_dia).strip().upper()
+                    
+                    if valor.startswith('D'):
+                        turno = 'D'
+                        resto = valor[1:]
+                    elif valor.startswith('N'):
+                        turno = 'N'
+                        resto = valor[1:]
+                    else:
+                        resto = valor
+                    
+                    if 'F' in resto or resto == 'F':
+                        estado_dia = 'FRANCO'
+                        resto = resto.replace('F', '')
+                    elif 'DISP' in resto:
+                        estado_dia = 'DISPONIBLE'
+                        resto = resto.replace('DISP', '')
+                    
+                    if resto.strip():
+                        codigo_cliente = resto.strip()
+                    
+                    # Actualizar o crear asistencia
+                    Asistencia.objects.update_or_create(
+                        asignacion=asignacion,
+                        fecha=fecha_asistencia,
+                        defaults={
+                            'turno': turno,
+                            'codigo_cliente': codigo_cliente,
+                            'estado': estado_dia
+                        }
+                    )
+                else:
+                    # Si el valor está vacío, eliminar la asistencia si existe
+                    Asistencia.objects.filter(
+                        asignacion=asignacion,
+                        fecha=fecha_asistencia
+                    ).delete()
 
         return JsonResponse({'message': 'Asignación actualizada correctamente'})
 
