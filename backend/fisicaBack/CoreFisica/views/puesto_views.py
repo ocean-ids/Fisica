@@ -1,17 +1,8 @@
-from django.shortcuts import render
-from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from django.contrib.auth.models import User
-from rest_framework.response import Response
-from rest_framework import status
+from rest_framework.permissions import  IsAuthenticated
 import json
-from django.http import HttpResponse
-from openpyxl import Workbook
-from reportlab.pdfgen import canvas
-from ..models import Cliente, Instalacion, Puesto, Persona, Horario, Asignacion
-from reportlab.pdfgen import canvas
+from ..models import Instalacion, Puesto
 
 
 @api_view(['POST'])
@@ -32,3 +23,39 @@ def crear_puesto(request):
 def obtener_puestos(request):
     puestos = Puesto.objects.all().values('id', 'nombre', 'instalacion_id')
     return JsonResponse(list(puestos), safe=False)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_puesto_por_instalacion(request, instalacion_id):
+    puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values('id', 'nombre', 'horas_trabajo', 'instalacion_id')
+    return JsonResponse(list(puestos), safe=False)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def actualizar_puesto(request, id):
+    try:
+        data = json.loads(request.body)
+        puesto = Puesto.objects.get(id=id)
+
+        puesto.nombre = data.get('nombre', puesto.nombre)
+        puesto.horas_trabajo = data.get('horas_trabajo', puesto.horas_trabajo)
+        puesto.instalacion_id = data.get('instalacion_id', puesto.instalacion_id)
+
+        puesto.save()
+        return JsonResponse({'message': 'Puesto actualizado correctamente'}, status=200)
+    except Puesto.DoesNotExist:
+        return JsonResponse({'error': 'Puesto no encontardo'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def eliminar_puesto(request, id):
+        try:
+            puesto = Puesto.objects.get(id=id)
+            puesto.delete()
+            return JsonResponse({'message': 'Puesto Eliminado Correctamente'}, status=200)
+        except Puesto.DoesNotExist:
+            return JsonResponse({'error': 'Puesto no encontrado'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
