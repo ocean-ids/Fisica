@@ -4,6 +4,31 @@ from rest_framework.permissions import IsAuthenticated
 import json
 from ..models import Cliente
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_clientes(request):
+    clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'direccion', 'codigo')
+    return JsonResponse(list(clientes), safe=False)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_cliente_id(request, id):
+    try:
+        cliente = Cliente.objects.get(pk=id)
+        data = {
+            "id": cliente.id,
+            "razon_social": cliente.razon_social,
+            "nombre_comercial": cliente.nombre_comercial,
+            "direccion": cliente.direccion,
+            "codigo": cliente.codigo
+        }
+        return JsonResponse(data)
+    except Cliente.DoesNotExist:
+        return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_cliente(request):
@@ -28,30 +53,6 @@ def crear_cliente(request):
             return JsonResponse({'message': 'Cliente creado correctamente', 'id': cliente.id}, status=201)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'JSON inválido'}, status=400)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def obtener_clientes(request):
-    clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'direccion', 'codigo')
-    return JsonResponse(list(clientes), safe=False)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def obtener_cliente_id(request, id):
-    try:
-        cliente = Cliente.objects.get(pk=id)
-        data = {
-            "id": cliente.id,
-            "razon_social": cliente.razon_social,
-            "nombre_comercial": cliente.nombre_comercial,
-            "direccion": cliente.direccion,
-            "codigo": cliente.codigo
-        }
-        return JsonResponse(data)
-    except Cliente.DoesNotExist:
-        return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
 
 
 @api_view(['PUT'])

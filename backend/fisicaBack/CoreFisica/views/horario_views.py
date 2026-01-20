@@ -12,7 +12,7 @@ def obtener_horarios(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def crear_horarios(request):
+def crear_horario(request):
     try:
         data = json.loads(request.body)
 
