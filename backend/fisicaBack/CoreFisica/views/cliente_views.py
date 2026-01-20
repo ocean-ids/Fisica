@@ -28,7 +28,6 @@ def obtener_cliente_id(request, id):
     except Cliente.DoesNotExist:
         return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
 
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_cliente(request):
