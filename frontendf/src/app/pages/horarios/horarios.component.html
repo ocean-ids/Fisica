@@ -1,1 +1,112 @@
-<p>horarios works!</p>
+<div class="container-fluid">
+  
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-center">Horarios</h2>
+    <button class="btn btn-primary" (click)="abrirModal()">
+      <i class="bi bi-plus-circle"></i> Nuevo Horario
+    </button>
+  </div>
+
+ 
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Denominativo</th>
+              <th>Hora Ingreso</th>
+              <th>Hora Salida</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let horario of horarios">
+              <td>{{ horario.id }}</td>
+              <td>{{ horario.denominativo }}</td>
+              <td>{{ horario.hora_ingreso }}</td>
+              <td>{{ horario.hora_salida }}</td>
+              <td>
+                <button 
+                  class="btn btn-sm btn-outline-primary me-2"
+                  (click)="abrirModal(horario)">
+                  <i class="bi bi-pencil"></i> Editar
+                </button>
+                <button 
+                  class="btn btn-sm btn-outline-danger"
+                  (click)="eliminarHorario(horario.id!)">
+                  <i class="bi bi-trash"></i> Eliminar
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="horarios.length === 0">
+              <td colspan="5" class="text-center">No hay horarios disponibles</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade" [class.show]="mostrarModal" [style.display]="mostrarModal ? 'block' : 'none'" 
+     tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          {{ modoEdicion ? 'Editar Horario' : 'Nuevo Horario' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="cerrarModal()"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="mb-3">
+            <label class="form-label">Denominativo</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              [(ngModel)]="formulario.denominativo"
+              name="denominativo"
+              placeholder="Ej: Turno Mañana">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Hora de Ingreso</label>
+            <input 
+              type="time" 
+              class="form-control" 
+              [(ngModel)]="formulario.hora_ingreso"
+              name="hora_ingreso">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Hora de Salida</label>
+            <input 
+              type="time" 
+              class="form-control" 
+              [(ngModel)]="formulario.hora_salida"
+              name="hora_salida">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cerrarModal()">
+          Cancelar
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-primary" 
+          (click)="guardarHorario()">
+          {{ modoEdicion ? 'Actualizar' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop fade" [class.show]="mostrarModal" 
+     *ngIf="mostrarModal" (click)="cerrarModal()"></div>
