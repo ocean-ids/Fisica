@@ -10,7 +10,7 @@ import { Horario } from '../models/horario.models';
 })
 export class HorarioService {
 
-  private apiUrl = 'http://localhost:800/api';
+  private apiUrl = 'http://localhost:8000/api';
 
   constructor(private http: HttpClient) { }
 
@@ -23,7 +23,7 @@ export class HorarioService {
   }
 
   obtenerHorarios(): Observable<Horario[]>{
-    return this.http.get<Horario[]>(`${this.apiUrl}/horarios`,{
+    return this.http.get<Horario[]>(`${this.apiUrl}/horarios/`,{
       headers: this.getHeaders()
     });
   }
