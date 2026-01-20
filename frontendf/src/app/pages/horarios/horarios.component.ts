@@ -101,7 +101,8 @@ export class HorariosComponent implements OnInit{
     if(confirm('¿Estas seguro de eliminar este horario?')){
       this.horarioService.eliminarHorario(id).subscribe({
         next: () => {
-          alert('Horario eliminado corrrectamente');
+          alert('Horario eliminado correctamente');
+          this.cargarHorarios();
         },
         error: (err) =>{
           console.error('Error al eliminar horario:', err);
