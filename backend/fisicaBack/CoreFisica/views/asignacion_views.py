@@ -50,4 +50,13 @@ def guardar_orden_asignacion(request):
             asignacion.save()
         except Asignacion.DoesNotExist:
             continue
-    return Response({'mensaje': 'Orden Actualizada correctamente'}, status=status.HTTP_200_OK)
+    return Response({'mensaje': 'Orden actualizado correctamente'})
+
+@api_view(['DELETE'])
+def eliminar_asignacion(request, id):
+    try:
+        asignar = Asignacion.objects.get(id=id)
+        asignar.delete()
+        return Response({'mensaje': 'Asignación eliminada correctamente'}, status=status.HTTP_204_NO_CONTENT)
+    except Asignacion.DoesNotExist:
+        return Response({'error': 'Asignacion no encontrada'}, status=status.HTTP_404_NOT_FOUND)
