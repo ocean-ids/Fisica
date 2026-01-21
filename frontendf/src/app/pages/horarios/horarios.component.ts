@@ -97,6 +97,12 @@ export class HorariosComponent implements OnInit{
     }
   }
 
+  formatearHora(hora: string): string {
+    if (!hora) return '';
+    // Si la hora tiene formato HH:MM:SS, extraer solo HH:MM
+    return hora.substring(0, 5);
+  }
+
   eliminarHorario(id: number): void{
     if(confirm('¿Estas seguro de eliminar este horario?')){
       this.horarioService.eliminarHorario(id).subscribe({

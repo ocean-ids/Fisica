@@ -25,8 +25,8 @@
             <tr *ngFor="let horario of horarios">
               <td>{{ horario.id }}</td>
               <td>{{ horario.denominativo }}</td>
-              <td>{{ horario.hora_ingreso }}</td>
-              <td>{{ horario.hora_salida }}</td>
+              <td>{{ formatearHora(horario.hora_ingreso) }}</td>
+              <td>{{ formatearHora(horario.hora_salida) }}</td>
               <td>
                 <button 
                   class="btn btn-sm btn-outline-primary me-2"
