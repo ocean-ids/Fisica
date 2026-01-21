@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 import { HttpClient } from '@angular/common/http';
-import { Asignacion } from '../models/asignacion.model';
+import { Asignacion } from '../models/asignacion.model.ts';
 
 @Injectable({
   providedIn: 'root'

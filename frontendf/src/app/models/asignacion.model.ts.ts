@@ -1,4 +1,4 @@
-export interface AsignacionModelTs {
+export interface Asignacion{
     id?: number;
     persona: number;
     instalacion: number;
