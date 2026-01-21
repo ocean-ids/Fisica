@@ -18,7 +18,7 @@
               <th>Denominativo</th>
               <th>Hora Ingreso</th>
               <th>Hora Salida</th>
-              <th>Acciones</th>
+              <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -27,7 +27,7 @@
               <td>{{ horario.denominativo }}</td>
               <td>{{ formatearHora(horario.hora_ingreso) }}</td>
               <td>{{ formatearHora(horario.hora_salida) }}</td>
-              <td>
+              <td class="d-flex justify-content-around">
                 <button 
                   class="btn btn-sm btn-outline-primary me-2"
                   (click)="abrirModal(horario)">

@@ -44,10 +44,10 @@
               <td>{{ puesto.nombre }}</td>
               <td>{{ puesto.horas_trabajo }} horas</td>
               <td class="d-flex justify-content-around">
-                <button class="btn btn-sm btn-warning me-2" (click)="abrirFormularioNuevo(puesto)">
+                <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirFormularioNuevo(puesto)">
                   <i class="bi bi-pencil"></i> Editar
                 </button>
-                <button class="btn btn-sm btn-danger" (click)="eliminarPuesto(puesto.id!)">
+                <button class="btn btn-sm btn-outline-danger" (click)="eliminarPuesto(puesto.id!)">
                   <i class="bi bi-trash"></i> Eliminar
                 </button>
               </td>
