@@ -10,7 +10,6 @@ from .views.persona_views import obtener_personas, actualizar_persona, crear_per
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, actualizar_puesto, eliminar_puesto
 from .views.reportes_views import generar_pdf_Horario,generar_excel_horario,export_excel, export_pdf
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
-from .views.asignacion_views import obtener_asignaciones, asignar_servicio, guardar_orden_asignacion, editar_servicio
 
 
 
@@ -32,8 +31,6 @@ urlpatterns = [
     path('actualizar-persona/<int:id>/', actualizar_persona),
     path('eliminar-persona/<int:id>/', eliminar_persona),
     path('crear-horario/', crear_horario),
-    path('asignar-servicio/', asignar_servicio),
-    path('editar-servicio/<str:id>/', editar_servicio),
     path('personas/', obtener_personas),
     path('instalaciones/', obtener_instalaciones),
     path('crear-instalacion/', crear_instalacion),
@@ -47,11 +44,9 @@ urlpatterns = [
     path('crear-puesto/', crear_puesto),
     path('actualizar-puesto/<int:id>/', actualizar_puesto),
     path('eliminar-puesto/<int:id>/', eliminar_puesto),
-    path('asignaciones/<str:mes>/<str:anio>/', obtener_asignaciones),
     path('puestos/instalacion/<int:instalacion_id>/', obtener_puestos_por_instalacion),
     path('generar-pdf/', generar_pdf_Horario),
     path('generar-excel/', generar_excel_horario),
-    path('guardar-orden/', guardar_orden_asignacion),
     
 ]
 
