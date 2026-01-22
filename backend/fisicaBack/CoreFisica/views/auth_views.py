@@ -5,6 +5,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.core.mail import send_mail
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.models import User
+from django.conf import settings
 import json
 
 
@@ -84,3 +90,61 @@ def user_view(request):
         "username": user.username,
         "email": user.email,
     })
+
+
+@api_view(['POST'])
+def solicitar_reset_password(request):
+    """
+    Recibe el email y envía un correo con el link para resetear
+    """
+    email = request.data.get('email')
+    
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        # Por seguridad, no revelar si el email existe o no
+        return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
+    
+    # Generar token
+    token = default_token_generator.make_token(user)
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    
+    # Crear el enlace (ajusta la URL según tu frontend)
+    reset_link = f"http://localhost:4200/reset-password/{uid}/{token}"
+    
+    # Enviar email
+    try:
+        send_mail(
+            subject='Restablecer contraseña - Sistema Física',
+            message=f'Hola {user.username},\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_link}\n\nEste enlace expira en 24 horas.\n\nSi no solicitaste este cambio, ignora este mensaje.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+    except Exception as e:
+        print(f"Error al enviar email: {e}")
+    
+    return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
+
+
+@api_view(['POST'])
+def reset_password(request, uidb64, token):
+    """
+    Valida el token y actualiza la contraseña
+    """
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return JsonResponse({'error': 'Token inválido'}, status=400)
+    
+    # Validar token
+    if not default_token_generator.check_token(user, token):
+        return JsonResponse({'error': 'Token expirado o inválido'}, status=400)
+    
+    # Actualizar contraseña
+    nueva_password = request.data.get('password')
+    user.set_password(nueva_password)
+    user.save()
+    
+    return JsonResponse({'message': 'Contraseña actualizada correctamente'})

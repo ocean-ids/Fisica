@@ -4,6 +4,8 @@ import { ClientesComponent } from './pages/clientes/clientes.component';
 import { PersonasComponent } from './pages/personas/personas.component';
 import { InstalacionesComponent } from './pages/instalaciones/instalaciones.component';
 import { LoginComponent } from './pages/login/login.component';
+import { ForgotPasswordComponent } from './pages/login/forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './pages/login/reset-password/reset-password.component';
 import { authGuard } from './guards/auth.guard';
 import { PuestosComponent } from './pages/puestos/puestos.component';
 import { HorariosComponent } from './pages/horarios/horarios.component';
@@ -11,6 +13,9 @@ import { AsignacionesComponent } from './pages/asignaciones/asignaciones.compone
 
 export const routes: Routes = [
   {path: '', component: LoginComponent},
+  {path: 'login', component: LoginComponent},
+  {path: 'forgot-password', component: ForgotPasswordComponent},
+  {path: 'reset-password/:uidb64/:token', component: ResetPasswordComponent},
   {
     path: 'dashboard',
     component: DashboardComponent,

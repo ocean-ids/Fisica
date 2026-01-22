@@ -3,7 +3,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,)
-from .views.auth_views import login_view, logout_view, user_view
+from .views.auth_views import login_view, logout_view, user_view, solicitar_reset_password, reset_password
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
 from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona
@@ -19,6 +19,8 @@ urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('user/', user_view),
+    path('solicitar-reset-password/', solicitar_reset_password),
+    path('reset-password/<str:uidb64>/<str:token>/', reset_password),
     path('reporte/excel/', export_excel),
     path('reporte/pdf/', export_pdf),
     path('crear-cliente/', crear_cliente),

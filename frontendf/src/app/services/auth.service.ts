@@ -100,4 +100,12 @@ export class AuthService {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
   }
+
+  solicitarResetPassword(email: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/solicitar-reset-password/`, { email });
+  }
+
+  resetPassword(uidb64: string, token: string, password: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/reset-password/${uidb64}/${token}/`, { password });
+  }
 }
