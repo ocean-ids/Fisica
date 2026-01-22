@@ -10,6 +10,9 @@ export interface Asignacion{
     fecha_inicio: string;
     fecha_fin?: string;
     rotativo: boolean;
+    dias_turno_dia?: number;
+    dias_turno_noche?: number;
+    dias_franco?: number;
     orden: number;
     estado: string;
     persona_nombre?: string;           
@@ -18,4 +21,3 @@ export interface Asignacion{
     puesto_nombre?: string;            
     horario_denominativo?: string; 
 }
-
