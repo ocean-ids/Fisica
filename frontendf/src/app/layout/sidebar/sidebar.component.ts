@@ -15,6 +15,7 @@ export class SidebarComponent {
     { path: '/dashboard/instalaciones', label: 'Instalaciones', icon: 'location_city' },
     { path: '/dashboard/puestos', label: 'Puestos', icon: 'work' },
     { path: '/dashboard/personas', label: 'Personas', icon: 'people' },
-    { path: '/dashboard/horarios', label: 'Horarios', icon: 'schedule' }
+    { path: '/dashboard/horarios', label: 'Horarios', icon: 'schedule' },
+    { path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'assignment' }
   ];
 }

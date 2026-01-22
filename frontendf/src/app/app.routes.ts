@@ -7,6 +7,7 @@ import { LoginComponent } from './pages/login/login.component';
 import { authGuard } from './guards/auth.guard';
 import { PuestosComponent } from './pages/puestos/puestos.component';
 import { HorariosComponent } from './pages/horarios/horarios.component';
+import { AsignacionesComponent } from './pages/asignaciones/asignaciones.component';
 
 export const routes: Routes = [
   {path: '', component: LoginComponent},
@@ -20,7 +21,8 @@ export const routes: Routes = [
       { path: 'instalaciones', component: InstalacionesComponent},
       { path: 'puestos', component: PuestosComponent},
       { path: 'personas', component: PersonasComponent},
-      { path: 'horarios', component: HorariosComponent}
+      { path: 'horarios', component: HorariosComponent},
+      { path: 'asignaciones', component: AsignacionesComponent}
     ]
   },
   { path: '**', redirectTo: ''}

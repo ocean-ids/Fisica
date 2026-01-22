@@ -3,7 +3,8 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Asignacion } from '../../models/asignacion.model';
 import { AsignacionService } from '../../services/asignacion.service';
-impo
+import { Persona, Puesto } from '../../models';
+
 
 @Component({
   selector: 'app-asignaciones',
@@ -12,5 +13,9 @@ impo
   styleUrl: './asignaciones.component.css'
 })
 export class AsignacionesComponent {
+  asignaciones: Asignacion[] = [];
+  personas: Persona[] = [];
+  puestos: Puesto[] = [];
+  filterredPuestos: Puesto[] = [];
 
 }
