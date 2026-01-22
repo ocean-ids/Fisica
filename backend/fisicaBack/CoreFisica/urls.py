@@ -7,7 +7,7 @@ from .views.auth_views import login_view, logout_view, user_view
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
 from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona
-from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, actualizar_puesto, eliminar_puesto
+from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto
 from .views.reportes_views import generar_pdf_Horario,generar_excel_horario,export_excel, export_pdf
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion
@@ -44,6 +44,7 @@ urlpatterns = [
     path('actualizar-puesto/<int:id>/', actualizar_puesto),
     path('eliminar-puesto/<int:id>/', eliminar_puesto),
     path('puestos/instalacion/<int:instalacion_id>/', obtener_puestos_por_instalacion),
+    path('puestos/cliente/<int:cliente_id>/', obtener_puestos_por_cliente),
     path('asignaciones/<int:mes>/<int:anio>/', obtener_asignaciones),
     path('asignar-servicio/', asignar_servicio),
     path('editar-servicio/<int:id>/', editar_servicio),

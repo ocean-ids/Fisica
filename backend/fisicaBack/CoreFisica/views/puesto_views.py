@@ -30,6 +30,15 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
     puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values('id', 'nombre', 'horas_trabajo', 'instalacion_id')
     return JsonResponse(list(puestos), safe=False)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_puestos_por_cliente(request, cliente_id):
+    puestos = Puesto.objects.filter(instalacion__cliente_id=cliente_id).values(
+        'id', 'nombre', 'horas_trabajo', 'instalacion_id', 
+        'instalacion__provincia', 'instalacion__ciudad'
+    )
+    return JsonResponse(list(puestos), safe=False)
+
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def actualizar_puesto(request, id):
