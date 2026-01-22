@@ -28,7 +28,6 @@
         <table class="table table-hover">
           <thead class="table-light">
             <tr>
-              <th>#</th>
               <th>Nombre</th>
               <th>Horas de Trabajo</th>
               <th>Instalación</th>
@@ -37,7 +36,6 @@
           </thead>
           <tbody>
             <tr *ngFor="let puesto of puestos">
-              <td>{{ puesto.id }}</td>
               <td>{{ puesto.nombre }}</td>
               <td>{{ puesto.horas_trabajo || '-' }} horas</td>
               <td>{{ puesto.instalacion__provincia }} - {{ puesto.instalacion__ciudad }}</td>
