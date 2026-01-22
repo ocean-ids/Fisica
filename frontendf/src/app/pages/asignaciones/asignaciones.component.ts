@@ -59,18 +59,18 @@ export class AsignacionesComponent implements OnInit {
   cargarCatalogos(): void {
     this.clienteService.getClientes().subscribe({
       next: (data) => this.clientes = data,
-      error: (err) => console.error(" Error al cargar clientes", err)
+      error: (err) => console.error('Error al cargar clientes', err)
       
     });
 
     this.personaService.getPersonas().subscribe({
       next: (data) => this.personas = data,
-      error: (err) => console.error("Error al cargar personas", err)
+      error: (err) => console.error('Error al cargar personas', err)
     });
 
     this.horarioService.obtenerHorarios().subscribe({
       next: (data) => this.horarios = data,
-      error: (err) => console.error("Error al cargar horarios", err)
+      error: (err) => console.error('Error al cargar horarios', err)
     });
   }
 
@@ -78,7 +78,7 @@ export class AsignacionesComponent implements OnInit {
   cargarAsignaciones(): void{
     this.asignacionService.obtenerAsignaciones(this.mes, this.anio).subscribe({
       next: (data) => this.asignaciones = data,
-      error: (err) => console.error("Error al cargar asignaciones", err)
+      error: (err) => console.error('Error al cargar asignaciones', err)
     });
   }
 
@@ -100,7 +100,44 @@ export class AsignacionesComponent implements OnInit {
     };
   }
 
-  
+  onClientChange(): void{
+    this.instalacionSeleccionada = null;
+    this.asignacionActual.instalacion = 0;
+    this.asignacionActual.puesto = 0;
+    this.instalaciones = [];
+    this.puestos = [];
+    
+    if(this.clienteSeleccionado){
+      this.instalacionService.getInstalaciones().subscribe({
+        next: (data) => {
+          this.instalaciones = data.filter(ins => ins.cliente === this.clienteSeleccionado)
+        },
+        error: (err) => console.error('Error al cargar instalaciones', err)
+      });
+    }
+  }
+
+  onInstalacionChange(): void{
+    this.asignacionActual.puesto = 0;
+    this.puestos = []
+
+    if (this.instalacionSeleccionada){
+      this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada).subscribe({
+        next: (data) => this.puestos = data,
+        error: (err) => console.error('Error al cargar puestos', err) 
+      });
+    }
+  }
+
+  abrirModalNuevo(): void {
+    this.modoEdicion = false;
+    this.asignacionActual = this.nuevaAsignacion();
+    this.clienteSeleccionado = null;
+    this.instalacionSeleccionada = null;
+    this.instalaciones = [];
+    this.puestos = [];
+    this.mostrarModal = true;
+  }
 
  
 
