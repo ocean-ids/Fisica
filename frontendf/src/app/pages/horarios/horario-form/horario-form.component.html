@@ -1,0 +1,36 @@
+<h2 mat-dialog-title>{{ horario?.id ? 'Editar' : 'Nuevo' }} Horario</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="horarioForm">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Denominativo</mat-label>
+      <input matInput formControlName="denominativo" required placeholder="Ej: Turno Mañana">
+      <mat-error *ngIf="horarioForm.get('denominativo')?.hasError('required')">
+        El denominativo es requerido
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Hora Ingreso</mat-label>
+      <input matInput type="time" formControlName="hora_ingreso" required>
+      <mat-error *ngIf="horarioForm.get('hora_ingreso')?.hasError('required')">
+        La hora de ingreso es requerida
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Hora Salida</mat-label>
+      <input matInput type="time" formControlName="hora_salida" required>
+      <mat-error *ngIf="horarioForm.get('hora_salida')?.hasError('required')">
+        La hora de salida es requerida
+      </mat-error>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!horarioForm.valid">
+    Guardar
+  </button>
+</mat-dialog-actions>

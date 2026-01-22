@@ -1,37 +1,32 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { MatTableModule } from '@angular/material/table';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Cliente } from '../../models';
 import { InstalacionService } from '../../services/instalacion.service';
 import { ClienteService } from '../../services/cliente.service';
+import { InstalacionFormComponent } from './instalacion-form/instalacion-form.component';
 
 @Component({
   selector: 'app-instalaciones',
-  imports: [CommonModule, FormsModule],
+  standalone: true,
+  imports: [CommonModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
   templateUrl: './instalaciones.component.html',
   styleUrl: './instalaciones.component.css'
 })
 export class InstalacionesComponent implements OnInit{
   instalaciones: any[] = [];
   clientes: Cliente[] = [];
-
-  showModal: boolean = false;
   showDeleteModal: boolean = false;
-  isEditMode: boolean = false;
-
-  nuevaInstalacion: any = {
-    nombre_instalacion: '',
-    cliente_id: '',
-    provincia: '',
-    ciudad: ''
-  };
-
-  instalacionSeleccionada: any = null;
   instalacionAEliminar: any = null;
 
   constructor(
     private instalacionService: InstalacionService,
-    private clienteService: ClienteService
+    private clienteService: ClienteService,
+    private dialog: MatDialog
   ){}
 
   ngOnInit(): void{
@@ -59,50 +54,28 @@ export class InstalacionesComponent implements OnInit{
   });
 }
 
-  abrirModal(): void{
-    this.isEditMode = false;
-    this.resetFormulario();
-    this.showModal = true;
+  abrirModal(instalacion?: any): void {
+    const dialogRef = this.dialog.open(InstalacionFormComponent, {
+      width: '500px',
+      data: { instalacion: instalacion || null, clientes: this.clientes }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        if (instalacion?.id) {
+          this.actualizarInstalacion(instalacion.id, result);
+        } else {
+          this.crearInstalacion(result);
+        }
+      }
+    });
   }
 
-  abrirModalEditar(instalacion: any): void{
-    this.isEditMode = true;
-    this.instalacionSeleccionada = {...instalacion};
-    this.showModal = true
-  }
-
-  cerrarModal(): void{
-    this.showModal = false;
-    this.resetFormulario();
-  }
-
-  resetFormulario(): void {
-    this.nuevaInstalacion = {
-      nombre_instalacion: '',
-      cliente_id: '',
-      provincia: '',
-      ciudad: ''
-    };
-    this.instalacionSeleccionada = null;
-  }
-
-  guardarInstalacion(): void{
-    if(this.isEditMode){
-      this.actualizarInstalacion();
-    }else{
-      this.crearInstalacion();
-    }
-  }
-
-  crearInstalacion(): void {
-    console.log('Datos a enviar:', this.nuevaInstalacion);
-    
-    this.instalacionService.createInstalacion(this.nuevaInstalacion).subscribe({
-      next: (response: any) => {
-        console.log('Instalación creada:', response);
+  crearInstalacion(data: any): void {
+    this.instalacionService.createInstalacion(data).subscribe({
+      next: () => {
         alert('Instalación creada exitosamente');
         this.cargarInstalaciones();
-        this.cerrarModal();
       },
       error: (error: any) => {
         console.error('Error al crear instalación:', error);
@@ -111,22 +84,18 @@ export class InstalacionesComponent implements OnInit{
     });
   }
 
-  actualizarInstalacion(): void {
+  actualizarInstalacion(id: number, data: any): void {
     const payload = {
-      nombre: this.instalacionSeleccionada.nombre,
-      cliente: this.instalacionSeleccionada.cliente_id,
-      provincia: this.instalacionSeleccionada.provincia,
-      ciudad: this.instalacionSeleccionada.ciudad
+      nombre: data.nombre_instalacion,
+      cliente: data.cliente_id,
+      provincia: data.provincia,
+      ciudad: data.ciudad
     };
 
-    console.log('Datos a actualizar:', payload);
-
-    this.instalacionService.updateInstalacion(this.instalacionSeleccionada.id, payload).subscribe({
-      next: (response: any) => {
-        console.log('Instalación actualizada:', response);
+    this.instalacionService.updateInstalacion(id, payload).subscribe({
+      next: () => {
         alert('Instalación actualizada exitosamente');
         this.cargarInstalaciones();
-        this.cerrarModal();
       },
       error: (error: any) => {
         console.error('Error al actualizar instalación:', error);

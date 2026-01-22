@@ -12,9 +12,7 @@
       <div class="table-responsive">
         <table class="table table-hover">
           <thead>
-            <tr>
-              <th>#</th>
-              <th>Nombre</th>
+            <tr class="text-center">
               <th>Cliente</th>
               <th>Provincia</th>
               <th>Ciudad</th>
@@ -22,14 +20,12 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let instalacion of instalaciones">
-              <td>{{ instalacion.id }}</td>
-              <td>{{ instalacion.nombre }}</td>
+            <tr class="text-center" *ngFor="let instalacion of instalaciones">
               <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
               <td>{{ instalacion.provincia }}</td>
               <td>{{ instalacion.ciudad }}</td>
               <td class="d-flex justify-content-around">
-                <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirModalEditar(instalacion)">
+                <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirModal(instalacion)">
                   <i class="bi bi-pencil"></i> Editar
                 </button>
                 <button class="btn btn-sm btn-outline-danger" (click)="confirmarEliminar(instalacion)">
@@ -46,124 +42,23 @@
       </div>
     </div>
   </div>
+</div>
 
-  
-  <div class="modal" *ngIf="showModal">
+
+<div class="modal fade show" *ngIf="showDeleteModal" style="display: block; background-color: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>{{ isEditMode ? 'Editar Instalación' : 'Nueva Instalación' }}</h2>
-        <button class="close-btn" (click)="cerrarModal()">&times;</button>
+        <h5 class="modal-title">Confirmar Eliminación</h5>
+        <button type="button" class="btn-close" (click)="cerrarModalEliminar()"></button>
       </div>
-      
-      <div class="modal-body">
-        <form>
-          <div class="form-group">
-            <label for="nombre">Nombre de Instalación *</label>
-            <input 
-              *ngIf="!isEditMode"
-              type="text" 
-              class="form-control"
-              [(ngModel)]="nuevaInstalacion.nombre_instalacion"
-              name="nombre"
-              required>
-            <input 
-              *ngIf="isEditMode"
-              type="text" 
-              class="form-control"
-              [(ngModel)]="instalacionSeleccionada.nombre"
-              name="nombreEdit"
-              required>
-          </div>
-
-          <div class="form-group">
-            <label for="cliente">Cliente *</label>
-            <select 
-              *ngIf="!isEditMode"
-              class="form-control"
-              [(ngModel)]="nuevaInstalacion.cliente_id"
-              name="cliente"
-              required>
-              <option value="">Seleccione un cliente</option>
-              <option *ngFor="let cliente of clientes" [value]="cliente.id">
-                {{ cliente.nombre_comercial }}
-              </option>
-            </select>
-            <select 
-              *ngIf="isEditMode"
-              class="form-control"
-              [(ngModel)]="instalacionSeleccionada.cliente_id"
-              name="clienteEdit"
-              required>
-              <option value="">Seleccione un cliente</option>
-              <option *ngFor="let cliente of clientes" [value]="cliente.id">
-                {{ cliente.nombre_comercial }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="provincia">Provincia *</label>
-            <input 
-              *ngIf="!isEditMode"
-              type="text" 
-              class="form-control"
-              [(ngModel)]="nuevaInstalacion.provincia"
-              name="provincia"
-              required>
-            <input 
-              *ngIf="isEditMode"
-              type="text" 
-              class="form-control"
-              [(ngModel)]="instalacionSeleccionada.provincia"
-              name="provinciaEdit"
-              required>
-          </div>
-
-          <div class="form-group">
-            <label for="ciudad">Ciudad *</label>
-            <input 
-              *ngIf="!isEditMode"
-              type="text" 
-              class="form-control"
-              [(ngModel)]="nuevaInstalacion.ciudad"
-              name="ciudad"
-              required>
-            <input 
-              *ngIf="isEditMode"
-              type="text" 
-              class="form-control"
-              [(ngModel)]="instalacionSeleccionada.ciudad"
-              name="ciudadEdit"
-              required>
-          </div>
-        </form>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="cerrarModal()">Cancelar</button>
-        <button class="btn btn-primary" (click)="guardarInstalacion()">
-          {{ isEditMode ? 'Actualizar' : 'Guardar' }}
-        </button>
-      </div>
-    </div>
-  </div>
-
-  
-  <div class="modal" *ngIf="showDeleteModal">
-    <div class="modal-content modal-small">
-      <div class="modal-header">
-        <h2>Confirmar Eliminación</h2>
-        <button class="close-btn" (click)="cerrarModalEliminar()">&times;</button>
-      </div>
-      
       <div class="modal-body">
         <p>¿Está seguro que desea eliminar la instalación <strong>{{ instalacionAEliminar?.nombre }}</strong>?</p>
-        <p class="warning-text">Esta acción no se puede deshacer.</p>
+        <p class="text-danger"><small>Esta acción no se puede deshacer.</small></p>
       </div>
-
       <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="cerrarModalEliminar()">Cancelar</button>
-        <button class="btn btn-danger" (click)="eliminarInstalacion()">Eliminar</button>
+        <button type="button" class="btn btn-secondary" (click)="cerrarModalEliminar()">Cancelar</button>
+        <button type="button" class="btn btn-danger" (click)="eliminarInstalacion()">Eliminar</button>
       </div>
     </div>
   </div>

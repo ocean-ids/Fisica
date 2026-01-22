@@ -17,6 +17,10 @@ export class PuestoService {
         return this.apiService.get<Puesto[]>(`/puestos/instalacion/${instalacionId}/`);
     }
 
+    getPuestosPorCliente(clienteId: number): Observable<Puesto[]>{
+        return this.apiService.get<Puesto[]>(`/puestos/cliente/${clienteId}/`);
+    }
+
     crearPuesto(puesto: Puesto): Observable<any>{
         return this.apiService.post('/crear-puesto/', puesto);
     }

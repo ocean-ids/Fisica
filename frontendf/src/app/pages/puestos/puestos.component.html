@@ -4,46 +4,44 @@
     <h2>Gestión de Puestos</h2>
   </div>
 
-  <div class="card mb-3">
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6">
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Seleccionar Instalación</mat-label>
-            <mat-select [(ngModel)]="instalacionSeleccionada" (selectionChange)="cargarPuestos()">
-              <mat-option *ngFor="let inst of Instalaciones" [value]="inst.id">
-                {{ inst.nombre }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-        <div class="col-md-6 d-flex align-items-center">
-          <button class="btn btn-primary" 
-                  (click)="abrirFormularioNuevo()" 
-                  [disabled]="!instalacionSeleccionada">
-            <i class="bi bi-plus-circle"></i> Nuevo Puesto
-          </button>
-        </div>
-      </div>
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Seleccionar Cliente</mat-label>
+        <mat-select [(ngModel)]="clienteSeleccionado" (selectionChange)="cargarPuestos()">
+          <mat-option *ngFor="let cliente of clientes" [value]="cliente.id">
+            {{ cliente.nombre_comercial }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="col-md-6 text-end align-self-center">
+      <button class="btn btn-primary" (click)="abrirFormularioNuevo()" [disabled]="!clienteSeleccionado">
+        <i class="bi bi-plus-circle"></i> Nuevo Puesto
+      </button>
     </div>
   </div>
 
-  <div class="card" *ngIf="instalacionSeleccionada">
+  <div class="card" *ngIf="clienteSeleccionado">
     <div class="card-body">
       <div class="table-responsive">
         <table class="table table-hover">
-          <thead>
+          <thead class="table-light">
             <tr>
-              <th>Ingreso</th>
+              <th>#</th>
+              <th>Nombre</th>
               <th>Horas de Trabajo</th>
+              <th>Instalación</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let puesto of puestos">
+              <td>{{ puesto.id }}</td>
               <td>{{ puesto.nombre }}</td>
-              <td>{{ puesto.horas_trabajo }} horas</td>
-              <td class="d-flex justify-content-around">
+              <td>{{ puesto.horas_trabajo || '-' }} horas</td>
+              <td>{{ puesto.instalacion__provincia }} - {{ puesto.instalacion__ciudad }}</td>
+              <td class="text-center">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirFormularioNuevo(puesto)">
                   <i class="bi bi-pencil"></i> Editar
                 </button>
@@ -52,46 +50,18 @@
                 </button>
               </td>
             </tr>
+            <tr *ngIf="puestos.length === 0">
+              <td colspan="5" class="text-center text-muted py-4">
+                No hay puestos registrados para este cliente
+              </td>
+            </tr>
           </tbody>
         </table>
-        
-        <div *ngIf="puestos.length === 0" class="text-center text-muted py-4">
-          <p>No hay puestos registrados para esta instalación</p>
-        </div>
       </div>
     </div>
   </div>
 
-  <div class="alert alert-info" *ngIf="!instalacionSeleccionada">
-    <i class="bi bi-info-circle"></i> Selecciona una instalación para ver sus puestos
-  </div>
-</div>
-
-<div class="modal fade show" *ngIf="mostrarFormulario" style="display: block; background-color: rgba(0,0,0,0.5);">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">{{ puestoEditando ? 'Editar Puesto' : 'Nuevo Puesto' }}</h5>
-        <button type="button" class="btn-close" (click)="cerrarFormulario()"></button>
-      </div>
-      <div class="modal-body">
-        <form>
-          <div class="mb-3">
-            <label class="form-label">Nombre del Puesto</label>
-            <input type="text" class="form-control" [(ngModel)]="nuevoPuesto.nombre" name="nombre" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Horas de Trabajo</label>
-            <input type="number" class="form-control" [(ngModel)]="nuevoPuesto.horas_trabajo" name="horas" required>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="cerrarFormulario()">Cancelar</button>
-        <button type="button" class="btn btn-primary" (click)="guardarPuesto()">
-          {{ puestoEditando ? 'Actualizar' : 'Guardar' }}
-        </button>
-      </div>
-    </div>
+  <div class="alert alert-info" *ngIf="!clienteSeleccionado">
+    <i class="bi bi-info-circle"></i> Seleccione un cliente para ver los puestos
   </div>
 </div>

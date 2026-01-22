@@ -1,29 +1,29 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { MatTableModule } from '@angular/material/table';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Horario } from '../../models/horario.models';
 import { HorarioService } from '../../services/horario.service';
+import { HorarioFormComponent } from './horario-form/horario-form.component';
 
 @Component({
   selector: 'app-horarios',
-  imports: [CommonModule, FormsModule],
+  standalone: true,
+  imports: [CommonModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
   templateUrl: './horarios.component.html',
   styleUrl: './horarios.component.css'
 })
 export class HorariosComponent implements OnInit{
 
   horarios: Horario[] = [];
-  mostrarModal = false;
-  modoEdicion = false;
-  horarioSeleccionado: Horario | null = null;
 
-  formulario: Horario = {
-    denominativo: '',
-    hora_ingreso: '',
-    hora_salida: ''
-  };
-
-  constructor(private horarioService: HorarioService ){}
+  constructor(
+    private horarioService: HorarioService,
+    private dialog: MatDialog
+  ){}
 
   ngOnInit(): void {
     this.cargarHorarios();
@@ -40,61 +40,46 @@ export class HorariosComponent implements OnInit{
   }
 
   abrirModal(horario?: Horario): void {
-    this.mostrarModal = true;
-    if (horario){
-      this.modoEdicion = true;
-      this.horarioSeleccionado = horario;
-      this.formulario = {...horario};
-    }else{
-      this.modoEdicion = false;
-      this.horarioSeleccionado = null;
-      this.limpiarFormulario();
-    }
-  }
+    const dialogRef = this.dialog.open(HorarioFormComponent, {
+      width: '500px',
+      data: horario || {}
+    });
 
-  cerrarModal(): void{
-    this.mostrarModal = false;
-    this.modoEdicion = false;
-    this.horarioSeleccionado = null;
-    this.limpiarFormulario();
-  }
-
-  limpiarFormulario(): void{
-    this.formulario = {
-      denominativo: '',
-      hora_ingreso: '',
-      hora_salida: ''
-    };
-  }
-
-  guardarHorario(): void{
-    if (this.modoEdicion && this.horarioSeleccionado?.id){
-
-      this.horarioService.actualizarHorario(this.horarioSeleccionado.id, this.formulario).subscribe({
-        next: () =>{
-          alert('Horario actualizado exitosamente');
-          this.cargarHorarios();
-          this.cerrarModal();
-        },
-        error: (err) =>{
-          console.error('Error al actualizar horarios: ', err);
-          alert('Error al actualizar el horario');
-          
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        if (horario?.id) {
+          this.actualizarHorario(horario.id, result);
+        } else {
+          this.crearHorario(result);
         }
-      });
-    } else{
-      this.horarioService.crearHorario(this.formulario).subscribe({
-        next: () =>{
-          alert('Horario creado exitosamente');
-          this.cargarHorarios();
-          this.cerrarModal();
-        },
-        error:(err) => {
-          console.error('Error al crear horario', err);
-          alert('Error al crear horario');
-        }
-      });
-    }
+      }
+    });
+  }
+
+  crearHorario(data: any): void {
+    this.horarioService.crearHorario(data).subscribe({
+      next: () => {
+        alert('Horario creado exitosamente');
+        this.cargarHorarios();
+      },
+      error: (err) => {
+        console.error('Error al crear horario', err);
+        alert('Error al crear horario');
+      }
+    });
+  }
+
+  actualizarHorario(id: number, data: any): void {
+    this.horarioService.actualizarHorario(id, data).subscribe({
+      next: () => {
+        alert('Horario actualizado exitosamente');
+        this.cargarHorarios();
+      },
+      error: (err) => {
+        console.error('Error al actualizar horarios: ', err);
+        alert('Error al actualizar el horario');
+      }
+    });
   }
 
   formatearHora(hora: string): string {

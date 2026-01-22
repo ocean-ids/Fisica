@@ -1,35 +1,29 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { MatTableModule } from '@angular/material/table';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import {Persona} from '../../models/persona.model'
 import { PersonaService } from '../../services/persona.service';
+import { PersonaFormComponent } from './persona-form/persona-form.component';
 
 @Component({
   selector: 'app-personas',
-  imports: [CommonModule, FormsModule],
+  standalone: true,
+  imports: [CommonModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
   templateUrl: './personas.component.html',
   styleUrl: './personas.component.css'
 })
 export class PersonasComponent implements OnInit {
   personas: Persona[] = []
-  showModal: boolean = false;
   showDeleteModal: boolean = false;
-  isEditMode: boolean = false;
-
-
-  nuevaPersona: any ={
-    nombres: '',
-    apellidos: '',
-    cedula: '',
-    tipo: ''
-  };
-
-  personaSeleccionada: any = null;
-  personaEliminar: any = null;
-
+  personaEliminar: Persona | null = null;
 
   constructor(
-    private personaService: PersonaService
+    private personaService: PersonaService,
+    private dialog: MatDialog
   ){}
 
   ngOnInit(): void {
@@ -47,63 +41,47 @@ export class PersonasComponent implements OnInit {
     });
   }
 
-  abrirModal(): void {
-    this.isEditMode = false;
-    this.nuevaPersona = {
-      nombres: '',
-      apellidos: '',
-      cedula: '',
-      tipo: ''
-    };
-    this.showModal = true;
+  abrirModal(persona?: Persona): void {
+    const dialogRef = this.dialog.open(PersonaFormComponent, {
+      width: '500px',
+      data: persona || {}
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        if (persona?.id) {
+          this.actualizarPersona(persona.id, result);
+        } else {
+          this.crearPersona(result);
+        }
+      }
+    });
   }
 
-  editarPersona(persona: Persona): void {
-    this.isEditMode = true;
-    this.personaSeleccionada = persona;
-    this.nuevaPersona = {
-      nombres: persona.nombres,
-      apellidos: persona.apellidos,
-      cedula: persona.cedula,
-      tipo: persona.tipo
-    };
-    this.showModal = true;
+  crearPersona(data: any): void {
+    this.personaService.createPersona(data).subscribe({
+      next: () => {
+        alert('Persona creada exitosamente');
+        this.cargarPersonas();
+      },
+      error: (error) => {
+        console.error('Error al crear persona:', error);
+        alert('Error al crear persona');
+      }
+    });
   }
 
-  cerrarModal(): void{
-    this.showModal = false;
-    this. isEditMode = false;
-    this.personaSeleccionada = null;
-    this.nuevaPersona = {
-      nombres: '',
-      apellidos: '',
-      cedula: '',
-      tipo: ''
-    }
-  };
-
-  guardarPersona(): void {
-    if (this.isEditMode && this.personaSeleccionada) {
-      
-      this.personaService.updatePersona(this.personaSeleccionada.id, this.nuevaPersona).subscribe({
-        next: () => {
-          console.log('Persona actualizada exitosamente');
-          this.cargarPersonas();
-          this.cerrarModal();
-        },
-        error: (error) => console.error('Error al actualizar persona:', error)
-      });
-    } else {
-      
-      this.personaService.createPersona(this.nuevaPersona).subscribe({
-        next: () => {
-          console.log('Persona creada exitosamente');
-          this.cargarPersonas();
-          this.cerrarModal();
-        },
-        error: (error) => console.error('Error al crear persona:', error)
-      });
-    }
+  actualizarPersona(id: number, data: any): void {
+    this.personaService.updatePersona(id, data).subscribe({
+      next: () => {
+        alert('Persona actualizada exitosamente');
+        this.cargarPersonas();
+      },
+      error: (error) => {
+        console.error('Error al actualizar persona:', error);
+        alert('Error al actualizar persona');
+      }
+    });
   }
 
   confirmarEliminar(persona: Persona): void {
@@ -112,7 +90,7 @@ export class PersonasComponent implements OnInit {
   }
 
   eliminarPersona(): void {
-    if (this.personaEliminar) {
+    if (this.personaEliminar && this.personaEliminar.id) {
       this.personaService.deletePersona(this.personaEliminar.id).subscribe({
         next: () => {
           console.log('Persona eliminada exitosamente');

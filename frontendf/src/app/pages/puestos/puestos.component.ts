@@ -6,15 +6,18 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { PuestoService } from '../../services/puesto.service';
 import { Puesto } from '../../models';
-import { InstalacionService } from '../../services/instalacion.service';
-import { Instalacion } from '../../models';
+import { ClienteService } from '../../services/cliente.service';
+import { Cliente } from '../../models';
+import { PuestoFormComponent } from './puesto-form/puesto-form.component';
 
 
 @Component({
   selector: 'app-puestos',
+  standalone: true,
   imports: [
     CommonModule,
     MatTableModule,
@@ -23,44 +26,36 @@ import { Instalacion } from '../../models';
      MatCardModule,
      MatSelectModule,
      MatFormFieldModule,
+     MatDialogModule,
       FormsModule],
   templateUrl: './puestos.component.html',
   styleUrl: './puestos.component.css'
 })
 export class PuestosComponent implements OnInit {
   puestos: Puesto[] = [];
-  Instalaciones: Instalacion[] = [];
-  instalacionSeleccionada: number | null = null;
-  displayedColumns: string[] = ['nombre', 'horas_trabajo','acciones'];
-
-  mostrarFormulario = false;
-  puestoEditando: Puesto | null = null;
-
-  nuevoPuesto: Puesto = {
-    nombre: '',
-    horas_trabajo: 0,
-    instalacion_id: 0
-  };
+  clientes: Cliente[] = [];
+  clienteSeleccionado: number | null = null;
 
   constructor(
     private puestoService: PuestoService,
-    private instalacionService: InstalacionService
+    private clienteService: ClienteService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
-    this.cargarInstalaciones();
+    this.cargarClientes();
   }
 
-  cargarInstalaciones(): void {
-    this.instalacionService.getInstalaciones().subscribe({
-      next: (data) => this.Instalaciones = data,
-      error: (err) => console.error('Error al cargar instalaciones', err)
+  cargarClientes(): void {
+    this.clienteService.getClientes().subscribe({
+      next: (data) => this.clientes = data,
+      error: (err) => console.error('Error al cargar clientes', err)
     });
   }
 
   cargarPuestos(): void {
-    if (this.instalacionSeleccionada) {
-      this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada).subscribe({
+    if (this.clienteSeleccionado) {
+      this.puestoService.getPuestosPorCliente(this.clienteSeleccionado).subscribe({
         next: data => this.puestos = data,
         error: err => console.error('Error al cargar puestos:', err)
       });
@@ -68,51 +63,45 @@ export class PuestosComponent implements OnInit {
   }
 
   abrirFormularioNuevo(puesto?: Puesto): void {
-    this.mostrarFormulario = true;
-    if(puesto){
-      this.puestoEditando = puesto;
-      this.nuevoPuesto = {...puesto};
-    } else {
-      this.puestoEditando = null;
-      this.nuevoPuesto = {
-        nombre: '',
-        horas_trabajo: 0,
-        instalacion_id: this.instalacionSeleccionada || 0
-      };
-    }
-  }
+    const dialogRef = this.dialog.open(PuestoFormComponent, {
+      width: '500px',
+      data: { puesto: puesto || null, clienteId: this.clienteSeleccionado }
+    });
 
-  cerrarFormulario(): void {
-    this.mostrarFormulario = false;
-    this.puestoEditando = null;
-  }
-
-  guardarPuesto(): void {
-    if (this.puestoEditando?.id) {
-      this.actualizarPuesto(this.puestoEditando.id, this.nuevoPuesto);
-    } else {
-      this.crearPuesto(this.nuevoPuesto);
-    }
-  }
-
-  crearPuesto(puesto: Puesto): void{
-    puesto.instalacion_id = this.instalacionSeleccionada || 0;
-    this.puestoService.crearPuesto(puesto).subscribe({
-      next: () => {
-        this.cargarPuestos();
-        this.cerrarFormulario();
-      },
-      error: (err) => console.error('Error al crear puesto', err)
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        if (puesto?.id) {
+          this.actualizarPuesto(puesto.id, result);
+        } else {
+          this.crearPuesto(result);
+        }
+      }
     });
   }
 
-  actualizarPuesto(id: number, puesto: Puesto): void {
-    this.puestoService.actualizarPuesto(id, puesto).subscribe({
+  crearPuesto(data: any): void{
+    this.puestoService.crearPuesto(data).subscribe({
       next: () => {
+        alert('Puesto creado exitosamente');
         this.cargarPuestos();
-        this.cerrarFormulario();
       },
-      error: err  => console.error('Error al actualizar puesto', err)
+      error: (err) => {
+        console.error('Error al crear puesto', err);
+        alert('Error al crear puesto');
+      }
+    });
+  }
+
+  actualizarPuesto(id: number, data: any): void {
+    this.puestoService.actualizarPuesto(id, data).subscribe({
+      next: () => {
+        alert('Puesto actualizado exitosamente');
+        this.cargarPuestos();
+      },
+      error: err  => {
+        console.error('Error al actualizar puesto', err);
+        alert('Error al actualizar puesto');
+      }
     });
   }
 
@@ -127,4 +116,5 @@ export class PuestosComponent implements OnInit {
   }
 
 }
+
 

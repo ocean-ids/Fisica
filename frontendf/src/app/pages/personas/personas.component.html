@@ -11,23 +11,27 @@
     <div class="card-body">
       <div class="table-responsive">
         <table class="table table-hover">
-          <thead>
-            <tr>
-              <th>Cédula</th>
-              <th>Apellidos</th>
+          <thead class="table-light">
+            <tr class="text-center">
               <th>Nombres</th>
+              <th>Apellidos</th>
+              <th>Cédula</th>
               <th>Tipo</th>
-              <th class="text-center">Acciones</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let persona of personas">
-              <td>{{ persona.cedula }}</td>
-              <td>{{ persona.apellidos }}</td>
+            <tr class="text-center" *ngFor="let persona of personas">
               <td>{{ persona.nombres }}</td>
-              <td>{{ persona.tipo }}</td>
+              <td>{{ persona.apellidos }}</td>
+              <td>{{ persona.cedula }}</td>
+              <td>
+                <span class="badge" [ngClass]="persona.tipo === 'SUPERVISOR' ? 'bg-success' : 'bg-primary'">
+                  {{ persona.tipo }}
+                </span>
+              </td>
               <td class="d-flex justify-content-around">
-                <button class="btn btn-sm btn-outline-primary me-2" (click)="editarPersona(persona)">
+                <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirModal(persona)">
                   <i class="bi bi-pencil"></i> Editar
                 </button>
                 <button class="btn btn-sm btn-outline-danger" (click)="confirmarEliminar(persona)">
@@ -35,85 +39,20 @@
                 </button>
               </td>
             </tr>
+            <tr *ngIf="personas.length === 0">
+              <td colspan="6" class="text-center text-muted py-4">
+                No hay personas registradas
+              </td>
+            </tr>
           </tbody>
         </table>
-        
-        
-        <div *ngIf="personas.length === 0" class="text-center text-muted py-4">
-          <p>No hay personas registradas</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal fade show" *ngIf="showModal" style="display: block; background-color: rgba(0,0,0,0.5);">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">{{ isEditMode ? 'Editar Persona' : 'Nueva Persona' }}</h5>
-          <button type="button" class="btn-close" (click)="cerrarModal()"></button>
-        </div>
-        <div class="modal-body">
-          <form>
-            <div class="mb-3">
-              <label class="form-label">Cédula</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                [(ngModel)]="nuevaPersona.cedula"
-                name="cedula"
-                required>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Nombres</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                [(ngModel)]="nuevaPersona.nombres"
-                name="nombres"
-                required>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Apellidos</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                [(ngModel)]="nuevaPersona.apellidos"
-                name="apellidos"
-                required>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Tipo</label>
-              <select 
-                class="form-select" 
-                [(ngModel)]="nuevaPersona.tipo"
-                name="tipo"
-                required>
-                <option value="">Seleccione un tipo</option>
-                <option value="SUPERVISOR">Supervisor</option>
-                <option value="FIJO">Fijo</option>
-                <option value="FRANCO">Franco</option>
-                <option value="SACAFRANCO">Sacafranco</option>
-                <option value="EVENTUAL">Eventual</option>
-              </select>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="cerrarModal()">Cancelar</button>
-          <button type="button" class="btn btn-primary" (click)="guardarPersona()">
-            {{ isEditMode ? 'Actualizar' : 'Guardar' }}
-          </button>
-        </div>
       </div>
     </div>
   </div>
   
+  <!-- Modal Eliminar -->
   <div class="modal fade show" *ngIf="showDeleteModal" style="display: block; background-color: rgba(0,0,0,0.5);">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Confirmar Eliminación</h5>

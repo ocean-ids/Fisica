@@ -1,0 +1,40 @@
+<h2 mat-dialog-title>{{ data.puesto?.id ? 'Editar' : 'Nuevo' }} Puesto</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="puestoForm">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nombre del Puesto</mat-label>
+      <input matInput formControlName="nombre" required>
+      <mat-error *ngIf="puestoForm.get('nombre')?.hasError('required')">
+        El nombre es requerido
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Instalación</mat-label>
+      <mat-select formControlName="instalacion_id" required>
+        <mat-option *ngFor="let instalacion of instalaciones" [value]="instalacion.id">
+          {{ instalacion.provincia }} - {{ instalacion.ciudad }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="puestoForm.get('instalacion_id')?.hasError('required')">
+        La instalación es requerida
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Horas de Trabajo</mat-label>
+      <input matInput type="number" formControlName="horas_trabajo" required min="1" max="24">
+      <mat-error *ngIf="puestoForm.get('horas_trabajo')?.hasError('required')">
+        Las horas de trabajo son requeridas
+      </mat-error>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!puestoForm.valid">
+    Guardar
+  </button>
+</mat-dialog-actions>
