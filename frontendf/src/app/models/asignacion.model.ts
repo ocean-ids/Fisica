@@ -1,9 +1,10 @@
 export interface Asignacion{
     id?: number;
     persona: number;
+    cliente: number;
     instalacion: number;
     puesto: number;
-    horario:number;
+    horario: number;
     mes: number;
     anio: number;
     fecha_inicio: string;
@@ -13,7 +14,7 @@ export interface Asignacion{
     estado: string;
     persona_nombre?: string;           
     cliente_nombre?: string;          
-    instalacion_nombre?: string;       
+    instalacion_ubicacion?: string;       
     puesto_nombre?: string;            
     horario_denominativo?: string; 
 }
