@@ -81,6 +81,11 @@ class Asignacion(models.Model):
     anio = models.PositiveSmallIntegerField(default=2026)
 
     rotativo = models.BooleanField(default=False)
+    
+    # Patrón rotativo (ej: 3-3-1 significa 3 días, 3 noches, 1 franco)
+    dias_turno_dia = models.IntegerField(default=0, help_text="Cantidad de días en turno DÍA")
+    dias_turno_noche = models.IntegerField(default=0, help_text="Cantidad de días en turno NOCHE")
+    dias_franco = models.IntegerField(default=0, help_text="Cantidad de días FRANCO")
 
     orden = models.PositiveIntegerField(default=0)
     estado = models.CharField(
@@ -94,7 +99,8 @@ class Asignacion(models.Model):
         unique_together = ('persona', 'puesto', 'mes', 'anio')
 
     def __str__(self):
-        return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio})"
+        patron = f" ({self.dias_turno_dia}-{self.dias_turno_noche}-{self.dias_franco})" if self.rotativo else ""
+        return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio}){patron}"
 
 
 class Asistencia(models.Model):
@@ -102,12 +108,9 @@ class Asistencia(models.Model):
     TURNO_CHOICES = [
         ('D', 'Día'),
         ('N', 'Noche'),
-    ]
-
-    ESTADO_CHOICES = [
-        ('NORMAL', 'Normal'),
-        ('FRANCO', 'Franco'),
-        ('DISPONIBLE', 'Disponible'),
+        ('F', 'Franco'),
+        ('NB', 'Noche Base Disponible'),
+        ('SC', 'Saca Vacaciones'),
     ]
 
     asignacion = models.ForeignKey(
@@ -117,31 +120,21 @@ class Asistencia(models.Model):
     )
     fecha = models.DateField()
 
-    # D / N
+    # D / N / F / NB / SC
     turno = models.CharField(
-        max_length=1,
+        max_length=2,
         choices=TURNO_CHOICES,
         null=True,
         blank=True
     )
 
-    # S30, S31, etc
-    codigo_cliente = models.CharField(
-        max_length=10,
-        null=True,
-        blank=True
-    )
-
-    # NORMAL / FRANCO / DISPONIBLE
-    estado = models.CharField(
-        max_length=15,
-        choices=ESTADO_CHOICES,
-        default='NORMAL'
-    )
+    # Número de día del mes (para DS30, NS31, etc)
+    dia_numero = models.IntegerField(null=True, blank=True)
 
     class Meta:
         unique_together = ('asignacion', 'fecha')
         ordering = ['fecha']
 
     def __str__(self):
-        return f"{self.fecha} - {self.turno or ''}{self.codigo_cliente or ''}"
+        dia_str = str(self.dia_numero) if self.dia_numero else ''
+        return f"{self.fecha} - {self.turno or ''}{dia_str}"
