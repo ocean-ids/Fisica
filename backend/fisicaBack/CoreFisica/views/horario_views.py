@@ -7,7 +7,7 @@ from ..models import Horario
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_horarios(request):
-    horarios = Horario.objects.all().values('id', 'hora_ingreso', 'hora_salida', 'denominativo')
+    horarios = Horario.objects.all().values('id', 'hora_ingreso', 'hora_salida')
     return  JsonResponse(list(horarios), safe=False)
 
 @api_view(['POST'])
@@ -15,14 +15,14 @@ def obtener_horarios(request):
 def crear_horario(request):
     try:
         data = json.loads(request.body)
+        print(f"📥 Datos recibidos para crear horario: {data}")
 
-        if not all(k in data for k in ('hora_ingreso', 'hora_salida', 'denominativo')):
-            return JsonResponse({'error': 'Faltan campos requeridos'})
+        if not all(k in data for k in ('hora_ingreso', 'hora_salida')):
+            return JsonResponse({'error': 'Faltan campos requeridos (hora_ingreso, hora_salida)'}, status=400)
 
         horario = Horario.objects.create(
             hora_ingreso=data.get('hora_ingreso'),
-            hora_salida=data.get('hora_salida'),
-            denominativo=data.get('denominativo')
+            hora_salida=data.get('hora_salida')
         )
 
         return JsonResponse({
@@ -31,12 +31,11 @@ def crear_horario(request):
             'horario':{
                 'id': horario.id,
                 'hora_ingreso': str(horario.hora_ingreso),
-                'hora_salida': str(horario.hora_salida),
-                'denominativo': horario.denominativo
-
+                'hora_salida': str(horario.hora_salida)
             }
         }, status=201)
     except Exception as e:
+        print(f"❌ Error al crear horario: {str(e)}")
         return JsonResponse({'error': str(e)}, status=400)
 
 @api_view(['PUT'])
@@ -48,16 +47,14 @@ def actualizar_horario(request, id):
 
         horario.hora_ingreso = data.get('hora_ingreso', horario.hora_ingreso)
         horario.hora_salida = data.get('hora_salida', horario.hora_salida)
-        horario.denominativo = data.get('denominativo', horario.denominativo)
         horario.save()
 
         return JsonResponse({
             'message': 'Horario actualizado exitosamente',
-            'hoario': {
+            'horario': {
                 'id': horario.id,
                 'hora_ingreso': str(horario.hora_ingreso),
-                'hora_salida': str(horario.hora_salida),
-                'denominativo': horario.denominativo
+                'hora_salida': str(horario.hora_salida)
             }
         }, status=200)
     except Horario.DoesNotExist:

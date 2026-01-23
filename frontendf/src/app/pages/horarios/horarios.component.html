@@ -18,8 +18,8 @@
           </thead>
           <tbody>
             <tr class="text-center" *ngFor="let horario of horarios">
-              <td>{{ horario.hora_ingreso }}</td>
-              <td>{{ horario.hora_salida }}</td>
+              <td>{{ horario.hora_ingreso | slice:0:5 }}</td>
+              <td>{{ horario.hora_salida | slice:0:5 }}</td>
               <td class="d-flex justify-content-around">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirModal(horario)">
                   <i class="bi bi-pencil"></i> Editar

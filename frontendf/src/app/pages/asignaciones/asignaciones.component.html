@@ -6,7 +6,6 @@
         </button>
     </div>
 
-
     <div class="card mb-4">
         <div class="card-body">
             <div class="row">
@@ -41,30 +40,26 @@
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
-                        <tr>
-                            <th>Orden</th>
+                        <tr class="text-center">
                             <th>Horario</th>
                             <th>Cliente</th>
                             <th>Puesto</th>
-                            <th>Persona</th>
+                            <th>Cédula</th>
+                            <th>Apellidos y Nombres</th>
                             <th>Ubicación</th>
-                            <th>Fecha Inicio</th>
-                            <th>Fecha Fin</th>
                             <th>Rotativo</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr *ngFor="let asig of asignaciones">
-                            <td>{{ asig.orden }}</td>
-                            <td>{{ asig.horario_detalle?.hora_ingreso }} - {{ asig.horario_detalle?.hora_salida }}</td>
+                        <tr class="text-center" *ngFor="let asig of asignaciones">
+                            <td class="d-flex justify-content-around">{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }} - {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                             <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
                             <td>{{ asig.puesto_detalle?.nombre }}</td>
-                            <td>{{ asig.persona_detalle?.nombres }} {{ asig.persona_detalle?.apellidos }}</td>
+                            <td>{{ asig.persona_detalle?.cedula }}</td>
+                            <td>{{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}</td>
                             <td>{{ asig.instalacion_detalle?.provincia }}, {{ asig.instalacion_detalle?.ciudad }}</td>
-                            <td>{{ asig.fecha_inicio }}</td>
-                            <td>{{ asig.fecha_fin || 'N/A' }}</td>
                             <td>
                                 <span *ngIf="asig.rotativo" class="badge bg-info">
                                     {{ asig.dias_turno_dia }}-{{ asig.dias_turno_noche }}-{{ asig.dias_franco }}
@@ -76,7 +71,7 @@
                                     {{ asig.estado }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="d-flex justify-content-around">
                                 <button class="btn btn-sm btn-warning me-1" (click)="abrirModalEditar(asig)">
                                     <i class="bi bi-pencil"></i>
                                 </button>
@@ -90,8 +85,7 @@
             </div>
         </div>
     </div>
-</div>
-
+    </div>
 <!-- Modal para Crear/Editar Asignación -->
 <div class="modal fade" [class.show]="mostrarModal" [style.display]="mostrarModal ? 'block' : 'none'" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -103,136 +97,99 @@
             <div class="modal-body">
                 <form>
                     <div class="row">
-                       
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Cliente *</label>
-                            <select class="form-select" [(ngModel)]="clienteSeleccionado" 
-                                    name="cliente" (change)="onClientChange()" required>
-                                <option [ngValue]="null">Seleccione...</option>
-                                <option *ngFor="let c of clientes" [ngValue]="c.id">
-                                    {{ c.nombre_comercial }}
-                                </option>
-                            </select>
-                        </div>
-
-                        
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Instalación *</label>
-                            <select class="form-select" [(ngModel)]="instalacionSeleccionada" 
-                                    name="instalacion" (change)="onInstalacionChange()" required
-                                    [disabled]="!clienteSeleccionado">
-                                <option [ngValue]="null">Seleccione...</option>
-                                <option *ngFor="let i of instalaciones" [ngValue]="i.id">
-                                    {{ i.provincia }}, {{ i.ciudad }}
-                                </option>
-                            </select>
-                        </div>
-
-                       
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Puesto *</label>
-                            <select class="form-select" [(ngModel)]="asignacionActual.puesto" 
-                                    name="puesto" required [disabled]="!instalacionSeleccionada">
-                                <option [ngValue]="0">Seleccione...</option>
-                                <option *ngFor="let p of puestos" [ngValue]="p.id">
-                                    {{ p.nombre }}
-                                </option>
-                            </select>
-                        </div>
-
-                     
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Persona *</label>
-                            <select class="form-select" [(ngModel)]="asignacionActual.persona" 
-                                    name="persona" required>
-                                <option [ngValue]="0">Seleccione...</option>
-                                <option *ngFor="let per of personas" [ngValue]="per.id">
-                                    {{ per.nombres }} {{ per.apellidos }}
-                                </option>
-                            </select>
-                        </div>
-
-                        
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Horario *</label>
-                            <select class="form-select" [(ngModel)]="asignacionActual.horario" 
-                                    name="horario" required>
-                                <option [ngValue]="0">Seleccione...</option>
-                                <option *ngFor="let h of horarios" [ngValue]="h.id">
-                                    {{ h.hora_ingreso }} - {{ h.hora_salida }}
-                                </option>
-                            </select>
-                        </div>
-
-                    
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Fecha Inicio *</label>
-                            <input type="date" class="form-control" 
-                                   [(ngModel)]="asignacionActual.fecha_inicio" name="fecha_inicio" required>
-                        </div>
-
-                       
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Fecha Fin</label>
-                            <input type="date" class="form-control" 
-                                   [(ngModel)]="asignacionActual.fecha_fin" name="fecha_fin">
-                        </div>
-
-                       
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Estado *</label>
-                            <select class="form-select" [(ngModel)]="asignacionActual.estado" name="estado" required>
-                                <option value="ACTIVO">ACTIVO</option>
-                                <option value="INACTIVO">INACTIVO</option>
-                            </select>
-                        </div>
-
-                        <!-- Rotativo -->
-                        <div class="col-md-12 mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" 
-                                       [(ngModel)]="asignacionActual.rotativo" name="rotativo" id="rotativo">
-                                <label class="form-check-label" for="rotativo">
-                                    ¿Es rotativo?
-                                </label>
+                                <div class="col-md-6 mb-3">
+                                    <mat-form-field appearance="fill" class="w-100">
+                                        <mat-label>Cliente *</mat-label>
+                                        <mat-select [(ngModel)]="clienteSeleccionado" name="cliente" required (selectionChange)="onClientChange()" [ngModelOptions]="{standalone: true}">
+                                            <mat-option [value]="null">Seleccione...</mat-option>
+                                            <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
+                                        </mat-select>
+                                    </mat-form-field>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <mat-form-field appearance="fill" class="w-100">
+                                        <mat-label>Instalación *</mat-label>
+                                        <mat-select [(ngModel)]="instalacionSeleccionada" name="instalacion" required (selectionChange)="onInstalacionChange()" [ngModelOptions]="{standalone: true}">
+                                            <mat-option [value]="null">Seleccione...</mat-option>
+                                            <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.provincia }}, {{ i.ciudad }}</mat-option>
+                                        </mat-select>
+                                    </mat-form-field>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <mat-form-field appearance="fill" class="w-100">
+                                        <mat-label>Puesto *</mat-label>
+                                        <mat-select [(ngModel)]="asignacionActual.puesto" name="puesto" required [ngModelOptions]="{standalone: true}">
+                                            <mat-option [value]="0">Seleccione...</mat-option>
+                                            <mat-option *ngFor="let p of puestos" [value]="p.id">{{ p.nombre }}</mat-option>
+                                        </mat-select>
+                                    </mat-form-field>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <mat-form-field appearance="fill" class="w-100">
+                                        <mat-label>Persona *</mat-label>
+                                        <mat-select [(ngModel)]="asignacionActual.persona" name="persona" required [ngModelOptions]="{standalone: true}">
+                                            <mat-option [value]="0">Seleccione...</mat-option>
+                                            <mat-option *ngFor="let per of personas" [value]="per.id">{{ per.apellidos }} {{ per.nombres }}</mat-option>
+                                        </mat-select>
+                                    </mat-form-field>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <mat-form-field appearance="fill" class="w-100">
+                                        <mat-label>Horario *</mat-label>
+                                        <mat-select [(ngModel)]="asignacionActual.horario" name="horario" required [ngModelOptions]="{standalone: true}">
+                                            <mat-option [value]="0">Seleccione...</mat-option>
+                                            <mat-option *ngFor="let h of horarios" [value]="h.id">
+                                                {{ h.hora_ingreso | slice:0:5 }} - {{ h.hora_salida | slice:0:5 }}
+                                            </mat-option>
+                                        </mat-select>
+                                    </mat-form-field>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <mat-form-field appearance="fill" class="w-100">
+                                        <mat-label>Estado *</mat-label>
+                                        <mat-select [(ngModel)]="asignacionActual.estado" name="estado" required [ngModelOptions]="{standalone: true}">
+                                            <mat-option value="ACTIVO">ACTIVO</mat-option>
+                                            <mat-option value="INACTIVO">INACTIVO</mat-option>
+                                        </mat-select>
+                                    </mat-form-field>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <mat-checkbox [(ngModel)]="asignacionActual.rotativo" name="rotativo" [ngModelOptions]="{standalone: true}">Patrón Rotativo</mat-checkbox>
+                                </div>
                             </div>
-                        </div>
-
-                        <!-- Campos de Rotativo (solo si está marcado) -->
-                        <div *ngIf="asignacionActual.rotativo" class="col-12">
-                            <div class="alert alert-info">
-                                <strong>Patrón Rotativo:</strong> Ejemplo 3-3-2 significa 3 días turno día, 3 días turno noche, 2 días franco
+                    <div *ngIf="asignacionActual.rotativo" class="col-12">
+                        <mat-card class="mb-2 bg-info text-white p-2">
+                            <strong>Patrón Rotativo:</strong> Ejemplo 3-3-2 significa 3 días turno día, 3 días turno noche, 2 días franco
+                        </mat-card>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <mat-form-field appearance="fill" class="w-100">
+                                    <mat-label>Días Turno Día</mat-label>
+                                    <input matInput type="number" [(ngModel)]="asignacionActual.dias_turno_dia" name="dias_dia" min="0">
+                                </mat-form-field>
                             </div>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label">Días Turno Día</label>
-                                    <input type="number" class="form-control" 
-                                           [(ngModel)]="asignacionActual.dias_turno_dia" name="dias_dia" min="0">
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label">Días Turno Noche</label>
-                                    <input type="number" class="form-control" 
-                                           [(ngModel)]="asignacionActual.dias_turno_noche" name="dias_noche" min="0">
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label">Días Franco</label>
-                                    <input type="number" class="form-control" 
-                                           [(ngModel)]="asignacionActual.dias_franco" name="dias_franco" min="0">
-                                </div>
+                            <div class="col-md-4 mb-3">
+                                <mat-form-field appearance="fill" class="w-100">
+                                    <mat-label>Días Turno Noche</mat-label>
+                                    <input matInput type="number" [(ngModel)]="asignacionActual.dias_turno_noche" name="dias_noche" min="0">
+                                </mat-form-field>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <mat-form-field appearance="fill" class="w-100">
+                                    <mat-label>Días Franco</mat-label>
+                                    <input matInput type="number" [(ngModel)]="asignacionActual.dias_franco" name="dias_franco" min="0">
+                                </mat-form-field>
                             </div>
                         </div>
                     </div>
                 </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" (click)="cerrarModal()">Cancelar</button>
-                <button type="button" class="btn btn-primary" (click)="guardarAsignacion()">
-                    {{ modoEdicion ? 'Actualizar' : 'Guardar' }}
-                </button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" (click)="cerrarModal()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" (click)="guardarAsignacion()">
+                        Guardar
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-
-<!-- Backdrop del Modal -->
-<div class="modal-backdrop fade" [class.show]="mostrarModal" *ngIf="mostrarModal"></div>
+    </div>

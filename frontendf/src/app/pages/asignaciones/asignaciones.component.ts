@@ -8,15 +8,30 @@ import { PuestoService } from '../../services/puesto.service';
 import { PersonaService } from '../../services/persona.service';
 import { HorarioService } from '../../services/horario.service';
 import { AsignacionService, } from '../../services/asignacion.service';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatCardModule } from '@angular/material/card';
 
 
 @Component({
   selector: 'app-asignaciones',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatCheckboxModule,
+    MatCardModule
+  ],
   templateUrl: './asignaciones.component.html',
   styleUrl: './asignaciones.component.css'
 })
 export class AsignacionesComponent implements OnInit {
+
+  textoBotonAsignacion: string = 'Guardar';
 
   
   asignaciones: Asignacion[] = [];
@@ -92,10 +107,7 @@ export class AsignacionesComponent implements OnInit {
       horario: 0,
       mes: this.mes,
       anio: this.anio,
-      fecha_inicio: '',
-      fecha_fin: '',
       rotativo: false,
-      orden: 0,
       estado: 'ACTIVO'
     };
   }
@@ -138,6 +150,7 @@ export class AsignacionesComponent implements OnInit {
 
   abrirModalNuevo(): void {
     this.modoEdicion = false;
+    this.textoBotonAsignacion = 'Guardar';
     this.asignacionActual = this.nuevaAsignacion();
     this.clienteSeleccionado = null;
     this.instalacionSeleccionada = null;
@@ -148,6 +161,7 @@ export class AsignacionesComponent implements OnInit {
 
   abrirModalEditar(asignacion: Asignacion): void{
     this.modoEdicion = true;
+    this.textoBotonAsignacion = 'Actualizar';
     this.asignacionActual = {...asignacion}
     this.clienteSeleccionado = asignacion.cliente;
     this.instalacionSeleccionada = asignacion. instalacion;
@@ -177,6 +191,8 @@ export class AsignacionesComponent implements OnInit {
   }
 
   guardarAsignacion(): void {
+      // Mostrar la lista de asignaciones actuales para depuración
+      console.log('📋 Asignaciones actuales:', this.asignaciones);
     // Validar campos obligatorios
     if (!this.clienteSeleccionado) {
       alert('Debe seleccionar un Cliente');
@@ -198,15 +214,22 @@ export class AsignacionesComponent implements OnInit {
       alert('Debe seleccionar un Horario');
       return;
     }
-    if (!this.asignacionActual.fecha_inicio) {
-      alert('Debe ingresar una Fecha de Inicio');
-      return;
-    }
-
     this.asignacionActual.cliente = this.clienteSeleccionado!;
     this.asignacionActual.instalacion = this.instalacionSeleccionada!;
     this.asignacionActual.mes = this.mes;
     this.asignacionActual.anio = this.anio;
+
+    // Validación para evitar duplicados en el frontend
+    const yaExiste = this.asignaciones.some(asig =>
+      asig.persona === this.asignacionActual.persona &&
+      asig.mes === this.asignacionActual.mes &&
+      asig.anio === this.asignacionActual.anio &&
+      (!this.modoEdicion || (this.modoEdicion && asig.id !== this.asignacionActual.id))
+    );
+    if (yaExiste) {
+      alert('Ya existe una asignación para esta persona en el mes y año seleccionados. Edite la existente o elimínela antes de crear una nueva.');
+      return;
+    }
 
     console.log('💾 Datos a enviar:', this.asignacionActual);
 

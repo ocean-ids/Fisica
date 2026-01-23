@@ -72,8 +72,7 @@ class Asignacion(models.Model):
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE)
     horario = models.ForeignKey(Horario, on_delete=models.CASCADE)
 
-    fecha_inicio = models.DateField()
-    fecha_fin = models.DateField(null=True, blank=True)
+    # fecha_inicio y fecha_fin eliminados
 
     mes = models.PositiveSmallIntegerField(default=1)
     anio = models.PositiveSmallIntegerField(default=2026)
@@ -85,7 +84,7 @@ class Asignacion(models.Model):
     dias_turno_noche = models.IntegerField(default=0, help_text="Cantidad de días en turno NOCHE")
     dias_franco = models.IntegerField(default=0, help_text="Cantidad de días FRANCO")
 
-    orden = models.PositiveIntegerField(default=0)
+    # orden eliminado
     estado = models.CharField(
         max_length=10,
         choices=ESTADO_CHOICES,
@@ -93,8 +92,7 @@ class Asignacion(models.Model):
     )
 
     class Meta:
-        ordering = ['orden']
-        unique_together = ('persona', 'puesto', 'mes', 'anio')
+        unique_together = ('persona', 'mes', 'anio')
 
     def __str__(self):
         patron = f" ({self.dias_turno_dia}-{self.dias_turno_noche}-{self.dias_franco})" if self.rotativo else ""

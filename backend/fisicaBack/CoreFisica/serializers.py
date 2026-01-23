@@ -1,8 +1,8 @@
 from rest_framework import serializers
-from .models import Asignacion, Persona, Cliente, Instalacion, Puesto, Horario
+from .models import Asignacion
 
 class AsignacionSerializer(serializers.ModelSerializer):
-    # Campos detalle para mostrar información relacionada
+    
     persona_detalle = serializers.SerializerMethodField(read_only=True)
     cliente_detalle = serializers.SerializerMethodField(read_only=True)
     instalacion_detalle = serializers.SerializerMethodField(read_only=True)
