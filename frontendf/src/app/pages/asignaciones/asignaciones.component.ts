@@ -139,33 +139,29 @@ export class AsignacionesComponent implements OnInit {
     this.mostrarModal = true;
   }
 
-  abrirModalEditar(asignacion: Asignacion): void {
+  abrirModalEditar(asignacion: Asignacion): void{
     this.modoEdicion = true;
-    this.asignacionActual = { ...asignacion };
+    this.asignacionActual = {...asignacion}
     this.clienteSeleccionado = asignacion.cliente;
-    this.instalacionSeleccionada = asignacion.instalacion;
-    
-    
+    this.instalacionSeleccionada = asignacion. instalacion;
+
     this.instalacionService.getInstalaciones().subscribe({
-      next: (data) => {
-        this.instalaciones = data.filter(ins => ins.cliente === this.clienteSeleccionado);
-        
-       
-        if (this.instalacionSeleccionada) {
+      next: (data) =>{
+       this.instalaciones = data.filter(ins => ins.cliente === this.clienteSeleccionado);
+        if (this.instalacionSeleccionada){
           this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada).subscribe({
             next: (puestos) => this.puestos = puestos,
             error: (err) => console.error('Error al cargar puestos', err)
           });
         }
       },
-      error: (err) => console.error('Error al cargar instalaciones', err)
+      error: (err) => console.error('Error al cargar instaaciones', err)
     });
-    
     this.mostrarModal = true;
   }
 
   cerrarModal(): void {
-    this.mostrarModal = false
+    this.mostrarModal = false;
     this.asignacionActual = this.nuevaAsignacion();
     this.clienteSeleccionado = null;
     this.instalacionSeleccionada = null;
@@ -174,57 +170,55 @@ export class AsignacionesComponent implements OnInit {
   }
 
   guardarAsignacion(): void {
-
     this.asignacionActual.cliente = this.clienteSeleccionado!;
     this.asignacionActual.instalacion = this.instalacionSeleccionada!;
     this.asignacionActual.mes = this.mes;
     this.asignacionActual.anio = this.anio;
 
-    if (this.modoEdicion && this.asignacionActual.id) {
-     
+    if (this.modoEdicion && this.asignacionActual.id){
       this.asignacionService.actualizarAsignacion(this.asignacionActual.id, this.asignacionActual).subscribe({
         next: () => {
-          alert('Asignación actualizada correctamente');
+          alert('Asignación actualizada con éxito');
           this.cargarAsignaciones();
           this.cerrarModal();
         },
-        error: (err) => {
-          console.error('Error al actualizar', err);
-          alert('Error al actualizar la asignación');
-        }
+        error: (err) =>{
+          console.error('Error al actualizar asignación', err);
+          alert('Error al actualizar la asignación')
+        } 
       });
     } else {
       this.asignacionService.crearAsignacion(this.asignacionActual).subscribe({
-        next: () => {
-          alert('Asignación creada correctamente');
+        next: () =>{
+          alert('Asignacion Creada correctamente');
           this.cargarAsignaciones();
           this.cerrarModal();
         },
         error: (err) =>{
-          console.error('Error al crear', err);
-          alert('Error al crear la asignación');
+          console.error('Error al crear', err)
+          alert('Error al crear la asignacion');
         }
       });
     }
   }
 
-  eliminarAsignación(id: number): void{
-    if(confirm('¿Estas seguro de eliminar esta asignación?')){
-      this.asignacionService.eliminarAsignacion(id).subscribe({
+  eliminarAsignacion(asignacion: Asignacion): void {
+    if (confirm(`¿Estás seguro de eliminar la asignación de ${asignacion.persona}?`)){
+      this.asignacionService.eliminarAsignacion(asignacion.id!).subscribe({
         next: () => {
-          alert('Asignación eliminada correctamente'),
+          alert('Asignacion eliminada con exito');
           this.cargarAsignaciones();
         },
         error: (err) =>{
-          console.error('Error al eliminar');
-          alert('Error al eliminar la asignación')
+          console.error(`Error al eliminar asignacion de ${asignacion.persona}`, err);
+          alert('Error al eliminar la asignacion');
         }
       });
     }
   }
 
-  cargarMesAnio(): void{
-    this.cargarAsignaciones()
+  cambiarMesAnio(): void{
+    this.cargarAsignaciones();
   }
  
 

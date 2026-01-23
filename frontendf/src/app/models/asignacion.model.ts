@@ -15,9 +15,9 @@ export interface Asignacion{
     dias_franco?: number;
     orden: number;
     estado: string;
-    persona_nombre?: string;           
-    cliente_nombre?: string;          
-    instalacion_ubicacion?: string;       
-    puesto_nombre?: string;            
-    horario_denominativo?: string; 
+    persona_detalle?: string;           
+    cliente_detalle?: string;          
+    instalacion_detalle?: string;       
+    puesto_detalle?: string;            
+    horario_detalle?: string; 
 }
