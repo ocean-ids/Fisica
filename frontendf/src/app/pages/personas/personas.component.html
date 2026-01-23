@@ -13,18 +13,18 @@
         <table class="table table-hover">
           <thead class="table-light">
             <tr class="text-center">
-              <th>Nombres</th>
-              <th>Apellidos</th>
               <th>Cédula</th>
+              <th>Apellidos</th>
+              <th>Nombres</th>
               <th>Tipo</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr class="text-center" *ngFor="let persona of personas">
-              <td>{{ persona.nombres }}</td>
-              <td>{{ persona.apellidos }}</td>
               <td>{{ persona.cedula }}</td>
+              <td>{{ persona.apellidos }}</td>
+              <td>{{ persona.nombres }}</td>
               <td>
                 <span class="badge" [ngClass]="persona.tipo === 'SUPERVISOR' ? 'bg-success' : 'bg-primary'">
                   {{ persona.tipo }}

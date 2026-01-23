@@ -3,6 +3,14 @@
 <mat-dialog-content>
   <form [formGroup]="personaForm">
     <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Cédula</mat-label>
+      <input matInput formControlName="cedula" required>
+      <mat-error *ngIf="personaForm.get('cedula')?.hasError('required')">
+        La cédula es requerida
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
       <mat-label>Nombres</mat-label>
       <input matInput formControlName="nombres" required>
       <mat-error *ngIf="personaForm.get('nombres')?.hasError('required')">
@@ -15,14 +23,6 @@
       <input matInput formControlName="apellidos" required>
       <mat-error *ngIf="personaForm.get('apellidos')?.hasError('required')">
         El apellido es requerido
-      </mat-error>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Cédula</mat-label>
-      <input matInput formControlName="cedula" required>
-      <mat-error *ngIf="personaForm.get('cedula')?.hasError('required')">
-        La cédula es requerida
       </mat-error>
     </mat-form-field>
 

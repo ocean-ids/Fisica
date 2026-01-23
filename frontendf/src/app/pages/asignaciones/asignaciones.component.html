@@ -1,7 +1,7 @@
 <div class="container-fluid p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Gestión de Asignaciones</h2>
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" (click)="abrirModalNuevo()">
             <i class="bi bi-plus-circle"></i> Nueva Asignación
         </button>
     </div>
@@ -11,7 +11,7 @@
             <div class="row">
                 <div class="col-md-3">
                     <label class="form-label">Mes</label>
-                    <select class="form-select" >
+                    <select class="form-select" [(ngModel)]="mes">
                         <option [value]="1">Enero</option>
                         <option [value]="2">Febrero</option>
                         <option [value]="3">Marzo</option>

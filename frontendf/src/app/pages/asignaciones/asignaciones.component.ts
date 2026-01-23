@@ -194,7 +194,6 @@ export class AsignacionesComponent implements OnInit {
         }
       });
     } else {
-      
       this.asignacionService.crearAsignacion(this.asignacionActual).subscribe({
         next: () => {
           alert('Asignación creada correctamente');
