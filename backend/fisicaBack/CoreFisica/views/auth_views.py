@@ -94,25 +94,23 @@ def user_view(request):
 
 @api_view(['POST'])
 def solicitar_reset_password(request):
-    """
-    Recibe el email y envía un correo con el link para resetear
-    """
+
     email = request.data.get('email')
     
     try:
         user = User.objects.get(email=email)
     except User.DoesNotExist:
-        # Por seguridad, no revelar si el email existe o no
+        
         return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
     
     # Generar token
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     
-    # Crear el enlace (ajusta la URL según tu frontend)
+   
     reset_link = f"http://localhost:4200/reset-password/{uid}/{token}"
     
-    # Enviar email
+    
     try:
         send_mail(
             subject='Restablecer contraseña - Sistema Física',
@@ -121,28 +119,29 @@ def solicitar_reset_password(request):
             recipient_list=[email],
             fail_silently=False,
         )
+        print(f"✓ Email enviado exitosamente a {email}")
     except Exception as e:
-        print(f"Error al enviar email: {e}")
+        print(f"✗ ERROR al enviar email: {e}")
+       
+        if settings.DEBUG:
+            return JsonResponse({'error': f'Error al enviar email: {str(e)}'}, status=500)
     
     return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
 
 
 @api_view(['POST'])
 def reset_password(request, uidb64, token):
-    """
-    Valida el token y actualiza la contraseña
-    """
+   
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         return JsonResponse({'error': 'Token inválido'}, status=400)
     
-    # Validar token
+
     if not default_token_generator.check_token(user, token):
         return JsonResponse({'error': 'Token expirado o inválido'}, status=400)
     
-    # Actualizar contraseña
     nueva_password = request.data.get('password')
     user.set_password(nueva_password)
     user.save()
