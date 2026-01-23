@@ -139,6 +139,94 @@ export class AsignacionesComponent implements OnInit {
     this.mostrarModal = true;
   }
 
+  abrirModalEditar(asignacion: Asignacion): void {
+    this.modoEdicion = true;
+    this.asignacionActual = { ...asignacion };
+    this.clienteSeleccionado = asignacion.cliente;
+    this.instalacionSeleccionada = asignacion.instalacion;
+    
+    
+    this.instalacionService.getInstalaciones().subscribe({
+      next: (data) => {
+        this.instalaciones = data.filter(ins => ins.cliente === this.clienteSeleccionado);
+        
+       
+        if (this.instalacionSeleccionada) {
+          this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada).subscribe({
+            next: (puestos) => this.puestos = puestos,
+            error: (err) => console.error('Error al cargar puestos', err)
+          });
+        }
+      },
+      error: (err) => console.error('Error al cargar instalaciones', err)
+    });
+    
+    this.mostrarModal = true;
+  }
+
+  cerrarModal(): void {
+    this.mostrarModal = false
+    this.asignacionActual = this.nuevaAsignacion();
+    this.clienteSeleccionado = null;
+    this.instalacionSeleccionada = null;
+    this.instalaciones = [];
+    this.puestos = [];
+  }
+
+  guardarAsignacion(): void {
+
+    this.asignacionActual.cliente = this.clienteSeleccionado!;
+    this.asignacionActual.instalacion = this.instalacionSeleccionada!;
+    this.asignacionActual.mes = this.mes;
+    this.asignacionActual.anio = this.anio;
+
+    if (this.modoEdicion && this.asignacionActual.id) {
+     
+      this.asignacionService.actualizarAsignacion(this.asignacionActual.id, this.asignacionActual).subscribe({
+        next: () => {
+          alert('Asignación actualizada correctamente');
+          this.cargarAsignaciones();
+          this.cerrarModal();
+        },
+        error: (err) => {
+          console.error('Error al actualizar', err);
+          alert('Error al actualizar la asignación');
+        }
+      });
+    } else {
+      
+      this.asignacionService.crearAsignacion(this.asignacionActual).subscribe({
+        next: () => {
+          alert('Asignación creada correctamente');
+          this.cargarAsignaciones();
+          this.cerrarModal();
+        },
+        error: (err) =>{
+          console.error('Error al crear', err);
+          alert('Error al crear la asignación');
+        }
+      });
+    }
+  }
+
+  eliminarAsignación(id: number): void{
+    if(confirm('¿Estas seguro de eliminar esta asignación?')){
+      this.asignacionService.eliminarAsignacion(id).subscribe({
+        next: () => {
+          alert('Asignación eliminada correctamente'),
+          this.cargarAsignaciones();
+        },
+        error: (err) =>{
+          console.error('Error al eliminar');
+          alert('Error al eliminar la asignación')
+        }
+      });
+    }
+  }
+
+  cargarMesAnio(): void{
+    this.cargarAsignaciones()
+  }
  
 
 }
