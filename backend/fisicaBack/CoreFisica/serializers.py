@@ -1,16 +1,49 @@
 from rest_framework import serializers
-from .models import Asignacion
+from .models import Asignacion, Persona, Cliente, Instalacion, Puesto, Horario
 
 class AsignacionSerializer(serializers.ModelSerializer):
-    
-    persona_nombre = serializers.CharField(source='persona.__str__', read_only=True)
-    cliente_nombre = serializers.CharField(source='cliente.nombre_comercial', read_only=True)
-    instalacion_ubicacion = serializers.SerializerMethodField(read_only=True)
-    puesto_nombre = serializers.CharField(source='puesto.nombre', read_only=True)
-    horario_denominativo = serializers.CharField(source='horario.denominativo', read_only=True)
+    # Campos detalle para mostrar información relacionada
+    persona_detalle = serializers.SerializerMethodField(read_only=True)
+    cliente_detalle = serializers.SerializerMethodField(read_only=True)
+    instalacion_detalle = serializers.SerializerMethodField(read_only=True)
+    puesto_detalle = serializers.SerializerMethodField(read_only=True)
+    horario_detalle = serializers.SerializerMethodField(read_only=True)
 
-    def get_instalacion_ubicacion(self, obj):
-        return f"{obj.instalacion.provincia} - {obj.instalacion.ciudad}"
+    def get_persona_detalle(self, obj):
+        return {
+            'id': obj.persona.id,
+            'nombres': obj.persona.nombres,
+            'apellidos': obj.persona.apellidos,
+            'cedula': obj.persona.cedula,
+            'tipo': obj.persona.tipo
+        }
+    
+    def get_cliente_detalle(self, obj):
+        return {
+            'id': obj.cliente.id,
+            'nombre_comercial': obj.cliente.nombre_comercial,
+            'razon_social': obj.cliente.razon_social
+        }
+    
+    def get_instalacion_detalle(self, obj):
+        return {
+            'id': obj.instalacion.id,
+            'provincia': obj.instalacion.provincia,
+            'ciudad': obj.instalacion.ciudad
+        }
+    
+    def get_puesto_detalle(self, obj):
+        return {
+            'id': obj.puesto.id,
+            'nombre': obj.puesto.nombre
+        }
+    
+    def get_horario_detalle(self, obj):
+        return {
+            'id': obj.horario.id,
+            'hora_ingreso': str(obj.horario.hora_ingreso),
+            'hora_salida': str(obj.horario.hora_salida)
+        }
     
     class Meta:
         model = Asignacion

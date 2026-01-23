@@ -19,10 +19,12 @@ def obtener_asignaciones(request, mes, anio):
 
 @api_view(['POST'])
 def asignar_servicio(request):
+    print(f"📥 Datos recibidos: {request.data}")
     serializer = AsignacionSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    print(f"❌ Errores de validación: {serializer.errors}")
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

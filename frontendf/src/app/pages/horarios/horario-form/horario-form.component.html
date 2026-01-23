@@ -3,14 +3,6 @@
 <mat-dialog-content>
   <form [formGroup]="horarioForm">
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Denominativo</mat-label>
-      <input matInput formControlName="denominativo" required placeholder="Ej: Turno Mañana">
-      <mat-error *ngIf="horarioForm.get('denominativo')?.hasError('required')">
-        El denominativo es requerido
-      </mat-error>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
       <mat-label>Hora Ingreso</mat-label>
       <input matInput type="time" formControlName="hora_ingreso" required>
       <mat-error *ngIf="horarioForm.get('hora_ingreso')?.hasError('required')">

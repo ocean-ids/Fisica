@@ -101,6 +101,7 @@ export class AsignacionesComponent implements OnInit {
   }
 
   onClientChange(): void{
+    console.log('🏢 Cliente seleccionado:', this.clienteSeleccionado);
     this.instalacionSeleccionada = null;
     this.asignacionActual.instalacion = 0;
     this.asignacionActual.puesto = 0;
@@ -110,21 +111,27 @@ export class AsignacionesComponent implements OnInit {
     if(this.clienteSeleccionado){
       this.instalacionService.getInstalaciones().subscribe({
         next: (data) => {
-          this.instalaciones = data.filter(ins => ins.cliente === this.clienteSeleccionado)
+          console.log('📦 Todas las instalaciones:', data);
+          this.instalaciones = data.filter(ins => ins.cliente_id === this.clienteSeleccionado);
+          console.log('✅ Instalaciones filtradas:', this.instalaciones);
         },
-        error: (err) => console.error('Error al cargar instalaciones', err)
+        error: (err) => console.error('❌ Error al cargar instalaciones', err)
       });
     }
   }
 
   onInstalacionChange(): void{
+    console.log('🏭 Instalación seleccionada:', this.instalacionSeleccionada);
     this.asignacionActual.puesto = 0;
     this.puestos = []
 
     if (this.instalacionSeleccionada){
       this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada).subscribe({
-        next: (data) => this.puestos = data,
-        error: (err) => console.error('Error al cargar puestos', err) 
+        next: (data) => {
+          this.puestos = data;
+          console.log('✅ Puestos cargados:', this.puestos);
+        },
+        error: (err) => console.error('❌ Error al cargar puestos', err) 
       });
     }
   }
@@ -147,7 +154,7 @@ export class AsignacionesComponent implements OnInit {
 
     this.instalacionService.getInstalaciones().subscribe({
       next: (data) =>{
-       this.instalaciones = data.filter(ins => ins.cliente === this.clienteSeleccionado);
+       this.instalaciones = data.filter(ins => ins.cliente_id === this.clienteSeleccionado);
         if (this.instalacionSeleccionada){
           this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada).subscribe({
             next: (puestos) => this.puestos = puestos,
@@ -170,10 +177,38 @@ export class AsignacionesComponent implements OnInit {
   }
 
   guardarAsignacion(): void {
+    // Validar campos obligatorios
+    if (!this.clienteSeleccionado) {
+      alert('Debe seleccionar un Cliente');
+      return;
+    }
+    if (!this.instalacionSeleccionada) {
+      alert('Debe seleccionar una Instalación');
+      return;
+    }
+    if (!this.asignacionActual.puesto || this.asignacionActual.puesto === 0) {
+      alert('Debe seleccionar un Puesto');
+      return;
+    }
+    if (!this.asignacionActual.persona || this.asignacionActual.persona === 0) {
+      alert('Debe seleccionar una Persona');
+      return;
+    }
+    if (!this.asignacionActual.horario || this.asignacionActual.horario === 0) {
+      alert('Debe seleccionar un Horario');
+      return;
+    }
+    if (!this.asignacionActual.fecha_inicio) {
+      alert('Debe ingresar una Fecha de Inicio');
+      return;
+    }
+
     this.asignacionActual.cliente = this.clienteSeleccionado!;
     this.asignacionActual.instalacion = this.instalacionSeleccionada!;
     this.asignacionActual.mes = this.mes;
     this.asignacionActual.anio = this.anio;
+
+    console.log('💾 Datos a enviar:', this.asignacionActual);
 
     if (this.modoEdicion && this.asignacionActual.id){
       this.asignacionService.actualizarAsignacion(this.asignacionActual.id, this.asignacionActual).subscribe({
@@ -183,8 +218,9 @@ export class AsignacionesComponent implements OnInit {
           this.cerrarModal();
         },
         error: (err) =>{
-          console.error('Error al actualizar asignación', err);
-          alert('Error al actualizar la asignación')
+          console.error('❌ Error completo:', err);
+          console.error('❌ Detalles del error:', err.error);
+          alert('Error al actualizar la asignación: ' + JSON.stringify(err.error))
         } 
       });
     } else {
@@ -195,8 +231,9 @@ export class AsignacionesComponent implements OnInit {
           this.cerrarModal();
         },
         error: (err) =>{
-          console.error('Error al crear', err)
-          alert('Error al crear la asignacion');
+          console.error('❌ Error completo:', err);
+          console.error('❌ Detalles del error:', err.error);
+          alert('Error al crear: ' + JSON.stringify(err.error));
         }
       });
     }
