@@ -1,195 +1,156 @@
 <div class="container-fluid p-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Gestión de Asignaciones</h2>
-        <button class="btn btn-primary" (click)="abrirModalNuevo()">
-            <i class="bi bi-plus-circle"></i> Nueva Asignación
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestión de Asignaciones</h2>
+    <button class="btn btn-primary" (click)="abrirModalNuevo()">
+      <i class="bi bi-plus-circle"></i> Nueva Asignación
+    </button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          <label class="form-label">Mes</label>
+          <select class="form-select" [(ngModel)]="mes" (change)="cambiarMesAnio()">
+            <option *ngFor="let m of [1,2,3,4,5,6,7,8,9,10,11,12]" [value]="m">
+              {{ m }}
+            </option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Año</label>
+          <input type="number" class="form-control" [(ngModel)]="anio" (change)="cambiarMesAnio()" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card">
+    <div class="card-body table-responsive">
+      <table class="table table-hover">
+        <thead class="table-light text-center">
+          <tr>
+            <th>Horario</th>
+            <th>Cliente</th>
+            <th>Puesto</th>
+            <th>Cédula</th>
+            <th>Persona</th>
+            <th>Ubicación</th>
+            <th>Rotativo</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="text-center" *ngFor="let asig of asignaciones">
+            <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }} - {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
+            <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
+            <td>{{ asig.puesto_detalle?.nombre }}</td>
+            <td>{{ asig.persona_detalle?.cedula }}</td>
+            <td>{{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}</td>
+            <td>{{ asig.instalacion_detalle?.provincia }}, {{ asig.instalacion_detalle?.ciudad }}</td>
+            <td>
+              <span *ngIf="asig.rotativo" class="badge bg-info">Rotativo</span>
+              <span *ngIf="!asig.rotativo" class="badge bg-secondary">Fijo</span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="asig.estado === 'ACTIVO' ? 'bg-success' : 'bg-danger'">
+                {{ asig.estado }}
+              </span>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-warning me-1" (click)="abrirModalEditar(asig)">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="eliminarAsignacion(asig)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal fade show" *ngIf="mostrarModal" style="display:block">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ modoEdicion ? 'Editar' : 'Nueva' }} Asignación</h5>
+        <button class="btn-close" (click)="cerrarModal()"></button>
+      </div>
+
+      <div class="modal-body row">
+        <div class="col-md-6 mb-3">
+          <mat-form-field class="w-100">
+            <mat-label>Cliente</mat-label>
+            <mat-select [(ngModel)]="clienteSeleccionado" (selectionChange)="onClientChange()" [ngModelOptions]="{standalone:true}">
+              <mat-option [value]="null">Seleccione</mat-option>
+              <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <mat-form-field class="w-100">
+            <mat-label>Instalación</mat-label>
+            <mat-select [(ngModel)]="instalacionSeleccionada" (selectionChange)="onInstalacionChange()" [ngModelOptions]="{standalone:true}">
+              <mat-option [value]="null">Seleccione</mat-option>
+              <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.provincia }} - {{ i.ciudad }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <mat-form-field class="w-100">
+            <mat-label>Puesto</mat-label>
+            <mat-select [(ngModel)]="asignacionActual.puesto" [ngModelOptions]="{standalone:true}">
+              <mat-option [value]="0">Seleccione</mat-option>
+              <mat-option *ngFor="let p of puestos" [value]="p.id">{{ p.nombre }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <mat-form-field class="w-100">
+            <mat-label>Persona</mat-label>
+            <mat-select [(ngModel)]="asignacionActual.persona" [ngModelOptions]="{standalone:true}">
+              <mat-option [value]="0">Seleccione</mat-option>
+              <mat-option *ngFor="let per of personas" [value]="per.id">{{ per.apellidos }} {{ per.nombres }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <mat-form-field class="w-100">
+            <mat-label>Horario</mat-label>
+            <mat-select [(ngModel)]="asignacionActual.horario" [ngModelOptions]="{standalone:true}">
+              <mat-option [value]="0">Seleccione</mat-option>
+              <mat-option *ngFor="let h of horarios" [value]="h.id">
+                {{ h.hora_ingreso | slice:0:5 }} - {{ h.hora_salida | slice:0:5 }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <mat-checkbox [(ngModel)]="asignacionActual.rotativo" [ngModelOptions]="{standalone:true}">
+            Patrón Rotativo
+          </mat-checkbox>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="cerrarModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="guardarAsignacion()">
+          {{ textoBotonAsignacion }}
         </button>
+      </div>
     </div>
-
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-3">
-                    <label class="form-label">Mes</label>
-                    <select class="form-select" [(ngModel)]="mes" (change)="cambiarMesAnio()">
-                        <option [value]="1">Enero</option>
-                        <option [value]="2">Febrero</option>
-                        <option [value]="3">Marzo</option>
-                        <option [value]="4">Abril</option>
-                        <option [value]="5">Mayo</option>
-                        <option [value]="6">Junio</option>
-                        <option [value]="7">Julio</option>
-                        <option [value]="8">Agosto</option>
-                        <option [value]="9">Septiembre</option>
-                        <option [value]="10">Octubre</option>
-                        <option [value]="11">Noviembre</option>
-                        <option [value]="12">Diciembre</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Año</label>
-                    <input type="number" class="form-control" [(ngModel)]="anio" (change)="cambiarMesAnio()" />
-                </div>
-            </div>
-        </div>
-    </div>
-
-    
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr class="text-center">
-                            <th>Horario</th>
-                            <th>Cliente</th>
-                            <th>Puesto</th>
-                            <th>Cédula</th>
-                            <th>Apellidos y Nombres</th>
-                            <th>Ubicación</th>
-                            <th>Rotativo</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="text-center" *ngFor="let asig of asignaciones">
-                            <td class="d-flex justify-content-around">{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }} - {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
-                            <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
-                            <td>{{ asig.puesto_detalle?.nombre }}</td>
-                            <td>{{ asig.persona_detalle?.cedula }}</td>
-                            <td>{{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}</td>
-                            <td>{{ asig.instalacion_detalle?.provincia }}, {{ asig.instalacion_detalle?.ciudad }}</td>
-                            <td>
-                                <span *ngIf="asig.rotativo" class="badge bg-info">
-                                    {{ asig.dias_turno_dia }}-{{ asig.dias_turno_noche }}-{{ asig.dias_franco }}
-                                </span>
-                                <span *ngIf="!asig.rotativo" class="badge bg-secondary">Fijo</span>
-                            </td>
-                            <td>
-                                <span class="badge" [ngClass]="asig.estado === 'ACTIVO' ? 'bg-success' : 'bg-danger'">
-                                    {{ asig.estado }}
-                                </span>
-                            </td>
-                            <td class="d-flex justify-content-around">
-                                <button class="btn btn-sm btn-warning me-1" (click)="abrirModalEditar(asig)">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button class="btn btn-sm btn-danger" (click)="eliminarAsignacion(asig)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    </div>
-<!-- Modal para Crear/Editar Asignación -->
-<div class="modal fade" [class.show]="mostrarModal" [style.display]="mostrarModal ? 'block' : 'none'" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">{{ modoEdicion ? 'Editar' : 'Nueva' }} Asignación</h5>
-                <button type="button" class="btn-close" (click)="cerrarModal()"></button>
-            </div>
-            <div class="modal-body">
-                <form>
-                    <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <mat-form-field appearance="fill" class="w-100">
-                                        <mat-label>Cliente *</mat-label>
-                                        <mat-select [(ngModel)]="clienteSeleccionado" name="cliente" required (selectionChange)="onClientChange()" [ngModelOptions]="{standalone: true}">
-                                            <mat-option [value]="null">Seleccione...</mat-option>
-                                            <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
-                                        </mat-select>
-                                    </mat-form-field>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <mat-form-field appearance="fill" class="w-100">
-                                        <mat-label>Instalación *</mat-label>
-                                        <mat-select [(ngModel)]="instalacionSeleccionada" name="instalacion" required (selectionChange)="onInstalacionChange()" [ngModelOptions]="{standalone: true}">
-                                            <mat-option [value]="null">Seleccione...</mat-option>
-                                            <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.provincia }}, {{ i.ciudad }}</mat-option>
-                                        </mat-select>
-                                    </mat-form-field>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <mat-form-field appearance="fill" class="w-100">
-                                        <mat-label>Puesto *</mat-label>
-                                        <mat-select [(ngModel)]="asignacionActual.puesto" name="puesto" required [ngModelOptions]="{standalone: true}">
-                                            <mat-option [value]="0">Seleccione...</mat-option>
-                                            <mat-option *ngFor="let p of puestos" [value]="p.id">{{ p.nombre }}</mat-option>
-                                        </mat-select>
-                                    </mat-form-field>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <mat-form-field appearance="fill" class="w-100">
-                                        <mat-label>Persona *</mat-label>
-                                        <mat-select [(ngModel)]="asignacionActual.persona" name="persona" required [ngModelOptions]="{standalone: true}">
-                                            <mat-option [value]="0">Seleccione...</mat-option>
-                                            <mat-option *ngFor="let per of personas" [value]="per.id">{{ per.apellidos }} {{ per.nombres }}</mat-option>
-                                        </mat-select>
-                                    </mat-form-field>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <mat-form-field appearance="fill" class="w-100">
-                                        <mat-label>Horario *</mat-label>
-                                        <mat-select [(ngModel)]="asignacionActual.horario" name="horario" required [ngModelOptions]="{standalone: true}">
-                                            <mat-option [value]="0">Seleccione...</mat-option>
-                                            <mat-option *ngFor="let h of horarios" [value]="h.id">
-                                                {{ h.hora_ingreso | slice:0:5 }} - {{ h.hora_salida | slice:0:5 }}
-                                            </mat-option>
-                                        </mat-select>
-                                    </mat-form-field>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <mat-form-field appearance="fill" class="w-100">
-                                        <mat-label>Estado *</mat-label>
-                                        <mat-select [(ngModel)]="asignacionActual.estado" name="estado" required [ngModelOptions]="{standalone: true}">
-                                            <mat-option value="ACTIVO">ACTIVO</mat-option>
-                                            <mat-option value="INACTIVO">INACTIVO</mat-option>
-                                        </mat-select>
-                                    </mat-form-field>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <mat-checkbox [(ngModel)]="asignacionActual.rotativo" name="rotativo" [ngModelOptions]="{standalone: true}">Patrón Rotativo</mat-checkbox>
-                                </div>
-                            </div>
-                    <div *ngIf="asignacionActual.rotativo" class="col-12">
-                        <mat-card class="mb-2 bg-info text-white p-2">
-                            <strong>Patrón Rotativo:</strong> Ejemplo 3-3-2 significa 3 días turno día, 3 días turno noche, 2 días franco
-                        </mat-card>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <mat-form-field appearance="fill" class="w-100">
-                                    <mat-label>Días Turno Día</mat-label>
-                                    <input matInput type="number" [(ngModel)]="asignacionActual.dias_turno_dia" name="dias_dia" min="0">
-                                </mat-form-field>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <mat-form-field appearance="fill" class="w-100">
-                                    <mat-label>Días Turno Noche</mat-label>
-                                    <input matInput type="number" [(ngModel)]="asignacionActual.dias_turno_noche" name="dias_noche" min="0">
-                                </mat-form-field>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <mat-form-field appearance="fill" class="w-100">
-                                    <mat-label>Días Franco</mat-label>
-                                    <input matInput type="number" [(ngModel)]="asignacionActual.dias_franco" name="dias_franco" min="0">
-                                </mat-form-field>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" (click)="cerrarModal()">Cancelar</button>
-                    <button type="button" class="btn btn-primary" (click)="guardarAsignacion()">
-                        Guardar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    </div>
+  </div>
+</div>

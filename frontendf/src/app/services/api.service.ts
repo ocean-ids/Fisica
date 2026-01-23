@@ -10,19 +10,36 @@ export class ApiService {
 
   constructor(private http: HttpClient) { }
 
+  private getHeaders(): any {
+    const token = localStorage.getItem('access_token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
   get<T>(endpoint: string): Observable<T> {
-    return this.http.get<T>(`${this.baseUrl}${endpoint}`);
+    return this.http.get<T>(`${this.baseUrl}${endpoint}`, {
+      headers: this.getHeaders(),
+      observe: 'body'
+    });
   }
 
   post<T>(endpoint: string, data: any): Observable<T> {
-    return this.http.post<T>(`${this.baseUrl}${endpoint}`, data);
+    return this.http.post<T>(`${this.baseUrl}${endpoint}`, data, {
+      headers: this.getHeaders(),
+      observe: 'body'
+    });
   }
 
   put<T>(endpoint: string, data: any): Observable<T> {
-    return this.http.put<T>(`${this.baseUrl}${endpoint}`, data);
+    return this.http.put<T>(`${this.baseUrl}${endpoint}`, data, {
+      headers: this.getHeaders(),
+      observe: 'body'
+    });
   }
 
   delete<T>(endpoint: string): Observable<T> {
-    return this.http.delete<T>(`${this.baseUrl}${endpoint}`);
+    return this.http.delete<T>(`${this.baseUrl}${endpoint}`, {
+      headers: this.getHeaders(),
+      observe: 'body'
+    });
   }
 }

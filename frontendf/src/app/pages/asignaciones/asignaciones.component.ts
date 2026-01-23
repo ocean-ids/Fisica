@@ -1,22 +1,23 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import {Cliente, Persona, Instalacion, Puesto, Horario, Asignacion} from '../../models';
+import { Cliente, Persona, Instalacion, Puesto, Horario, Asignacion } from '../../models';
 import { ClienteService } from '../../services/cliente.service';
 import { InstalacionService } from '../../services/instalacion.service';
 import { PuestoService } from '../../services/puesto.service';
 import { PersonaService } from '../../services/persona.service';
 import { HorarioService } from '../../services/horario.service';
-import { AsignacionService, } from '../../services/asignacion.service';
+import { AsignacionService } from '../../services/asignacion.service';
+
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatCardModule } from '@angular/material/card';
 
-
 @Component({
   selector: 'app-asignaciones',
+  standalone: true,
   imports: [
     CommonModule,
     FormsModule,
@@ -33,25 +34,20 @@ export class AsignacionesComponent implements OnInit {
 
   textoBotonAsignacion: string = 'Guardar';
 
-  
   asignaciones: Asignacion[] = [];
-  
-  
+
   mes: number = new Date().getMonth() + 1;
   anio: number = new Date().getFullYear();
-  
-  
+
   clientes: Cliente[] = [];
   personas: Persona[] = [];
   horarios: Horario[] = [];
   instalaciones: Instalacion[] = [];
   puestos: Puesto[] = [];
-  
-  
+
   clienteSeleccionado: number | null = null;
   instalacionSeleccionada: number | null = null;
-  
-  
+
   mostrarModal: boolean = false;
   asignacionActual: Asignacion = this.nuevaAsignacion();
   modoEdicion: boolean = false;
@@ -62,9 +58,8 @@ export class AsignacionesComponent implements OnInit {
     private puestoService: PuestoService,
     private personaService: PersonaService,
     private horarioService: HorarioService,
-    private asignacionService: AsignacionService,
-  ){}
-
+    private asignacionService: AsignacionService
+  ) {}
 
   ngOnInit(): void {
     this.cargarCatalogos();
@@ -73,30 +68,27 @@ export class AsignacionesComponent implements OnInit {
 
   cargarCatalogos(): void {
     this.clienteService.getClientes().subscribe({
-      next: (data) => this.clientes = data,
-      error: (err) => console.error('Error al cargar clientes', err)
-      
+      next: data => this.clientes = data,
+      error: err => console.error('Error al cargar clientes', err)
     });
 
     this.personaService.getPersonas().subscribe({
-      next: (data) => this.personas = data,
-      error: (err) => console.error('Error al cargar personas', err)
+      next: data => this.personas = data,
+      error: err => console.error('Error al cargar personas', err)
     });
 
     this.horarioService.obtenerHorarios().subscribe({
-      next: (data) => this.horarios = data,
-      error: (err) => console.error('Error al cargar horarios', err)
+      next: data => this.horarios = data,
+      error: err => console.error('Error al cargar horarios', err)
     });
   }
 
-
-  cargarAsignaciones(): void{
+  cargarAsignaciones(): void {
     this.asignacionService.obtenerAsignaciones(this.mes, this.anio).subscribe({
-      next: (data) => this.asignaciones = data,
-      error: (err) => console.error('Error al cargar asignaciones', err)
+      next: data => this.asignaciones = data,
+      error: err => console.error('Error al cargar asignaciones', err)
     });
   }
-
 
   nuevaAsignacion(): Asignacion {
     return {
@@ -112,42 +104,46 @@ export class AsignacionesComponent implements OnInit {
     };
   }
 
-  onClientChange(): void{
-    console.log('🏢 Cliente seleccionado:', this.clienteSeleccionado);
+  // ===============================
+  // EVENTOS SELECT
+  // ===============================
+  onClientChange(): void {
+    this.asignacionActual.cliente = this.clienteSeleccionado!;
     this.instalacionSeleccionada = null;
     this.asignacionActual.instalacion = 0;
     this.asignacionActual.puesto = 0;
     this.instalaciones = [];
     this.puestos = [];
-    
-    if(this.clienteSeleccionado){
+
+    if (this.clienteSeleccionado) {
       this.instalacionService.getInstalaciones().subscribe({
-        next: (data) => {
-          console.log('📦 Todas las instalaciones:', data);
-          this.instalaciones = data.filter(ins => ins.cliente_id === this.clienteSeleccionado);
-          console.log('✅ Instalaciones filtradas:', this.instalaciones);
+        next: data => {
+          this.instalaciones = data.filter(
+            i => i.cliente_id === this.clienteSeleccionado
+          );
         },
-        error: (err) => console.error('❌ Error al cargar instalaciones', err)
+        error: err => console.error('Error al cargar instalaciones', err)
       });
     }
   }
 
-  onInstalacionChange(): void{
-    console.log('🏭 Instalación seleccionada:', this.instalacionSeleccionada);
+  onInstalacionChange(): void {
+    this.asignacionActual.instalacion = this.instalacionSeleccionada!;
     this.asignacionActual.puesto = 0;
-    this.puestos = []
+    this.puestos = [];
 
-    if (this.instalacionSeleccionada){
-      this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada).subscribe({
-        next: (data) => {
-          this.puestos = data;
-          console.log('✅ Puestos cargados:', this.puestos);
-        },
-        error: (err) => console.error('❌ Error al cargar puestos', err) 
-      });
+    if (this.instalacionSeleccionada) {
+      this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada)
+        .subscribe({
+          next: data => this.puestos = data,
+          error: err => console.error('Error al cargar puestos', err)
+        });
     }
   }
 
+  // ===============================
+  // MODAL
+  // ===============================
   abrirModalNuevo(): void {
     this.modoEdicion = false;
     this.textoBotonAsignacion = 'Guardar';
@@ -156,28 +152,24 @@ export class AsignacionesComponent implements OnInit {
     this.instalacionSeleccionada = null;
     this.instalaciones = [];
     this.puestos = [];
+    // Asegura que los catálogos estén cargados antes de mostrar el modal
+    if (this.clientes.length === 0 || this.personas.length === 0 || this.horarios.length === 0) {
+      this.cargarCatalogos();
+    }
     this.mostrarModal = true;
   }
 
-  abrirModalEditar(asignacion: Asignacion): void{
+  abrirModalEditar(asignacion: Asignacion): void {
     this.modoEdicion = true;
     this.textoBotonAsignacion = 'Actualizar';
-    this.asignacionActual = {...asignacion}
-    this.clienteSeleccionado = asignacion.cliente;
-    this.instalacionSeleccionada = asignacion. instalacion;
+    this.asignacionActual = { ...asignacion };
 
-    this.instalacionService.getInstalaciones().subscribe({
-      next: (data) =>{
-       this.instalaciones = data.filter(ins => ins.cliente_id === this.clienteSeleccionado);
-        if (this.instalacionSeleccionada){
-          this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada).subscribe({
-            next: (puestos) => this.puestos = puestos,
-            error: (err) => console.error('Error al cargar puestos', err)
-          });
-        }
-      },
-      error: (err) => console.error('Error al cargar instaaciones', err)
-    });
+    this.clienteSeleccionado = asignacion.cliente;
+    this.instalacionSeleccionada = asignacion.instalacion;
+
+    this.onClientChange();
+    this.onInstalacionChange();
+
     this.mostrarModal = true;
   }
 
@@ -190,10 +182,11 @@ export class AsignacionesComponent implements OnInit {
     this.puestos = [];
   }
 
+  // ===============================
+  // CRUD
+  // ===============================
   guardarAsignacion(): void {
-      // Mostrar la lista de asignaciones actuales para depuración
-      console.log('📋 Asignaciones actuales:', this.asignaciones);
-    // Validar campos obligatorios
+
     if (!this.clienteSeleccionado) {
       alert('Debe seleccionar un Cliente');
       return;
@@ -202,84 +195,82 @@ export class AsignacionesComponent implements OnInit {
       alert('Debe seleccionar una Instalación');
       return;
     }
-    if (!this.asignacionActual.puesto || this.asignacionActual.puesto === 0) {
+    if (!this.asignacionActual.puesto) {
       alert('Debe seleccionar un Puesto');
       return;
     }
-    if (!this.asignacionActual.persona || this.asignacionActual.persona === 0) {
+    if (!this.asignacionActual.persona) {
       alert('Debe seleccionar una Persona');
       return;
     }
-    if (!this.asignacionActual.horario || this.asignacionActual.horario === 0) {
+    if (!this.asignacionActual.horario) {
       alert('Debe seleccionar un Horario');
       return;
     }
-    this.asignacionActual.cliente = this.clienteSeleccionado!;
-    this.asignacionActual.instalacion = this.instalacionSeleccionada!;
+
+    this.asignacionActual.cliente = this.clienteSeleccionado;
+    this.asignacionActual.instalacion = this.instalacionSeleccionada;
     this.asignacionActual.mes = this.mes;
     this.asignacionActual.anio = this.anio;
 
-    // Validación para evitar duplicados en el frontend
-    const yaExiste = this.asignaciones.some(asig =>
-      asig.persona === this.asignacionActual.persona &&
-      asig.mes === this.asignacionActual.mes &&
-      asig.anio === this.asignacionActual.anio &&
-      (!this.modoEdicion || (this.modoEdicion && asig.id !== this.asignacionActual.id))
+    const yaExiste = this.asignaciones.some(a =>
+      a.persona === this.asignacionActual.persona &&
+      a.mes === this.mes &&
+      a.anio === this.anio &&
+      (!this.modoEdicion || a.id !== this.asignacionActual.id)
     );
+
     if (yaExiste) {
-      alert('Ya existe una asignación para esta persona en el mes y año seleccionados. Edite la existente o elimínela antes de crear una nueva.');
+      alert('Ya existe una asignación para esta persona en este mes.');
       return;
     }
 
-    console.log('💾 Datos a enviar:', this.asignacionActual);
-
-    if (this.modoEdicion && this.asignacionActual.id){
-      this.asignacionService.actualizarAsignacion(this.asignacionActual.id, this.asignacionActual).subscribe({
+    if (this.modoEdicion && this.asignacionActual.id) {
+      this.asignacionService.actualizarAsignacion(
+        this.asignacionActual.id,
+        this.asignacionActual
+      ).subscribe({
         next: () => {
-          alert('Asignación actualizada con éxito');
+          alert('Asignación actualizada');
           this.cargarAsignaciones();
           this.cerrarModal();
         },
-        error: (err) =>{
-          console.error('❌ Error completo:', err);
-          console.error('❌ Detalles del error:', err.error);
-          alert('Error al actualizar la asignación: ' + JSON.stringify(err.error))
-        } 
+        error: err => {
+          console.error(err);
+          alert('Error al actualizar');
+        }
       });
     } else {
       this.asignacionService.crearAsignacion(this.asignacionActual).subscribe({
-        next: () =>{
-          alert('Asignacion Creada correctamente');
+        next: () => {
+          alert('Asignación creada');
           this.cargarAsignaciones();
           this.cerrarModal();
         },
-        error: (err) =>{
-          console.error('❌ Error completo:', err);
-          console.error('❌ Detalles del error:', err.error);
-          alert('Error al crear: ' + JSON.stringify(err.error));
+        error: err => {
+          console.error(err);
+          alert('Error al crear');
         }
       });
     }
   }
 
   eliminarAsignacion(asignacion: Asignacion): void {
-    if (confirm(`¿Estás seguro de eliminar la asignación de ${asignacion.persona}?`)){
+    if (confirm(`¿Eliminar la asignación de ${asignacion.persona_detalle?.apellidos} ${asignacion.persona_detalle?.nombres}?`)) {
       this.asignacionService.eliminarAsignacion(asignacion.id!).subscribe({
         next: () => {
-          alert('Asignacion eliminada con exito');
+          alert('Asignación eliminada');
           this.cargarAsignaciones();
         },
-        error: (err) =>{
-          console.error(`Error al eliminar asignacion de ${asignacion.persona}`, err);
-          alert('Error al eliminar la asignacion');
+        error: err => {
+          console.error(err);
+          alert('Error al eliminar');
         }
       });
     }
   }
 
-  cambiarMesAnio(): void{
+  cambiarMesAnio(): void {
     this.cargarAsignaciones();
   }
- 
-
 }
