@@ -39,14 +39,14 @@ export class PuestoFormComponent implements OnInit {
     const puesto = this.data.puesto || {};
     this.puestoForm = this.fb.group({
       nombre: [puesto.nombre || '', Validators.required],
-      instalacion_id: [puesto.instalacion_id || puesto.instalacion || '', Validators.required],
+      instalacion_id: [puesto.instalacion_id || null, Validators.required],
       horas_trabajo: [puesto.horas_trabajo || 8, Validators.required]
     });
 
     // Cargar instalaciones del cliente
     this.instalacionService.getInstalaciones().subscribe({
       next: (data) => {
-        this.instalaciones = data.filter(ins => ins.cliente === this.data.clienteId);
+        this.instalaciones = data.filter(ins => (ins.cliente_id ?? ins.cliente) === this.data.clienteId);
       },
       error: (err) => console.error('Error al cargar instalaciones', err)
     });
