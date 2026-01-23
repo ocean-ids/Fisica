@@ -33,8 +33,8 @@ export class HorarioFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.horarioForm = this.fb.group({
-      hora_ingreso: [this.horario?.hora_ingreso || '', Validators.required],
-      hora_salida: [this.horario?.hora_salida || '', Validators.required]
+      hora_ingreso: [this.horario?.hora_ingreso || null, Validators.required],
+      hora_salida: [this.horario?.hora_salida || null, Validators.required]
     });
   }
 
