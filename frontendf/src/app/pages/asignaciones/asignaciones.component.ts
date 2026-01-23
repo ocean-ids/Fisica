@@ -152,9 +152,12 @@ export class AsignacionesComponent implements OnInit {
     this.instalacionSeleccionada = null;
     this.instalaciones = [];
     this.puestos = [];
-    // Asegura que los catálogos estén cargados antes de mostrar el modal
     if (this.clientes.length === 0 || this.personas.length === 0 || this.horarios.length === 0) {
       this.cargarCatalogos();
+    }
+    // Si ya hay una instalación seleccionada, carga los puestos
+    if (this.instalacionSeleccionada) {
+      this.onInstalacionChange();
     }
     this.mostrarModal = true;
   }

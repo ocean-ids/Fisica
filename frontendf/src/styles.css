@@ -14,3 +14,8 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Fix para que los overlays de Angular Material (mat-select, etc) estén por encima de los modals de Bootstrap */
+.cdk-overlay-container {
+  z-index: 2000 !important;
+}
