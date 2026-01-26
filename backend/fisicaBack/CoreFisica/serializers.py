@@ -52,4 +52,5 @@ class AsignacionSerializer(serializers.ModelSerializer):
 class AsignacionCalendarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = AsignacionCalendario
+        fields = '__all__'
     
