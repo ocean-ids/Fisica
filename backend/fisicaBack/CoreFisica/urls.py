@@ -11,7 +11,7 @@ from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_p
 from .views.reportes_views import generar_pdf_Horario,generar_excel_horario,export_excel, export_pdf
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion
-
+from .views.asignacion_calendario_views import listar_asignacion_calendario, crear_asignacion_calendario
 
 urlpatterns = [
     path('login/', login_view),
@@ -52,6 +52,8 @@ urlpatterns = [
     path('editar-servicio/<int:id>/', editar_servicio),
     path('guardar-orden-asignacion/', guardar_orden_asignacion),
     path('eliminar-asignacion/<int:id>/', eliminar_asignacion),
+    path('asignacion-calendario/', listar_asignacion_calendario),
+    path('asignacion-calendario/crear/', crear_asignacion_calendario),
     path('generar-pdf/', generar_pdf_Horario),
     path('generar-excel/', generar_excel_horario),
 
