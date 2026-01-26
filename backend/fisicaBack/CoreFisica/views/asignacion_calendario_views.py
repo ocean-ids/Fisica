@@ -5,13 +5,12 @@ from rest_framework import status
 
 @api_view(['GET'])
 def listar_asignacion_calendario(request):
+   
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
     asignacion_id = request.GET.get('asignacion_id')
 
-
     asignaciones = AsignacionCalendario.objects.all()
-
     if fecha:
         asignaciones = asignaciones.filter(fecha=fecha)
     if turno:
@@ -19,8 +18,18 @@ def listar_asignacion_calendario(request):
     if asignacion_id:
         asignaciones = asignaciones.filter(asignacion_id=asignacion_id)
 
-    page = int(request.GET.get('page', 1))
-    page_size = int(request.GET.get('page_size', 10))
+   
+    asignaciones = asignaciones.order_by('fecha')
+
+   
+    try:
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+        if page < 1 or page_size < 1:
+            raise ValueError
+    except ValueError:
+        return Response({"error": "Parámetros de paginación inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+
     start = (page - 1) * page_size
     end = start + page_size
 
@@ -36,14 +45,17 @@ def listar_asignacion_calendario(request):
             'dia_numero': asignacion.dia_numero
         })
 
-    return Response(data)
-
+    return Response({
+        "results": data,
+        "page": page,
+        "page_size": page_size,
+        "total": len(asignaciones_list)
+    })
 
 @api_view(['POST'])
 def crear_asignacion_calendario(request):
     datos = request.data
 
-    
     if not datos.get("asignacion_id") or not datos.get("fecha") or not datos.get("turno"):
         return Response({"error": "Faltan datos requeridos"}, status=status.HTTP_400_BAD_REQUEST)
     try:
