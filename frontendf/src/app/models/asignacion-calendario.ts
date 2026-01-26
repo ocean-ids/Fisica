@@ -1,0 +1,2 @@
+export interface AsignacionCalendario {
+}
