@@ -15,12 +15,13 @@ export class ApiService {
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   }
 
-  get<T>(endpoint: string): Observable<T> {
-    return this.http.get<T>(`${this.baseUrl}${endpoint}`, {
-      headers: this.getHeaders(),
-      observe: 'body'
-    });
-  }
+  get<T>(endpoint: string, params?: any): Observable<T> {
+  return this.http.get<T>(`${this.baseUrl}${endpoint}`, {
+    headers: this.getHeaders(),
+    observe: 'body',
+    params
+  });
+}
 
   post<T>(endpoint: string, data: any): Observable<T> {
     return this.http.post<T>(`${this.baseUrl}${endpoint}`, data, {
