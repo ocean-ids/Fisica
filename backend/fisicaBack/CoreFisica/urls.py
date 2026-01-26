@@ -54,6 +54,7 @@ urlpatterns = [
     path('eliminar-asignacion/<int:id>/', eliminar_asignacion),
     path('generar-pdf/', generar_pdf_Horario),
     path('generar-excel/', generar_excel_horario),
+
     
 ]
 
