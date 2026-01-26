@@ -108,7 +108,7 @@ WSGI_APPLICATION = 'fisicaBack.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'fisica',
+        'NAME': 'sgp_bd',
         'USER': 'postgres',
         'PASSWORD': 'root',
         'HOST': 'localhost',

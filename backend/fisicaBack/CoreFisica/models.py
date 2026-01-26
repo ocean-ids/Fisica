@@ -99,7 +99,7 @@ class Asignacion(models.Model):
         return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio}){patron}"
 
 
-class Asistencia(models.Model):
+class AsignacionCalendario(models.Model):
 
     TURNO_CHOICES = [
         ('D', 'Día'),

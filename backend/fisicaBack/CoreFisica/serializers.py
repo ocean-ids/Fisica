@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Asignacion
+from .models import Asignacion, AsignacionCalendario
 
 class AsignacionSerializer(serializers.ModelSerializer):
     
@@ -48,3 +48,8 @@ class AsignacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asignacion
         fields = '__all__'
+
+class AsignacionCalendarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AsignacionCalendario
+    
