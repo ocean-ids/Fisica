@@ -10,7 +10,7 @@ from ..models import Instalacion, Puesto
 def crear_puesto(request):
     data = json.loads(request.body)
     instalacion_id = data.get('instalacion_id')
-    cantidad_guardias = data.get('cantidad_guardias')
+    cantidad_guardias = data.get('cantidad_guardias', 1)
     instalacion = Instalacion.objects.get(id=instalacion_id)
     puesto = Puesto.objects.create(
         nombre=data.get('nombre'),
