@@ -35,15 +35,14 @@
           <tr class="text-center">
             <th rowspan="2">Horario</th>
             <th rowspan="2">Cliente</th>
-            <th colspan="3">Puesto</th>
+            <th colspan="2">Puesto</th>
             <th rowspan="2">Cédula</th>
             <th rowspan="2">Persona</th>
             <th rowspan="2">Acciones</th>
           </tr>
           <tr>
             <th>Nombre</th>
-            <th># Guardias</th>
-            <th>Horas</th>
+            <th># Guardias - Horas</th>
           </tr>
         </thead>
         <tbody>
@@ -51,8 +50,7 @@
             <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }} - {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
             <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
             <td>{{ asig.puesto_detalle?.nombre }}</td>
-            <td>{{ asig.puesto_detalle?.cantidad_guardias }}</td>
-            <td>{{ asig.puesto_detalle?.horas_trabajo }}</td>
+            <td>{{ asig.puesto_detalle?.cantidad_guardias}} - {{asig.puesto_detalle?.horas_trabajo }}</td>
             <td>{{ asig.persona_detalle?.cedula }}</td>
             <td>{{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}</td>
             <td>

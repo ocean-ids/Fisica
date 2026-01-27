@@ -27,7 +27,7 @@
       <div class="table-responsive">
         <table class="table table-hover table-bordered">
           <thead class="table-light">
-            <tr>
+            <tr class="text-center">
               <th>Nombre</th>
               <th>Cantidad Guardias</th>
               <th>Horas de Trabajo</th>
@@ -36,10 +36,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let puesto of puestos">
+            <tr class="text-center" *ngFor="let puesto of puestos">
               <td>{{ puesto.nombre }}</td>
               <td>{{ puesto.cantidad_guardias }}</td>
-              <td>{{ puesto.horas_trabajo || '-' }} horas</td>
+              <td>{{ puesto.horas_trabajo || '-' }}</td>
               <td>{{ puesto.instalacion__provincia }} - {{ puesto.instalacion__ciudad }}</td>
               <td class="text-center">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirFormularioNuevo(puesto)">

@@ -8,7 +8,6 @@ from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_clie
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
 from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto
-from .views.reportes_views import generar_pdf_Horario,generar_excel_horario,export_excel, export_pdf
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion
 from .views.asignacion_calendario_views import listar_asignacion_calendario, crear_asignacion_calendario
@@ -21,8 +20,6 @@ urlpatterns = [
     path('user/', user_view),
     path('solicitar-reset-password/', solicitar_reset_password),
     path('reset-password/<str:uidb64>/<str:token>/', reset_password),
-    path('reporte/excel/', export_excel),
-    path('reporte/pdf/', export_pdf),
     path('crear-cliente/', crear_cliente),
     path('clientes/', obtener_clientes),
     path('clientes/<str:id>/', obtener_cliente_id),
@@ -54,8 +51,8 @@ urlpatterns = [
     path('eliminar-asignacion/<int:id>/', eliminar_asignacion),
     path('asignacion-calendario/', listar_asignacion_calendario),
     path('asignacion-calendario/crear/', crear_asignacion_calendario),
-    path('generar-pdf/', generar_pdf_Horario),
-    path('generar-excel/', generar_excel_horario),
+
+
 
     
 ]
