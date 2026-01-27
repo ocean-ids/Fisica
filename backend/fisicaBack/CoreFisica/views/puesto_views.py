@@ -10,9 +10,11 @@ from ..models import Instalacion, Puesto
 def crear_puesto(request):
     data = json.loads(request.body)
     instalacion_id = data.get('instalacion_id')
+    cantidad_guardias = data.get('cantidad_guardias')
     instalacion = Instalacion.objects.get(id=instalacion_id)
     puesto = Puesto.objects.create(
         nombre=data.get('nombre'),
+        cantidad_guardias=cantidad_guardias,
         instalacion_id=instalacion.id
     )
     return JsonResponse({'message': 'Puesto creado', 'id': puesto.id})
@@ -21,20 +23,20 @@ def crear_puesto(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos(request):
-    puestos = Puesto.objects.all().values('id', 'nombre', 'instalacion_id')
+    puestos = Puesto.objects.all().values('id', 'nombre','cantidad_guardias', 'instalacion_id')
     return JsonResponse(list(puestos), safe=False)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_instalacion(request, instalacion_id):
-    puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values('id', 'nombre', 'horas_trabajo', 'instalacion_id')
+    puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values('id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'instalacion_id')
     return JsonResponse(list(puestos), safe=False)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_cliente(request, cliente_id):
     puestos = Puesto.objects.filter(instalacion__cliente_id=cliente_id).values(
-        'id', 'nombre', 'horas_trabajo', 'instalacion_id', 
+        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'instalacion_id', 
         'instalacion__provincia', 'instalacion__ciudad'
     )
     return JsonResponse(list(puestos), safe=False)
@@ -47,6 +49,7 @@ def actualizar_puesto(request, id):
         puesto = Puesto.objects.get(id=id)
 
         puesto.nombre = data.get('nombre', puesto.nombre)
+        puesto.cantidad_guardias = data.get('cantidad_guardias', puesto.cantidad_guardias)
         puesto.horas_trabajo = data.get('horas_trabajo', puesto.horas_trabajo)
         puesto.instalacion_id = data.get('instalacion_id', puesto.instalacion_id)
 
