@@ -103,7 +103,7 @@ def solicitar_reset_password(request):
         
         return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
     
-    # Generar token
+    
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     

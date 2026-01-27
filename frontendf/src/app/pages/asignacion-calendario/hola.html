@@ -1,0 +1,65 @@
+<div class="container mt-4">
+  <h2>Asignaciones Calendario</h2>
+
+  <!-- Formulario para crear nueva asignación -->
+  <form (ngSubmit)="crearAsignacion()" #form="ngForm" class="mb-4">
+    <div class="form-row align-items-end">
+      <div class="form-group col">
+        <label>Asignación ID</label>
+        <input type="number" class="form-control" [(ngModel)]="nueva.asignacion" name="asignacion" required>
+      </div>
+      <div class="form-group col">
+        <label>Fecha</label>
+        <input type="date" class="form-control" [(ngModel)]="nueva.fecha" name="fecha" required>
+      </div>
+      <div class="form-group col">
+        <label>Turno</label>
+        <input type="text" class="form-control" [(ngModel)]="nueva.turno" name="turno" required>
+      </div>
+      <div class="form-group col">
+        <label>Día Número</label>
+        <input type="number" class="form-control" [(ngModel)]="nueva.dia_numero" name="dia_numero">
+      </div>
+      <div class="form-group col-auto">
+        <button type="submit" class="btn btn-primary">Crear</button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Tabla de asignaciones -->
+  <table class="table table-striped table-bordered">
+    <thead class="thead-dark">
+      <tr>
+        <th>ID</th>
+        <th>Asignación</th>
+        <th>Fecha</th>
+        <th>Turno</th>
+        <th>Día Número</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let a of asignaciones">
+        <td>{{ a.id }}</td>
+        <td>{{ a.asignacion }}</td>
+        <td>{{ a.fecha }}</td>
+        <td>{{ a.turno }}</td>
+        <td>{{ a.dia_numero }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Paginación -->
+  <nav>
+    <ul class="pagination justify-content-center">
+      <li class="page-item" [class.disabled]="page === 1">
+        <button class="page-link" (click)="anteriorPagina()" [disabled]="page === 1">Anterior</button>
+      </li>
+      <li class="page-item disabled">
+        <span class="page-link">Página {{ page }}</span>
+      </li>
+      <li class="page-item" [class.disabled]="(page * pageSize) >= total">
+        <button class="page-link" (click)="siguientePagina()" [disabled]="(page * pageSize) >= total">Siguiente</button>
+      </li>
+    </ul>
+  </nav>
+</div>
