@@ -1,10 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { AsignacionCalendario } from '../../models/asignacion-calendario';
 import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-asignacion-calendario',
-  imports: [],
+  imports: [FormsModule, CommonModule],
   templateUrl: './asignacion-calendario.component.html',
   styleUrl: './asignacion-calendario.component.css'
 })
@@ -15,6 +17,7 @@ export class AsignacionCalendarioComponent implements OnInit{
   pageSize = 10;
   total = 0;
 
+
   constructor(private asignacionCalendarioService: AsignacionCalendarioService){}
 
   ngOnInit(): void {
@@ -24,7 +27,7 @@ export class AsignacionCalendarioComponent implements OnInit{
   cargarAsignaciones(){
     this.asignacionCalendarioService.obtenerAsignacionesCalendario({page: 1, page_size:10})
       .subscribe(res => {
-        this.asignaciones = res.results;
+        this.asignaciones = Array.isArray(res.results) ? res.results : [];
       });
   }
 
