@@ -1,6 +1,7 @@
 export interface Puesto {
     id?: number;
     nombre: string;
+    cantidad_guardias: number;
     horas_trabajo?: number;
     descripcion?: string;
     instalacion?: number;
