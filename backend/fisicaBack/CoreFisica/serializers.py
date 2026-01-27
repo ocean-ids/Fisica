@@ -35,7 +35,9 @@ class AsignacionSerializer(serializers.ModelSerializer):
     def get_puesto_detalle(self, obj):
         return {
             'id': obj.puesto.id,
-            'nombre': obj.puesto.nombre
+            'nombre': obj.puesto.nombre,
+            'cantidad_guardias': obj.puesto.cantidad_guardias,
+            'horas_trabajo': obj.puesto.horas_trabajo
         }
     
     def get_horario_detalle(self, obj):
