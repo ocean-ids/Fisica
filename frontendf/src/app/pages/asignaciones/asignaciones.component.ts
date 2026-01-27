@@ -8,12 +8,13 @@ import { PuestoService } from '../../services/puesto.service';
 import { PersonaService } from '../../services/persona.service';
 import { HorarioService } from '../../services/horario.service';
 import { AsignacionService } from '../../services/asignacion.service';
-
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatCardModule } from '@angular/material/card';
+import { HttpClient } from '@angular/common/http';
+import { saveAs } from 'file-saver';
 
 @Component({
   selector: 'app-asignaciones',
@@ -58,7 +59,8 @@ export class AsignacionesComponent implements OnInit {
     private puestoService: PuestoService,
     private personaService: PersonaService,
     private horarioService: HorarioService,
-    private asignacionService: AsignacionService
+    private asignacionService: AsignacionService,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -104,9 +106,7 @@ export class AsignacionesComponent implements OnInit {
     };
   }
 
-  // ===============================
-  // EVENTOS SELECT
-  // ===============================
+  
   onClientChange(): void {
     this.asignacionActual.cliente = this.clienteSeleccionado!;
     this.instalacionSeleccionada = null;
@@ -141,9 +141,7 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
-  // ===============================
-  // MODAL
-  // ===============================
+
   abrirModalNuevo(): void {
     this.modoEdicion = false;
     this.textoBotonAsignacion = 'Guardar';
@@ -155,11 +153,18 @@ export class AsignacionesComponent implements OnInit {
     if (this.clientes.length === 0 || this.personas.length === 0 || this.horarios.length === 0) {
       this.cargarCatalogos();
     }
-    // Si ya hay una instalación seleccionada, carga los puestos
+   
     if (this.instalacionSeleccionada) {
       this.onInstalacionChange();
     }
     this.mostrarModal = true;
+  }
+
+  descargarReporteExcel() {
+  this.http.get('http://localhost:8000/api/reporte-asignaciones/', { responseType: 'blob' })
+    .subscribe(blob => {
+      saveAs(blob, 'reporte_asignaciones.xlsx');
+    });
   }
 
   abrirModalEditar(asignacion: Asignacion): void {
@@ -185,9 +190,6 @@ export class AsignacionesComponent implements OnInit {
     this.puestos = [];
   }
 
-  // ===============================
-  // CRUD
-  // ===============================
   guardarAsignacion(): void {
 
     if (!this.clienteSeleccionado) {

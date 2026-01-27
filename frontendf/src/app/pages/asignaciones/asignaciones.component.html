@@ -23,6 +23,14 @@
           <label class="form-label">Año</label>
           <input type="number" class="form-control" [(ngModel)]="anio" (change)="cambiarMesAnio()" />
         </div>
+    
+        <div class="col-md-3 d-flex align-items-end">
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 100%;">
+            <button (click)="descargarReporteExcel()" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
+              <img src="assets/images/excel-icon.png" alt="Excel" width="38" height="38" style="vertical-align: middle;" />
+              <span style="font-size: 13px; margin-top: 2px; text-align: center; color: #198754;">Descargar Excel</span>
+            </button>
+          </div>
       </div>
     </div>
   </div>

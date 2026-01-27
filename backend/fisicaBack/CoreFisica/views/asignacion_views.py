@@ -1,8 +1,10 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.http import HttpResponse
 from rest_framework import status
 from ..models import Asignacion
 from ..serializers import AsignacionSerializer
+import openpyxl
 
 
 @api_view(['GET'])
@@ -62,3 +64,26 @@ def eliminar_asignacion(request, id):
         return Response({'mensaje': 'Asignación eliminada correctamente'}, status=status.HTTP_204_NO_CONTENT)
     except Asignacion.DoesNotExist:
         return Response({'error': 'Asignacion no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+
+def exportar_asignaciones_excel(request):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Asignaciones"
+
+    ws.append(['Horario', 'Cliente', 'Nombre Puesto', 'Cantidad de Guardias', 'Horas de Trabajo', 'Cédula', 'Persona'])
+
+    for asignacion in Asignacion.objects.all():
+        ws.append([
+        f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}",
+        asignacion.cliente.nombre_comercial,
+        asignacion.puesto.nombre,
+        asignacion.puesto.cantidad_guardias,
+        asignacion.puesto.horas_trabajo,
+        asignacion.persona.cedula,
+        f"{asignacion.persona.apellidos} {asignacion.persona.nombres}"
+    ])
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=reporte_asignaciones.xlsx'
+    wb.save(response)
+    return response
