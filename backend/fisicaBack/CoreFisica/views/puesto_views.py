@@ -11,10 +11,14 @@ def crear_puesto(request):
     data = json.loads(request.body)
     instalacion_id = data.get('instalacion_id')
     cantidad_guardias = data.get('cantidad_guardias', 1)
+    sistema = data.get('sistema', '') 
+    descripcion_sistema = data.get('descripcion_sistema', '')
     instalacion = Instalacion.objects.get(id=instalacion_id)
     puesto = Puesto.objects.create(
         nombre=data.get('nombre'),
         cantidad_guardias=cantidad_guardias,
+        sistema=sistema,
+        descripcion_sistema=descripcion_sistema,
         instalacion_id=instalacion.id
     )
     return JsonResponse({'message': 'Puesto creado', 'id': puesto.id})
