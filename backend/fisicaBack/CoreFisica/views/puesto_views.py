@@ -13,12 +13,19 @@ def crear_puesto(request):
     cantidad_guardias = data.get('cantidad_guardias', 1)
     sistema = data.get('sistema', '') 
     descripcion_sistema = data.get('descripcion_sistema', '')
+    turno_dia = data.get('turno_dia', False)
+    turno_noche = data.get('turno_noche', False)
+    dias = data.get('dias', [])
+
     instalacion = Instalacion.objects.get(id=instalacion_id)
     puesto = Puesto.objects.create(
         nombre=data.get('nombre'),
         cantidad_guardias=cantidad_guardias,
         sistema=sistema,
         descripcion_sistema=descripcion_sistema,
+        turno_dia=turno_dia,
+        turno_noche=turno_noche,
+        dias=dias,
         instalacion_id=instalacion.id
     )
     return JsonResponse({'message': 'Puesto creado', 'id': puesto.id})
@@ -27,20 +34,27 @@ def crear_puesto(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos(request):
-    puestos = Puesto.objects.all().values('id', 'nombre','cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema', 'instalacion_id')
+    puestos = Puesto.objects.all().values(
+        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema',
+        'turno_dia', 'turno_noche', 'dias', 'instalacion_id'
+    )
     return JsonResponse(list(puestos), safe=False)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_instalacion(request, instalacion_id):
-    puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values('id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema', 'instalacion_id')
+    puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values(
+        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema',
+        'turno_dia', 'turno_noche', 'dias', 'instalacion_id'
+    )
     return JsonResponse(list(puestos), safe=False)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_cliente(request, cliente_id):
     puestos = Puesto.objects.filter(instalacion__cliente_id=cliente_id).values(
-        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema', 'instalacion_id', 
+        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema',
+        'turno_dia', 'turno_noche', 'dias', 'instalacion_id', 
         'instalacion__provincia', 'instalacion__ciudad'
     )
     return JsonResponse(list(puestos), safe=False)
@@ -52,19 +66,20 @@ def actualizar_puesto(request, id):
         data = json.loads(request.body)
         puesto = Puesto.objects.get(id=id)
 
-        
         instalacion_id = data.get('instalacion_id')
         if instalacion_id:
             if not Instalacion.objects.filter(id=instalacion_id).exists():
                 return JsonResponse({'error': 'Instalación no encontrada'}, status=404)
             puesto.instalacion_id = instalacion_id
 
-        
         puesto.nombre = data.get('nombre', puesto.nombre)
         puesto.cantidad_guardias = data.get('cantidad_guardias', puesto.cantidad_guardias)
         puesto.horas_trabajo = data.get('horas_trabajo', puesto.horas_trabajo)
         puesto.sistema = data.get('sistema', puesto.sistema)
         puesto.descripcion_sistema = data.get('descripcion_sistema', puesto.descripcion_sistema)
+        puesto.turno_dia = data.get('turno_dia', puesto.turno_dia)
+        puesto.turno_noche = data.get('turno_noche', puesto.turno_noche)
+        puesto.dias = data.get('dias', puesto.dias)
 
         puesto.save()
         return JsonResponse({
@@ -76,6 +91,9 @@ def actualizar_puesto(request, id):
                 'horas_trabajo': puesto.horas_trabajo,
                 'sistema': puesto.sistema,
                 'descripcion_sistema': puesto.descripcion_sistema,
+                'turno_dia': puesto.turno_dia,
+                'turno_noche': puesto.turno_noche,
+                'dias': puesto.dias,
                 'instalacion_id': puesto.instalacion_id,
             }
         }, status=200)
