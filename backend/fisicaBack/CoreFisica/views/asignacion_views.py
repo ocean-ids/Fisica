@@ -71,18 +71,21 @@ def exportar_asignaciones_excel(request):
     ws = wb.active
     ws.title = "Asignaciones"
 
-    ws.append(['Horario', 'Cliente', 'Nombre Puesto', 'Cantidad de Guardias', 'Horas de Trabajo', 'Cédula', 'Persona'])
+    
+    ws.append(['Horario', 'Código Cliente', 'Cliente', 'Nombre Puesto', 'Cantidad de Guardias', 'Horas de Trabajo', 'Cédula', 'Persona'])
 
     for asignacion in Asignacion.objects.all():
         ws.append([
-        f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}",
-        asignacion.cliente.nombre_comercial,
-        asignacion.puesto.nombre,
-        asignacion.puesto.cantidad_guardias,
-        asignacion.puesto.horas_trabajo,
-        asignacion.persona.cedula,
-        f"{asignacion.persona.apellidos} {asignacion.persona.nombres}"
-    ])
+            f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}",
+            asignacion.cliente.codigo,  # Agrega el código del cliente
+            asignacion.cliente.nombre_comercial,
+            asignacion.puesto.nombre,
+            asignacion.puesto.cantidad_guardias,
+            asignacion.puesto.horas_trabajo,
+            asignacion.persona.cedula,
+            f"{asignacion.persona.apellidos} {asignacion.persona.nombres}"
+        ])
+    
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename=reporte_asignaciones.xlsx'
     wb.save(response)
