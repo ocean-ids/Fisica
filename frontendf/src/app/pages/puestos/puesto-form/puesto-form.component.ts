@@ -38,16 +38,15 @@ export class PuestoFormComponent implements OnInit {
   ngOnInit(): void {
     const puesto = this.data.puesto || {};
     this.puestoForm = this.fb.group({
-      nombre: [puesto.nombre || '', Validators.required],
-       cantidad_guardias: [puesto.cantidad_guardias || 1, [Validators.required, Validators.min(1)]],
-      instalacion_id: [puesto.instalacion_id || null, Validators.required],
-      horas_trabajo: [puesto.horas_trabajo || 8, Validators.required],
-      turno_dia: [puesto.turno_dia || false],
-      turno_noche: [puesto.turno_noche || false],
-      dias: [puesto.dias || []]
+      nombre: [puesto?.nombre || '', Validators.required],
+      instalacion_id: [puesto?.instalacion_id || '', Validators.required],
+      cantidad_guardias: [puesto?.cantidad_guardias || 0, Validators.required],
+      horas_trabajo: [puesto?.horas_trabajo || 0, Validators.required],
+      descripcion_sistema: [puesto?.descripcion_sistema || ''],
+      turno: [puesto?.turno || 'dia', Validators.required],
+      dias: [puesto?.dias || []]
     });
 
-    
     this.instalacionService.getInstalaciones().subscribe({
       next: (data) => {
         this.instalaciones = data.filter(ins => (ins.cliente_id ?? ins.cliente) === this.data.clienteId);
@@ -58,7 +57,13 @@ export class PuestoFormComponent implements OnInit {
 
   onSubmit(): void {
     if (this.puestoForm.valid) {
-      this.dialogRef.close(this.puestoForm.value);
+      const formValue = this.puestoForm.value;
+      const payload = {
+        ...formValue,
+        turno: formValue.turno, // Ensure `turno` is sent correctly
+      };
+      console.log('Payload enviado:', JSON.stringify(payload, null, 2)); // Log detailed payload for debugging
+      this.dialogRef.close(payload);
     }
   }
 

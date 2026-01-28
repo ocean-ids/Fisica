@@ -31,8 +31,10 @@ class Puesto(models.Model):
     cantidad_guardias = models.IntegerField(default=0)
     horas_trabajo = models.IntegerField(default=0)
     descripcion_sistema = models.TextField(blank=True, null=True)  # Mantén la descripción dinámica
-    turno_dia = models.BooleanField(default=False)
-    turno_noche = models.BooleanField(default=False)
+    turno = models.CharField(max_length=10, choices=[
+        ('dia', 'Día'),
+        ('noche', 'Noche'),
+    ], default='dia')
     dias = models.JSONField(default=list)
 
     def __str__(self):

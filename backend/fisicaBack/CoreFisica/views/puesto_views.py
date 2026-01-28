@@ -3,7 +3,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import  IsAuthenticated
 import json
 from ..models import Instalacion, Puesto
+import logging
 
+logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -13,8 +15,7 @@ def crear_puesto(request):
     cantidad_guardias = data.get('cantidad_guardias', 1)
     sistema = data.get('sistema', '') 
     descripcion_sistema = data.get('descripcion_sistema', '')
-    turno_dia = data.get('turno_dia', False)
-    turno_noche = data.get('turno_noche', False)
+    turno = data.get('turno', 'dia')  # Cambiado a usar el campo "turno"
     dias = data.get('dias', [])
 
     instalacion = Instalacion.objects.get(id=instalacion_id)
@@ -23,8 +24,7 @@ def crear_puesto(request):
         cantidad_guardias=cantidad_guardias,
         sistema=sistema,
         descripcion_sistema=descripcion_sistema,
-        turno_dia=turno_dia,
-        turno_noche=turno_noche,
+        turno=turno,  # Actualizado para usar "turno"
         dias=dias,
         instalacion_id=instalacion.id
     )
@@ -35,8 +35,8 @@ def crear_puesto(request):
 @permission_classes([IsAuthenticated])
 def obtener_puestos(request):
     puestos = Puesto.objects.all().values(
-        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema',
-        'turno_dia', 'turno_noche', 'dias', 'instalacion_id'
+        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'descripcion_sistema',
+        'turno', 'dias', 'instalacion_id'  # Eliminados "turno_dia" y "turno_noche"
     )
     return JsonResponse(list(puestos), safe=False)
 
@@ -44,8 +44,8 @@ def obtener_puestos(request):
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_instalacion(request, instalacion_id):
     puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values(
-        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema',
-        'turno_dia', 'turno_noche', 'dias', 'instalacion_id'
+        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'descripcion_sistema',
+        'turno', 'dias', 'instalacion_id'  # Eliminados "turno_dia" y "turno_noche"
     )
     return JsonResponse(list(puestos), safe=False)
 
@@ -53,8 +53,8 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_cliente(request, cliente_id):
     puestos = Puesto.objects.filter(instalacion__cliente_id=cliente_id).values(
-        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema',
-        'turno_dia', 'turno_noche', 'dias', 'instalacion_id', 
+        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'descripcion_sistema',
+        'turno', 'dias', 'instalacion_id',  # Eliminados "turno_dia" y "turno_noche"
         'instalacion__provincia', 'instalacion__ciudad'
     )
     return JsonResponse(list(puestos), safe=False)
@@ -64,6 +64,7 @@ def obtener_puestos_por_cliente(request, cliente_id):
 def actualizar_puesto(request, id):
     try:
         data = json.loads(request.body)
+        print('Payload recibido:', data)  # Log the incoming payload for debugging
         puesto = Puesto.objects.get(id=id)
 
         instalacion_id = data.get('instalacion_id')
@@ -75,10 +76,11 @@ def actualizar_puesto(request, id):
         puesto.nombre = data.get('nombre', puesto.nombre)
         puesto.cantidad_guardias = data.get('cantidad_guardias', puesto.cantidad_guardias)
         puesto.horas_trabajo = data.get('horas_trabajo', puesto.horas_trabajo)
-        puesto.sistema = data.get('sistema', puesto.sistema)
         puesto.descripcion_sistema = data.get('descripcion_sistema', puesto.descripcion_sistema)
-        puesto.turno_dia = data.get('turno_dia', puesto.turno_dia)
-        puesto.turno_noche = data.get('turno_noche', puesto.turno_noche)
+        turno = data.get('turno')
+        if turno not in ['dia', 'noche']:
+            return JsonResponse({'error': 'Valor de turno inválido'}, status=400)
+        puesto.turno = turno
         puesto.dias = data.get('dias', puesto.dias)
 
         puesto.save()
@@ -89,10 +91,8 @@ def actualizar_puesto(request, id):
                 'nombre': puesto.nombre,
                 'cantidad_guardias': puesto.cantidad_guardias,
                 'horas_trabajo': puesto.horas_trabajo,
-                'sistema': puesto.sistema,
                 'descripcion_sistema': puesto.descripcion_sistema,
-                'turno_dia': puesto.turno_dia,
-                'turno_noche': puesto.turno_noche,
+                'turno': puesto.turno,
                 'dias': puesto.dias,
                 'instalacion_id': puesto.instalacion_id,
             }

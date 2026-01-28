@@ -31,6 +31,8 @@
               <th>Nombre</th>
               <th>Cantidad Guardias</th>
               <th>Horas de Trabajo</th>
+              <th>Turno</th> <!-- Nueva columna para Turno -->
+              <th>Días</th> <!-- Nueva columna para Días -->
               <th>Instalación</th>
               <th class="text-center">Acciones</th>
             </tr>
@@ -40,6 +42,8 @@
               <td>{{ puesto.nombre }}</td>
               <td>{{ puesto.cantidad_guardias }}</td>
               <td>{{ puesto.horas_trabajo || '-' }}</td>
+              <td>{{ puesto.turno }}</td> <!-- Mostrar Turno -->
+              <td>{{ puesto.dias?.join(', ') || '-' }}</td> <!-- Mostrar Días -->
               <td>{{ puesto.instalacion__provincia }} - {{ puesto.instalacion__ciudad }}</td>
               <td class="text-center">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirFormularioNuevo(puesto)">
@@ -51,7 +55,7 @@
               </td>
             </tr>
             <tr *ngIf="puestos.length === 0">
-              <td colspan="5" class="text-center text-muted py-4">
+              <td colspan="7" class="text-center text-muted py-4">
                 No hay puestos registrados para este cliente
               </td>
             </tr>

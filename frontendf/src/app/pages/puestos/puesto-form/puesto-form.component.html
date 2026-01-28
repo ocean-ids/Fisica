@@ -40,6 +40,27 @@
         Las horas de trabajo son requeridas
       </mat-error>
     </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Turno</mat-label>
+      <mat-select formControlName="turno" required>
+        <mat-option value="dia">Día</mat-option>
+        <mat-option value="noche">Noche</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Días</mat-label>
+      <mat-select formControlName="dias" multiple>
+        <mat-option value="Lunes">Lunes</mat-option>
+        <mat-option value="Martes">Martes</mat-option>
+        <mat-option value="Miércoles">Miércoles</mat-option>
+        <mat-option value="Jueves">Jueves</mat-option>
+        <mat-option value="Viernes">Viernes</mat-option>
+        <mat-option value="Sábado">Sábado</mat-option>
+        <mat-option value="Domingo">Domingo</mat-option>
+      </mat-select>
+    </mat-form-field>
   </form>
 </mat-dialog-content>
 

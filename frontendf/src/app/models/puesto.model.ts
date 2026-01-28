@@ -13,4 +13,5 @@ export interface Puesto {
   instalacion_nombre?: string;
   instalacion__provincia?: string;
   instalacion__ciudad?: string;
+  turno?: string; 
 }

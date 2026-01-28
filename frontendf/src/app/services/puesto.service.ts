@@ -25,18 +25,15 @@ export class PuestoService {
     crearPuesto(puesto: Puesto): Observable<any> {
         return this.apiService.post('/crear-puesto/', {
             ...puesto,
-            turno_dia: puesto.turno_dia ?? false,
-            turno_noche: puesto.turno_noche ?? false,
+            turno: puesto.turno,
             dias: puesto.dias ?? []
         });
     }
 
-
     actualizarPuesto(id: number, puesto: Puesto): Observable<any> {
         return this.apiService.put(`/actualizar-puesto/${id}/`, {
             ...puesto,
-            turno_dia: puesto.turno_dia ?? false,
-            turno_noche: puesto.turno_noche ?? false,
+            turno: puesto.turno,
             dias: puesto.dias ?? []
         });
     }
