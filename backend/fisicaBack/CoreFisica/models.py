@@ -30,6 +30,8 @@ class Puesto(models.Model):
     nombre = models.CharField(max_length=100)
     cantidad_guardias = models.IntegerField(default=0)
     horas_trabajo = models.IntegerField(default=0)
+    sistema = models.CharField(max_length=50, blank=True, null=True)
+    descripcion_sistema = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.nombre
