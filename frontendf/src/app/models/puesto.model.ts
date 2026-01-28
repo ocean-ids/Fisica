@@ -3,7 +3,9 @@ export interface Puesto {
   nombre: string;
   cantidad_guardias: number;
   horas_trabajo: number;
-  sistema: string;
+  turno_dia?: boolean;
+  turno_noche?: boolean;
+  dias?: string[];
   descripcion_sistema?: string;
   instalacion_id: number;
   descripcion?: string;
