@@ -33,7 +33,7 @@ def obtener_puestos(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_instalacion(request, instalacion_id):
-    puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values('id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'instalacion_id')
+    puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values('id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema', 'instalacion_id')
     return JsonResponse(list(puestos), safe=False)
 
 @api_view(['GET'])
