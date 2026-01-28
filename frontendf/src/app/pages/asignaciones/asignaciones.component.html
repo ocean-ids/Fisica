@@ -42,6 +42,7 @@
         <thead class="table-light text-center">
           <tr class="text-center">
             <th rowspan="2">Horario</th>
+            <th rowspan="2">Código</th>
             <th rowspan="2">Cliente</th>
             <th colspan="2">Puesto</th>
             <th rowspan="2">Cédula</th>
@@ -56,6 +57,7 @@
         <tbody>
           <tr class="text-center" *ngFor="let asig of asignaciones">
             <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }} - {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
+            <td>{{ asig.cliente_detalle?.codigo }}</td>
             <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
             <td>{{ asig.puesto_detalle?.nombre }}</td>
             <td>{{ asig.puesto_detalle?.cantidad_guardias}} - {{asig.puesto_detalle?.horas_trabajo }}</td>

@@ -5,23 +5,17 @@
   <form (ngSubmit)="crearAsignacion()" #form="ngForm" class="mb-4">
     <div class="form-row align-items-end">
       <div class="form-group col">
-        <label>Asignación ID</label>
-        <input type="number" class="form-control" [(ngModel)]="nueva.asignacion" name="asignacion" required>
-      </div>
-      <div class="form-group col">
         <label>Fecha</label>
         <input type="date" class="form-control" [(ngModel)]="nueva.fecha" name="fecha" required>
       </div>
-      
+    
       <div class="text-center form-group col-auto">
         <button type="submit" class="btn btn-outline-primary" style="width: 100px;">Crear</button>
       </div>
     </div>
   </form>
 
-  <table class="">
 
-  </table>
   
   
 </div>

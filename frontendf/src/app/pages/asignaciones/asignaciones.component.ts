@@ -102,7 +102,8 @@ export class AsignacionesComponent implements OnInit {
       mes: this.mes,
       anio: this.anio,
       rotativo: false,
-      estado: 'ACTIVO'
+      estado: 'ACTIVO',
+      clienteCodigo: ''
     };
   }
 
