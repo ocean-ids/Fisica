@@ -30,8 +30,10 @@ class Puesto(models.Model):
     nombre = models.CharField(max_length=100)
     cantidad_guardias = models.IntegerField(default=0)
     horas_trabajo = models.IntegerField(default=0)
-    sistema = models.CharField(max_length=50, blank=True, null=True)
-    descripcion_sistema = models.TextField(blank=True, null=True)
+    descripcion_sistema = models.TextField(blank=True, null=True)  # Mantén la descripción dinámica
+    turno_dia = models.BooleanField(default=False)
+    turno_noche = models.BooleanField(default=False)
+    dias = models.JSONField(default=list)
 
     def __str__(self):
         return self.nombre
@@ -75,14 +77,13 @@ class Asignacion(models.Model):
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE)
     horario = models.ForeignKey(Horario, on_delete=models.CASCADE)
 
-    # fecha_inicio y fecha_fin eliminados
-
+   
     mes = models.PositiveSmallIntegerField(default=1)
     anio = models.PositiveSmallIntegerField(default=2026)
 
     rotativo = models.BooleanField(default=False)
     
-    # Patrón rotativo (ej: 3-3-1 significa 3 días, 3 noches, 1 franco)
+    
     dias_turno_dia = models.IntegerField(default=0, help_text="Cantidad de días en turno DÍA")
     dias_turno_noche = models.IntegerField(default=0, help_text="Cantidad de días en turno NOCHE")
     dias_franco = models.IntegerField(default=0, help_text="Cantidad de días FRANCO")
