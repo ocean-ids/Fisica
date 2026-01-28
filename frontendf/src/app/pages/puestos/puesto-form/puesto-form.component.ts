@@ -41,7 +41,10 @@ export class PuestoFormComponent implements OnInit {
       nombre: [puesto.nombre || '', Validators.required],
        cantidad_guardias: [puesto.cantidad_guardias || 1, [Validators.required, Validators.min(1)]],
       instalacion_id: [puesto.instalacion_id || null, Validators.required],
-      horas_trabajo: [puesto.horas_trabajo || 8, Validators.required]
+      horas_trabajo: [puesto.horas_trabajo || 8, Validators.required],
+      turno_dia: [puesto.turno_dia || false],
+      turno_noche: [puesto.turno_noche || false],
+      dias: [puesto.dias || []]
     });
 
     
