@@ -1,6 +1,6 @@
 export * from './cliente.model';
 export * from './instalacion.model';
-export * from './puesto.models';
+export * from './puesto.model';
 export * from './persona.model';
 export * from './horario.models';
 export * from './asignacion.model';
