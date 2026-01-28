@@ -23,13 +23,13 @@ export class PuestoService {
     }
 
     crearPuesto(puesto: Puesto): Observable<any> {
-    return this.apiService.post('/crear-puesto/', puesto).pipe(
-        catchError((error) => {
-            console.error('Error al crear el puesto:', error);
-            return throwError(() => new Error('No se pudo crear el puesto.'));
-        })
-    );
-}
+        return this.apiService.post('/crear-puesto/', puesto).pipe(
+            catchError((error) => {
+                console.error('Error al crear el puesto:', error);
+                return throwError(() => new Error('No se pudo crear el puesto.'));
+            })
+        );
+    }
 
     actualizarPuesto(id: number, puesto: Puesto): Observable<any>{
         return this.apiService.put(`/actualizar-puesto/${id}/`, puesto);
