@@ -27,7 +27,7 @@ def crear_puesto(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos(request):
-    puestos = Puesto.objects.all().values('id', 'nombre','cantidad_guardias', 'instalacion_id')
+    puestos = Puesto.objects.all().values('id', 'nombre','cantidad_guardias', 'horas_trabajo', 'sistema', 'descripcion_sistema', 'instalacion_id')
     return JsonResponse(list(puestos), safe=False)
 
 @api_view(['GET'])
