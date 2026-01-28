@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
 import { ApiService } from './api.service';
 import { Puesto } from '../models/puesto.model'; // Actualizado para usar el archivo correcto
 
@@ -21,9 +22,14 @@ export class PuestoService {
         return this.apiService.get<Puesto[]>(`/puestos/cliente/${clienteId}/`);
     }
 
-    crearPuesto(puesto: Puesto): Observable<any>{
-        return this.apiService.post('/crear-puesto/', puesto);
-    }
+    crearPuesto(puesto: Puesto): Observable<any> {
+    return this.apiService.post('/crear-puesto/', puesto).pipe(
+        catchError((error) => {
+            console.error('Error al crear el puesto:', error);
+            return throwError(() => new Error('No se pudo crear el puesto.'));
+        })
+    );
+}
 
     actualizarPuesto(id: number, puesto: Puesto): Observable<any>{
         return this.apiService.put(`/actualizar-puesto/${id}/`, puesto);
