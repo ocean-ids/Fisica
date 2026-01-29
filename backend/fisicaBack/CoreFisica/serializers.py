@@ -39,7 +39,6 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'nombre': obj.puesto.nombre,
             'cantidad_guardias': obj.puesto.cantidad_guardias,
             'horas_trabajo': obj.puesto.horas_trabajo,
-            'descripcion_sistema': obj.puesto.descripcion_sistema,
             'turno': obj.puesto.turno,
             'dias': obj.puesto.dias,
             'resumen': obj.puesto.resumen
