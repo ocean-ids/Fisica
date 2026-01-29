@@ -6,7 +6,7 @@ export interface Puesto {
   turno_dia?: boolean;
   turno_noche?: boolean;
   dias?: string[];
-  descripcion_sistema?: string;
+  resumen?: string;
   instalacion_id: number;
   descripcion?: string;
   instalacion?: number;

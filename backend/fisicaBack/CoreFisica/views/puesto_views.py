@@ -14,8 +14,7 @@ def crear_puesto(request):
     instalacion_id = data.get('instalacion_id')
     cantidad_guardias = data.get('cantidad_guardias', 1)
     sistema = data.get('sistema', '') 
-    descripcion_sistema = data.get('descripcion_sistema', '')
-    turno = data.get('turno', 'dia')  # Cambiado a usar el campo "turno"
+    turno = data.get('turno', 'dia')  
     dias = data.get('dias', [])
 
     instalacion = Instalacion.objects.get(id=instalacion_id)
@@ -23,8 +22,7 @@ def crear_puesto(request):
         nombre=data.get('nombre'),
         cantidad_guardias=cantidad_guardias,
         sistema=sistema,
-        descripcion_sistema=descripcion_sistema,
-        turno=turno,  # Actualizado para usar "turno"
+        turno=turno,  
         dias=dias,
         instalacion_id=instalacion.id
     )
@@ -35,7 +33,7 @@ def crear_puesto(request):
 @permission_classes([IsAuthenticated])
 def obtener_puestos(request):
     puestos = Puesto.objects.all().values(
-        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'descripcion_sistema',
+        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo',
         'turno', 'dias', 'instalacion_id', 'resumen'  
     )
     return JsonResponse(list(puestos), safe=False)
@@ -44,7 +42,7 @@ def obtener_puestos(request):
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_instalacion(request, instalacion_id):
     puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values(
-        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'descripcion_sistema',
+        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo',
         'turno', 'dias', 'instalacion_id', 'resumen'  
     )
     return JsonResponse(list(puestos), safe=False)
@@ -53,8 +51,8 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_cliente(request, cliente_id):
     puestos = Puesto.objects.filter(instalacion__cliente_id=cliente_id).values(
-        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'descripcion_sistema',
-        'turno', 'dias', 'instalacion_id', 'resumen'  
+        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo',
+        'turno', 'dias', 'instalacion_id', 'resumen',  
         'instalacion__provincia', 'instalacion__ciudad'
     )
     return JsonResponse(list(puestos), safe=False)
@@ -64,7 +62,7 @@ def obtener_puestos_por_cliente(request, cliente_id):
 def actualizar_puesto(request, id):
     try:
         data = json.loads(request.body)
-        print('Payload recibido:', data)  # Log the incoming payload for debugging
+        print('Payload recibido:', data)  
         puesto = Puesto.objects.get(id=id)
 
         instalacion_id = data.get('instalacion_id')
@@ -76,7 +74,6 @@ def actualizar_puesto(request, id):
         puesto.nombre = data.get('nombre', puesto.nombre)
         puesto.cantidad_guardias = data.get('cantidad_guardias', puesto.cantidad_guardias)
         puesto.horas_trabajo = data.get('horas_trabajo', puesto.horas_trabajo)
-        puesto.descripcion_sistema = data.get('descripcion_sistema', puesto.descripcion_sistema)
         turno = data.get('turno')
         if turno not in ['dia', 'noche']:
             return JsonResponse({'error': 'Valor de turno inválido'}, status=400)
@@ -91,7 +88,6 @@ def actualizar_puesto(request, id):
                 'nombre': puesto.nombre,
                 'cantidad_guardias': puesto.cantidad_guardias,
                 'horas_trabajo': puesto.horas_trabajo,
-                'descripcion_sistema': puesto.descripcion_sistema,
                 'turno': puesto.turno,
                 'dias': puesto.dias,
                 'instalacion_id': puesto.instalacion_id,

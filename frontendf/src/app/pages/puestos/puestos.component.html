@@ -29,10 +29,11 @@
           <thead class="table-light">
             <tr class="text-center">
               <th>Nombre</th>
-              <th>Cantidad Guardias</th>
+              <th>Cantidad de Guardias</th>
               <th>Horas de Trabajo</th>
-              <th>Turno</th> <!-- Nueva columna para Turno -->
-              <th>Días</th> <!-- Nueva columna para Días -->
+              <th>Turno</th>
+              <th>Días</th>
+              <th>Resumen</th> 
               <th>Instalación</th>
               <th class="text-center">Acciones</th>
             </tr>
@@ -41,9 +42,14 @@
             <tr class="text-center" *ngFor="let puesto of puestos">
               <td>{{ puesto.nombre }}</td>
               <td>{{ puesto.cantidad_guardias }}</td>
-              <td>{{ puesto.horas_trabajo || '-' }}</td>
-              <td>{{ puesto.turno }}</td> <!-- Mostrar Turno -->
-              <td>{{ puesto.dias?.join(', ') || '-' }}</td> <!-- Mostrar Días -->
+              <td>{{ puesto.horas_trabajo }}</td>
+              <td>{{ puesto.turno }}</td>
+              <td>{{ puesto.dias?.join(', ') }}</td>
+              <td>
+                <span matTooltip="Puesto: {{ puesto.cantidad_guardias }}\nHoras: {{ puesto.horas_trabajo || '-' }}\nTurno: {{ puesto.turno }}\nDías: {{ puesto.dias?.join(', ') || '-' }}" matTooltipPosition="above">
+                  {{ puesto.resumen }}
+                </span>
+              </td>
               <td>{{ puesto.instalacion__provincia }} - {{ puesto.instalacion__ciudad }}</td>
               <td class="text-center">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirFormularioNuevo(puesto)">
@@ -55,7 +61,7 @@
               </td>
             </tr>
             <tr *ngIf="puestos.length === 0">
-              <td colspan="7" class="text-center text-muted py-4">
+              <td colspan="4" class="text-center text-muted py-4">
                 No hay puestos registrados para este cliente
               </td>
             </tr>

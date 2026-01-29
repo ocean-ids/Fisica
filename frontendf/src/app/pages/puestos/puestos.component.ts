@@ -13,6 +13,7 @@ import { Puesto } from '../../models';
 import { ClienteService } from '../../services/cliente.service';
 import { Cliente } from '../../models';
 import { PuestoFormComponent } from './puesto-form/puesto-form.component';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 
 @Component({
@@ -27,7 +28,8 @@ import { PuestoFormComponent } from './puesto-form/puesto-form.component';
      MatSelectModule,
      MatFormFieldModule,
      MatDialogModule,
-      FormsModule],
+      FormsModule,
+    MatTooltipModule],
   templateUrl: './puestos.component.html',
   styleUrl: './puestos.component.css'
 })
