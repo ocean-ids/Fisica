@@ -30,12 +30,19 @@ class Puesto(models.Model):
     nombre = models.CharField(max_length=100)
     cantidad_guardias = models.IntegerField(default=0)
     horas_trabajo = models.IntegerField(default=0)
-    descripcion_sistema = models.TextField(blank=True, null=True)  # Mantén la descripción dinámica
     turno = models.CharField(max_length=10, choices=[
         ('dia', 'Día'),
         ('noche', 'Noche'),
     ], default='dia')
     dias = models.JSONField(default=list)
+    resumen = models.CharField(max_length=50, blank=True, editable=False)  # Nuevo campo para el resumen
+
+    def save(self, *args, **kwargs):
+        
+        dias_abreviados = ''.join([dia[0].upper() for dia in self.dias])  # Abreviar días
+        turno_abreviado = 'D' if self.turno == 'dia' else 'N'
+        self.resumen = f"{self.cantidad_guardias} {self.horas_trabajo}{turno_abreviado}{dias_abreviados}"
+        super().save(*args, **kwargs)  # Llamar al método original
 
     def __str__(self):
         return self.nombre

@@ -40,8 +40,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'cantidad_guardias': obj.puesto.cantidad_guardias,
             'horas_trabajo': obj.puesto.horas_trabajo,
             'descripcion_sistema': obj.puesto.descripcion_sistema,
-            'turno_dia': obj.puesto.turno_dia,
-            'turno_noche': obj.puesto.turno_noche,
+            'turno': obj.puesto.turno,
             'dias': obj.puesto.dias
         }
     
