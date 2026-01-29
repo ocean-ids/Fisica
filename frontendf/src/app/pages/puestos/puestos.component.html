@@ -46,9 +46,20 @@
               <td>{{ puesto.turno }}</td>
               <td>{{ puesto.dias?.join(', ') }}</td>
               <td>
-                <span matTooltip="Puesto: {{ puesto.cantidad_guardias }}\nHoras: {{ puesto.horas_trabajo || '-' }}\nTurno: {{ puesto.turno }}\nDías: {{ puesto.dias?.join(', ') || '-' }}" matTooltipPosition="above">
+                <span
+                  [matMenuTriggerFor]="tooltipMenu"
+                  class="tooltip-trigger">
                   {{ puesto.resumen }}
                 </span>
+
+                <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
+                  <div class="tooltip-content">
+                    <div><strong>👮 Puesto:</strong> {{ puesto.cantidad_guardias }}</div>
+                    <div><strong>⏰ Horas:</strong> {{ puesto.horas_trabajo || '-' }}</div>
+                    <div><strong>🌙 Turno:</strong> {{ puesto.turno }}</div>
+                    <div><strong>📅 Días:</strong> {{ puesto.dias?.join(', ') || '-' }}</div>
+                  </div>
+                </mat-menu>
               </td>
               <td>{{ puesto.instalacion__provincia }} - {{ puesto.instalacion__ciudad }}</td>
               <td class="text-center">

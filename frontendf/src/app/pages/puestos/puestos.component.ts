@@ -14,6 +14,7 @@ import { ClienteService } from '../../services/cliente.service';
 import { Cliente } from '../../models';
 import { PuestoFormComponent } from './puesto-form/puesto-form.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 
 
 @Component({
@@ -29,7 +30,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
      MatFormFieldModule,
      MatDialogModule,
       FormsModule,
-    MatTooltipModule],
+    MatTooltipModule,
+    MatMenuModule
+  ],
   templateUrl: './puestos.component.html',
   styleUrl: './puestos.component.css'
 })
