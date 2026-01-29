@@ -38,10 +38,8 @@ class Puesto(models.Model):
     resumen = models.CharField(max_length=50, blank=True, editable=False)  # Nuevo campo para el resumen
 
     def save(self, *args, **kwargs):
-        
-        dias_abreviados = ''.join([dia[0].upper() for dia in self.dias])  # Abreviar días
-        turno_abreviado = 'D' if self.turno == 'dia' else 'N'
-        self.resumen = f"{self.cantidad_guardias} {self.horas_trabajo}{turno_abreviado}{dias_abreviados}"
+        # Calculate resumen based on related fields
+        self.resumen = f"{self.persona.nombres} {self.persona.apellidos} - {self.puesto.nombre} ({self.mes}/{self.anio})"
         super().save(*args, **kwargs)  # Llamar al método original
 
     def __str__(self):
@@ -84,6 +82,7 @@ class Asignacion(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE)
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE)
+    resumen = models.CharField(max_length=255, blank=True, null=True, help_text="Resumen de la asignación")
     horario = models.ForeignKey(Horario, on_delete=models.CASCADE)
 
    
@@ -93,9 +92,7 @@ class Asignacion(models.Model):
     rotativo = models.BooleanField(default=False)
     
     
-    dias_turno_dia = models.IntegerField(default=0, help_text="Cantidad de días en turno DÍA")
-    dias_turno_noche = models.IntegerField(default=0, help_text="Cantidad de días en turno NOCHE")
-    dias_franco = models.IntegerField(default=0, help_text="Cantidad de días FRANCO")
+    
 
     # orden eliminado
     estado = models.CharField(
@@ -108,8 +105,14 @@ class Asignacion(models.Model):
         unique_together = ('persona', 'mes', 'anio')
 
     def __str__(self):
-        patron = f" ({self.dias_turno_dia}-{self.dias_turno_noche}-{self.dias_franco})" if self.rotativo else ""
+        patron = f" ({self.dias_franco})" if self.rotativo else ""
         return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio}){patron}"
+
+    def save(self, *args, **kwargs):
+        # Reflejar el resumen directamente desde el modelo Puesto
+        if self.puesto:
+            self.resumen = self.puesto.resumen
+        super().save(*args, **kwargs)
 
 
 class AsignacionCalendario(models.Model):

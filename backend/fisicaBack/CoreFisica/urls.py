@@ -48,6 +48,7 @@ urlpatterns = [
     path('asignaciones/<int:mes>/<int:anio>/', obtener_asignaciones),
     path('asignar-servicio/', asignar_servicio),
     path('editar-servicio/<int:id>/', editar_servicio),
+    path('asignaciones/', obtener_asignaciones),
     path('guardar-orden-asignacion/', guardar_orden_asignacion),
     path('eliminar-asignacion/<int:id>/', eliminar_asignacion),
     path('reporte-asignaciones/', exportar_asignaciones_excel, name='reporte_asignaciones'),

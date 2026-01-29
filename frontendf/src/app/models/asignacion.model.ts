@@ -8,8 +8,6 @@ export interface Asignacion{
     mes: number;
     anio: number;
     rotativo: boolean;
-    dias_turno_dia?: number;
-    dias_turno_noche?: number;
     dias_franco?: number;
     estado: string;
     persona_detalle?: any;           
@@ -18,4 +16,5 @@ export interface Asignacion{
     instalacion_detalle?: any;       
     puesto_detalle?: any;            
     horario_detalle?: any; 
+    resumen?: string;
 }

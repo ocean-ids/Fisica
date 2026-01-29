@@ -8,12 +8,17 @@ import openpyxl
 
 
 @api_view(['GET'])
-def obtener_asignaciones(request, mes, anio):
-    asignaciones = Asignacion.objects.filter(
-        mes=mes,
-        anio=anio,
-        estado='ACTIVO'
-    ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario')
+def obtener_asignaciones(request, mes=None, anio=None):
+    if mes and anio:
+        asignaciones = Asignacion.objects.filter(
+            mes=mes,
+            anio=anio,
+            estado='ACTIVO'
+        ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario')
+    else:
+        asignaciones = Asignacion.objects.filter(
+            estado='ACTIVO'
+        ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario')
     
     serializer = AsignacionSerializer(asignaciones, many=True)
     return Response(serializer.data)
