@@ -13,7 +13,6 @@ def crear_puesto(request):
     data = json.loads(request.body)
     instalacion_id = data.get('instalacion_id')
     cantidad_guardias = data.get('cantidad_guardias', 1)
-    sistema = data.get('sistema', '') 
     turno = data.get('turno', 'dia')  
     dias = data.get('dias', [])
 
@@ -21,7 +20,6 @@ def crear_puesto(request):
     puesto = Puesto.objects.create(
         nombre=data.get('nombre'),
         cantidad_guardias=cantidad_guardias,
-        sistema=sistema,
         turno=turno,  
         dias=dias,
         instalacion_id=instalacion.id
