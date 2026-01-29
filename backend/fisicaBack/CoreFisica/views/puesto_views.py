@@ -36,7 +36,7 @@ def crear_puesto(request):
 def obtener_puestos(request):
     puestos = Puesto.objects.all().values(
         'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'descripcion_sistema',
-        'turno', 'dias', 'instalacion_id'  # Eliminados "turno_dia" y "turno_noche"
+        'turno', 'dias', 'instalacion_id', 'resumen'  
     )
     return JsonResponse(list(puestos), safe=False)
 
@@ -45,7 +45,7 @@ def obtener_puestos(request):
 def obtener_puestos_por_instalacion(request, instalacion_id):
     puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values(
         'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'descripcion_sistema',
-        'turno', 'dias', 'instalacion_id'  # Eliminados "turno_dia" y "turno_noche"
+        'turno', 'dias', 'instalacion_id', 'resumen'  
     )
     return JsonResponse(list(puestos), safe=False)
 
@@ -54,7 +54,7 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
 def obtener_puestos_por_cliente(request, cliente_id):
     puestos = Puesto.objects.filter(instalacion__cliente_id=cliente_id).values(
         'id', 'nombre', 'cantidad_guardias', 'horas_trabajo', 'descripcion_sistema',
-        'turno', 'dias', 'instalacion_id',  # Eliminados "turno_dia" y "turno_noche"
+        'turno', 'dias', 'instalacion_id', 'resumen'  
         'instalacion__provincia', 'instalacion__ciudad'
     )
     return JsonResponse(list(puestos), safe=False)

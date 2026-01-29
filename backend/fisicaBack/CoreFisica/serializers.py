@@ -41,7 +41,8 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'horas_trabajo': obj.puesto.horas_trabajo,
             'descripcion_sistema': obj.puesto.descripcion_sistema,
             'turno': obj.puesto.turno,
-            'dias': obj.puesto.dias
+            'dias': obj.puesto.dias,
+            'resumen': obj.puesto.resumen
         }
     
     def get_horario_detalle(self, obj):
