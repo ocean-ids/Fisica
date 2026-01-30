@@ -1,0 +1,10 @@
+.tooltip-menu {
+  pointer-events: none; /* para que no se quede abierto */
+}
+
+.tooltip-content {
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 250px;
+}

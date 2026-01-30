@@ -38,11 +38,49 @@ class Puesto(models.Model):
     resumen = models.CharField(max_length=50, blank=True, editable=False)  # campo para el resumen
 
     def save(self, *args, **kwargs):
-        # Calcular un resumen simple basado en atributos del puesto (no usar referencias inexistentes)
+        # Calcular resumen compacto: "<cantidad> <horas>H<T><dias>"
+        # Ejemplo: "1 12HDLMXJV" (1 guardia, 12 horas, D=día, días abreviados)
         try:
-            self.resumen = f"{self.nombre} - {self.turno}"
+            cantidad = int(self.cantidad_guardias) if self.cantidad_guardias is not None else 0
+            horas = int(self.horas_trabajo) if self.horas_trabajo is not None else 0
+            turno_letter = 'D' if (self.turno or '').lower() == 'dia' else 'N'
+
+            # Mapear nombres de días a letras en español (Miércoles -> X)
+            day_map = {
+                'lunes': 'L',
+                'martes': 'M',
+                'miércoles': 'M',
+                'miercoles': 'M',
+                'jueves': 'J',
+                'viernes': 'V',
+                'sábado': 'S',
+                'sabado': 'S',
+                'domingo': 'D'
+            }
+
+            dias_list = []
+            if isinstance(self.dias, (list, tuple)):
+                for d in self.dias:
+                    if not d:
+                        continue
+                    key = str(d).strip().lower()
+                    dias_list.append(day_map.get(key, key[:1].upper()))
+            # Comprimir patrones comunes: Lunes-Viernes -> 'LV', Sábado-Domingo -> 'SD'
+            if dias_list == ['L','M','X','J','V']:
+                dias_code = 'LV'
+            elif dias_list == ['S','D']:
+                dias_code = 'SD'
+            else:
+                dias_code = ''.join(dias_list)
+
+            # Formato compacto solicitado: "<cantidad> <horas><D|N><dias>" (sin 'H')
+            self.resumen = f"{cantidad} {horas}{turno_letter}{dias_code}"
         except Exception:
-            self.resumen = self.nombre or ''
+            # Fallback: nombre - turno
+            try:
+                self.resumen = f"{self.nombre} - {self.turno}"
+            except Exception:
+                self.resumen = self.nombre or ''
         super().save(*args, **kwargs)
 
     def __str__(self):

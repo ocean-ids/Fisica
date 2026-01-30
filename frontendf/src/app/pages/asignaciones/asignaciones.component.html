@@ -64,14 +64,13 @@
               <span
                 [matMenuTriggerFor]="tooltipMenu"
                 class="tooltip-trigger"
-                style="cursor: pointer; text-decoration: underline; color: #0d6efd;"
               >
                 {{ asig.puesto_detalle?.resumen }}
               </span>
 
               <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
-                <div style="padding: 8px; max-width: 260px;">
-                  <div><strong>👮 Puesto:</strong> {{ asig.puesto_detalle?.nombre }}</div>
+                <div  class="tooltip-content">
+                  <div><strong>👮 Puesto:</strong> {{ asig.puesto_detalle?.cantidad_guardias }}</div>
                   <div><strong>⏰ Horas:</strong> {{ asig.puesto_detalle?.horas_trabajo || '-' }}</div>
                   <div><strong>🌙 Turno:</strong> {{ asig.puesto_detalle?.turno }}</div>
                   <div><strong>📅 Días:</strong> {{ asig.puesto_detalle?.dias?.join(', ') || '-' }}</div>
