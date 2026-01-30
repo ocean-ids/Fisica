@@ -45,12 +45,12 @@ class Puesto(models.Model):
             horas = int(self.horas_trabajo) if self.horas_trabajo is not None else 0
             turno_letter = 'D' if (self.turno or '').lower() == 'dia' else 'N'
 
-            # Mapear nombres de días a letras en español (Miércoles -> X)
+            # Mapear nombres de días a abreviaturas (martes -> MA, miércoles -> MI)
             day_map = {
                 'lunes': 'L',
-                'martes': 'M',
-                'miércoles': 'M',
-                'miercoles': 'M',
+                'martes': 'MA',
+                'miercoles': 'MI',
+                'miércoles': 'MI',
                 'jueves': 'J',
                 'viernes': 'V',
                 'sábado': 'S',
@@ -65,13 +65,8 @@ class Puesto(models.Model):
                         continue
                     key = str(d).strip().lower()
                     dias_list.append(day_map.get(key, key[:1].upper()))
-            # Comprimir patrones comunes: Lunes-Viernes -> 'LV', Sábado-Domingo -> 'SD'
-            if dias_list == ['L','M','X','J','V']:
-                dias_code = 'LV'
-            elif dias_list == ['S','D']:
-                dias_code = 'SD'
-            else:
-                dias_code = ''.join(dias_list)
+            # Unir códigos de días (ej: LMA MIJV -> LMA MIJV) — usamos abreviaturas claras
+            dias_code = ''.join(dias_list)
 
             # Formato compacto solicitado: "<cantidad> <horas><D|N><dias>" (sin 'H')
             self.resumen = f"{cantidad} {horas}{turno_letter}{dias_code}"
@@ -151,38 +146,39 @@ class Asignacion(models.Model):
     # Note: no se mantiene campo "resumen" en Asignacion; se accede a puesto.resumen cuando se necesita
 
 
-class AsignacionCalendario(models.Model):
+"""
+La clase `AsignacionCalendario` fue eliminada porque se reemplaza
+por la programación semanal (`AsignacionSemanal`). Si aún necesitas
+mantener historiales de asistencias diarias, podemos crear un
+modelo separado con un nombre distinto o conservar la tabla en una
+migration de preservación antes de borrarla definitivamente.
+"""
 
-    TURNO_CHOICES = [
-        ('D', 'Día'),
-        ('N', 'Noche'),
-        ('F', 'Franco'),
-        ('NB', 'Noche Base Disponible'),
-        ('SC', 'Saca Vacaciones'),
-    ]
 
-    asignacion = models.ForeignKey(
-        Asignacion,
-        on_delete=models.CASCADE,
-        related_name='asistencias'
-    )
-    fecha = models.DateField()
+class AsignacionSemanal(models.Model):
+    """Programación semanal por puesto.
 
-    # D / N / F / NB / SC
-    turno = models.CharField(
-        max_length=2,
-        choices=TURNO_CHOICES,
-        null=True,
-        blank=True
-    )
+    Cada fila representa una semana (fecha del lunes en `week_start`) y contiene
+    7 celdas con hasta 4 caracteres por día (límite `max_length=4`).
+    """
 
-    # Número de día del mes (para DS30, NS31, etc)
-    dia_numero = models.IntegerField(null=True, blank=True)
+    puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE, related_name='asignaciones_semanales')
+    week_start = models.DateField()  # fecha del lunes de la semana
+
+    mon = models.CharField(max_length=4, blank=True)
+    tue = models.CharField(max_length=4, blank=True)
+    wed = models.CharField(max_length=4, blank=True)
+    thu = models.CharField(max_length=4, blank=True)
+    fri = models.CharField(max_length=4, blank=True)
+    sat = models.CharField(max_length=4, blank=True)
+    sun = models.CharField(max_length=4, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('asignacion', 'fecha')
-        ordering = ['fecha']
+        unique_together = (('puesto', 'week_start'),)
+        indexes = [models.Index(fields=['week_start']),]
 
     def __str__(self):
-        dia_str = str(self.dia_numero) if self.dia_numero else ''
-        return f"{self.fecha} - {self.turno or ''}{dia_str}"
+        return f"{self.puesto} - {self.week_start}"

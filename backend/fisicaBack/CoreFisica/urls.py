@@ -10,7 +10,7 @@ from .views.persona_views import obtener_personas, actualizar_persona, crear_per
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion, exportar_asignaciones_excel
-from .views.asignacion_calendario_views import listar_asignacion_calendario, crear_asignacion_calendario
+from .views.asignacion_semanal_views import listar_asignacion_semanal, crear_o_actualizar_asignacion_semanal, copiar_semana
 
 
 urlpatterns = [
@@ -52,8 +52,9 @@ urlpatterns = [
     path('guardar-orden-asignacion/', guardar_orden_asignacion),
     path('eliminar-asignacion/<int:id>/', eliminar_asignacion),
     path('reporte-asignaciones/', exportar_asignaciones_excel, name='reporte_asignaciones'),
-    path('asignacion-calendario/', listar_asignacion_calendario),
-    path('asignacion-calendario/crear/', crear_asignacion_calendario),
+    path('asignacion-semanal/', listar_asignacion_semanal),
+    path('asignacion-semanal/guardar/', crear_o_actualizar_asignacion_semanal),
+    path('asignacion-semanal/copy/', copiar_semana),
     
 
 

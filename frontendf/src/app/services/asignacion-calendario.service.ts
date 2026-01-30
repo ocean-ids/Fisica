@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 import { Injectable } from '@angular/core';
-import { AsignacionCalendario } from '../models/asignacion-calendario';
+import { AsignacionSemanal } from '../models/asignacion-calendario';
 
 @Injectable({
   providedIn: 'root'
@@ -10,10 +10,14 @@ export class AsignacionCalendarioService {
   constructor(private apiService: ApiService){}
 
   obtenerAsignacionesCalendario(params?: any): Observable<any>{
-    return this.apiService.get<any>('/asignacion-calendario/', params);
+    return this.apiService.get<any>('/asignacion-semanal/', params);
   }
 
-  crearAsignacionCalendario(asignacion: AsignacionCalendario): Observable<any>{
-    return this.apiService.post<any>('/asignacion-calendario/crear/', asignacion);
+  crearAsignacionCalendario(asignacion: AsignacionSemanal): Observable<any>{
+    return this.apiService.post<any>('/asignacion-semanal/guardar/', asignacion);
+  }
+
+  copiarSemana(payload: {from_week: string, to_week: string, cliente?: number}): Observable<any>{
+    return this.apiService.post<any>('/asignacion-semanal/copy/', payload);
   }
 }

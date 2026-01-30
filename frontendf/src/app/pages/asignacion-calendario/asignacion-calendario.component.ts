@@ -1,59 +1,132 @@
 import { Component, OnInit } from '@angular/core';
-import { AsignacionCalendario } from '../../models/asignacion-calendario';
+import { AsignacionSemanal } from '../../models/asignacion-calendario';
 import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
+import { PuestoService } from '../../services/puesto.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-asignacion-calendario',
+  standalone: true,
   imports: [FormsModule, CommonModule],
   templateUrl: './asignacion-calendario.component.html',
   styleUrl: './asignacion-calendario.component.css'
 })
 export class AsignacionCalendarioComponent implements OnInit{
-  asignaciones: AsignacionCalendario[] = [];
-  nueva: AsignacionCalendario = { asignacion: 0, fecha: '', turno: '', dia_numero: undefined };
-  page= 1;
-  pageSize = 10;
+  weekStart: string = '';
+  rows: any[] = [];
+  loading = false;
+  page = 1;
+  pageSize = 20;
   total = 0;
 
-
-  constructor(private asignacionCalendarioService: AsignacionCalendarioService){}
+  constructor(private asignacionCalendarioService: AsignacionCalendarioService, private puestoService: PuestoService){}
 
   ngOnInit(): void {
-    this.cargarAsignaciones();
+    this.weekStart = this.computeCurrentMonday();
+    this.loadWeek();
   }
 
-  cargarAsignaciones(){
-    this.asignacionCalendarioService.obtenerAsignacionesCalendario({page: 1, page_size:10})
+  computeCurrentMonday(): string{
+    const today = new Date();
+    const day = today.getDay(); // 0 Domingo .. 6 Sab
+    const diff = (day === 0 ? -6 : 1) - day; // mover a lunes
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diff);
+    return monday.toISOString().slice(0,10);
+  }
+
+  loadWeek(){
+    this.loading = true;
+    this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart, page: this.page, page_size: this.pageSize})
       .subscribe(res => {
-        this.asignaciones = Array.isArray(res.results) ? res.results : [];
+        this.rows = Array.isArray(res.results) ? res.results : [];
+        this.total = res.total || this.rows.length;
+        // Si no hay filas guardadas, cargar puestos para mostrar filas editables
+        if((!this.rows || this.rows.length === 0)){
+          this.puestoService.getPuestos().subscribe(puestos => {
+            this.rows = puestos.map(p => ({ puesto: p.id, puesto_detalle: p, mon: '', tue: '', wed: '', thu: '', fri: '', sat: '', sun: '' }));
+            this.total = this.rows.length;
+          });
+        }
+        this.loading = false;
+      }, ()=> this.loading = false);
+  }
+
+  totalPages(): number{
+    return Math.max(1, Math.ceil((this.total || 0) / this.pageSize));
+  }
+
+  nextPage(){
+    if (this.page < this.totalPages()){
+      this.page++;
+      this.loadWeek();
+    }
+  }
+
+  prevPage(){
+    if (this.page > 1){
+      this.page--;
+      this.loadWeek();
+    }
+  }
+
+  changePageSize(size: number){
+    this.pageSize = size;
+    this.page = 1;
+    this.loadWeek();
+  }
+
+  saveRow(row: any){
+    const payload: AsignacionSemanal = {
+      puesto: row.puesto || (row.puesto_detalle && row.puesto_detalle.id),
+      week_start: this.weekStart,
+      mon: row.mon || '',
+      tue: row.tue || '',
+      wed: row.wed || '',
+      thu: row.thu || '',
+      fri: row.fri || '',
+      sat: row.sat || '',
+      sun: row.sun || ''
+    };
+    this.asignacionCalendarioService.crearAsignacionCalendario(payload)
+      .subscribe(() => this.loadWeek());
+  }
+
+  copyToNextWeek(){
+    const from_week = this.weekStart;
+    const tw = new Date(from_week);
+    tw.setDate(tw.getDate() + 7);
+    const to_week = tw.toISOString().slice(0,10);
+    const ok = window.confirm(`¿Copiar filas de la semana ${from_week} a ${to_week}? Esta acción NO cambiará la semana actual automáticamente.`);
+    if (!ok) return;
+    this.asignacionCalendarioService.copiarSemana({from_week, to_week})
+      .subscribe(res => {
+        const created = res?.created ?? 0;
+        const updated = res?.updated ?? 0;
+        window.alert(`Copiado: ${created} creadas, ${updated} actualizadas.`);
+        // Recargar la semana actual para reflejar cambios (no cambiamos weekStart)
+        this.loadWeek();
+      }, err => {
+        console.error(err);
+        window.alert('Error al copiar semana: ' + (err?.error || err?.message || err));
       });
   }
 
-  crearAsignacion(){
-    this.asignacionCalendarioService.crearAsignacionCalendario(this.nueva)
-    .subscribe(res => {
-      this.cargarAsignaciones();
-      this.nueva = {asignacion: 0,
-        fecha:'',turno:'', dia_numero: undefined
-      };
-    })
+  onCellChange(row: any, day: string, value: any){
+    const v = value ? String(value).toUpperCase().slice(0,4) : '';
+    row[day] = v;
   }
 
-  siguientePagina(){
-    if ((this.page * this.pageSize) < this.total){
-      this.page++;
-      this.cargarAsignaciones();
-    }
+  getCellClass(value: string){
+    if(!value) return '';
+    const v = value.toString().toUpperCase();
+    if(v.startsWith('F')) return 'cell-franco';
+    if(v.startsWith('D')) return 'cell-dia';
+    if(v.startsWith('N')) return 'cell-noche';
+    if(v.startsWith('DS') || v.startsWith('NS')) return 'cell-desc';
+    if(v.startsWith('MA') || v.startsWith('MI')) return 'cell-daycode';
+    return '';
   }
-
-  anteriorPagina(){
-    if (this.page > 1){
-      this.page--;
-      this.cargarAsignaciones();
-    }
-  }
-  
 
 }

@@ -1,21 +1,54 @@
-<div class="container mt-4">
-  <h2>Asignaciones Calendario</h2>
+<div>
+  <div class="d-flex align-items-center mb-2">
+    <input type="date" [(ngModel)]="weekStart" (change)="loadWeek()" class="form-control me-3" style="width:160px" />
+    <button class="btn btn-outline-secondary me-2" (click)="copyToNextWeek()">Copiar a próxima semana</button>
+  </div>
 
-  
-  <form (ngSubmit)="crearAsignacion()" #form="ngForm" class="mb-4">
-    <div class="form-row align-items-end">
-      <div class="form-group col">
-        <label>Fecha</label>
-        <input type="date" class="form-control" [(ngModel)]="nueva.fecha" name="fecha" required>
-      </div>
-    
-      <div class="text-center form-group col-auto">
-        <button type="submit" class="btn btn-outline-primary" style="width: 100px;">Crear</button>
-      </div>
-    </div>
-  </form>
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered">
+      <thead>
+        <tr>
+          <th>Lu</th>
+          <th>MA</th>
+          <th>MI</th>
+          <th>Ju</th>
+          <th>Vi</th>
+          <th>Sá</th>
+          <th>Do</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of rows; let i = index">
+          <td title="{{row.puesto_detalle?.nombre || row.puesto}}"><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.mon)" [(ngModel)]="row.mon" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'mon',$event)"></td>
+          <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.tue)" [(ngModel)]="row.tue" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'tue',$event)"></td>
+          <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.wed)" [(ngModel)]="row.wed" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'wed',$event)"></td>
+          <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.thu)" [(ngModel)]="row.thu" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'thu',$event)"></td>
+          <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.fri)" [(ngModel)]="row.fri" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'fri',$event)"></td>
+          <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.sat)" [(ngModel)]="row.sat" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'sat',$event)"></td>
+          <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.sun)" [(ngModel)]="row.sun" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'sun',$event)"></td>
+          <td style="width:140px">
+            <button class="btn btn-sm btn-primary me-1" (click)="saveRow(row)">Guardar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
-
-  
-  
+<div class="d-flex justify-content-between align-items-center mt-2">
+  <div>
+    <button class="btn btn-sm btn-outline-secondary me-1" (click)="prevPage()" [disabled]="page<=1">Anterior</button>
+    <button class="btn btn-sm btn-outline-secondary me-1" (click)="nextPage()" [disabled]="page>=totalPages()">Siguiente</button>
+    <span class="ms-2">Página {{page}} / {{ totalPages() }}</span>
+  </div>
+  <div class="d-flex align-items-center">
+    <label class="me-2">Filas por página</label>
+    <select class="form-select form-select-sm" style="width:90px" (change)="changePageSize($any($event.target).value)" [value]="pageSize">
+      <option value="10">10</option>
+      <option value="20">20</option>
+      <option value="50">50</option>
+      <option value="100">100</option>
+    </select>
+  </div>
 </div>

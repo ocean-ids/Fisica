@@ -14,6 +14,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
+import { AsignacionCalendarioComponent } from '../asignacion-calendario/asignacion-calendario.component';
 import { HttpClient } from '@angular/common/http';
 import { saveAs } from 'file-saver';
 
@@ -29,6 +30,7 @@ import { saveAs } from 'file-saver';
     MatCheckboxModule,
     MatCardModule
     ,MatMenuModule
+    ,AsignacionCalendarioComponent
   ],
   templateUrl: './asignaciones.component.html',
   styleUrl: './asignaciones.component.css'

@@ -1,0 +1,16 @@
+/* Cell color styles for schedule values */
+.cell-franco { background: #fff3b0 !important; }
+.cell-dia { background: #ffffff !important; }
+.cell-noche { background: #d6ecff !important; }
+.cell-desc { background: #d9f7be !important; }
+.cell-daycode { background: #f0f0f0 !important; }
+
+/* Small input styling to look like spreadsheet cells */
+table.table td input.form-control {
+	padding: 4px 6px;
+	height: 28px;
+	text-align: center;
+}
+
+table.table td { vertical-align: middle; }
+

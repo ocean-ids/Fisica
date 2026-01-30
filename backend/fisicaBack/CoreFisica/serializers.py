@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Asignacion
+from .models import Asignacion, AsignacionSemanal
 
 class AsignacionSerializer(serializers.ModelSerializer):
     
@@ -54,4 +54,24 @@ class AsignacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asignacion
         fields = '__all__'
+
+
+class AsignacionSemanalSerializer(serializers.ModelSerializer):
+    puesto_detalle = serializers.SerializerMethodField(read_only=True)
+
+    def get_puesto_detalle(self, obj):
+        p = obj.puesto
+        return {
+            'id': p.id,
+            'nombre': p.nombre,
+            'cantidad_guardias': p.cantidad_guardias,
+            'horas_trabajo': p.horas_trabajo,
+            'turno': p.turno,
+            'dias': p.dias,
+            'resumen': p.resumen,
+        }
+
+    class Meta:
+        model = AsignacionSemanal
+        fields = ['id', 'puesto', 'week_start', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'created_at', 'updated_at', 'puesto_detalle']
 
