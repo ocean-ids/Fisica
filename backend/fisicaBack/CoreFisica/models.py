@@ -45,12 +45,12 @@ class Puesto(models.Model):
             horas = int(self.horas_trabajo) if self.horas_trabajo is not None else 0
             turno_letter = 'D' if (self.turno or '').lower() == 'dia' else 'N'
 
-            # Mapear nombres de días a abreviaturas (martes -> MA, miércoles -> MI)
+            # Mapear nombres de días a códigos compactos (usar primera letra)
             day_map = {
                 'lunes': 'L',
-                'martes': 'MA',
-                'miercoles': 'MI',
-                'miércoles': 'MI',
+                'martes': 'M',
+                'miercoles': 'M',
+                'miércoles': 'M',
                 'jueves': 'J',
                 'viernes': 'V',
                 'sábado': 'S',

@@ -15,7 +15,7 @@
           <th>Vi</th>
           <th>Sá</th>
           <th>Do</th>
-          <th>Acciones</th>
+          <th >Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -27,7 +27,7 @@
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.fri)" [(ngModel)]="row.fri" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'fri',$event)"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.sat)" [(ngModel)]="row.sat" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'sat',$event)"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.sun)" [(ngModel)]="row.sun" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'sun',$event)"></td>
-          <td style="width:140px">
+          <td style="width:40px">
             <button class="btn btn-sm btn-primary me-1" (click)="saveRow(row)">Guardar</button>
           </td>
         </tr>
