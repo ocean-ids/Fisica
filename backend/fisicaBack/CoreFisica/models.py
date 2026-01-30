@@ -120,7 +120,7 @@ class Asignacion(models.Model):
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE)
     horario = models.ForeignKey(Horario, on_delete=models.CASCADE)
 
-   
+    fecha = models.DateField(null=True, blank=True)
     mes = models.PositiveSmallIntegerField(default=1)
     anio = models.PositiveSmallIntegerField(default=2026)
 

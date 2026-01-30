@@ -8,6 +8,8 @@ class AsignacionSerializer(serializers.ModelSerializer):
     instalacion_detalle = serializers.SerializerMethodField(read_only=True)
     puesto_detalle = serializers.SerializerMethodField(read_only=True)
     horario_detalle = serializers.SerializerMethodField(read_only=True)
+    fecha = serializers.DateField(required=False, allow_null=True)
+
     def get_persona_detalle(self, obj):
         return {
             'id': obj.persona.id,

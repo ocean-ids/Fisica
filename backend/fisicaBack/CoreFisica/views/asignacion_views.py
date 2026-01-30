@@ -82,7 +82,7 @@ def exportar_asignaciones_excel(request):
     for asignacion in Asignacion.objects.all():
         ws.append([
             f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}",
-            asignacion.cliente.codigo,  # Agrega el código del cliente
+            asignacion.cliente.codigo,  
             asignacion.cliente.nombre_comercial,
             asignacion.puesto.nombre,
             asignacion.puesto.cantidad_guardias,
