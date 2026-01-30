@@ -60,7 +60,24 @@
             <td>{{ asig.cliente_detalle?.codigo }}</td>
             <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
             <td>{{ asig.puesto_detalle?.nombre }}</td>
-            <td>{{ asig.resumen }}</td>
+            <td>
+              <span
+                [matMenuTriggerFor]="tooltipMenu"
+                class="tooltip-trigger"
+                style="cursor: pointer; text-decoration: underline; color: #0d6efd;"
+              >
+                {{ asig.puesto_detalle?.resumen }}
+              </span>
+
+              <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
+                <div style="padding: 8px; max-width: 260px;">
+                  <div><strong>👮 Puesto:</strong> {{ asig.puesto_detalle?.nombre }}</div>
+                  <div><strong>⏰ Horas:</strong> {{ asig.puesto_detalle?.horas_trabajo || '-' }}</div>
+                  <div><strong>🌙 Turno:</strong> {{ asig.puesto_detalle?.turno }}</div>
+                  <div><strong>📅 Días:</strong> {{ asig.puesto_detalle?.dias?.join(', ') || '-' }}</div>
+                </div>
+              </mat-menu>
+            </td>
             <td>{{ asig.persona_detalle?.cedula }}</td>
             <td>{{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}</td>
             <td>

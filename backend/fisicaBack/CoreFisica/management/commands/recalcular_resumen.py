@@ -1,11 +1,12 @@
 from django.core.management.base import BaseCommand
-from CoreFisica.models import Asignacion
+from CoreFisica.models import Puesto
+
 
 class Command(BaseCommand):
-    help = 'Recalcula el campo resumen para todas las asignaciones'
+    help = 'Recalcula el campo resumen para todos los puestos'
 
     def handle(self, *args, **kwargs):
-        asignaciones = Asignacion.objects.all()
-        for asignacion in asignaciones:
-            asignacion.save()  # Esto recalculará el resumen
-        self.stdout.write(self.style.SUCCESS('Resumen recalculado para todas las asignaciones'))
+        puestos = Puesto.objects.all()
+        for puesto in puestos:
+            puesto.save()  # Esto recalculará el resumen del puesto
+        self.stdout.write(self.style.SUCCESS('Resumen recalculado para todos los puestos'))

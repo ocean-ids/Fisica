@@ -13,6 +13,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatCardModule } from '@angular/material/card';
+import { MatMenuModule } from '@angular/material/menu';
 import { HttpClient } from '@angular/common/http';
 import { saveAs } from 'file-saver';
 
@@ -27,6 +28,7 @@ import { saveAs } from 'file-saver';
     MatSelectModule,
     MatCheckboxModule,
     MatCardModule
+    ,MatMenuModule
   ],
   templateUrl: './asignaciones.component.html',
   styleUrl: './asignaciones.component.css'

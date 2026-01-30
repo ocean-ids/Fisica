@@ -8,7 +8,6 @@ class AsignacionSerializer(serializers.ModelSerializer):
     instalacion_detalle = serializers.SerializerMethodField(read_only=True)
     puesto_detalle = serializers.SerializerMethodField(read_only=True)
     horario_detalle = serializers.SerializerMethodField(read_only=True)
-    resumen_detalle = serializers.SerializerMethodField(read_only=True)
     def get_persona_detalle(self, obj):
         return {
             'id': obj.persona.id,
@@ -42,12 +41,6 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'turno': obj.puesto.turno,
             'dias': obj.puesto.dias,
             'resumen': obj.puesto.resumen
-        }
-
-    def get_resumen_detalle(self, obj):
-        return {
-            'resumen': obj.resumen,
-            'descripcion': "Este campo contiene un resumen de la asignación."
         }
     
     

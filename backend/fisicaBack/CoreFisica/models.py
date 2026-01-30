@@ -35,12 +35,15 @@ class Puesto(models.Model):
         ('noche', 'Noche'),
     ], default='dia')
     dias = models.JSONField(default=list)
-    resumen = models.CharField(max_length=50, blank=True, editable=False)  # Nuevo campo para el resumen
+    resumen = models.CharField(max_length=50, blank=True, editable=False)  # campo para el resumen
 
     def save(self, *args, **kwargs):
-        # Calculate resumen based on related fields
-        self.resumen = f"{self.persona.nombres} {self.persona.apellidos} - {self.puesto.nombre} ({self.mes}/{self.anio})"
-        super().save(*args, **kwargs)  # Llamar al método original
+        # Calcular un resumen simple basado en atributos del puesto (no usar referencias inexistentes)
+        try:
+            self.resumen = f"{self.nombre} - {self.turno}"
+        except Exception:
+            self.resumen = self.nombre or ''
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.nombre
@@ -82,7 +85,6 @@ class Asignacion(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE)
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE)
-    resumen = models.CharField(max_length=255, blank=True, null=True, help_text="Resumen de la asignación")
     horario = models.ForeignKey(Horario, on_delete=models.CASCADE)
 
    
@@ -108,11 +110,7 @@ class Asignacion(models.Model):
         patron = f" ({self.dias_franco})" if self.rotativo else ""
         return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio}){patron}"
 
-    def save(self, *args, **kwargs):
-        # Reflejar el resumen directamente desde el modelo Puesto
-        if self.puesto:
-            self.resumen = self.puesto.resumen
-        super().save(*args, **kwargs)
+    # Note: no se mantiene campo "resumen" en Asignacion; se accede a puesto.resumen cuando se necesita
 
 
 class AsignacionCalendario(models.Model):

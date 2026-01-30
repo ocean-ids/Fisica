@@ -16,5 +16,5 @@ export interface Asignacion{
     instalacion_detalle?: any;       
     puesto_detalle?: any;            
     horario_detalle?: any; 
-    resumen?: string;
+    
 }
