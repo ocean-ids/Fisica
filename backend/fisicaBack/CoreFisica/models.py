@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import RegexValidator
 
 
 class Cliente(models.Model):
@@ -82,6 +83,8 @@ class Puesto(models.Model):
         return self.nombre
 
 
+cedula_validator = RegexValidator(regex=r'^\d{1,10}$', message='Cédula: sólo dígitos, máximo 10')
+
 class Persona(models.Model):
     TIPO_CHOICES = [
         ('SUPERVISOR', 'SUPERVISOR'),
@@ -93,7 +96,7 @@ class Persona(models.Model):
     tipo = models.CharField(null=True,max_length=15, choices=TIPO_CHOICES)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
-    cedula = models.CharField(max_length=20, unique=True)
+    cedula = models.CharField(max_length=10, unique=True, validators=[cedula_validator])
     
 
     def __str__(self):

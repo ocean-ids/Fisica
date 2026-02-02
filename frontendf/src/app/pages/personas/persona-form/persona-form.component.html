@@ -4,7 +4,7 @@
   <form [formGroup]="personaForm">
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Cédula</mat-label>
-      <input matInput formControlName="cedula" required>
+      <input type="number" matInput formControlName="cedula" required>
       <mat-error *ngIf="personaForm.get('cedula')?.hasError('required')">
         La cédula es requerida
       </mat-error>

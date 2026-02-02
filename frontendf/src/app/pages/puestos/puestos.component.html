@@ -33,7 +33,7 @@
               <th>Horas de Trabajo</th>
               <th>Turno</th>
               <th>Días</th>
-              <th>Resumen</th> 
+              <!--<th>Resumen</th> -->
               <th>Instalación</th>
               <th class="text-center">Acciones</th>
             </tr>
@@ -45,7 +45,7 @@
               <td>{{ puesto.horas_trabajo }}</td>
               <td>{{ puesto.turno }}</td>
               <td>{{ puesto.dias?.join(', ') }}</td>
-              <td>
+              <!--<td>
                 <span
                   [matMenuTriggerFor]="tooltipMenu"
                   class="tooltip-trigger">
@@ -60,7 +60,7 @@
                     <div><strong>📅 Días:</strong> {{ puesto.dias?.join(', ') || '-' }}</div>
                   </div>
                 </mat-menu>
-              </td>
+              </td> -->
               <td>{{ puesto.instalacion__provincia }} - {{ puesto.instalacion__ciudad }}</td>
               <td class="text-center">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirFormularioNuevo(puesto)">
