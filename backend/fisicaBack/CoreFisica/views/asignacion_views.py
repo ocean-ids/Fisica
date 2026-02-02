@@ -40,13 +40,13 @@ def editar_servicio(request, id):
     try:
         asignacion = Asignacion.objects.get(id=id)
     except Asignacion.DoesNotExist:
-        return Response({'error': 'Asinación no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Asignación no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
     serializer = AsignacionSerializer(asignacion, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 def guardar_orden_asignacion(request):
@@ -77,7 +77,7 @@ def exportar_asignaciones_excel(request):
     ws.title = "Asignaciones"
 
     
-    ws.append(['Horario', 'Código Cliente', 'Cliente', 'Nombre Puesto', 'Cantidad de Guardias', 'Horas de Trabajo', 'Cédula', 'Persona'])
+    ws.append(['Horario', 'Código Cliente', 'Cliente', 'Nombre Puesto', 'Cantidad de Guardias', 'Horas de Trabajo', 'Cédula', 'Persona', 'Tipo'])
 
     for asignacion in Asignacion.objects.all():
         ws.append([
@@ -88,7 +88,8 @@ def exportar_asignaciones_excel(request):
             asignacion.puesto.cantidad_guardias,
             asignacion.puesto.horas_trabajo,
             asignacion.persona.cedula,
-            f"{asignacion.persona.apellidos} {asignacion.persona.nombres}"
+            f"{asignacion.persona.apellidos} {asignacion.persona.nombres}",
+            asignacion.persona.tipo
         ])
     
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

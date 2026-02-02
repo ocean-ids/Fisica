@@ -9,6 +9,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
     puesto_detalle = serializers.SerializerMethodField(read_only=True)
     horario_detalle = serializers.SerializerMethodField(read_only=True)
     fecha = serializers.DateField(required=False, allow_null=True)
+    tipo = serializers.CharField(source='persona.tipo', read_only=True)
 
     def get_persona_detalle(self, obj):
         return {
