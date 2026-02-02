@@ -75,11 +75,16 @@
                         </mat-menu>
                       </td>
                       <td>{{ asig.persona_detalle?.cedula }}</td>
-                      <td>{{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}
-                         <span class="badge mt-1" [ngClass]="asig.persona_detalle?.tipo === 'SUPERVISOR' ? 'bg-success' : 'bg-primary'">
-                          {{ asig.persona_detalle?.tipo }}
-                        </span>
-                      </td>
+                      <td>
+                          {{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}
+
+                          <div>
+                            <span class="badge mt-2"
+                              [ngClass]="asig.persona_detalle?.tipo === 'SUPERVISOR' ? 'bg-success' : 'bg-primary'">
+                              {{ asig.persona_detalle?.tipo }}
+                            </span>
+                          </div>
+                        </td>
                       <td>
                         <button class="btn btn-sm btn-outline-primary me-1" (click)="abrirModalEditar(asig)">
                           <i class="bi bi-pencil"></i>
