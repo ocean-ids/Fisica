@@ -14,20 +14,20 @@
       </mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
+    <mat-form-field class="w-100">
       <mat-label>Provincia</mat-label>
-      <input matInput formControlName="provincia" required>
-      <mat-error *ngIf="instalacionForm.get('provincia')?.hasError('required')">
-        La provincia es requerida
-      </mat-error>
+      <mat-select formControlName="provincia" (selectionChange)="onProvinciaChange()" required>
+        <mat-option *ngFor="let p of provincias" [value]="p.id">{{ p.nombre }}</mat-option>
+      </mat-select>
+      <mat-error *ngIf="instalacionForm.get('provincia')?.hasError('required')">La provincia es requerida</mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
+    <mat-form-field class="w-100">
       <mat-label>Ciudad</mat-label>
-      <input matInput formControlName="ciudad" required>
-      <mat-error *ngIf="instalacionForm.get('ciudad')?.hasError('required')">
-        La ciudad es requerida
-      </mat-error>
+      <mat-select formControlName="ciudad" required>
+        <mat-option *ngFor="let c of ciudades" [value]="c.nombre">{{ c.nombre }}</mat-option>
+      </mat-select>
+      <mat-error *ngIf="instalacionForm.get('ciudad')?.hasError('required')">La ciudad es requerida</mat-error>
     </mat-form-field>
   </form>
 </mat-dialog-content>
