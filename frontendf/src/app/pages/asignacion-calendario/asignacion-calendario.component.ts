@@ -14,6 +14,7 @@ import { CommonModule } from '@angular/common';
 })
 export class AsignacionCalendarioComponent implements OnInit{
   weekStart: string = '';
+  weekDays: Array<{short:string, name:string, date:string, dayNum:number}> = [];
   rows: any[] = [];
   loading = false;
   page = 1;
@@ -37,6 +38,8 @@ export class AsignacionCalendarioComponent implements OnInit{
   }
 
   loadWeek(){
+    // Recompute display labels for the current week
+    this.computeWeekDays();
     this.loading = true;
     this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart, page: this.page, page_size: this.pageSize})
       .subscribe(res => {
@@ -127,6 +130,26 @@ export class AsignacionCalendarioComponent implements OnInit{
     if(v.startsWith('DS') || v.startsWith('NS')) return 'cell-desc';
     if(v.startsWith('MA') || v.startsWith('MI')) return 'cell-daycode';
     return '';
+  }
+  
+  computeWeekDays(): void {
+    this.weekDays = [];
+    if (!this.weekStart) return;
+    const base = new Date(this.weekStart);
+    // Use the actual weekday names based on the base date; do not assume Monday
+    const shortNames = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
+    const fullNames = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    for (let i = 0; i < 7; i++){
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      const wd = d.getDay(); // 0=Dom .. 6=Sab
+      this.weekDays.push({
+        short: shortNames[wd],
+        name: fullNames[wd],
+        date: d.toISOString().slice(0,10),
+        dayNum: d.getDate()
+      });
+    }
   }
 
 }

@@ -8,14 +8,8 @@
     <table class="table table-sm table-bordered">
       <thead>
         <tr>
-          <th>Lu</th>
-          <th>Ma</th>
-          <th>Mi</th>
-          <th>Ju</th>
-          <th>Vi</th>
-          <th>Sá</th>
-          <th>Do</th>
-          <th >Acciones</th>
+          <th *ngFor="let d of weekDays" title="{{d.name}}">{{d.short}} {{d.dayNum}}</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
