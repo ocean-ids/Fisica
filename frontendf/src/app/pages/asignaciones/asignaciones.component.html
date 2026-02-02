@@ -47,7 +47,6 @@
                       <th colspan="2">Puesto</th>
                       <th rowspan="2">Cédula</th>
                       <th rowspan="2">Persona</th>
-                      <th rowspan="2">Tipo</th>
                       <th rowspan="2">Acciones</th>
                     </tr>
                     <tr>
@@ -76,8 +75,11 @@
                         </mat-menu>
                       </td>
                       <td>{{ asig.persona_detalle?.cedula }}</td>
-                      <td>{{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}</td>
-                      <td>{{ asig.persona_detalle?.tipo }}</td>
+                      <td>{{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}
+                         <span class="badge mt-1" [ngClass]="asig.persona_detalle?.tipo === 'SUPERVISOR' ? 'bg-success' : 'bg-primary'">
+                          {{ asig.persona_detalle?.tipo }}
+                        </span>
+                      </td>
                       <td>
                         <button class="btn btn-sm btn-outline-primary me-1" (click)="abrirModalEditar(asig)">
                           <i class="bi bi-pencil"></i>
