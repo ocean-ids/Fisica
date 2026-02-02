@@ -47,6 +47,7 @@
                       <th colspan="2">Puesto</th>
                       <th rowspan="2">Cédula</th>
                       <th rowspan="2">Persona</th>
+                      <th rowspan="2">Tipo</th>
                       <th rowspan="2">Acciones</th>
                     </tr>
                     <tr>
@@ -76,6 +77,7 @@
                       </td>
                       <td>{{ asig.persona_detalle?.cedula }}</td>
                       <td>{{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}</td>
+                      <td>{{ asig.persona_detalle?.tipo }}</td>
                       <td>
                         <button class="btn btn-sm btn-outline-primary me-1" (click)="abrirModalEditar(asig)">
                           <i class="bi bi-pencil"></i>
@@ -141,11 +143,11 @@
         </div>
 
         <div class="col-md-6 mb-3">
-          <mat-form-field class="w-100">
+              <mat-form-field class="w-100">
             <mat-label>Persona</mat-label>
             <mat-select [(ngModel)]="asignacionActual.persona" [ngModelOptions]="{standalone:true}">
               <mat-option [value]="0">Seleccione</mat-option>
-              <mat-option *ngFor="let per of personas" [value]="per.id">{{ per.apellidos }} {{ per.nombres }}</mat-option>
+              <mat-option *ngFor="let per of personas" [value]="per.id">{{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})</mat-option>
             </mat-select>
           </mat-form-field>
         </div>

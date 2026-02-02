@@ -1,3 +1,5 @@
+import { Persona } from './persona.model';
+
 export interface Asignacion{
     id?: number;
     persona: number;
@@ -10,7 +12,7 @@ export interface Asignacion{
     rotativo: boolean;
     dias_franco?: number;
     estado: string;
-    persona_detalle?: any;           
+    persona_detalle?: Persona | null;
     cliente_detalle?: any; 
     clienteCodigo: string;       
     instalacion_detalle?: any;       

@@ -11,6 +11,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
     fecha = serializers.DateField(required=False, allow_null=True)
     tipo = serializers.CharField(source='persona.tipo', read_only=True)
 
+
     def get_persona_detalle(self, obj):
         return {
             'id': obj.persona.id,
@@ -57,6 +58,8 @@ class AsignacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asignacion
         fields = '__all__'
+
+
 
 
 class AsignacionSemanalSerializer(serializers.ModelSerializer):

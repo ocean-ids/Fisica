@@ -266,7 +266,7 @@ export class AsignacionesComponent implements OnInit {
   }
 
   eliminarAsignacion(asignacion: Asignacion): void {
-    if (confirm(`¿Eliminar la asignación de ${asignacion.persona_detalle?.apellidos} ${asignacion.persona_detalle?.nombres}?`)) {
+    if (confirm(`¿Eliminar la asignación de ${asignacion.persona_detalle?.apellidos} ${asignacion.persona_detalle?.nombres} (${asignacion.persona_detalle?.tipo})?`)) {
       this.asignacionService.eliminarAsignacion(asignacion.id!).subscribe({
         next: () => {
           alert('Asignación eliminada');
