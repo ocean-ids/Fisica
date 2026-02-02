@@ -34,79 +34,79 @@
       </div>
     </div>
   </div>
-        <div class="row mt-4">
-          <div class="col-lg-8">
-            <div class="card">
-              <div class="card-body table-responsive">
-                <table class="table table-hover table-bordered">
-                  <thead class="table-light text-center">
-                    <tr class="text-center">
-                      <th rowspan="2">Horario</th>
-                      <th rowspan="2">Código</th>
-                      <th rowspan="2">Cliente</th>
-                      <th colspan="2">Puesto</th>
-                      <th rowspan="2">Cédula</th>
-                      <th rowspan="2">Persona</th>
-                      <th rowspan="2">Acciones</th>
-                    </tr>
-                    <tr>
-                      <th>Nombre</th>
-                      <th>Resumen</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr class="text-center" *ngFor="let asig of asignaciones">
-                      <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }} - {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
-                      <td>{{ asig.cliente_detalle?.codigo }}</td>
-                      <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
-                      <td>{{ asig.puesto_detalle?.nombre }}</td>
-                      <td>
-                        <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
-                          {{ asig.puesto_detalle?.resumen }}
-                        </span>
+  <div class="row mt-4">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body table-responsive">
+          <table class="table table-hover table-bordered">
+            <thead class="table-light text-center">
+              <tr class="text-center">
+                <th rowspan="2">Horario</th>
+                <th rowspan="2">Código</th>
+                <th rowspan="2">Cliente</th>
+                <th colspan="2">Puesto</th>
+                <th rowspan="2">Cédula</th>
+                <th rowspan="2">Persona</th>
+                <th rowspan="2">Acciones</th>
+              </tr>
+              <tr>
+                <th>Nombre</th>
+                <th>Resumen</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="text-center" *ngFor="let asig of asignaciones">
+                <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }} - {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
+                <td>{{ asig.cliente_detalle?.codigo }}</td>
+                <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
+                <td>{{ asig.puesto_detalle?.nombre }}</td>
+                <td>
+                  <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
+                    {{ asig.puesto_detalle?.resumen }}
+                  </span>
 
-                        <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
-                          <div class="tooltip-content">
-                            <div><strong>👮 Puesto:</strong> {{ asig.puesto_detalle?.cantidad_guardias }}</div>
-                            <div><strong>⏰ Horas:</strong> {{ asig.puesto_detalle?.horas_trabajo || '-' }}</div>
-                            <div><strong>🌙 Turno:</strong> {{ asig.puesto_detalle?.turno }}</div>
-                            <div><strong>📅 Días:</strong> {{ asig.puesto_detalle?.dias?.join(', ') || '-' }}</div>
-                          </div>
-                        </mat-menu>
-                      </td>
-                      <td>{{ asig.persona_detalle?.cedula }}</td>
-                      <td>
-                          {{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}
+                  <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
+                    <div class="tooltip-content">
+                      <div><strong>👮 Puesto:</strong> {{ asig.puesto_detalle?.cantidad_guardias }}</div>
+                      <div><strong>⏰ Horas:</strong> {{ asig.puesto_detalle?.horas_trabajo || '-' }}</div>
+                      <div><strong>🌙 Turno:</strong> {{ asig.puesto_detalle?.turno }}</div>
+                      <div><strong>📅 Días:</strong> {{ asig.puesto_detalle?.dias?.join(', ') || '-' }}</div>
+                    </div>
+                  </mat-menu>
+                </td>
+                <td>{{ asig.persona_detalle?.cedula }}</td>
+                <td>
+                    {{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}
 
-                          <div>
-                            <span class="badge mt-2"
-                              [ngClass]="asig.persona_detalle?.tipo === 'SUPERVISOR' ? 'bg-success' : 'bg-primary'">
-                              {{ asig.persona_detalle?.tipo }}
-                            </span>
-                          </div>
-                        </td>
-                      <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" (click)="abrirModalEditar(asig)">
-                          <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" (click)="eliminarAsignacion(asig)">
-                          <i class="bi bi-trash"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <div class="col-lg-4">
-            <div class="card">
-              <div class="card-body">
-                <app-asignacion-calendario></app-asignacion-calendario>
-              </div>
-            </div>
-          </div>
+                    <div>
+                      <span class="badge mt-2"
+                        [ngClass]="asig.persona_detalle?.tipo === 'SUPERVISOR' ? 'bg-success' : 'bg-primary'">
+                        {{ asig.persona_detalle?.tipo }}
+                      </span>
+                    </div>
+                  </td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary me-1" (click)="abrirModalEditar(asig)">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" (click)="eliminarAsignacion(asig)">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-body">
+          <app-asignacion-calendario></app-asignacion-calendario>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 
