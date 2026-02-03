@@ -4,9 +4,15 @@
   <form [formGroup]="personaForm">
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Cédula</mat-label>
-      <input type="number" matInput formControlName="cedula" required>
+      <input type="text" matInput formControlName="cedula" maxlength="10" required>
       <mat-error *ngIf="personaForm.get('cedula')?.hasError('required')">
         La cédula es requerida
+      </mat-error>
+      <mat-error *ngIf="personaForm.get('cedula')?.hasError('pattern')">
+        Sólo dígitos (máximo 10)
+      </mat-error>
+      <mat-error *ngIf="personaForm.get('cedula')?.hasError('maxlength')">
+        Máximo 10 caracteres
       </mat-error>
     </mat-form-field>
 

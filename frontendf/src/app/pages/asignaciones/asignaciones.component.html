@@ -56,7 +56,7 @@
             </thead>
             <tbody>
               <tr class="text-center" *ngFor="let asig of asignaciones">
-                <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }} - {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
+                <td class="d-flex justify-content-center">{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                 <td>{{ asig.cliente_detalle?.codigo }}</td>
                 <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
                 <td>{{ asig.puesto_detalle?.nombre }}</td>
@@ -75,11 +75,16 @@
                   </mat-menu>
                 </td>
                 <td>{{ asig.persona_detalle?.cedula }}</td>
-                <td>
-                    {{ asig.persona_detalle?.apellidos }} {{ asig.persona_detalle?.nombres }}
+                <td class="text-center" >
+                    <div >
+                      {{ asig.persona_detalle?.apellidos }}
+                     </div>
 
+                    <div class="mt-1">
+                      {{ asig.persona_detalle?.nombres }}
+                    </div>
                     <div>
-                      <span class="badge mt-2"
+                      <span class="badge mt-1"
                         [ngClass]="asig.persona_detalle?.tipo === 'SUPERVISOR' ? 'bg-success' : 'bg-primary'">
                         {{ asig.persona_detalle?.tipo }}
                       </span>

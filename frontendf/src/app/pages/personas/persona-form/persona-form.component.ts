@@ -36,7 +36,7 @@ export class PersonaFormComponent implements OnInit {
     this.personaForm = this.fb.group({
       nombres: [this.persona?.nombres || '', Validators.required],
       apellidos: [this.persona?.apellidos || '', Validators.required],
-      cedula: [this.persona?.cedula || '', Validators.required],
+      cedula: [this.persona?.cedula || '', [Validators.required, Validators.pattern('^[0-9]{1,10}$'), Validators.maxLength(10)]],
       tipo: [this.persona?.tipo || 'FIJO', Validators.required]
     });
   }
