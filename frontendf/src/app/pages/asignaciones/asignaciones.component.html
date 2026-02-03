@@ -13,7 +13,6 @@
         <div class="col-md-3"></div>
         <div class="col-md-6 d-flex justify-content-center align-items-end">
           <div style="width: 320px;">
-            <label class="form-label text-center d-block">Fecha (filtra ambas vistas)</label>
             <input type="date" class="form-control mx-auto" [(ngModel)]="dia" (change)="onSharedDateChange()" />
           </div>
         </div>
@@ -32,7 +31,7 @@
         <div class="card-body table-responsive">
           <table class="table table-hover table-bordered">
             <thead class="table-light text-center">
-              <tr class="text-center">
+              <tr class="text-center align-middle">
                 <th rowspan="2">Horario</th>
                 <th rowspan="2">Código</th>
                 <th rowspan="2">Cliente</th>
@@ -47,7 +46,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr class="text-center" *ngFor="let asig of asignaciones">
+              <tr class="text-center align-middle" *ngFor="let asig of asignaciones">
                 <td class="">{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                 <td>{{ asig.cliente_detalle?.codigo }}</td>
                 <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
