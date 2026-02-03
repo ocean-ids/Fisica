@@ -139,18 +139,7 @@ class Asignacion(models.Model):
 
     def __str__(self):
         return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio})"
-
-    # Note: no se mantiene campo "resumen" en Asignacion; se accede a puesto.resumen cuando se necesita
-
-
-"""
-La clase `AsignacionCalendario` fue eliminada porque se reemplaza
-por la programación semanal (`AsignacionSemanal`). Si aún necesitas
-mantener historiales de asistencias diarias, podemos crear un
-modelo separado con un nombre distinto o conservar la tabla en una
-migration de preservación antes de borrarla definitivamente.
-"""
-
+        
 
 class AsignacionSemanal(models.Model):
     """Programación semanal por puesto.

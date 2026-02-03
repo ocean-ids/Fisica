@@ -86,7 +86,7 @@ export class AsignacionCalendarioComponent implements OnInit{
                   const default_code = turno.startsWith('n') ? 'N' : 'D';
                   const dias = puesto.dias || [];
                   const dias_norm = (dias||[]).map((d:any)=> String(d).trim().toLowerCase());
-                  // construir defaults por dayName
+                  
                   const weekDayNames = this.weekDays.map(w=> (w.name||'').toString().toLowerCase());
                   const defaults: any = {};
                   for(let i=0;i<weekDayNames.length;i++){
@@ -107,7 +107,7 @@ export class AsignacionCalendarioComponent implements OnInit{
           });
         }
           this.loading = false;
-          // Notificar a quien escuche que la semana actual cambió
+          
           try { this.weekStartChange.emit(this.weekStart); } catch(e){}
       }, ()=> this.loading = false);
   }
