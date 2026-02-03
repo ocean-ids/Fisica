@@ -17,9 +17,7 @@ export class AsignacionCalendarioComponent implements OnInit{
   weekDays: Array<{short:string, name:string, date:string, dayNum:number}> = [];
   rows: any[] = [];
   loading = false;
-  page = 1;
-  pageSize = 20;
-  total = 0;
+  
 
   constructor(private asignacionCalendarioService: AsignacionCalendarioService, private puestoService: PuestoService){}
 
@@ -41,43 +39,24 @@ export class AsignacionCalendarioComponent implements OnInit{
     // Recompute display labels for the current week
     this.computeWeekDays();
     this.loading = true;
-    this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart, page: this.page, page_size: this.pageSize})
+    this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart})
       .subscribe(res => {
-        this.rows = Array.isArray(res.results) ? res.results : [];
-        this.total = res.total || this.rows.length;
+        if (Array.isArray(res)) {
+          this.rows = res;
+        } else if (res && Array.isArray(res.results)) {
+          this.rows = res.results;
+        } else {
+          this.rows = [];
+        }
+
         // Si no hay filas guardadas, cargar puestos para mostrar filas editables
         if((!this.rows || this.rows.length === 0)){
           this.puestoService.getPuestos().subscribe(puestos => {
             this.rows = puestos.map(p => ({ puesto: p.id, puesto_detalle: p, mon: '', tue: '', wed: '', thu: '', fri: '', sat: '', sun: '' }));
-            this.total = this.rows.length;
           });
         }
         this.loading = false;
       }, ()=> this.loading = false);
-  }
-
-  totalPages(): number{
-    return Math.max(1, Math.ceil((this.total || 0) / this.pageSize));
-  }
-
-  nextPage(){
-    if (this.page < this.totalPages()){
-      this.page++;
-      this.loadWeek();
-    }
-  }
-
-  prevPage(){
-    if (this.page > 1){
-      this.page--;
-      this.loadWeek();
-    }
-  }
-
-  changePageSize(size: number){
-    this.pageSize = size;
-    this.page = 1;
-    this.loadWeek();
   }
 
   saveRow(row: any){
