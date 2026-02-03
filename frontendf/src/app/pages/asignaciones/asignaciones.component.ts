@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Cliente, Persona, Instalacion, Puesto, Horario, Asignacion } from '../../models';
 import { ClienteService } from '../../services/cliente.service';
@@ -37,12 +37,54 @@ import { saveAs } from 'file-saver';
 })
 export class AsignacionesComponent implements OnInit {
 
+  @ViewChild(AsignacionCalendarioComponent)
+  calendario?: AsignacionCalendarioComponent;
+
+  ngAfterViewInit(): void {
+    // Suscribirse a cambios de semana del calendario para sincronizar filtros
+    setTimeout(() => {
+      if (this.calendario && this.calendario.weekStartChange) {
+        this.calendario.weekStartChange.subscribe((ws: string) => {
+          if (!ws) return;
+          // ws es YYYY-MM-DD (lunes). Usarlo como día filtro en asignaciones
+          this.dia = ws;
+          const parts = ws.split('-');
+          if (parts.length === 3) {
+            this.anio = Number(parts[0]);
+            this.mes = Number(parts[1]);
+          }
+          this.cargarAsignaciones();
+        });
+      }
+    }, 0);
+  }
+
+  onSharedDateChange(): void {
+    if (!this.dia) {
+      this.cargarAsignaciones();
+      return;
+    }
+    // dia formato YYYY-MM-DD
+    const parts = this.dia.split('-');
+    if (parts.length === 3) {
+      this.anio = Number(parts[0]);
+      this.mes = Number(parts[1]);
+    }
+    // sincronizar calendario con la fecha seleccionada
+    if (this.calendario) {
+      this.calendario.weekStart = this.dia;
+      this.calendario.loadWeek();
+    }
+    this.cargarAsignaciones();
+  }
+
   textoBotonAsignacion: string = 'Guardar';
 
   asignaciones: Asignacion[] = [];
 
   mes: number = new Date().getMonth() + 1;
   anio: number = new Date().getFullYear();
+  dia: string | null = null; // formato YYYY-MM-DD (opcional)
 
   clientes: Cliente[] = [];
   personas: Persona[] = [];
@@ -91,7 +133,19 @@ export class AsignacionesComponent implements OnInit {
 
   cargarAsignaciones(): void {
     this.asignacionService.obtenerAsignaciones(this.mes, this.anio).subscribe({
-      next: data => this.asignaciones = data,
+      next: data => {
+        if (this.dia) {
+          this.asignaciones = data.filter((a: any) => {
+            // comparar fecha exacta si existe
+            if (!a.fecha) return false;
+            // a.fecha puede venir con hora; tomar sólo YYYY-MM-DD
+            const f = String(a.fecha).slice(0,10);
+            return f === this.dia;
+          });
+        } else {
+          this.asignaciones = data;
+        }
+      },
       error: err => console.error('Error al cargar asignaciones', err)
     });
   }
@@ -235,6 +289,9 @@ export class AsignacionesComponent implements OnInit {
       return;
     }
 
+    // asignar fecha (opcional) al objeto antes de enviar
+    (this.asignacionActual as any).fecha = this.dia ? this.dia : null;
+
     if (this.modoEdicion && this.asignacionActual.id) {
       this.asignacionService.actualizarAsignacion(
         this.asignacionActual.id,
@@ -244,6 +301,7 @@ export class AsignacionesComponent implements OnInit {
           alert('Asignación actualizada');
           this.cargarAsignaciones();
           this.cerrarModal();
+          this.calendario?.loadWeek();
         },
         error: err => {
           console.error(err);
@@ -256,6 +314,37 @@ export class AsignacionesComponent implements OnInit {
           alert('Asignación creada');
           this.cargarAsignaciones();
           this.cerrarModal();
+          // Crear/actualizar la fila del calendario para la semana actualmente visible
+          const puestoId = this.asignacionActual.puesto;
+          if (puestoId && this.calendario) {
+            // Si no tenemos info del puesto localmente, buscarlo
+            let puesto = this.puestos.find(p => p.id === puestoId) as any;
+            if (!puesto) {
+              // intentar obtener por instalación si está seleccionada, sino obtener todos
+              const fetch$ = this.instalacionSeleccionada
+                ? this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada)
+                : this.puestoService.getPuestos();
+              fetch$.subscribe({
+                next: puestos => {
+                  this.puestos = puestos;
+                  puesto = puestos.find((p: any) => p.id === puestoId);
+                  const row = this.buildRowForPuesto(puestoId);
+                  this.calendario!.saveRow(row);
+                  this.calendario!.loadWeek();
+                },
+                error: err => {
+                  console.error('Error cargando puestos para crear fila calendario', err);
+                  this.calendario!.loadWeek();
+                }
+              });
+            } else {
+              const row = this.buildRowForPuesto(puestoId);
+              this.calendario.saveRow(row);
+              this.calendario.loadWeek();
+            }
+          } else {
+            this.calendario?.loadWeek();
+          }
         },
         error: err => {
           console.error(err);
@@ -265,12 +354,46 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
+  private buildRowForPuesto(puestoId: number) {
+    const puesto = this.puestos.find(p => p.id === puestoId) as any;
+    const weekdayKeys = ['mon','tue','wed','thu','fri','sat','sun'];
+
+    const normalize = (tok: any) => {
+      if (!tok && tok !== 0) return '';
+      const t = String(tok).trim().toLowerCase();
+      const map: any = {
+        l: 'lunes', lu: 'lunes', lun: 'lunes', lunes: 'lunes',
+        m: 'martes', ma: 'martes', mar: 'martes', martes: 'martes',
+        mi: 'miercoles', mie: 'miercoles', miercoles: 'miercoles', 'miércoles':'miercoles',
+        j: 'jueves', ju: 'jueves', jue: 'jueves', jueves: 'jueves',
+        v: 'viernes', vi: 'viernes', vie: 'viernes', viernes: 'viernes',
+        s: 'sabado', sa: 'sabado', sab: 'sabado', sabado: 'sabado', 'sábado':'sabado',
+        d: 'domingo', do: 'domingo', dom: 'domingo', domingo: 'domingo'
+      };
+      return map[t] || t;
+    };
+
+    const dias = (puesto && puesto.dias) ? (Array.isArray(puesto.dias) ? puesto.dias : [puesto.dias]) : [];
+    const diasNorm = dias.map(normalize).filter((x:any)=>x);
+    const turno = (puesto && puesto.turno) ? String(puesto.turno).trim().toLowerCase() : '';
+    const defaultCode = turno.startsWith('n') ? 'N' : 'D';
+
+    const row: any = { puesto: puestoId, puesto_detalle: puesto };
+    const names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+    for (let i=0;i<7;i++){
+      const match = diasNorm.some((d:any)=> d===names[i] || names[i].includes(d) || d.includes(names[i]));
+      row[weekdayKeys[i]] = match ? defaultCode : '';
+    }
+    return row;
+  }
+
   eliminarAsignacion(asignacion: Asignacion): void {
     if (confirm(`¿Eliminar la asignación de ${asignacion.persona_detalle?.apellidos} ${asignacion.persona_detalle?.nombres} (${asignacion.persona_detalle?.tipo})?`)) {
       this.asignacionService.eliminarAsignacion(asignacion.id!).subscribe({
         next: () => {
           alert('Asignación eliminada');
           this.cargarAsignaciones();
+          this.calendario?.loadWeek();
         },
         error: err => {
           console.error(err);

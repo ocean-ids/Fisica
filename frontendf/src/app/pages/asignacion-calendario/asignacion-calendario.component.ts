@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter } from '@angular/core';
 import { AsignacionSemanal } from '../../models/asignacion-calendario';
 import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
 import { PuestoService } from '../../services/puesto.service';
@@ -55,9 +55,13 @@ export class AsignacionCalendarioComponent implements OnInit{
             this.rows = puestos.map(p => ({ puesto: p.id, puesto_detalle: p, mon: '', tue: '', wed: '', thu: '', fri: '', sat: '', sun: '' }));
           });
         }
-        this.loading = false;
+          this.loading = false;
+          // Notificar a quien escuche que la semana actual cambió
+          try { this.weekStartChange.emit(this.weekStart); } catch(e){}
       }, ()=> this.loading = false);
   }
+
+        @Output() weekStartChange: EventEmitter<string> = new EventEmitter<string>();
 
   saveRow(row: any){
     const payload: AsignacionSemanal = {

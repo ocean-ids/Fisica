@@ -10,27 +10,19 @@
   <div class="card mb-4">
     <div class="card-body">
       <div class="row">
-        <div class="col-md-3">
-          <label class="form-label">Mes</label>
-          <select class="form-select" [(ngModel)]="mes" (change)="cambiarMesAnio()">
-            <option *ngFor="let m of [1,2,3,4,5,6,7,8,9,10,11,12]" [value]="m">
-              {{ m }}
-            </option>
-          </select>
-        </div>
-
-        <div class="col-md-3">
-          <label class="form-label">Año</label>
-          <input type="number" class="form-control" [(ngModel)]="anio" (change)="cambiarMesAnio()" />
-        </div>
-    
-        <div class="col-md-3 d-flex align-items-end">
-          <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 100%;">
-            <button (click)="descargarReporteExcel()" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
-              <img src="assets/images/excel-icon.png" alt="Excel" width="38" height="38" style="vertical-align: middle;" />
-              <span style="font-size: 13px; margin-top: 2px; text-align: center; color: #198754;">Descargar Excel</span>
-            </button>
+        <div class="col-md-3"></div>
+        <div class="col-md-6 d-flex justify-content-center align-items-end">
+          <div style="width: 320px;">
+            <label class="form-label text-center d-block">Fecha (filtra ambas vistas)</label>
+            <input type="date" class="form-control mx-auto" [(ngModel)]="dia" (change)="onSharedDateChange()" />
           </div>
+        </div>
+        <div class="col-md-3 d-flex align-items-end justify-content-end">
+          <button (click)="descargarReporteExcel()" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
+            <img src="assets/images/excel-icon.png" alt="Excel" width="38" height="38" style="vertical-align: middle;" />
+            <span style="font-size: 13px; margin-top: 2px; text-align: center; color: #198754;">Descargar Excel</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
