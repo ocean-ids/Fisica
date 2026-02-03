@@ -9,7 +9,6 @@ export interface Asignacion{
     horario: number;
     mes: number;
     anio: number;
-    rotativo: boolean;
     dias_franco?: number;
     estado: string;
     persona_detalle?: Persona | null;

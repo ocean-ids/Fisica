@@ -52,6 +52,7 @@ export class AsignacionesComponent implements OnInit {
           if (parts.length === 3) {
             this.anio = Number(parts[0]);
             this.mes = Number(parts[1]);
+            this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
           }
           this.cargarAsignaciones();
         });
@@ -85,6 +86,7 @@ export class AsignacionesComponent implements OnInit {
   mes: number = new Date().getMonth() + 1;
   anio: number = new Date().getFullYear();
   dia: string | null = null; // formato YYYY-MM-DD (opcional)
+  monthValue: string = '';
 
   clientes: Cliente[] = [];
   personas: Persona[] = [];
@@ -111,7 +113,36 @@ export class AsignacionesComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarCatalogos();
+    // inicializar selector mensual y cargar asignaciones
+    this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
     this.cargarAsignaciones();
+  }
+
+  onMonthChange(): void {
+    if (!this.monthValue) return;
+    const parts = this.monthValue.split('-');
+    if (parts.length !== 2) return;
+    this.anio = Number(parts[0]);
+    this.mes = Number(parts[1]);
+    this.dia = null;
+    this.cargarAsignaciones();
+
+    // calcular el primer lunes del mes y sincronizar calendario
+    const firstMonday = this.getFirstMonday(this.anio, this.mes);
+    if (this.calendario) {
+      this.calendario.weekStart = firstMonday;
+      this.calendario.loadWeek();
+    }
+  }
+
+  private getFirstMonday(year: number, month: number): string {
+    const d = new Date(year, month - 1, 1);
+    const day = d.getDay(); // 0..6 Sun..Sat
+    const offset = (8 - day) % 7; // days to add to reach Monday
+    const dayOfMonth = 1 + offset;
+    const mm = String(month).padStart(2, '0');
+    const dd = String(dayOfMonth).padStart(2, '0');
+    return `${year}-${mm}-${dd}`;
   }
 
   cargarCatalogos(): void {
@@ -134,17 +165,8 @@ export class AsignacionesComponent implements OnInit {
   cargarAsignaciones(): void {
     this.asignacionService.obtenerAsignaciones(this.mes, this.anio).subscribe({
       next: data => {
-        if (this.dia) {
-          this.asignaciones = data.filter((a: any) => {
-            // comparar fecha exacta si existe
-            if (!a.fecha) return false;
-            // a.fecha puede venir con hora; tomar sólo YYYY-MM-DD
-            const f = String(a.fecha).slice(0,10);
-            return f === this.dia;
-          });
-        } else {
-          this.asignaciones = data;
-        }
+        // Mostrar todas las asignaciones del mes/año (no filtrar por día)
+        this.asignaciones = data;
       },
       error: err => console.error('Error al cargar asignaciones', err)
     });
@@ -159,7 +181,6 @@ export class AsignacionesComponent implements OnInit {
       horario: 0,
       mes: this.mes,
       anio: this.anio,
-      rotativo: false,
       estado: 'ACTIVO',
       clienteCodigo: ''
     };
@@ -289,8 +310,8 @@ export class AsignacionesComponent implements OnInit {
       return;
     }
 
-    // asignar fecha (opcional) al objeto antes de enviar
-    (this.asignacionActual as any).fecha = this.dia ? this.dia : null;
+    // No enviar fecha exacta: las asignaciones se guardan por mes y año
+    // (this.asignacionActual as any).fecha = this.dia ? this.dia : null;
 
     if (this.modoEdicion && this.asignacionActual.id) {
       this.asignacionService.actualizarAsignacion(
@@ -314,37 +335,8 @@ export class AsignacionesComponent implements OnInit {
           alert('Asignación creada');
           this.cargarAsignaciones();
           this.cerrarModal();
-          // Crear/actualizar la fila del calendario para la semana actualmente visible
-          const puestoId = this.asignacionActual.puesto;
-          if (puestoId && this.calendario) {
-            // Si no tenemos info del puesto localmente, buscarlo
-            let puesto = this.puestos.find(p => p.id === puestoId) as any;
-            if (!puesto) {
-              // intentar obtener por instalación si está seleccionada, sino obtener todos
-              const fetch$ = this.instalacionSeleccionada
-                ? this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada)
-                : this.puestoService.getPuestos();
-              fetch$.subscribe({
-                next: puestos => {
-                  this.puestos = puestos;
-                  puesto = puestos.find((p: any) => p.id === puestoId);
-                  const row = this.buildRowForPuesto(puestoId);
-                  this.calendario!.saveRow(row);
-                  this.calendario!.loadWeek();
-                },
-                error: err => {
-                  console.error('Error cargando puestos para crear fila calendario', err);
-                  this.calendario!.loadWeek();
-                }
-              });
-            } else {
-              const row = this.buildRowForPuesto(puestoId);
-              this.calendario.saveRow(row);
-              this.calendario.loadWeek();
-            }
-          } else {
-            this.calendario?.loadWeek();
-          }
+          // No crear filas semanales automáticamente aquí; el backend puede propagar semanas desde la asignación mensual
+          this.calendario?.loadWeek();
         },
         error: err => {
           console.error(err);

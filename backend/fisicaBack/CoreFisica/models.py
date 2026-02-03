@@ -127,11 +127,6 @@ class Asignacion(models.Model):
     mes = models.PositiveSmallIntegerField(default=1)
     anio = models.PositiveSmallIntegerField(default=2026)
 
-    rotativo = models.BooleanField(default=False)
-    
-    
-    
-
     # orden eliminado
     estado = models.CharField(
         max_length=10,
@@ -143,8 +138,7 @@ class Asignacion(models.Model):
         unique_together = ('persona', 'mes', 'anio')
 
     def __str__(self):
-        patron = f" ({self.dias_franco})" if self.rotativo else ""
-        return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio}){patron}"
+        return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio})"
 
     # Note: no se mantiene campo "resumen" en Asignacion; se accede a puesto.resumen cuando se necesita
 
