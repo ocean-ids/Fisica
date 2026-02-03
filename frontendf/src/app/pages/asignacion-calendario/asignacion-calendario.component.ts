@@ -74,26 +74,7 @@ export class AsignacionCalendarioComponent implements OnInit{
     this.asignacionCalendarioService.crearAsignacionCalendario(payload)
       .subscribe(() => this.loadWeek());
   }
-
-  copyToNextWeek(){
-    const from_week = this.weekStart;
-    const tw = new Date(from_week);
-    tw.setDate(tw.getDate() + 7);
-    const to_week = tw.toISOString().slice(0,10);
-    const ok = window.confirm(`¿Copiar filas de la semana ${from_week} a ${to_week}? Esta acción NO cambiará la semana actual automáticamente.`);
-    if (!ok) return;
-    this.asignacionCalendarioService.copiarSemana({from_week, to_week})
-      .subscribe(res => {
-        const created = res?.created ?? 0;
-        const updated = res?.updated ?? 0;
-        window.alert(`Copiado: ${created} creadas, ${updated} actualizadas.`);
-        // Recargar la semana actual para reflejar cambios (no cambiamos weekStart)
-        this.loadWeek();
-      }, err => {
-        console.error(err);
-        window.alert('Error al copiar semana: ' + (err?.error || err?.message || err));
-      });
-  }
+  
 
   onCellChange(row: any, day: string, value: any){
     const v = value ? String(value).toUpperCase().slice(0,4) : '';

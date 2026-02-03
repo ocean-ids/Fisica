@@ -17,7 +17,4 @@ export class AsignacionCalendarioService {
     return this.apiService.post<any>('/asignacion-semanal/guardar/', asignacion);
   }
 
-  copiarSemana(payload: {from_week: string, to_week: string, cliente?: number}): Observable<any>{
-    return this.apiService.post<any>('/asignacion-semanal/copy/', payload);
-  }
 }
