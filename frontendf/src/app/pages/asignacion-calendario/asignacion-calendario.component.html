@@ -2,13 +2,13 @@
   <div class="table-responsive">
     <table class="table table-sm table-bordered">
       <thead class="table-light">
-        <tr class="text-center">
+        <tr class="text-center align-middle" style="height: 100px">
           <th *ngFor="let d of weekDays" title="{{d.name}}">{{d.short}} {{d.dayNum}}</th>
           <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let row of rows; let i = index">
+        <tr *ngFor="let row of rows; let i = index" style="height: 120px">
           <td title="{{row.puesto_detalle?.nombre || row.puesto}}"><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.mon)" [(ngModel)]="row.mon" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'mon',$event)"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.tue)" [(ngModel)]="row.tue" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'tue',$event)"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.wed)" [(ngModel)]="row.wed" [ngModelOptions]="{standalone:true}" (ngModelChange)="onCellChange(row,'wed',$event)"></td>
