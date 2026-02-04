@@ -15,6 +15,11 @@ import { CommonModule } from '@angular/common';
 })
 export class AsignacionCalendarioComponent implements OnInit{
   weekStart: string = '';
+  weeks: string[] = [];
+  currentWeekIndex: number = 0;
+  pageSize: number = 10;
+  currentPage: number = 1;
+  totalCount: number = 0;
   weekDays: Array<{short:string, name:string, date:string, dayNum:number}> = [];
   rows: any[] = [];
   loading = false;
@@ -28,7 +33,8 @@ export class AsignacionCalendarioComponent implements OnInit{
 
   ngOnInit(): void {
     this.weekStart = this.computeCurrentMonday();
-    this.loadWeek();
+    const base = new Date(this.weekStart);
+    this.loadWeeksForMonth(base.getMonth()+1, base.getFullYear());
   }
 
   computeCurrentMonday(): string{
@@ -49,15 +55,18 @@ export class AsignacionCalendarioComponent implements OnInit{
   
     this.computeWeekDays();
     this.loading = true;
-    this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart})
+    this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart, page: this.currentPage, page_size: this.pageSize})
       .subscribe({
         next: (res: any) => {
         if (Array.isArray(res)) {
           this.rows = res;
+          this.totalCount = (res||[]).length;
         } else if (res && Array.isArray(res.results)) {
           this.rows = res.results;
+          this.totalCount = res.count || 0;
         } else {
           this.rows = [];
+          this.totalCount = 0;
         }
 
         
@@ -78,6 +87,61 @@ export class AsignacionCalendarioComponent implements OnInit{
         },
         error: () => this.loading = false
       });
+  }
+
+  loadWeeksForMonth(mes: number, anio: number){
+    this.asignacionCalendarioService.obtenerSemanas(mes, anio).subscribe({
+      next: (res: any) => {
+        this.weeks = (res && res.weeks) ? res.weeks : [];
+        const idx = this.weeks.indexOf(this.weekStart);
+        this.currentWeekIndex = idx >= 0 ? idx : 0;
+        if(this.weeks.length && !this.weekStart){
+          this.weekStart = this.weeks[0];
+        }
+        if(this.weeks.length){
+          this.weekStart = this.weeks[this.currentWeekIndex];
+        }
+        this.currentPage = 1;
+        this.loadWeek();
+      },
+      error: () => {
+        this.weeks = [];
+        this.loadWeek();
+      }
+    });
+  }
+
+  prevWeek(){
+    if(this.currentWeekIndex > 0){
+      this.currentWeekIndex -= 1;
+      this.weekStart = this.weeks[this.currentWeekIndex];
+      this.currentPage = 1;
+      this.loadWeek();
+    }
+  }
+
+  nextWeek(){
+    if(this.currentWeekIndex < this.weeks.length - 1){
+      this.currentWeekIndex += 1;
+      this.weekStart = this.weeks[this.currentWeekIndex];
+      this.currentPage = 1;
+      this.loadWeek();
+    }
+  }
+
+  prevPage(){
+    if(this.currentPage > 1){
+      this.currentPage -= 1;
+      this.loadWeek();
+    }
+  }
+
+  nextPage(){
+    const maxPage = Math.ceil((this.totalCount || 0) / this.pageSize) || 1;
+    if(this.currentPage < maxPage){
+      this.currentPage += 1;
+      this.loadWeek();
+    }
   }
 
         @Output() weekStartChange: EventEmitter<string> = new EventEmitter<string>();

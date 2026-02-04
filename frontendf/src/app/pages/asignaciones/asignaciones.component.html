@@ -98,7 +98,19 @@
     <div class="col-lg-4">
       <div class="card">
         <div class="card-body">
-          <app-asignacion-calendario></app-asignacion-calendario>
+          <div class="mb-2 d-flex justify-content-between align-items-center">
+            <div>
+              <button class="btn btn-sm btn-outline-primary me-1" (click)="calComp.prevWeek()">Anterior</button>
+              <button class="btn btn-sm btn-outline-primary" (click)="calComp.nextWeek()">Siguiente</button>
+            </div>
+            <div><strong *ngIf="calComp?.weekStart">Semana: {{ calComp.weekStart }}</strong></div>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary me-1" (click)="prevPageAndAsignaciones()">« Página</button>
+              <span> Página {{ asignacionesPage }} </span>
+              <button class="btn btn-sm btn-outline-secondary ms-1" (click)="nextPageAndAsignaciones()">Página »</button>
+            </div>
+          </div>
+          <app-asignacion-calendario #calComp></app-asignacion-calendario>
         </div>
       </div>
     </div>

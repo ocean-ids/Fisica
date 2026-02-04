@@ -1,10 +1,11 @@
 from ..models import AsignacionSemanal
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from ..serializers import AsignacionSemanalSerializer
 from django.db import transaction
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 @api_view(['GET'])
 def listar_asignacion_semanal(request):
@@ -23,19 +24,46 @@ def listar_asignacion_semanal(request):
     if cliente_id:
         qs = qs.filter(puesto__instalacion__cliente_id=cliente_id)
 
-    # paginación simple
-    try:
-        page = int(request.GET.get('page', 1))
-        page_size = int(request.GET.get('page_size', 100))
-    except ValueError:
-        return Response({'error': 'page y page_size deben ser números'}, status=status.HTTP_400_BAD_REQUEST)
+    qs = qs.order_by('puesto_id')
 
-    start = (page - 1) * page_size
-    end = start + page_size
-    total = qs.count()
-    items = qs.order_by('puesto__id')[start:end]
-    serializer = AsignacionSemanalSerializer(items, many=True)
-    return Response({'results': serializer.data, 'page': page, 'page_size': page_size, 'total': total})
+    paginator = PageNumberPagination()
+    
+    paginator.page_size = int(request.GET.get('page_size', 50))
+    page = paginator.paginate_queryset(qs, request)
+    serializer = AsignacionSemanalSerializer(page, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
+@api_view(['GET'])
+def semanas_del_mes(request):
+    """
+    obtener parametros: mes 1-12, año(yyyy)
+    Retorna: { weeks: ['YYYY-MM-DD', ...] }
+    """
+
+    mes = request.GET.get('mes')
+    anio = request.GET.get('anio')
+
+    if not mes or not anio:
+        return Response({'error': 'mes y año invalidos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        mes = int(mes)
+        anio = int(anio)
+        if not (1 <= mes <=12):
+            raise ValueError
+    except ValueError:
+        return Response({'error': 'mes o anio inválidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    first_day = date(anio, mes, 1)
+    offset = (0 - first_day.weekday()) % 7
+    current = first_day + timedelta(days=offset)
+
+    weeks = []
+    while current.month == mes:
+        weeks.append(current.isoformat())
+        current += timedelta(days=7)
+
+    return Response({'weeks': weeks})
+
 
 
 @api_view(['POST'])
