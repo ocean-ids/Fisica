@@ -100,6 +100,7 @@ export class AsignacionesComponent implements OnInit {
   mostrarModal: boolean = false;
   asignacionActual: Asignacion = this.nuevaAsignacion();
   modoEdicion: boolean = false;
+  crearCalendarioAutom = true; // crear calendario automáticamente por defecto
 
   constructor(
     private clienteService: ClienteService,
@@ -330,12 +331,13 @@ export class AsignacionesComponent implements OnInit {
         }
       });
     } else {
-      this.asignacionService.crearAsignacion(this.asignacionActual).subscribe({
+      // Enviar create_calendar según la casilla del modal
+      const payload = { ...this.asignacionActual, create_calendar: !!this.crearCalendarioAutom } as any;
+      this.asignacionService.crearAsignacion(payload).subscribe({
         next: () => {
           alert('Asignación creada');
           this.cargarAsignaciones();
           this.cerrarModal();
-          // No crear filas semanales automáticamente aquí; el backend puede propagar semanas desde la asignación mensual
           this.calendario?.loadWeek();
         },
         error: err => {
@@ -370,12 +372,8 @@ export class AsignacionesComponent implements OnInit {
     const turno = (puesto && puesto.turno) ? String(puesto.turno).trim().toLowerCase() : '';
     const defaultCode = turno.startsWith('n') ? 'N' : 'D';
 
-    const row: any = { puesto: puestoId, puesto_detalle: puesto };
-    const names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
-    for (let i=0;i<7;i++){
-      const match = diasNorm.some((d:any)=> d===names[i] || names[i].includes(d) || d.includes(names[i]));
-      row[weekdayKeys[i]] = match ? defaultCode : '';
-    }
+    // Para nueva asignación queremos celdas vacías (el usuario las asigna manualmente)
+    const row: any = { puesto: puestoId, puesto_detalle: puesto, mon:'',tue:'',wed:'',thu:'',fri:'',sat:'',sun:'' };
     return row;
   }
 

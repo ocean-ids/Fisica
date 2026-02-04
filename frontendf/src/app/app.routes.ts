@@ -28,7 +28,8 @@ export const routes: Routes = [
       { path: 'puestos', component: PuestosComponent},
       { path: 'personas', component: PersonasComponent},
       { path: 'horarios', component: HorariosComponent},
-      { path: 'asignaciones', component: AsignacionesComponent}
+      { path: 'asignaciones', component: AsignacionesComponent},
+      { path: 'asignacion-calendario', component: AsignacionCalendarioComponent}
     ]
   },
   { path: '**', redirectTo: ''}
