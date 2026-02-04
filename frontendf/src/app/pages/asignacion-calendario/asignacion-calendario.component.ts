@@ -33,9 +33,9 @@ export class AsignacionCalendarioComponent implements OnInit{
 
   computeCurrentMonday(): string{
     const today = new Date();
-    const day = today.getDay(); // 0 Domingo .. 6 Sab
-    // calcular cuántos días restar para llegar al lunes (lunes=1)
-    const diffFromMonday = (day + 6) % 7; // si es lunes -> 0, martes -> 1, etc.
+    const day = today.getDay(); 
+    
+    const diffFromMonday = (day + 6) % 7; 
     const monday = new Date(today);
     monday.setDate(today.getDate() - diffFromMonday);
 
@@ -46,11 +46,12 @@ export class AsignacionCalendarioComponent implements OnInit{
   }
 
   loadWeek(){
-    // Recompute display labels for the current week
+  
     this.computeWeekDays();
     this.loading = true;
     this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart})
-      .subscribe(res => {
+      .subscribe({
+        next: (res: any) => {
         if (Array.isArray(res)) {
           this.rows = res;
         } else if (res && Array.isArray(res.results)) {
@@ -67,8 +68,8 @@ export class AsignacionCalendarioComponent implements OnInit{
           const anio = base.getFullYear();
 
           
-          this.puestoService.getPuestos().subscribe(puestos => {
-            this.asignacionService.obtenerAsignaciones(mes, anio).subscribe(asigs => {
+          this.puestoService.getPuestos().subscribe({ next: (puestos: any) => {
+            this.asignacionService.obtenerAsignaciones(mes, anio).subscribe({ next: (asigs: any) => {
               const asignByPuesto: any = {};
               (asigs||[]).forEach((a:any)=>{ asignByPuesto[a.puesto] = asignByPuesto[a.puesto] || []; asignByPuesto[a.puesto].push(a); });
 
@@ -103,13 +104,15 @@ export class AsignacionCalendarioComponent implements OnInit{
                 return { puesto: p.id, puesto_detalle: p, mon:'',tue:'',wed:'',thu:'',fri:'',sat:'',sun:'' };
               });
               this.rows = fullRows;
-            });
-          });
+            }});
+          }});
         }
           this.loading = false;
           
           try { this.weekStartChange.emit(this.weekStart); } catch(e){}
-      }, ()=> this.loading = false);
+        },
+        error: () => this.loading = false
+      });
   }
 
         @Output() weekStartChange: EventEmitter<string> = new EventEmitter<string>();
@@ -127,7 +130,7 @@ export class AsignacionCalendarioComponent implements OnInit{
       sun: row.sun || ''
     };
     this.asignacionCalendarioService.crearAsignacionCalendario(payload)
-      .subscribe(() => this.loadWeek());
+      .subscribe({ next: () => this.loadWeek() });
   }
   
 
