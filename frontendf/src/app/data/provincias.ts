@@ -41,12 +41,12 @@ export const PROVINCIAS: Province[] = [
 
   // COSTA
   { id: 'esmeraldas', nombre: 'Esmeraldas', region: 'Costa', ciudades: [
-    { id: 'esmeraldas', nombre: 'Esmeraldas' }, { id: 'atacames', nombre: 'Atacames' }
+    { id: 'esmeraldas', nombre: 'Esmeraldas' }, { id: 'atacames', nombre: 'Atacames' }, {id: 'quininde', nombre: 'Quinindé' }
   ] },
   { id: 'manabi', nombre: 'Manabí', region: 'Costa', ciudades: [
     { id: 'portoviejo', nombre: 'Portoviejo' }, { id: 'manta', nombre: 'Manta' }, { id: 'chone', nombre: 'Chone' }
   ] },
-  { id: 'guayas', nombre: 'Guayas', region: 'Costa', ciudades: [
+  { id: 'Guayas', nombre: 'Guayas', region: 'Costa', ciudades: [
     { id: 'guayaquil', nombre: 'Guayaquil' }, { id: 'duran', nombre: 'Durán' }, { id: 'daule', nombre: 'Daule' },
     { id: 'samborondon', nombre: 'Samborondón' }, { id: 'milagro', nombre: 'Milagro' }, { id: 'nobol', nombre: 'Nobol' },
     { id: 'el-triunfo', nombre: 'El Triunfo' }, { id: 'balzar', nombre: 'Bálzar' }
