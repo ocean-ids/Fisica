@@ -98,19 +98,12 @@
     <div class="col-lg-4">
       <div class="card">
         <div class="card-body">
-          <div class="mb-2 d-flex justify-content-between align-items-center">
-            <div>
-              <button class="btn btn-sm btn-outline-primary me-1" (click)="calComp.prevWeek()">Anterior</button>
-              <button class="btn btn-sm btn-outline-primary" (click)="calComp.nextWeek()">Siguiente</button>
-            </div>
-            <div><strong *ngIf="calComp?.weekStart">Semana: {{ calComp.weekStart }}</strong></div>
-            <div>
-              <button class="btn btn-sm btn-outline-secondary me-1" (click)="prevPageAndAsignaciones()">« Página</button>
-              <span> Página {{ asignacionesPage }} </span>
-              <button class="btn btn-sm btn-outline-secondary ms-1" (click)="nextPageAndAsignaciones()">Página »</button>
-            </div>
-          </div>
           <app-asignacion-calendario #calComp></app-asignacion-calendario>
+          <div class class="d-flex align-items-center justify-content-around">
+              <button class="btn btn-sm btn-outline-primary me-1" (click)="calComp.prevWeek()">Anterior</button>
+              <div><strong *ngIf="calComp?.weekStart">Semana: {{ calComp.weekStart }}</strong></div>
+              <button class="btn btn-sm btn-outline-primary" (click)="calComp.nextWeek()">Siguiente</button>
+          </div>
         </div>
       </div>
     </div>
@@ -118,7 +111,15 @@
 </div>
 
 
-<div class="modal fade show" *ngIf="mostrarModal" style="display:block">
+  <div style="position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:1050;">
+    <div class="d-flex align-items-center bg-white border rounded p-2 shadow-sm">
+      <button class="btn btn-sm btn-outline-secondary me-2" (click)="prevPageAndAsignaciones()">« Página</button>
+      <div class="fw-semibold mx-2">Página {{ asignacionesPage }}</div>
+      <button class="btn btn-sm btn-outline-secondary ms-2" (click)="nextPageAndAsignaciones()">Página »</button>
+    </div>
+  </div>
+
+  <div class="modal fade show" *ngIf="mostrarModal" style="display:block">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
