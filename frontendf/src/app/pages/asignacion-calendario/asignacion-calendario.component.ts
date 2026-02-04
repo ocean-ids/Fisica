@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, Input } from '@angular/core';
 import { AsignacionSemanal } from '../../models/asignacion-calendario';
 import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
 import { PuestoService } from '../../services/puesto.service';
@@ -23,6 +23,7 @@ export class AsignacionCalendarioComponent implements OnInit{
   weekDays: Array<{short:string, name:string, date:string, dayNum:number}> = [];
   rows: any[] = [];
   loading = false;
+  @Input() allowCreateEmptyRows: boolean = false;
   
 
   constructor(
@@ -75,11 +76,16 @@ export class AsignacionCalendarioComponent implements OnInit{
           const base = (parts.length===3) ? new Date(parts[0], parts[1]-1, parts[2]) : new Date();
           const mes = base.getMonth() + 1;
           const anio = base.getFullYear();
-          // Si no hay filas semanales en la base, mostramos filas vacías por puesto
-          this.puestoService.getPuestos().subscribe({ next: (puestos: any) => {
-            const fullRows = (puestos||[]).map((p:any)=> ({ puesto: p.id, puesto_detalle: p, mon:'',tue:'',wed:'',thu:'',fri:'',sat:'',sun:'' }));
-            this.rows = fullRows;
-          }});
+          // Si no hay filas semanales en la base, solo mostramos filas vacías por puesto
+          // cuando `allowCreateEmptyRows` está habilitado. De lo contrario dejamos la tabla vacía.
+          if (this.allowCreateEmptyRows) {
+            this.puestoService.getPuestos().subscribe({ next: (puestos: any) => {
+              const fullRows = (puestos||[]).map((p:any)=> ({ puesto: p.id, puesto_detalle: p, mon:'',tue:'',wed:'',thu:'',fri:'',sat:'',sun:'' }));
+              this.rows = fullRows;
+            }});
+          } else {
+            this.rows = [];
+          }
         }
           this.loading = false;
           
