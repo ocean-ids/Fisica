@@ -12,7 +12,7 @@
           <th class="actions-col" style="width: 60px;">Acción</th>
         </tr>
       </thead>
-      <tbody style="height: 120px;" *ngIf="rows && rows.length>0">
+      <tbody style="height: 220px;" *ngIf="rows && rows.length>0" >
         <tr *ngFor="let row of rows; let i = index" class="data-row p-0 m-0">
           <ng-container *ngFor="let d of weekDays">
             <td>
@@ -26,7 +26,7 @@
           <td class="text-center align-middle actions-col"><button class="btn btn-sm btn-outline-primary" (click)="saveRow(row)"><i class="bi bi-floppy"></i></button></td>
         </tr>
       </tbody>
-      <tbody *ngIf="!rows || rows.length===0">
+      <tbody *ngIf="!rows || rows.length===0" >
         <tr>
           <td [attr.colspan]="(weekDays.length || 7) + 1" class="text-center text-muted" style="height:150px">No hay asignaciones semanales para esta semana.</td>
         </tr>
