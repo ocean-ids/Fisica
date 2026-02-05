@@ -126,6 +126,10 @@ class Asignacion(models.Model):
     fecha = models.DateField(null=True, blank=True)
     mes = models.PositiveSmallIntegerField(default=1)
     anio = models.PositiveSmallIntegerField(default=2026)
+    # Recurrence: si `recurring` es True, la asignación aplica desde `start_date` hasta `end_date` (opcional)
+    recurring = models.BooleanField(default=False)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
 
     # orden eliminado
     estado = models.CharField(

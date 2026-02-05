@@ -10,6 +10,9 @@ class AsignacionSerializer(serializers.ModelSerializer):
     horario_detalle = serializers.SerializerMethodField(read_only=True)
     fecha = serializers.DateField(required=False, allow_null=True)
     tipo = serializers.CharField(source='persona.tipo', read_only=True)
+    recurring = serializers.BooleanField(required=False)
+    start_date = serializers.DateField(required=False, allow_null=True)
+    end_date = serializers.DateField(required=False, allow_null=True)
 
 
     def get_persona_detalle(self, obj):

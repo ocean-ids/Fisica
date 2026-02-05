@@ -11,7 +11,6 @@ import { AsignacionService } from '../../services/asignacion.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
 import { AsignacionCalendarioComponent } from '../asignacion-calendario/asignacion-calendario.component';
@@ -27,7 +26,6 @@ import { saveAs } from 'file-saver';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatCheckboxModule,
     MatCardModule
     ,MatMenuModule
     ,AsignacionCalendarioComponent
@@ -195,7 +193,8 @@ export class AsignacionesComponent implements OnInit {
       mes: this.mes,
       anio: this.anio,
       estado: 'ACTIVO',
-      clienteCodigo: ''
+      clienteCodigo: '',
+      recurring: true
     };
   }
 

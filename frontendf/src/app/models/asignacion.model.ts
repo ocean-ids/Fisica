@@ -17,5 +17,8 @@ export interface Asignacion{
     instalacion_detalle?: any;       
     puesto_detalle?: any;            
     horario_detalle?: any; 
+    recurring?: boolean;
+    start_date?: string | null;
+    end_date?: string | null;
     
 }

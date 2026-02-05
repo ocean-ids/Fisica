@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from rest_framework import status
 from ..models import Asignacion, AsignacionSemanal, Puesto
+from django.db.models import Q
 from ..serializers import AsignacionSerializer
 import openpyxl
 import datetime
@@ -11,10 +12,18 @@ import datetime
 @api_view(['GET'])
 def obtener_asignaciones(request, mes=None, anio=None):
     if mes and anio:
+        import datetime
+        month_start = datetime.date(int(anio), int(mes), 1)
+        if int(mes) == 12:
+            month_end = datetime.date(int(anio) + 1, 1, 1) - datetime.timedelta(days=1)
+        else:
+            month_end = datetime.date(int(anio), int(mes) + 1, 1) - datetime.timedelta(days=1)
+
         asignaciones = Asignacion.objects.filter(
-            mes=mes,
-            anio=anio,
             estado='ACTIVO'
+        ).filter(
+            Q(mes=mes, anio=anio) |
+            (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
         ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario')
     else:
         asignaciones = Asignacion.objects.filter(
@@ -31,6 +40,14 @@ def asignar_servicio(request):
     serializer = AsignacionSerializer(data=request.data)
     if serializer.is_valid():
         asignacion = serializer.save()
+        # Si la asignación es recurrente y no tiene start_date, fijar start_date al primer día del mes de la asignación
+        try:
+            if getattr(asignacion, 'recurring', False) and not getattr(asignacion, 'start_date', None):
+                import datetime
+                asignacion.start_date = datetime.date(int(asignacion.anio), int(asignacion.mes), 1)
+                asignacion.save()
+        except Exception:
+            pass
         # Crear filas de AsignacionSemanal para el puesto en las semanas del mes/año de la asignación
         # Solo crear filas semanales si el cliente lo solicita explícitamente.
         # Por defecto no creamos filas para evitar generación automática no deseada.
