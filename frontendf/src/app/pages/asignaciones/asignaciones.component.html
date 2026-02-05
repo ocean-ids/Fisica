@@ -67,15 +67,15 @@
                 </td>
                 <td>{{ asig.persona_detalle?.cedula }}</td>
                 <td class="text-center" style="min-width: 150px;">
-                    <div >
+                    <div>
                       {{ asig.persona_detalle?.apellidos }}
                      </div>
 
-                    <div class="mt-1">
+                    <div>
                       {{ asig.persona_detalle?.nombres }}
                     </div>
                     <div>
-                      <span class="badge mt-1"
+                      <span class="badge"
                         [ngClass]="asig.persona_detalle?.tipo === 'SUPERVISOR' ? 'bg-success' : 'bg-primary'">
                         {{ asig.persona_detalle?.tipo }}
                       </span>
