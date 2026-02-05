@@ -184,6 +184,17 @@ export class AsignacionCalendarioComponent implements OnInit{
     if(v.startsWith('MA') || v.startsWith('MI')) return 'cell-daycode';
     return '';
   }
+
+  dayKeyFromDate(dateStr: string): string {
+    // dateStr expected in YYYY-MM-DD
+    try {
+      const d = new Date(dateStr);
+      const map = ['sun','mon','tue','wed','thu','fri','sat'];
+      return map[d.getDay()];
+    } catch (e) {
+      return 'mon';
+    }
+  }
   
   computeWeekDays(): void {
     this.weekDays = [];
