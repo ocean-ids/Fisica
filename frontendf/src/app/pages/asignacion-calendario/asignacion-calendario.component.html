@@ -24,7 +24,7 @@
                      [ngModelOptions]="{standalone:true}">
             </td>
           </ng-container>
-          <td class="text-center align-middle actions-col"><button class="btn btn-sm btn-primary" (click)="saveRow(row)">Guardar</button></td>
+          <td class="text-center align-middle actions-col"><button class="btn btn-sm btn-outline-primary" (click)="saveRow(row)"><i class="bi bi-floppy"></i></button></td>
         </tr>
       </tbody>
       <tbody *ngIf="!rows || rows.length===0">
@@ -36,4 +36,3 @@
   </div>
 </div>
  
-<i class="bi bi-floppy"></i>btn btn-sm btn-outline-primary
