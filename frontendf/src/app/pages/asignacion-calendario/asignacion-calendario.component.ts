@@ -189,16 +189,21 @@ export class AsignacionCalendarioComponent implements OnInit{
     this.weekDays = [];
     if (!this.weekStart) return;
     const base = new Date(this.weekStart);
-   
-    const shortNames = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
-    const fullNames = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+
+    // Find the Monday for the week that contains `base`
+    const diffFromMonday = (base.getDay() + 6) % 7; // 0 for Monday, 6 for Sunday
+    const monday = new Date(base);
+    monday.setDate(base.getDate() - diffFromMonday);
+
+    const shortOrder = ['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
+    const fullOrder = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
+
     for (let i = 0; i < 7; i++){
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
-      const wd = d.getDay(); 
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
       this.weekDays.push({
-        short: shortNames[wd],
-        name: fullNames[wd],
+        short: shortOrder[i],
+        name: fullOrder[i],
         date: d.toISOString().slice(0,10),
         dayNum: d.getDate()
       });
