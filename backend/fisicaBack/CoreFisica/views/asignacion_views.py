@@ -49,9 +49,8 @@ def asignar_servicio(request):
         except Exception:
             pass
         # Crear filas de AsignacionSemanal para el puesto en las semanas del mes/año de la asignación
-        # Solo crear filas semanales si el cliente lo solicita explícitamente.
-        # Por defecto no creamos filas para evitar generación automática no deseada.
-        create_calendar = bool(request.data.get('create_calendar'))
+        # Crear calendario si el payload solicita `create_calendar` o si la asignación es recurrente.
+        create_calendar = bool(request.data.get('create_calendar')) or bool(getattr(asignacion, 'recurring', False))
 
         if create_calendar:
             try:
@@ -147,8 +146,8 @@ def asignar_servicio(request):
                     serializer2 = AsignacionSerializer(existing, data=request.data, partial=True)
                     if serializer2.is_valid():
                         asignacion = serializer2.save()
-                        # crear/actualizar filas semanales también (solo si se solicitó)
-                        create_calendar = bool(request.data.get('create_calendar'))
+                        # crear/actualizar filas semanales también si se solicitó o si la asignación es recurrente
+                        create_calendar = bool(request.data.get('create_calendar')) or bool(getattr(asignacion, 'recurring', False))
                         if create_calendar:
                             try:
                                 mes = int(asignacion.mes)
