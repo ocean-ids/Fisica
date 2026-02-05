@@ -14,7 +14,6 @@
       </thead>
       <tbody style="height: 120px;" *ngIf="rows && rows.length>0">
         <tr *ngFor="let row of rows; let i = index" class="data-row p-0 m-0">
-          <td title="{{row.puesto_detalle?.nombre || row.puesto}}"></td>
           <ng-container *ngFor="let d of weekDays">
             <td>
               <input type="text" maxlength="4" class="form-control form-control-sm"
