@@ -14,3 +14,28 @@ table.table td input.form-control {
 
 table.table td { vertical-align: middle; }
 
+.table { width:100%; table-layout: fixed; }
+.table th, .table td {
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: .45rem;
+}
+
+/* Repartir espacio: 7 días + 1 columna de acciones */
+.table thead th.actions-col { width: 90px; }
+.table thead th:not(.actions-col) { width: calc((100% - 90px) / 7); }
+
+/* Make sure button fits and is not clipped */
+.actions-col .btn { white-space: normal; max-width: 100%; }
+
+/* Encabezado con dos líneas centradas */
+.header-day { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+.header-day .short { font-weight:700; }
+.header-day .dayNum { font-size:.95rem; color:#222; }
+
+/* Controlar altura y espaciado sin forzar overflow */
+.header-row { min-height: 64px; }
+.table tbody tr.data-row td { min-height: 110px; }
