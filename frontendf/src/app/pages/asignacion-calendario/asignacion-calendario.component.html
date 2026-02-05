@@ -9,7 +9,7 @@
               <span class="dayNum">{{d.dayNum}}</span>
             </div>
           </th>
-          <th class="actions-col">Acciones</th>
+          <th class="actions-col" style="width: 60px;">Acción</th>
         </tr>
       </thead>
       <tbody style="height: 120px;" *ngIf="rows && rows.length>0">
@@ -21,7 +21,7 @@
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.sun)" [(ngModel)]="row.sun" (ngModelChange)="onCellChange(row,'sun',$event)" [ngModelOptions]="{standalone:true}"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.tue)" [(ngModel)]="row.tue" (ngModelChange)="onCellChange(row,'tue',$event)" [ngModelOptions]="{standalone:true}"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.wed)" [(ngModel)]="row.wed" (ngModelChange)="onCellChange(row,'wed',$event)" [ngModelOptions]="{standalone:true}"></td>
-          <td class="text-center align-middle actions-col"><button class="btn btn-sm btn-primary" (click)="saveRow(row)">Guardar</button></td>
+          <td class="text-center align-middle actions-col"><button class="btn btn-sm btn-outline-primary" (click)="saveRow(row)"><i class="bi bi-floppy"></i></button></td>
         </tr>
       </tbody>
       <tbody *ngIf="!rows || rows.length===0">
