@@ -1,4 +1,5 @@
 from ..models import AsignacionSemanal
+from django.db.models import Q
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -69,7 +70,8 @@ def listar_asignacion_semanal(request):
                         defaults[key] = default_code if match else ''
 
                     if puesto_obj:
-                        AsignacionSemanal.objects.get_or_create(puesto=puesto_obj, week_start=ws, defaults=defaults)
+                        pid = puesto_obj.id if hasattr(puesto_obj, 'id') else puesto_obj
+                        AsignacionSemanal.objects.get_or_create(puesto_id=pid, week_start=ws, defaults=defaults)
 
             except Exception as e:
                 print(f"⚠️ Error asegurando AsignacionSemanal para week_start {week_start}: {e}")
