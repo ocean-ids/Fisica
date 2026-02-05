@@ -13,7 +13,7 @@
         </tr>
       </thead>
       <tbody style="height: 120px;" *ngIf="rows && rows.length>0">
-        <tr *ngFor="let row of rows; let i = index" class="data-row">
+        <tr *ngFor="let row of rows; let i = index" class="data-row p-0 m-0">
           <td title="{{row.puesto_detalle?.nombre || row.puesto}}"><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.mon)" [(ngModel)]="row.mon" (ngModelChange)="onCellChange(row,'mon',$event)" [ngModelOptions]="{standalone:true}"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.thu)" [(ngModel)]="row.thu" (ngModelChange)="onCellChange(row,'thu',$event)" [ngModelOptions]="{standalone:true}"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.fri)" [(ngModel)]="row.fri" (ngModelChange)="onCellChange(row,'fri',$event)" [ngModelOptions]="{standalone:true}"></td>

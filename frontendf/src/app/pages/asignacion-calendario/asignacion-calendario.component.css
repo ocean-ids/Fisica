@@ -14,15 +14,36 @@ table.table td input.form-control {
 
 table.table td { vertical-align: middle; }
 
-.table { width:100%; table-layout: fixed; }
+.table { width:100%; table-layout: fixed; border-collapse: collapse; }
 .table th, .table td {
   text-align: center;
   vertical-align: middle;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: .45rem;
+  padding: 0 !important;
 }
+
+/* Stronger rules to eliminate leftover gaps */
+.table td > input,
+.table td > input.form-control,
+.table td > input.form-control-sm {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+/* Reduce horizontal padding on table cells so inputs can use space */
+.table th, .table td {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Allow cell content to wrap so inputs expand naturally */
+.table td { white-space: normal; }
 
 input {
   width: 100%;	

@@ -190,7 +190,7 @@ export class AsignacionCalendarioComponent implements OnInit{
     if (!this.weekStart) return;
     const base = new Date(this.weekStart);
 
-    // Find the Monday for the week that contains `base`
+    
     const diffFromMonday = (base.getDay() + 6) % 7; // 0 for Monday, 6 for Sunday
     const monday = new Date(base);
     monday.setDate(base.getDate() - diffFromMonday);
