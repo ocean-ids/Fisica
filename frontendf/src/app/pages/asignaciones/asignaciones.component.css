@@ -12,3 +12,6 @@
 table tbody td{
   padding: 0 !important;
 }
+
+/* Reduce table font size for more compact rows */
+.table { font-size: 13px; }
