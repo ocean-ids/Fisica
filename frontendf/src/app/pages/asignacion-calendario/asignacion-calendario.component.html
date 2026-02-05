@@ -15,12 +15,12 @@
       <tbody style="height: 120px;" *ngIf="rows && rows.length>0">
         <tr *ngFor="let row of rows; let i = index" class="data-row">
           <td title="{{row.puesto_detalle?.nombre || row.puesto}}"><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.mon)" [(ngModel)]="row.mon" (ngModelChange)="onCellChange(row,'mon',$event)" [ngModelOptions]="{standalone:true}"></td>
-          <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.tue)" [(ngModel)]="row.tue" (ngModelChange)="onCellChange(row,'tue',$event)" [ngModelOptions]="{standalone:true}"></td>
-          <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.wed)" [(ngModel)]="row.wed" (ngModelChange)="onCellChange(row,'wed',$event)" [ngModelOptions]="{standalone:true}"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.thu)" [(ngModel)]="row.thu" (ngModelChange)="onCellChange(row,'thu',$event)" [ngModelOptions]="{standalone:true}"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.fri)" [(ngModel)]="row.fri" (ngModelChange)="onCellChange(row,'fri',$event)" [ngModelOptions]="{standalone:true}"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.sat)" [(ngModel)]="row.sat" (ngModelChange)="onCellChange(row,'sat',$event)" [ngModelOptions]="{standalone:true}"></td>
           <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.sun)" [(ngModel)]="row.sun" (ngModelChange)="onCellChange(row,'sun',$event)" [ngModelOptions]="{standalone:true}"></td>
+          <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.tue)" [(ngModel)]="row.tue" (ngModelChange)="onCellChange(row,'tue',$event)" [ngModelOptions]="{standalone:true}"></td>
+          <td><input type="text" maxlength="4" class="form-control form-control-sm" [ngClass]="getCellClass(row.wed)" [(ngModel)]="row.wed" (ngModelChange)="onCellChange(row,'wed',$event)" [ngModelOptions]="{standalone:true}"></td>
           <td class="text-center align-middle actions-col"><button class="btn btn-sm btn-primary" (click)="saveRow(row)">Guardar</button></td>
         </tr>
       </tbody>

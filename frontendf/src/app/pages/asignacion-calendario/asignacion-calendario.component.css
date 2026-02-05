@@ -24,6 +24,11 @@ table.table td { vertical-align: middle; }
   padding: .45rem;
 }
 
+input {
+  width: 100%;	
+
+}
+
 /* Repartir espacio: 7 días + 1 columna de acciones */
 .table thead th.actions-col { width: 90px; }
 .table thead th:not(.actions-col) { width: calc((100% - 90px) / 7); }
