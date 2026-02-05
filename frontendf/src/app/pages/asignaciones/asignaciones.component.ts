@@ -54,7 +54,7 @@ export class AsignacionesComponent implements OnInit {
             this.mes = Number(parts[1]);
             this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
           }
-          this.cargarAsignaciones(true);
+          this.cargarAsignaciones();
         });
       }
     }, 0);
@@ -82,10 +82,6 @@ export class AsignacionesComponent implements OnInit {
   textoBotonAsignacion: string = 'Guardar';
 
   asignaciones: Asignacion[] = [];
-  allAsignaciones: Asignacion[] = [];
-  asignacionesPage: number = 1;
-  asignacionesPageSize: number = 10;
-  asignacionesTotal: number = 0;
 
   mes: number = new Date().getMonth() + 1;
   anio: number = new Date().getFullYear();
@@ -167,41 +163,16 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
-  cargarAsignaciones(preservePage: boolean = false): void {
+  cargarAsignaciones(): void {
     this.asignacionService.obtenerAsignaciones(this.mes, this.anio).subscribe({
       next: data => {
-        // Guardar todas las asignaciones y aplicar paginación local
-        this.allAsignaciones = data || [];
-        this.asignacionesTotal = this.allAsignaciones.length;
-        if (!preservePage) {
-          this.asignacionesPage = 1;
-        }
-        this.updateAsignacionesPage();
+        this.asignaciones = data || [];
       },
       error: err => console.error('Error al cargar asignaciones', err)
     });
   }
 
-  updateAsignacionesPage(): void {
-    const start = (this.asignacionesPage - 1) * this.asignacionesPageSize;
-    const end = start + this.asignacionesPageSize;
-    this.asignaciones = this.allAsignaciones.slice(start, end);
-  }
-
-  prevAsignacionesPage(): void {
-    if (this.asignacionesPage > 1) {
-      this.asignacionesPage -= 1;
-      this.updateAsignacionesPage();
-    }
-  }
-
-  nextAsignacionesPage(): void {
-    const max = Math.ceil((this.asignacionesTotal || 0) / this.asignacionesPageSize) || 1;
-    if (this.asignacionesPage < max) {
-      this.asignacionesPage += 1;
-      this.updateAsignacionesPage();
-    }
-  }
+  
 
   // Methods invoked by template controls to sync both calendario and asignaciones
   prevWeekAndPage(): void {
@@ -212,26 +183,7 @@ export class AsignacionesComponent implements OnInit {
     if (this.calendario) this.calendario.nextWeek();
   }
 
-  prevPageAndAsignaciones(): void {
-    const newPage = Math.max(1, (this.asignacionesPage || 1) - 1);
-    this.asignacionesPage = newPage;
-    if (this.calendario) {
-      this.calendario.currentPage = newPage;
-      this.calendario.loadWeek();
-    }
-    this.updateAsignacionesPage();
-  }
-
-  nextPageAndAsignaciones(): void {
-    const max = Math.ceil((this.asignacionesTotal || 0) / this.asignacionesPageSize) || 1;
-    const newPage = Math.min(max, (this.asignacionesPage || 1) + 1);
-    this.asignacionesPage = newPage;
-    if (this.calendario) {
-      this.calendario.currentPage = newPage;
-      this.calendario.loadWeek();
-    }
-    this.updateAsignacionesPage();
-  }
+  
 
   nuevaAsignacion(): Asignacion {
     return {

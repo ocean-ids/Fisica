@@ -8,3 +8,7 @@
   line-height: 1.5;
   max-width: 250px;
 }
+
+table tbody td{
+  padding: 0 !important;
+}
