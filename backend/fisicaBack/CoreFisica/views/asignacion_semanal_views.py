@@ -1,5 +1,4 @@
 from ..models import AsignacionSemanal
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -26,12 +25,8 @@ def listar_asignacion_semanal(request):
 
     qs = qs.order_by('puesto_id')
 
-    paginator = PageNumberPagination()
-    
-    paginator.page_size = int(request.GET.get('page_size', 50))
-    page = paginator.paginate_queryset(qs, request)
-    serializer = AsignacionSemanalSerializer(page, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    serializer = AsignacionSemanalSerializer(qs, many=True)
+    return Response(serializer.data)
 
 @api_view(['GET'])
 def semanas_del_mes(request):
