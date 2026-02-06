@@ -33,10 +33,13 @@ class AsignacionSerializer(serializers.ModelSerializer):
         }
     
     def get_instalacion_detalle(self, obj):
+        inst = obj.instalacion
         return {
-            'id': obj.instalacion.id,
-            'provincia': obj.instalacion.provincia,
-            'ciudad': obj.instalacion.ciudad
+            'id': inst.id,
+            'provincia': inst.provincia,
+            'ciudad': inst.ciudad,
+            'codigo': getattr(inst, 'codigo', '') or '',
+            'direccion': getattr(inst, 'direccion', '') or ''
         }
     
     def get_puesto_detalle(self, obj):

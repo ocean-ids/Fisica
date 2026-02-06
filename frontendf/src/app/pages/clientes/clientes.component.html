@@ -16,7 +16,6 @@
               <th>Código</th>
               <th>Razón Social</th>
               <th>Nombre Comercial</th>
-              <th>Dirección</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
@@ -25,7 +24,6 @@
               <td>{{ c.codigo || 'N/A' }}</td>
               <td>{{ c.razon_social }}</td>
               <td>{{ c.nombre_comercial }}</td>
-              <td>{{ c.direccion }}</td>
               <td class="d-flex justify-content-around">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="openDialog(c)">
                   <i class="bi bi-pencil"></i> Editar

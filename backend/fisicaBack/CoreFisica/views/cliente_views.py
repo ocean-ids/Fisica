@@ -8,7 +8,7 @@ from ..models import Cliente
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_clientes(request):
-    clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'direccion', 'codigo')
+    clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'codigo')
     return JsonResponse(list(clientes), safe=False)
 
 
@@ -21,7 +21,7 @@ def obtener_cliente_id(request, id):
             "id": cliente.id,
             "razon_social": cliente.razon_social,
             "nombre_comercial": cliente.nombre_comercial,
-            "direccion": cliente.direccion,
+            
             "codigo": cliente.codigo
         }
         return JsonResponse(data)
@@ -36,16 +36,14 @@ def crear_cliente(request):
             data = json.loads(request.body)
             razon_social = data.get('razon_social')
             nombre_comercial = data.get('nombre_comercial')
-            direccion = data.get('direccion')
             codigo = data.get('codigo', '')
 
-            if not razon_social or not nombre_comercial or not direccion:
+            if not razon_social or not nombre_comercial:
                 return JsonResponse({'error': 'Faltan campos obligatorios'}, status=400)
 
             cliente = Cliente.objects.create(
                 razon_social=razon_social,
                 nombre_comercial=nombre_comercial,
-                direccion=direccion,
                 codigo=codigo
             )
 
@@ -68,18 +66,9 @@ def actualizar_cliente(request, id):
                 status=404
             )
 
-        cliente.razon_social = data.get(
-            'razon_social', cliente.razon_social
-        )
-        cliente.nombre_comercial = data.get(
-            'nombre_comercial', cliente.nombre_comercial
-        )
-        cliente.direccion = data.get(
-            'direccion', cliente.direccion
-        )
-        cliente.codigo = data.get(
-            'codigo', cliente.codigo
-        )
+        cliente.razon_social = data.get('razon_social', cliente.razon_social)
+        cliente.nombre_comercial = data.get('nombre_comercial', cliente.nombre_comercial)
+        cliente.codigo = data.get('codigo', cliente.codigo)
 
         cliente.save()
 

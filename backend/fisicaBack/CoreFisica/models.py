@@ -5,8 +5,8 @@ from django.core.validators import RegexValidator
 class Cliente(models.Model):
     razon_social = models.CharField(max_length=100)
     nombre_comercial = models.CharField(max_length=100)
-    direccion = models.CharField(max_length=200)
-    codigo = models.CharField(max_length=50, blank=True, null=True)
+    
+    
 
     class Meta:
         indexes = [
@@ -21,6 +21,9 @@ class Instalacion(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='instalaciones')
     provincia = models.CharField(max_length=50)
     ciudad = models.CharField(max_length=50)
+    codigo = models.CharField(max_length=50, blank=True, null=True)
+    direccion = models.CharField(max_length=200, blank=True, null=True)
+    
 
     def __str__(self):
         return f"{self.cliente.nombre_comercial} - {self.provincia}, {self.ciudad}"
