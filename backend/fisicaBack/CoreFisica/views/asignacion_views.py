@@ -12,7 +12,6 @@ import datetime
 @api_view(['GET'])
 def obtener_asignaciones(request, mes=None, anio=None):
     if mes and anio:
-        import datetime
         month_start = datetime.date(int(anio), int(mes), 1)
         if int(mes) == 12:
             month_end = datetime.date(int(anio) + 1, 1, 1) - datetime.timedelta(days=1)
@@ -292,27 +291,137 @@ def eliminar_asignacion(request, id):
 
 
 def exportar_asignaciones_excel(request):
+    import calendar
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Asignaciones"
+    ws.title = "Asignaciones y Calendario"
 
-    
-    ws.append(['Horario', 'Código Cliente', 'Cliente', 'Nombre Puesto', 'Cantidad de Guardias', 'Horas de Trabajo', 'Cédula', 'Persona', 'Tipo'])
+    # Fecha: mes actual
+    today = datetime.date.today()
+    year = today.year
+    month = today.month
+    first_day = datetime.date(year, month, 1)
+    last_day_num = calendar.monthrange(year, month)[1]
+    dates = [first_day + datetime.timedelta(days=i) for i in range(last_day_num)]
 
-    for asignacion in Asignacion.objects.all():
-        ws.append([
-            f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}",
-            asignacion.cliente.codigo,  
-            asignacion.cliente.nombre_comercial,
-            asignacion.puesto.nombre,
-            asignacion.puesto.cantidad_guardias,
-            asignacion.puesto.horas_trabajo,
-            asignacion.persona.cedula,
-            f"{asignacion.persona.apellidos} {asignacion.persona.nombres}",
-            asignacion.persona.tipo
-        ])
-    
+    # Columnas izquierdas (datos de asignación)
+    left_headers = ['Horario', 'Código Cliente', 'Cliente', 'Nombre Puesto', 'Cantidad de Guardias', 'Horas de Trabajo', 'Cédula', 'Persona', 'Tipo']
+    left_cols = len(left_headers)
+
+    # Columnas de fecha comienzan después de las columnas izquierdas
+    date_start_col = left_cols + 1
+    num_days = len(dates)
+
+    # Row 1: nombre del mes (merge sobre las columnas de días)
+    month_name = first_day.strftime('%B').upper()
+    if num_days > 0:
+        ws.merge_cells(start_row=1, start_column=date_start_col, end_row=1, end_column=date_start_col + num_days - 1)
+        cell = ws.cell(row=1, column=date_start_col)
+        cell.value = f"{month_name} {year}"
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Row 2: día de la semana (abreviado)
+    dow_names = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+    for i, d in enumerate(dates):
+        c = ws.cell(row=2, column=date_start_col + i)
+        c.value = dow_names[d.weekday()]
+        c.alignment = Alignment(horizontal='center')
+
+    # Row 3: número de día. También aquí colocamos los encabezados izquierdos
+    for idx, h in enumerate(left_headers, start=1):
+        ch = ws.cell(row=3, column=idx)
+        ch.value = h
+        ch.font = Font(bold=True)
+        ch.alignment = Alignment(horizontal='left')
+    for i, d in enumerate(dates):
+        c = ws.cell(row=3, column=date_start_col + i)
+        c.value = d.day
+        c.alignment = Alignment(horizontal='center')
+
+    # Estilos comunes
+    thin = Side(border_style='thin', color='000000')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    # Freeze panes (congelar columnas de datos y filas superiores)
+    ws.freeze_panes = ws.cell(row=4, column=date_start_col)
+
+    # Rellenar filas: una fila por Asignacion activa del mes actual
+    asignaciones = Asignacion.objects.filter(estado='ACTIVO').select_related('horario', 'cliente', 'puesto', 'persona')
+    start_row = 4
+    # Precachear AsignacionSemanal por puesto y week_start para eficiencia
+    semanal_cache = {}
+    for asignacion in asignaciones:
+        row_idx = start_row
+        # datos izquierdos
+        horario_txt = ''
+        try:
+            horario_txt = f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}"
+        except Exception:
+            horario_txt = ''
+        vals = [
+            horario_txt,
+            getattr(asignacion.cliente, 'codigo', ''),
+            getattr(asignacion.cliente, 'nombre_comercial', ''),
+            getattr(getattr(asignacion, 'puesto', None), 'nombre', ''),
+            getattr(getattr(asignacion, 'puesto', None), 'cantidad_guardias', ''),
+            getattr(getattr(asignacion, 'puesto', None), 'horas_trabajo', ''),
+            getattr(getattr(asignacion, 'persona', None), 'cedula', ''),
+            f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}",
+            getattr(getattr(asignacion, 'persona', None), 'tipo', '')
+        ]
+        for ci, v in enumerate(vals, start=1):
+            cell = ws.cell(row=row_idx, column=ci)
+            cell.value = v
+            cell.border = border
+
+        # rellenar las celdas de cada día con datos de AsignacionSemanal (por puesto y week_start)
+        for di, d in enumerate(dates):
+            col = date_start_col + di
+            # calcular week_start (lunes)
+            week_start = d - datetime.timedelta(days=d.weekday())
+            key = (getattr(asignacion.puesto, 'id', getattr(asignacion, 'puesto_id', None)), week_start)
+            semanal = None
+            if key in semanal_cache:
+                semanal = semanal_cache[key]
+            else:
+                try:
+                    semanal = AsignacionSemanal.objects.filter(puesto_id=key[0], week_start=week_start).first()
+                except Exception:
+                    semanal = None
+                semanal_cache[key] = semanal
+
+            val = ''
+            if semanal:
+                day_field = ['mon','tue','wed','thu','fri','sat','sun'][d.weekday()]
+                try:
+                    val = getattr(semanal, day_field, '') or ''
+                except Exception:
+                    val = ''
+
+            cell = ws.cell(row=row_idx, column=col)
+            cell.value = val
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = border
+            # color simple
+            if val == 'F':
+                cell.fill = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
+            elif val == 'D':
+                cell.fill = PatternFill(start_color='99CCFF', end_color='99CCFF', fill_type='solid')
+            elif val and str(val).upper().startswith('NK'):
+                cell.fill = PatternFill(start_color='CCFFCC', end_color='CCFFCC', fill_type='solid')
+
+        start_row += 1
+
+    # Ajustes de anchos de columna
+    for i in range(1, left_cols + 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 18
+    for i in range(date_start_col, date_start_col + num_days):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 5
+
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename=reporte_asignaciones.xlsx'
+    response['Content-Disposition'] = f'attachment; filename=reporte_asignaciones_calendario_{year}_{month}.xlsx'
     wb.save(response)
     return response
