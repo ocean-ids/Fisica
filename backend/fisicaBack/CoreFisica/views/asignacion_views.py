@@ -307,7 +307,7 @@ def exportar_asignaciones_excel(request):
     dates = [first_day + datetime.timedelta(days=i) for i in range(last_day_num)]
 
     # Columnas izquierdas (datos de asignación)
-    left_headers = ['Horario', 'Código Cliente', 'Cliente', 'Nombre Puesto', 'Cantidad de Guardias', 'Horas de Trabajo', 'Cédula', 'Persona', 'Tipo']
+    left_headers = ['Horario', 'Código Cliente', 'Cliente', 'Nombre Puesto', 'Resumen', 'Cédula', 'Persona', 'Tipo']
     left_cols = len(left_headers)
 
     # Columnas de fecha comienzan después de las columnas izquierdas
@@ -366,8 +366,7 @@ def exportar_asignaciones_excel(request):
             getattr(asignacion.cliente, 'codigo', ''),
             getattr(asignacion.cliente, 'nombre_comercial', ''),
             getattr(getattr(asignacion, 'puesto', None), 'nombre', ''),
-            getattr(getattr(asignacion, 'puesto', None), 'cantidad_guardias', ''),
-            getattr(getattr(asignacion, 'puesto', None), 'horas_trabajo', ''),
+            getattr(getattr(asignacion, 'puesto', None), 'resumen', ''),
             getattr(getattr(asignacion, 'persona', None), 'cedula', ''),
             f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}",
             getattr(getattr(asignacion, 'persona', None), 'tipo', '')
