@@ -129,8 +129,8 @@ export class AsignacionesComponent implements OnInit {
     // calcular el primer lunes del mes y sincronizar calendario
     const firstMonday = this.getFirstMonday(this.anio, this.mes);
     if (this.calendario) {
-      this.calendario.weekStart = firstMonday;
-      this.calendario.loadWeek();
+      // Load the list of weeks for the selected month so prev/next week navigation works
+      this.calendario.loadWeeksForMonth(this.mes, this.anio);
     }
   }
 
