@@ -15,6 +15,16 @@
     </mat-form-field>
 
     <mat-form-field class="w-100">
+      <mat-label>Código</mat-label>
+      <input matInput formControlName="codigo" placeholder="Código de la instalación (ej. S38)">
+    </mat-form-field>
+
+    <mat-form-field class="w-100">
+      <mat-label>Nombre</mat-label>
+      <input matInput formControlName="nombre" placeholder="Nombre de la instalación">
+    </mat-form-field>
+
+    <mat-form-field class="w-100">
       <mat-label>Provincia</mat-label>
       <mat-select formControlName="provincia" (selectionChange)="onProvinciaChange()" required>
         <mat-option *ngFor="let p of provincias" [value]="p.id">{{ p.nombre }}</mat-option>
@@ -28,16 +38,6 @@
         <mat-option *ngFor="let c of ciudades" [value]="c.nombre">{{ c.nombre }}</mat-option>
       </mat-select>
       <mat-error *ngIf="instalacionForm.get('ciudad')?.hasError('required')">La ciudad es requerida</mat-error>
-    </mat-form-field>
-
-    <mat-form-field class="w-100">
-      <mat-label>Nombre</mat-label>
-      <input matInput formControlName="nombre" placeholder="Nombre de la instalación">
-    </mat-form-field>
-
-    <mat-form-field class="w-100">
-      <mat-label>Código</mat-label>
-      <input matInput formControlName="codigo" placeholder="Código de la instalación (ej. S38)">
     </mat-form-field>
 
     <mat-form-field class="w-100">

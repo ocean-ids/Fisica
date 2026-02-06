@@ -15,6 +15,7 @@
             <tr class="text-center">
               <th>Cliente</th>
               <th>Código</th>
+              <th>Nombre</th>
               <th>Provincia</th>
               <th>Ciudad o Cantón</th>
               <th>Dirección</th>
@@ -24,8 +25,8 @@
           <tbody>
             <tr class="text-center" *ngFor="let instalacion of instalaciones">
                 <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
-                <td>{{ instalacion.nombre || '-' }}</td>
                 <td>{{ instalacion.codigo || '-' }}</td>
+                <td>{{ instalacion.nombre || '-' }}</td>
               <td>{{ instalacion.provincia }}</td>
               <td>{{ instalacion.ciudad }}</td>
               <td>{{ instalacion.direccion || '-' }}</td>
