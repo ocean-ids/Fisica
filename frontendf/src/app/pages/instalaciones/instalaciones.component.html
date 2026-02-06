@@ -23,8 +23,9 @@
           </thead>
           <tbody>
             <tr class="text-center" *ngFor="let instalacion of instalaciones">
-              <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
-              <td>{{ instalacion.codigo || '-' }}</td>
+                <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
+                <td>{{ instalacion.nombre || '-' }}</td>
+                <td>{{ instalacion.codigo || '-' }}</td>
               <td>{{ instalacion.provincia }}</td>
               <td>{{ instalacion.ciudad }}</td>
               <td>{{ instalacion.direccion || '-' }}</td>

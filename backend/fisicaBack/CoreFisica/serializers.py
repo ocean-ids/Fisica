@@ -91,6 +91,6 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
 class InstalacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instalacion
-        fields = ['id', 'cliente', 'provincia', 'ciudad', 'codigo', 'direccion']
+        fields = ['id', 'cliente', 'nombre', 'provincia', 'ciudad', 'codigo', 'direccion']
         read_only_fields = ['id']
 

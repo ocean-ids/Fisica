@@ -8,7 +8,7 @@ from ..serializers import InstalacionSerializer
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_instalaciones(request):
-    instalaciones = Instalacion.objects.all().values('id', 'provincia', 'ciudad', 'cliente_id', 'codigo', 'direccion')
+    instalaciones = Instalacion.objects.all().values('id', 'nombre', 'provincia', 'ciudad', 'cliente_id', 'codigo', 'direccion')
     return JsonResponse(list(instalaciones), safe=False)
 
 
