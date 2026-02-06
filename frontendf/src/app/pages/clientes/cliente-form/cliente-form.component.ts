@@ -32,8 +32,7 @@ export class ClienteFormComponent {
   ngOnInit(): void {
     this.clienteForm = this.fb.group({
       razon_social: [this.cliente?.razon_social || '', Validators.required],
-      nombre_comercial: [this.cliente?.nombre_comercial || '', Validators.required],
-      codigo: [this.cliente?.codigo || ''],
+      nombre_comercial: [this.cliente?.nombre_comercial || '', Validators.required]
     });
   }
 

@@ -14,16 +14,20 @@
           <thead class="table-light">
             <tr class="text-center">
               <th>Cliente</th>
+              <th>Código</th>
               <th>Provincia</th>
               <th>Ciudad o Cantón</th>
+              <th>Dirección</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr class="text-center" *ngFor="let instalacion of instalaciones">
               <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
+              <td>{{ instalacion.codigo || '-' }}</td>
               <td>{{ instalacion.provincia }}</td>
               <td>{{ instalacion.ciudad }}</td>
+              <td>{{ instalacion.direccion || '-' }}</td>
               <td class="d-flex justify-content-around">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirModal(instalacion)">
                   <i class="bi bi-pencil"></i> Editar

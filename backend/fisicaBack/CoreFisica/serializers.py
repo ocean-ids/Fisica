@@ -29,7 +29,6 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'id': obj.cliente.id,
             'nombre_comercial': obj.cliente.nombre_comercial,
             'razon_social': obj.cliente.razon_social,
-            'codigo': obj.cliente.codigo
         }
     
     def get_instalacion_detalle(self, obj):

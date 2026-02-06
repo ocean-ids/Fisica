@@ -293,15 +293,25 @@ def eliminar_asignacion(request, id):
 def exportar_asignaciones_excel(request):
     import calendar
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Asignaciones y Calendario"
 
-    # Fecha: mes actual
-    today = datetime.date.today()
-    year = today.year
-    month = today.month
+    # Obtener mes/año desde query params si vienen, si no usar mes actual
+    qs = request.GET
+    try:
+        if 'mes' in qs and 'anio' in qs:
+            month = int(qs.get('mes'))
+            year = int(qs.get('anio'))
+        else:
+            today = datetime.date.today()
+            year = today.year
+            month = today.month
+    except Exception:
+        today = datetime.date.today()
+        year = today.year
+        month = today.month
+
     first_day = datetime.date(year, month, 1)
     last_day_num = calendar.monthrange(year, month)[1]
     dates = [first_day + datetime.timedelta(days=i) for i in range(last_day_num)]
@@ -348,8 +358,18 @@ def exportar_asignaciones_excel(request):
     # Freeze panes (congelar columnas de datos y filas superiores)
     ws.freeze_panes = ws.cell(row=4, column=date_start_col)
 
-    # Rellenar filas: una fila por Asignacion activa del mes actual
-    asignaciones = Asignacion.objects.filter(estado='ACTIVO').select_related('horario', 'cliente', 'puesto', 'persona')
+    # Rellenar filas: una fila por Asignacion activa para el mes solicitado
+    # Aplicar la misma lógica que en obtener_asignaciones: incluir recurrentes que aplican al mes
+    month_start = first_day
+    if month == 12:
+        month_end = datetime.date(year + 1, 1, 1) - datetime.timedelta(days=1)
+    else:
+        month_end = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
+
+    asignaciones = Asignacion.objects.filter(estado='ACTIVO').filter(
+        Q(mes=month, anio=year) |
+        (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
+    ).select_related('horario', 'cliente', 'puesto', 'persona', 'instalacion')
     start_row = 4
     # Precachear AsignacionSemanal por puesto y week_start para eficiencia
     semanal_cache = {}

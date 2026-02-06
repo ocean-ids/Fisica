@@ -48,7 +48,7 @@
             <tbody>
               <tr class="text-center align-middle shared-row" *ngFor="let asig of asignaciones">
                 <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
-                <td>{{ asig.cliente_detalle?.codigo }}</td>
+                <td>{{ asig.instalacion_detalle?.codigo }}</td>
                 <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
                 <td>{{ asig.puesto_detalle?.nombre }}</td>
                 <td>

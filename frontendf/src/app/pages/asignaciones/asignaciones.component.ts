@@ -253,9 +253,17 @@ export class AsignacionesComponent implements OnInit {
   }
 
   descargarReporteExcel() {
-  this.http.get('http://localhost:8000/api/reporte-asignaciones/', { responseType: 'blob' })
-    .subscribe(blob => {
-      saveAs(blob, 'reporte_asignaciones.xlsx');
+  const mm = String(this.mes).padStart(2, '0');
+  const url = `http://localhost:8000/api/reporte-asignaciones/?mes=${mm}&anio=${this.anio}`;
+  this.http.get(url, { responseType: 'blob' })
+    .subscribe({
+      next: (blob) => {
+        saveAs(blob, `reporte_asignaciones_${this.anio}_${mm}.xlsx`);
+      },
+      error: err => {
+        console.error('Error descargando reporte:', err);
+        alert('Error al descargar el reporte. Revisa la consola.');
+      }
     });
   }
 

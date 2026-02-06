@@ -18,7 +18,7 @@ import { ClienteFormComponent } from './cliente-form/cliente-form.component';
 })
 export class ClientesComponent implements OnInit {
   clientes: Cliente[] = [];
-  displayedColumns = ['razon_social', 'nombre_comercial', 'direccion', 'acciones'];
+  displayedColumns = ['razon_social', 'nombre_comercial', 'acciones'];
   showDeleteModal: boolean = false;
   clienteEliminar: Cliente | null = null;
 

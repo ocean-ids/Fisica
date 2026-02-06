@@ -89,7 +89,9 @@ export class InstalacionesComponent implements OnInit{
       nombre: data.nombre_instalacion,
       cliente: data.cliente_id,
       provincia: data.provincia,
-      ciudad: data.ciudad
+      ciudad: data.ciudad,
+      codigo: data.codigo || '',
+      direccion: data.direccion || ''
     };
 
     this.instalacionService.updateInstalacion(id, payload).subscribe({

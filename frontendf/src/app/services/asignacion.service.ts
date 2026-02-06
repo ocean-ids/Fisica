@@ -16,7 +16,7 @@ export class AsignacionService {
   return this.apiService.get<any[]>(`/asignaciones/${mes}/${anio}/`).pipe(
     map(asignaciones => asignaciones.map(asig => ({
       ...asig,
-      clienteCodigo: asig.clienteCodigo || (asig.cliente ? asig.cliente.codigo : '')
+      clienteCodigo: asig.clienteCodigo || (asig.instalacion_detalle ? asig.instalacion_detalle.codigo : '')
     })))
   );
 }

@@ -43,7 +43,9 @@ export class InstalacionFormComponent implements OnInit {
     this.instalacionForm = this.fb.group({
       cliente_id: [instalacion.cliente_id || '', Validators.required],
       provincia: [instalacion.provincia || '', Validators.required],
-      ciudad: [instalacion.ciudad || '', Validators.required]
+      ciudad: [instalacion.ciudad || '', Validators.required],
+      codigo: [instalacion.codigo || ''],
+      direccion: [instalacion.direccion || '']
     });
 
     this.provinciasService.getProvincias().subscribe(p => {

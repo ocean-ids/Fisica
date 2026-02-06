@@ -8,7 +8,7 @@ from ..models import Cliente
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_clientes(request):
-    clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'codigo')
+    clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial')
     return JsonResponse(list(clientes), safe=False)
 
 
@@ -20,9 +20,7 @@ def obtener_cliente_id(request, id):
         data = {
             "id": cliente.id,
             "razon_social": cliente.razon_social,
-            "nombre_comercial": cliente.nombre_comercial,
-            
-            "codigo": cliente.codigo
+            "nombre_comercial": cliente.nombre_comercial
         }
         return JsonResponse(data)
     except Cliente.DoesNotExist:
@@ -36,15 +34,12 @@ def crear_cliente(request):
             data = json.loads(request.body)
             razon_social = data.get('razon_social')
             nombre_comercial = data.get('nombre_comercial')
-            codigo = data.get('codigo', '')
-
             if not razon_social or not nombre_comercial:
                 return JsonResponse({'error': 'Faltan campos obligatorios'}, status=400)
 
             cliente = Cliente.objects.create(
                 razon_social=razon_social,
-                nombre_comercial=nombre_comercial,
-                codigo=codigo
+                nombre_comercial=nombre_comercial
             )
 
             return JsonResponse({'message': 'Cliente creado correctamente', 'id': cliente.id}, status=201)
@@ -68,7 +63,6 @@ def actualizar_cliente(request, id):
 
         cliente.razon_social = data.get('razon_social', cliente.razon_social)
         cliente.nombre_comercial = data.get('nombre_comercial', cliente.nombre_comercial)
-        cliente.codigo = data.get('codigo', cliente.codigo)
 
         cliente.save()
 

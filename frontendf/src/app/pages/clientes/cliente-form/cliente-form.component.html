@@ -1,12 +1,6 @@
 <h2 mat-dialog-title>{{ cliente.id ? 'Editar' : 'Nuevo' }} Cliente</h2>
 
 <mat-dialog-content>
-  <form [formGroup]="clienteForm">
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Código</mat-label>
-      <input type="text" matInput formControlName="codigo">
-    </mat-form-field>
-
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Razón Social</mat-label>
       <input type="text" matInput formControlName="razon_social">
