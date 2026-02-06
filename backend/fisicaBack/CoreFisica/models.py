@@ -3,6 +3,13 @@ from django.core.validators import RegexValidator
 
 
 class Cliente(models.Model):
+    ruc = models.CharField(
+        max_length=13,
+        unique=True,
+        blank=True,
+        null=True,
+        validators=[RegexValidator(regex=r'^\d{10}(\d{3})?$', message='RUC: 10 o 13 dígitos')]
+    )
     razon_social = models.CharField(max_length=100)
     nombre_comercial = models.CharField(max_length=100)
     
@@ -19,6 +26,7 @@ class Cliente(models.Model):
 
 class Instalacion(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='instalaciones')
+    nombre = models.CharField(max_length=150, blank=True, null=True)
     provincia = models.CharField(max_length=50)
     ciudad = models.CharField(max_length=50)
     codigo = models.CharField(max_length=50, blank=True, null=True)

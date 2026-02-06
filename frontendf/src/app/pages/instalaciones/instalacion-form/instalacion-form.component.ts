@@ -41,6 +41,7 @@ export class InstalacionFormComponent implements OnInit {
   ngOnInit(): void {
     const instalacion = this.data.instalacion || {};
     this.instalacionForm = this.fb.group({
+      nombre: [instalacion.nombre || ''],
       cliente_id: [instalacion.cliente_id || '', Validators.required],
       provincia: [instalacion.provincia || '', Validators.required],
       ciudad: [instalacion.ciudad || '', Validators.required],

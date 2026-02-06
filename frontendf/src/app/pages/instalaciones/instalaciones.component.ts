@@ -72,7 +72,16 @@ export class InstalacionesComponent implements OnInit{
   }
 
   crearInstalacion(data: any): void {
-    this.instalacionService.createInstalacion(data).subscribe({
+    const payload = {
+      nombre: data.nombre || '',
+      cliente: data.cliente_id,
+      provincia: data.provincia,
+      ciudad: data.ciudad,
+      codigo: data.codigo || '',
+      direccion: data.direccion || ''
+    };
+
+    this.instalacionService.createInstalacion(payload).subscribe({
       next: () => {
         alert('Instalación creada exitosamente');
         this.cargarInstalaciones();
@@ -86,7 +95,7 @@ export class InstalacionesComponent implements OnInit{
 
   actualizarInstalacion(id: number, data: any): void {
     const payload = {
-      nombre: data.nombre_instalacion,
+      nombre: data.nombre || '',
       cliente: data.cliente_id,
       provincia: data.provincia,
       ciudad: data.ciudad,

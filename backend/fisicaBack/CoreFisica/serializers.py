@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Asignacion, AsignacionSemanal
+from .models import Asignacion, AsignacionSemanal, Instalacion
 
 class AsignacionSerializer(serializers.ModelSerializer):
     
@@ -29,6 +29,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'id': obj.cliente.id,
             'nombre_comercial': obj.cliente.nombre_comercial,
             'razon_social': obj.cliente.razon_social,
+            'ruc': getattr(obj.cliente, 'ruc', '') or ''
         }
     
     def get_instalacion_detalle(self, obj):
@@ -85,4 +86,11 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
     class Meta:
         model = AsignacionSemanal
         fields = ['id', 'puesto', 'week_start', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'created_at', 'updated_at', 'puesto_detalle']
+
+
+class InstalacionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Instalacion
+        fields = ['id', 'cliente', 'provincia', 'ciudad', 'codigo', 'direccion']
+        read_only_fields = ['id']
 

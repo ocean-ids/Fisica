@@ -8,8 +8,17 @@ from ..models import Cliente
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_clientes(request):
-    clientes = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial')
-    return JsonResponse(list(clientes), safe=False)
+    qs = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'ruc')
+    try:
+        count = qs.count()
+    except Exception:
+        count = len(list(qs))
+    print(f"[DEBUG] obtener_clientes: returning {count} clientes")
+    # print first item for quick inspection
+    first = qs.first()
+    if first:
+        print(f"[DEBUG] first cliente sample: {first}")
+    return JsonResponse(list(qs), safe=False)
 
 
 @api_view(['GET'])
@@ -19,6 +28,7 @@ def obtener_cliente_id(request, id):
         cliente = Cliente.objects.get(pk=id)
         data = {
             "id": cliente.id,
+            "ruc": cliente.ruc,
             "razon_social": cliente.razon_social,
             "nombre_comercial": cliente.nombre_comercial
         }
@@ -34,12 +44,14 @@ def crear_cliente(request):
             data = json.loads(request.body)
             razon_social = data.get('razon_social')
             nombre_comercial = data.get('nombre_comercial')
+            ruc = data.get('ruc')
             if not razon_social or not nombre_comercial:
                 return JsonResponse({'error': 'Faltan campos obligatorios'}, status=400)
 
             cliente = Cliente.objects.create(
                 razon_social=razon_social,
-                nombre_comercial=nombre_comercial
+                nombre_comercial=nombre_comercial,
+                ruc=ruc
             )
 
             return JsonResponse({'message': 'Cliente creado correctamente', 'id': cliente.id}, status=201)
@@ -63,12 +75,14 @@ def actualizar_cliente(request, id):
 
         cliente.razon_social = data.get('razon_social', cliente.razon_social)
         cliente.nombre_comercial = data.get('nombre_comercial', cliente.nombre_comercial)
+        cliente.ruc = data.get('ruc', cliente.ruc)
 
         cliente.save()
 
         return JsonResponse({
             'message': 'Cliente actualizado correctamente',
-            'id': cliente.id
+            'id': cliente.id,
+            "ruc": cliente.ruc
         }, status=200)
 
     except json.JSONDecodeError:

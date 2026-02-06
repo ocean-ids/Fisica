@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import json
 from ..models import Cliente, Instalacion
+from ..serializers import InstalacionSerializer
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -14,20 +15,21 @@ def obtener_instalaciones(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_instalacion(request):
-    data = json.loads(request.body)
-    print(data)
-    cliente_id = data.get('cliente_id')
-    cliente = Cliente.objects.get(id=cliente_id)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
 
-    instalacion = Instalacion.objects.create(
-        cliente=cliente,
-        ciudad=data.get('ciudad'),
-        provincia=data.get('provincia'),
-        codigo=data.get('codigo', ''),
-        direccion=data.get('direccion', ''),
-    )
+    # soportar `cliente_id` desde frontend
+    if 'cliente_id' in data and 'cliente' not in data:
+        data['cliente'] = data.pop('cliente_id')
 
-    return JsonResponse({'message': 'Instalación creada', 'id': instalacion.id})
+    serializer = InstalacionSerializer(data=data)
+    if serializer.is_valid():
+        instalacion = serializer.save()
+        return JsonResponse({'message': 'Instalación creada', 'id': instalacion.id})
+    else:
+        return JsonResponse({'error': 'Datos inválidos', 'details': serializer.errors}, status=400)
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
@@ -40,19 +42,16 @@ def actualizar_instalacion(request, id):
         except Instalacion.DoesNotExist:
             return JsonResponse({'error': 'Instalación no encontrada'}, status=404)
 
-        try:
-            cliente = Cliente.objects.get(id=data.get('cliente'))
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+        # soportar `cliente_id` desde frontend
+        if 'cliente_id' in data and 'cliente' not in data:
+            data['cliente'] = data.pop('cliente_id')
 
-        instalacion.cliente = cliente
-        instalacion.ciudad = data.get('ciudad', instalacion.ciudad)
-        instalacion.provincia = data.get('provincia', instalacion.provincia)
-        instalacion.codigo = data.get('codigo', instalacion.codigo)
-        instalacion.direccion = data.get('direccion', instalacion.direccion)
-        instalacion.save()
-
-        return JsonResponse({'message': 'Instalación actualizada', 'id': instalacion.id})
+        serializer = InstalacionSerializer(instalacion, data=data, partial=True)
+        if serializer.is_valid():
+            instalacion = serializer.save()
+            return JsonResponse({'message': 'Instalación actualizada', 'id': instalacion.id})
+        else:
+            return JsonResponse({'error': 'Datos inválidos', 'details': serializer.errors}, status=400)
 
     except json.JSONDecodeError:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
