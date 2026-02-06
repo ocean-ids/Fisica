@@ -317,7 +317,7 @@ def exportar_asignaciones_excel(request):
     dates = [first_day + datetime.timedelta(days=i) for i in range(last_day_num)]
 
     # Columnas izquierdas (datos de asignación)
-    left_headers = ['Horario', 'Código Instalación', 'Cliente', 'Nombre Puesto', 'Resumen', 'Dirección Instalación', 'Cédula', 'Persona', 'Tipo']
+    left_headers = ['Horario', 'Código', 'Cliente', 'Nombre Puesto', 'Resumen', 'Dirección Instalación', 'Cédula', 'Persona', 'Tipo']
     left_cols = len(left_headers)
 
     # Columnas de fecha comienzan después de las columnas izquierdas
