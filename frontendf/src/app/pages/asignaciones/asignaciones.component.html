@@ -139,7 +139,7 @@
             <mat-label>Instalación</mat-label>
             <mat-select [(ngModel)]="instalacionSeleccionada" (selectionChange)="onInstalacionChange()" [ngModelOptions]="{standalone:true}">
               <mat-option [value]="null">Seleccione</mat-option>
-              <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.provincia }} - {{ i.ciudad }}</mat-option>
+              <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.nombre || '-' }}</mat-option>
             </mat-select>
           </mat-form-field>
         </div>

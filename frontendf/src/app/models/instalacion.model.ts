@@ -4,6 +4,7 @@ export interface Instalacion {
   cliente_id?: number;
   provincia: string;
   ciudad: string;
+  nombre?: string;
   codigo?: string;
   direccion?: string;
   nombre_cliente?: string;

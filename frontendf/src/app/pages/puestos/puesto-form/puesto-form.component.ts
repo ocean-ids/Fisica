@@ -58,9 +58,11 @@ export class PuestoFormComponent implements OnInit {
   onSubmit(): void {
     if (this.puestoForm.valid) {
       const formValue = this.puestoForm.value;
+      const selectedInstalacion = this.instalaciones.find(i => i.id === formValue.instalacion_id);
       const payload = {
         ...formValue,
         turno: formValue.turno, // Ensure `turno` is sent correctly
+        instalacion_nombre: selectedInstalacion?.nombre || selectedInstalacion?.codigo || null
       };
       console.log('Payload enviado:', JSON.stringify(payload, null, 2)); // Log detailed payload for debugging
       this.dialogRef.close(payload);

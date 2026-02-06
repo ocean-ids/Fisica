@@ -14,7 +14,7 @@
       <mat-label>Instalación</mat-label>
       <mat-select formControlName="instalacion_id" required>
         <mat-option *ngFor="let instalacion of instalaciones" [value]="instalacion.id">
-          {{ instalacion.provincia }} - {{ instalacion.ciudad }}
+          {{ instalacion.nombre || '-' }}
         </mat-option>
       </mat-select>
       <mat-error *ngIf="puestoForm.get('instalacion_id')?.hasError('required')">

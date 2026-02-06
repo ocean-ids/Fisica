@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import  IsAuthenticated
 import json
 from ..models import Instalacion, Puesto
+from django.db.models import F
 import logging
 
 logger = logging.getLogger(__name__)
@@ -50,10 +51,12 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_cliente(request, cliente_id):
-    puestos = Puesto.objects.filter(instalacion__cliente_id=cliente_id).values(
+    puestos = Puesto.objects.filter(instalacion__cliente_id=cliente_id)
+    # Añadir el nombre de la instalación como `instalacion_nombre` para el frontend
+    puestos = puestos.annotate(instalacion_nombre=F('instalacion__nombre')).values(
         'id', 'nombre', 'cantidad_guardias', 'horas_trabajo',
-        'turno', 'dias', 'instalacion_id', 'resumen',  
-        'instalacion__provincia', 'instalacion__ciudad'
+        'turno', 'dias', 'instalacion_id', 'resumen',
+        'instalacion__provincia', 'instalacion__ciudad', 'instalacion_nombre'
     )
     return JsonResponse(list(puestos), safe=False)
 
