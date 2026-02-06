@@ -5,6 +5,15 @@
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>RUC</mat-label>
       <input type="text" matInput formControlName="ruc" placeholder="RUC (10 o 13 dígitos)">
+      <mat-error *ngIf="clienteForm.get('ruc')?.hasError('pattern')">
+        El RUC debe contener solo dígitos y ser de 10 o 13 caracteres.
+      </mat-error>
+      <mat-error *ngIf="clienteForm.get('ruc')?.hasError('minlength')">
+        El RUC debe tener al menos 10 caracteres.
+      </mat-error>
+      <mat-error *ngIf="clienteForm.get('ruc')?.hasError('maxlength')">
+        El RUC no puede tener más de 13 caracteres.
+      </mat-error>
     </mat-form-field>
     
     <mat-form-field appearance="outline" class="full-width">

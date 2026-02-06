@@ -33,7 +33,11 @@ export class ClienteFormComponent {
     this.clienteForm = this.fb.group({
       razon_social: [this.cliente?.razon_social || '', Validators.required],
       nombre_comercial: [this.cliente?.nombre_comercial || '', Validators.required],
-      ruc: [this.cliente?.ruc || '']
+      ruc: [this.cliente?.ruc || '', [
+        Validators.pattern(/^\d{10}(\d{3})?$/),
+        Validators.minLength(10),
+        Validators.maxLength(13)
+      ]]
     });
   }
 
