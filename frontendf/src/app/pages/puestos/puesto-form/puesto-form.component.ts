@@ -43,7 +43,7 @@ export class PuestoFormComponent implements OnInit {
       cantidad_guardias: [puesto?.cantidad_guardias || 0, Validators.required],
       horas_trabajo: [puesto?.horas_trabajo || 0, Validators.required],
       descripcion_sistema: [puesto?.descripcion_sistema || ''],
-      turno: [puesto?.turno || 'dia', Validators.required],
+      turno: [this.normalizeTurno(puesto?.turno) || 'Diurno', Validators.required],
       dias: [puesto?.dias || []]
     });
 
@@ -53,6 +53,18 @@ export class PuestoFormComponent implements OnInit {
       },
       error: (err) => console.error('Error al cargar instalaciones', err)
     });
+  }
+
+  private normalizeTurno(value: any): string | null {
+    if (!value && value !== '') return null;
+    const v = String(value).trim().toLowerCase();
+    if (!v) return null;
+    if (v.startsWith('n')) return 'Nocturno';
+    if (v.startsWith('d')) return 'Diurno';
+    // fallback: if already Diurno/Nocturno return as-is with capitalization
+    if (v.includes('noct')) return 'Nocturno';
+    if (v.includes('diurn')) return 'Diurno';
+    return null;
   }
 
   onSubmit(): void {

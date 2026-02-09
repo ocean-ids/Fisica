@@ -88,4 +88,42 @@ def eliminar_persona(request, id):
         logger.exception('Error eliminando persona id=%s', id)
         return JsonResponse({'error': 'No se pudo eliminar persona'}, status=500)
 
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def disable_persona(request, id):
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    if not persona.is_active:
+        return JsonResponse({'detail': 'Ya está deshabilitada.'}, status=400)
+
+    try:
+        persona.disable(by_user=request.user if request.user.is_authenticated else None)
+        return JsonResponse({'status': 'disabled'}, status=200)
+    except Exception:
+        logger.exception('Error deshabilitando persona id=%s', id)
+        return JsonResponse({'error': 'No se pudo deshabilitar persona'}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def enable_persona(request, id):
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    if persona.is_active:
+        return JsonResponse({'detail': 'Ya está habilitada.'}, status=400)
+
+    try:
+        persona.enable(by_user=request.user if request.user.is_authenticated else None)
+        return JsonResponse({'status': 'enabled'}, status=200)
+    except Exception:
+        logger.exception('Error habilitando persona id=%s', id)
+        return JsonResponse({'error': 'No se pudo habilitar persona'}, status=500)
+
             

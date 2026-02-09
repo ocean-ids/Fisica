@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Asignacion, AsignacionSemanal, Instalacion
+from .models import Asignacion, AsignacionSemanal, Instalacion, Puesto
 
 class AsignacionSerializer(serializers.ModelSerializer):
     
@@ -49,6 +49,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'cantidad_guardias': obj.puesto.cantidad_guardias,
             'horas_trabajo': obj.puesto.horas_trabajo,
             'turno': obj.puesto.turno,
+            'turno_display': obj.puesto.get_turno_display(),
             'dias': obj.puesto.dias,
             'resumen': obj.puesto.resumen
         }
@@ -79,6 +80,7 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
             'cantidad_guardias': p.cantidad_guardias,
             'horas_trabajo': p.horas_trabajo,
             'turno': p.turno,
+            'turno_display': p.get_turno_display(),
             'dias': p.dias,
             'resumen': p.resumen,
         }
@@ -93,4 +95,13 @@ class InstalacionSerializer(serializers.ModelSerializer):
         model = Instalacion
         fields = ['id', 'cliente', 'nombre', 'provincia', 'ciudad', 'codigo', 'direccion']
         read_only_fields = ['id']
+        
 
+class PuestoSerializer(serializers.ModelSerializer):
+    turno_display = serializers.CharField(source='get_turno_display', read_only=True)
+
+    class Meta:
+        model = Puesto
+        fields = ['id','instalacion','nombre','cantidad_guardias','horas_trabajo','turno','turno_display','dias','resumen']
+        read_only_fields = ['id','turno_display']
+    

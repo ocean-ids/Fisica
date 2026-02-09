@@ -60,7 +60,7 @@
                     <div class="tooltip-content">
                       <div><strong>👮 Puesto:</strong> {{ asig.puesto_detalle?.cantidad_guardias }}</div>
                       <div><strong>⏰ Horas:</strong> {{ asig.puesto_detalle?.horas_trabajo || '-' }}</div>
-                      <div><strong>🌙 Turno:</strong> {{ asig.puesto_detalle?.turno }}</div>
+                      <div><strong>🌙 Turno:</strong> {{ asig.puesto_detalle?.turno_display || asig.puesto_detalle?.turno }}</div>
                       <div><strong>📅 Días:</strong> {{ asig.puesto_detalle?.dias?.join(', ') || '-' }}</div>
                     </div>
                   </mat-menu>

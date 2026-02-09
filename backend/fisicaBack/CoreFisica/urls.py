@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import (
 from .views.auth_views import login_view, logout_view, user_view, solicitar_reset_password, reset_password
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
-from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona
+from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona, disable_persona, enable_persona
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion, exportar_asignaciones_excel
@@ -29,6 +29,8 @@ urlpatterns = [
     path('crear-persona/', crear_persona),
     path('actualizar-persona/<int:id>/', actualizar_persona),
     path('eliminar-persona/<int:id>/', eliminar_persona),
+    path('disable-persona/<int:id>/', disable_persona),
+    path('enable-persona/<int:id>/', enable_persona),
     path('crear-horario/', crear_horario),
     path('personas/', obtener_personas),
     path('instalaciones/', obtener_instalaciones),
@@ -56,10 +58,5 @@ urlpatterns = [
     path('asignacion-semanal/guardar/', crear_o_actualizar_asignacion_semanal),
     path('asignacion-semanal/copy/', copiar_semana),
     path('semanas/', semanas_del_mes, name='semanas')
-    
-
-
-
-    
 ]
 

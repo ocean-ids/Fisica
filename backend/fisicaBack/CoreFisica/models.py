@@ -42,10 +42,14 @@ class Puesto(models.Model):
     nombre = models.CharField(max_length=100)
     cantidad_guardias = models.IntegerField(default=0)
     horas_trabajo = models.IntegerField(default=0)
-    turno = models.CharField(max_length=10, choices=[
-        ('dia', 'Día'),
-        ('noche', 'Noche'),
-    ], default='dia')
+    turno = models.CharField(
+        max_length=10,
+        choices=[
+            ('Diurno', 'Diurno'),
+            ('Nocturno', 'Nocturno'),
+        ],
+        default='Diurno'
+    )
     dias = models.JSONField(default=list)
     resumen = models.CharField(max_length=50, blank=True, editable=False)  # campo para el resumen
 
@@ -55,7 +59,8 @@ class Puesto(models.Model):
         try:
             cantidad = int(self.cantidad_guardias) if self.cantidad_guardias is not None else 0
             horas = int(self.horas_trabajo) if self.horas_trabajo is not None else 0
-            turno_letter = 'D' if (self.turno or '').lower() == 'dia' else 'N'
+            # compatible con valores antiguos ('dia'/'noche') y nuevos ('Diurno'/'Nocturno')
+            turno_letter = 'D' if (self.turno or '').strip().lower().startswith('d') else 'N'
 
             # Mapear nombres de días a códigos compactos (usar primera letra)
             day_map = {
@@ -96,6 +101,11 @@ class Puesto(models.Model):
 
 cedula_validator = RegexValidator(regex=r'^\d{1,10}$', message='Cédula: sólo dígitos, máximo 10')
 
+class ActiveManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)
+
+
 class Persona(models.Model):
     TIPO_CHOICES = [
         ('SUPERVISOR', 'SUPERVISOR'),
@@ -104,11 +114,29 @@ class Persona(models.Model):
         ('SACAFRANCO', 'SACAFRANCO'),
         ('EVENTUAL', 'EVENTUAL'),
     ]
-    tipo = models.CharField(null=True,max_length=15, choices=TIPO_CHOICES)
+    tipo = models.CharField(null=True, max_length=15, choices=TIPO_CHOICES)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     cedula = models.CharField(max_length=10, unique=True, validators=[cedula_validator])
+
     
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
+
+   
+    objects = models.Manager()
+    active = ActiveManager()
+
+    def disable(self, by_user=None):
+        if not self.is_active:
+            return
+        self.is_active = False
+        self.save(update_fields=['is_active'])
+
+    def enable(self, by_user=None):
+        if self.is_active:
+            return
+        self.is_active = True
+        self.save(update_fields=['is_active'])
 
     def __str__(self):
         return f"{self.nombres} {self.apellidos}"

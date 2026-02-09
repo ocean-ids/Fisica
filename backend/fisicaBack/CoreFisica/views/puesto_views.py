@@ -3,7 +3,6 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import  IsAuthenticated
 import json
 from ..models import Instalacion, Puesto
-from django.db.models import F
 import logging
 
 logger = logging.getLogger(__name__)
@@ -15,7 +14,14 @@ def crear_puesto(request):
     instalacion_id = data.get('instalacion_id')
     cantidad_guardias = data.get('cantidad_guardias', 1)
     horas_trabajo = data.get('horas_trabajo')
-    turno = data.get('turno', 'dia')  
+    turno_in = data.get('turno', 'Diurno')
+    # aceptar solo los valores exactos 'Diurno' o 'Nocturno'
+    if not isinstance(turno_in, str):
+        return JsonResponse({'error': 'Valor de turno inválido'}, status=400)
+    t = turno_in.strip()
+    if t not in ('Diurno', 'Nocturno'):
+        return JsonResponse({'error': "Valor de turno inválido: use 'Diurno' o 'Nocturno'"}, status=400)
+    turno = t
     dias = data.get('dias', [])
 
     instalacion = Instalacion.objects.get(id=instalacion_id)
@@ -27,38 +33,81 @@ def crear_puesto(request):
         dias=dias,
         instalacion_id=instalacion.id
     )
-    return JsonResponse({'message': 'Puesto creado', 'id': puesto.id})
+    return JsonResponse({
+        'message': 'Puesto creado',
+        'puesto': {
+            'id': puesto.id,
+            'nombre': puesto.nombre,
+            'cantidad_guardias': puesto.cantidad_guardias,
+            'horas_trabajo': puesto.horas_trabajo,
+            'turno': puesto.turno,
+            'turno_display': puesto.get_turno_display(),
+            'dias': puesto.dias,
+            'instalacion_id': puesto.instalacion_id,
+            'resumen': puesto.resumen,
+        }
+    })
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos(request):
-    puestos = Puesto.objects.all().values(
-        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo',
-        'turno', 'dias', 'instalacion_id', 'resumen'  
-    )
-    return JsonResponse(list(puestos), safe=False)
+    puestos_qs = Puesto.objects.all()
+    resultado = []
+    for p in puestos_qs:
+        resultado.append({
+            'id': p.id,
+            'nombre': p.nombre,
+            'cantidad_guardias': p.cantidad_guardias,
+            'horas_trabajo': p.horas_trabajo,
+            'turno': p.turno,
+            'turno_display': p.get_turno_display(),
+            'dias': p.dias,
+            'instalacion_id': p.instalacion_id,
+            'resumen': p.resumen,
+        })
+    return JsonResponse(resultado, safe=False)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_instalacion(request, instalacion_id):
-    puestos = Puesto.objects.filter(instalacion_id=instalacion_id).values(
-        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo',
-        'turno', 'dias', 'instalacion_id', 'resumen'  
-    )
-    return JsonResponse(list(puestos), safe=False)
+    puestos_qs = Puesto.objects.filter(instalacion_id=instalacion_id)
+    resultado = []
+    for p in puestos_qs:
+        resultado.append({
+            'id': p.id,
+            'nombre': p.nombre,
+            'cantidad_guardias': p.cantidad_guardias,
+            'horas_trabajo': p.horas_trabajo,
+            'turno': p.turno,
+            'turno_display': p.get_turno_display(),
+            'dias': p.dias,
+            'instalacion_id': p.instalacion_id,
+            'resumen': p.resumen,
+        })
+    return JsonResponse(resultado, safe=False)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_cliente(request, cliente_id):
-    puestos = Puesto.objects.filter(instalacion__cliente_id=cliente_id)
-    # Añadir el nombre de la instalación como `instalacion_nombre` para el frontend
-    puestos = puestos.annotate(instalacion_nombre=F('instalacion__nombre')).values(
-        'id', 'nombre', 'cantidad_guardias', 'horas_trabajo',
-        'turno', 'dias', 'instalacion_id', 'resumen',
-        'instalacion__provincia', 'instalacion__ciudad', 'instalacion_nombre'
-    )
-    return JsonResponse(list(puestos), safe=False)
+    puestos_qs = Puesto.objects.filter(instalacion__cliente_id=cliente_id).select_related('instalacion')
+    resultado = []
+    for p in puestos_qs:
+        resultado.append({
+            'id': p.id,
+            'nombre': p.nombre,
+            'cantidad_guardias': p.cantidad_guardias,
+            'horas_trabajo': p.horas_trabajo,
+            'turno': p.turno,
+            'turno_display': p.get_turno_display(),
+            'dias': p.dias,
+            'instalacion_id': p.instalacion_id,
+            'resumen': p.resumen,
+            'instalacion__provincia': getattr(p.instalacion, 'provincia', None),
+            'instalacion__ciudad': getattr(p.instalacion, 'ciudad', None),
+            'instalacion_nombre': getattr(p.instalacion, 'nombre', None),
+        })
+    return JsonResponse(resultado, safe=False)
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
@@ -77,10 +126,14 @@ def actualizar_puesto(request, id):
         puesto.nombre = data.get('nombre', puesto.nombre)
         puesto.cantidad_guardias = data.get('cantidad_guardias', puesto.cantidad_guardias)
         puesto.horas_trabajo = data.get('horas_trabajo', puesto.horas_trabajo)
-        turno = data.get('turno')
-        if turno not in ['dia', 'noche']:
-            return JsonResponse({'error': 'Valor de turno inválido'}, status=400)
-        puesto.turno = turno
+        turno_in = data.get('turno')
+        if turno_in is not None:
+            if not isinstance(turno_in, str):
+                return JsonResponse({'error': 'Valor de turno inválido'}, status=400)
+            t = turno_in.strip()
+            if t not in ('Diurno', 'Nocturno'):
+                return JsonResponse({'error': "Valor de turno inválido: use 'Diurno' o 'Nocturno'"}, status=400)
+            puesto.turno = t
         puesto.dias = data.get('dias', puesto.dias)
 
         puesto.save()
@@ -92,6 +145,7 @@ def actualizar_puesto(request, id):
                 'cantidad_guardias': puesto.cantidad_guardias,
                 'horas_trabajo': puesto.horas_trabajo,
                 'turno': puesto.turno,
+                'turno_display': puesto.get_turno_display(),
                 'dias': puesto.dias,
                 'instalacion_id': puesto.instalacion_id,
             }
