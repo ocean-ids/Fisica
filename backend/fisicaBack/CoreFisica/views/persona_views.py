@@ -37,7 +37,8 @@ def crear_persona(request):
 def obtener_personas(request):
     try:
         personas = Persona.objects.all().order_by('apellidos')
-        return JsonResponse(list(personas.values('id', 'nombres', 'apellidos', 'cedula', 'tipo')), safe=False)
+        # Include is_active so frontend can reflect current activation state
+        return JsonResponse(list(personas.values('id', 'nombres', 'apellidos', 'cedula', 'tipo', 'is_active')), safe=False)
     except Exception:
         logger.exception('Error obteniendo personas')
         return JsonResponse({'error': 'No se encontraron personas'}, status=404)
@@ -98,10 +99,13 @@ def disable_persona(request, id):
         return JsonResponse({'error': 'Persona no encontrada'}, status=404)
 
     if not persona.is_active:
-        return JsonResponse({'detail': 'Ya está deshabilitada.'}, status=400)
+        logger.info('Intento de deshabilitar persona ya inactiva id=%s', id)
+        # Idempotent: consider already-disabled as success
+        return JsonResponse({'status': 'already_disabled'}, status=200)
 
     try:
         persona.disable(by_user=request.user if request.user.is_authenticated else None)
+        logger.info('Persona deshabilitada id=%s by=%s', id, getattr(request.user, 'username', None))
         return JsonResponse({'status': 'disabled'}, status=200)
     except Exception:
         logger.exception('Error deshabilitando persona id=%s', id)
@@ -117,10 +121,12 @@ def enable_persona(request, id):
         return JsonResponse({'error': 'Persona no encontrada'}, status=404)
 
     if persona.is_active:
-        return JsonResponse({'detail': 'Ya está habilitada.'}, status=400)
+        logger.info('Intento de habilitar persona ya activa id=%s', id)
+        return JsonResponse({'status': 'already_enabled'}, status=200)
 
     try:
         persona.enable(by_user=request.user if request.user.is_authenticated else None)
+        logger.info('Persona habilitada id=%s by=%s', id, getattr(request.user, 'username', None))
         return JsonResponse({'status': 'enabled'}, status=200)
     except Exception:
         logger.exception('Error habilitando persona id=%s', id)

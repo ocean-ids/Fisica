@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {Persona} from '../../models/persona.model'
 import { PersonaService } from '../../services/persona.service';
 import { PersonaFormComponent } from './persona-form/persona-form.component';
@@ -12,7 +13,7 @@ import { PersonaFormComponent } from './persona-form/persona-form.component';
 @Component({
   selector: 'app-personas',
   standalone: true,
-  imports: [CommonModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
+  imports: [CommonModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule, MatSlideToggleModule],
   templateUrl: './personas.component.html',
   styleUrl: './personas.component.css'
 })
@@ -105,6 +106,22 @@ export class PersonasComponent implements OnInit {
   cancelarEliminar(): void {
     this.showDeleteModal = false;
     this.personaEliminar = null;
+  }
+
+  toggleActive(persona: Persona, checked: boolean): void {
+    if (!persona?.id) return;
+    const id = persona.id;
+    if (checked) {
+      this.personaService.enablePersona(id).subscribe({
+        next: () => { persona.is_active = true; },
+        error: (err) => { console.error('Error habilitando persona', err); alert('Error al habilitar persona'); }
+      });
+    } else {
+      this.personaService.disablePersona(id).subscribe({
+        next: () => { persona.is_active = false; },
+        error: (err) => { console.error('Error deshabilitando persona', err); alert('Error al deshabilitar persona'); }
+      });
+    }
   }
 
 }

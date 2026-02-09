@@ -30,4 +30,12 @@ export class PersonaService {
     return this.apiService.delete(`/eliminar-persona/${id}/`);
   }
 
+  disablePersona(id: number): Observable<any>{
+    return this.apiService.post(`/disable-persona/${id}/`, {});
+  }
+
+  enablePersona(id: number): Observable<any>{
+    return this.apiService.post(`/enable-persona/${id}/`, {});
+  }
+
 }

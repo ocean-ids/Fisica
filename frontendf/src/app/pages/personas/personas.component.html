@@ -17,6 +17,7 @@
               <th>Apellidos</th>
               <th>Nombres</th>
               <th>Tipo</th>
+              <th>Activo</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -30,7 +31,13 @@
                   {{ persona.tipo }}
                 </span>
               </td>
-              <td class="d-flex justify-content-around">
+              <td>
+                <mat-slide-toggle [checked]="persona.is_active !== false" (change)="toggleActive(persona, $event.checked)">
+                </mat-slide-toggle>
+              </td>
+              <td class="d-flex justify-content-around align-items-center">
+                
+
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirModal(persona)">
                   <i class="bi bi-pencil"></i> Editar
                 </button>

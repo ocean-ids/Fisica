@@ -4,4 +4,5 @@ export interface Persona {
   nombres: string;
   apellidos: string;
   cedula: string;
+  is_active?: boolean;
 }
