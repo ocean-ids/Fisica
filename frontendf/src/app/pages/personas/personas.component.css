@@ -65,3 +65,9 @@
   font-size: 1rem;
   margin-right: 5px;
 }
+
+.inactive-row {
+  background-color: #e9ecef !important; /* slightly darker */
+  color: #6c757d !important;
+  opacity: 0.9;
+}

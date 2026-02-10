@@ -46,7 +46,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr class="text-center align-middle shared-row" *ngFor="let asig of asignaciones">
+              <ng-container *ngFor="let asig of asignaciones">
+                <tr class="text-center align-middle shared-row" *ngIf="asig.persona_detalle?.is_active !== false">
                 <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                 <td>{{ asig.instalacion_detalle?.codigo }}</td>
                 <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
@@ -91,7 +92,8 @@
                     </button>
                   </div>
                 </td>
-              </tr>
+                </tr>
+              </ng-container>
             </tbody>
           </table>
         </div>
@@ -159,7 +161,9 @@
             <mat-label>Persona</mat-label>
             <mat-select [(ngModel)]="asignacionActual.persona" [ngModelOptions]="{standalone:true}">
               <mat-option [value]="0">Seleccione</mat-option>
-              <mat-option *ngFor="let per of personas" [value]="per.id">{{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})</mat-option>
+              <ng-container *ngFor="let per of personas">
+                <mat-option *ngIf="per.is_active !== false" [value]="per.id">{{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})</mat-option>
+              </ng-container>
             </mat-select>
           </mat-form-field>
         </div>
