@@ -43,7 +43,7 @@ export class PuestoFormComponent implements OnInit {
     this.puestoForm = this.fb.group({
       nombre: [puesto?.nombre || '', Validators.required],
       instalacion_id: [puesto?.instalacion_id || '', Validators.required],
-      cantidad_guardias: [puesto?.cantidad_guardias || 0, Validators.required],
+      cantidad_guardias: [puesto?.cantidad_guardias ?? 1, Validators.required],
       descripcion_sistema: [puesto?.descripcion_sistema || ''],
       horarios: this.fb.array([])
     });

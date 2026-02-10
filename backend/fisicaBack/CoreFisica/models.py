@@ -40,7 +40,7 @@ class Instalacion(models.Model):
 class Puesto(models.Model):
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='puestos')
     nombre = models.CharField(max_length=100)
-    cantidad_guardias = models.IntegerField(default=0)
+    cantidad_guardias = models.IntegerField(default=1)
     # `horas_trabajo` moved to `PuestoHorario` (one row per day). Kept out of model.
     # `turno` ahora se almacena por fila en `PuestoHorario` (cada dia puede tener turno distinto)
     resumen = models.CharField(max_length=50, blank=True, editable=False)  # campo para el resumen
