@@ -33,6 +33,10 @@
       </mat-error>
     </mat-form-field>
 
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <button mat-raised-button color="primary" (click)="addHorario()">+ Añadir horarios</button>
+    </div>
+
     <div formArrayName="horarios">
       <div *ngFor="let horario of horarios.controls; let i = index" [formGroupName]="i" class="horario-block">
         <div style="display:flex; gap:12px; align-items:center;">
@@ -63,7 +67,6 @@
           </button>
         </div>
       </div>
-      <button mat-raised-button color="primary" (click)="addHorario()">+ Añadir Horario</button>
     </div>
   </form>
 </mat-dialog-content>
