@@ -120,6 +120,19 @@ export class PuestosComponent implements OnInit {
     }
   }
 
+  getDias(puesto: Puesto): string {
+    try {
+      if (!puesto) return '-';
+      const dayMap: any = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'};
+      const diasNums: number[] = (puesto.horarios && Array.isArray(puesto.horarios)) ? Array.from(new Set(puesto.horarios.map(h=>h.dia))) as number[] : [];
+      if (!diasNums.length) return '-';
+      const names = diasNums.sort((a,b)=>a-b).map(n=> dayMap[n] || '').filter(x=>x);
+      return names.length ? names.join(', ') : '-';
+    } catch (e) {
+      return '-';
+    }
+  }
+
 }
 
 
