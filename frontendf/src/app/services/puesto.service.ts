@@ -23,19 +23,23 @@ export class PuestoService {
     }
 
     crearPuesto(puesto: Puesto): Observable<any> {
-        return this.apiService.post('/crear-puesto/', {
-            ...puesto,
-            turno: puesto.turno,
-            dias: puesto.dias ?? []
-        });
+        const payload: any = { ...puesto };
+        if (puesto.horarios) payload.horarios = puesto.horarios;
+        else {
+            payload.dias = puesto.dias ?? [];
+            payload.turno = puesto.turno;
+        }
+        return this.apiService.post('/crear-puesto/', payload);
     }
 
     actualizarPuesto(id: number, puesto: Puesto): Observable<any> {
-        return this.apiService.put(`/actualizar-puesto/${id}/`, {
-            ...puesto,
-            turno: puesto.turno,
-            dias: puesto.dias ?? []
-        });
+        const payload: any = { ...puesto };
+        if (puesto.horarios) payload.horarios = puesto.horarios;
+        else {
+            payload.dias = puesto.dias ?? [];
+            payload.turno = puesto.turno;
+        }
+        return this.apiService.put(`/actualizar-puesto/${id}/`, payload);
     }
 
     eliminarPuesto(id: number): Observable<any>{

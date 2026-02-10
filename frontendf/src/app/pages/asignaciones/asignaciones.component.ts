@@ -386,10 +386,12 @@ export class AsignacionesComponent implements OnInit {
       return map[t] || t;
     };
 
-    const dias = (puesto && puesto.dias) ? (Array.isArray(puesto.dias) ? puesto.dias : [puesto.dias]) : [];
+    const dayNames = [null,'lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+    const diasNums = (puesto && puesto.horarios) ? Array.from(new Set(puesto.horarios.map((h:any)=>h.dia))) as number[] : [];
+    const dias = diasNums.map((n:number)=> dayNames[n]).filter(x=>x);
     const diasNorm = dias.map(normalize).filter((x:any)=>x);
-    const turno = (puesto && puesto.turno) ? String(puesto.turno).trim().toLowerCase() : '';
-    const defaultCode = turno.startsWith('n') ? 'N' : 'D';
+    const turnoRaw = (puesto && puesto.turno) ? String(puesto.turno).trim().toLowerCase() : (puesto && puesto.turno_display ? String(puesto.turno_display).trim().toLowerCase() : '');
+    const defaultCode = turnoRaw.startsWith('n') ? 'N' : 'D';
 
     // Para nueva asignación queremos celdas vacías (el usuario las asigna manualmente)
     const row: any = { puesto: puestoId, puesto_detalle: puesto, mon:'',tue:'',wed:'',thu:'',fri:'',sat:'',sun:'' };

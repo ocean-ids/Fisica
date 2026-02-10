@@ -33,34 +33,38 @@
       </mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Horas de Trabajo</mat-label>
-      <input matInput type="number" formControlName="horas_trabajo" required min="1" max="24">
-      <mat-error *ngIf="puestoForm.get('horas_trabajo')?.hasError('required')">
-        Las horas de trabajo son requeridas
-      </mat-error>
-    </mat-form-field>
+    <div formArrayName="horarios">
+      <div *ngFor="let horario of horarios.controls; let i = index" [formGroupName]="i" class="horario-block">
+        <div style="display:flex; gap:12px; align-items:center;">
+          <mat-form-field appearance="outline">
+            <mat-label>Horas</mat-label>
+            <mat-select formControlName="horas" required>
+              <mat-option *ngFor="let h of hoursOptions" [value]="h">{{ h }}</mat-option>
+            </mat-select>
+          </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Turno</mat-label>
-      <mat-select formControlName="turno" required>
-        <mat-option value="Diurno">Diurno</mat-option>
-        <mat-option value="Nocturno">Nocturno</mat-option>
-      </mat-select>
-    </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Turno</mat-label>
+            <mat-select formControlName="turno" required>
+              <mat-option value="Diurno">Diurno</mat-option>
+              <mat-option value="Nocturno">Nocturno</mat-option>
+            </mat-select>
+          </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Días</mat-label>
-      <mat-select formControlName="dias" multiple>
-        <mat-option value="Lunes">Lunes</mat-option>
-        <mat-option value="Martes">Martes</mat-option>
-        <mat-option value="Miércoles">Miércoles</mat-option>
-        <mat-option value="Jueves">Jueves</mat-option>
-        <mat-option value="Viernes">Viernes</mat-option>
-        <mat-option value="Sábado">Sábado</mat-option>
-        <mat-option value="Domingo">Domingo</mat-option>
-      </mat-select>
-    </mat-form-field>
+          <div class="days-checks" style="display:flex; gap:4px; align-items:center;">
+            <label *ngFor="let d of [1,2,3,4,5,6,7]; let idx = index">
+              <input type="checkbox" [checked]="(horario.get('days')?.value || []).indexOf(d) !== -1"
+                       (change)="toggleDay(i, d, $any($event.target).checked)"> {{ ['L','M','X','J','V','S','D'][idx] }}
+            </label>
+          </div>
+
+          <button mat-icon-button color="warn" (click)="removeHorario(i)">
+            <mat-icon>remove_circle</mat-icon>
+          </button>
+        </div>
+      </div>
+      <button mat-raised-button color="primary" (click)="addHorario()">+ Añadir Horario</button>
+    </div>
   </form>
 </mat-dialog-content>
 

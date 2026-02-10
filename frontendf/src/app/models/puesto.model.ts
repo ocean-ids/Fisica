@@ -2,10 +2,10 @@ export interface Puesto {
   id: number;
   nombre: string;
   cantidad_guardias: number;
-  horas_trabajo: number;
-  turno_dia?: boolean;
-  turno_noche?: boolean;
+  // legacy fields removed in backend; keep optional for compatibility
+  horas_trabajo?: number;
   dias?: string[];
+  horarios?: { dia: number; horas: number; turno?: string }[];
   resumen?: string;
   instalacion_id: number;
   descripcion?: string;

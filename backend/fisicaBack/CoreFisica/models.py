@@ -41,62 +41,157 @@ class Puesto(models.Model):
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='puestos')
     nombre = models.CharField(max_length=100)
     cantidad_guardias = models.IntegerField(default=0)
-    horas_trabajo = models.IntegerField(default=0)
-    turno = models.CharField(
-        max_length=10,
-        choices=[
-            ('Diurno', 'Diurno'),
-            ('Nocturno', 'Nocturno'),
-        ],
-        default='Diurno'
-    )
-    dias = models.JSONField(default=list)
+    # `horas_trabajo` moved to `PuestoHorario` (one row per day). Kept out of model.
+    # `turno` ahora se almacena por fila en `PuestoHorario` (cada dia puede tener turno distinto)
     resumen = models.CharField(max_length=50, blank=True, editable=False)  # campo para el resumen
 
     def save(self, *args, **kwargs):
-        # Calcular resumen compacto: "<cantidad> <horas>H<T><dias>"
-        # Ejemplo: "1 12HDLMXJV" (1 guardia, 12 horas, D=día, días abreviados)
+        # Calcular resumen compacto a partir de los horarios relacionados si existen.
         try:
             cantidad = int(self.cantidad_guardias) if self.cantidad_guardias is not None else 0
-            horas = int(self.horas_trabajo) if self.horas_trabajo is not None else 0
-            # compatible con valores antiguos ('dia'/'noche') y nuevos ('Diurno'/'Nocturno')
-            turno_letter = 'D' if (self.turno or '').strip().lower().startswith('d') else 'N'
+            # Determine horas y dias desde los horarios relacionados
+            horas = 0
+            dias_code = ''
+            try:
+                horarios_qs = getattr(self, 'horarios', None)
+                if horarios_qs is not None:
+                    horas_list = list(horarios_qs.values_list('horas', flat=True))
+                    dias_nums = list(horarios_qs.values_list('dia', flat=True))
+                    if horas_list:
+                        unique = set(horas_list)
+                        if len(unique) == 1:
+                            horas = int(unique.pop())
+                    if dias_nums:
+                        day_map = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'}
+                        dias_code = ''.join([day_map.get(d, '') for d in sorted(set(dias_nums))])
+            except Exception:
+                horas = 0
+                dias_code = ''
 
-            # Mapear nombres de días a códigos compactos (usar primera letra)
-            day_map = {
-                'lunes': 'L',
-                'martes': 'M',
-                'miercoles': 'M',
-                'miércoles': 'M',
-                'jueves': 'J',
-                'viernes': 'V',
-                'sábado': 'S',
-                'sabado': 'S',
-                'domingo': 'D'
-            }
-
-            dias_list = []
-            if isinstance(self.dias, (list, tuple)):
-                for d in self.dias:
-                    if not d:
-                        continue
-                    key = str(d).strip().lower()
-                    dias_list.append(day_map.get(key, key[:1].upper()))
-            # Unir códigos de días (ej: LMA MIJV -> LMA MIJV) — usamos abreviaturas claras
-            dias_code = ''.join(dias_list)
-
-            # Formato compacto solicitado: "<cantidad> <horas><D|N><dias>" (sin 'H')
+            # Determinar turno global del puesto a partir de los horarios: si todos los horarios
+            # comparten el mismo turno usamos ese, si no, marcamos como 'M' (mixto)
+            turno_letter = 'M'
+            try:
+                horarios_qs = getattr(self, 'horarios', None)
+                if horarios_qs is not None:
+                    turnos = list(horarios_qs.values_list('turno', flat=True))
+                    if turnos:
+                        unique_turnos = set([t.strip().lower() for t in turnos if t])
+                        if len(unique_turnos) == 1:
+                            turno_letter = 'D' if list(unique_turnos)[0].startswith('d') else 'N'
+            except Exception:
+                turno_letter = 'M'
             self.resumen = f"{cantidad} {horas}{turno_letter}{dias_code}"
         except Exception:
-            # Fallback: nombre - turno
             try:
-                self.resumen = f"{self.nombre} - {self.turno}"
+                self.resumen = f"{self.nombre} - {self.get_turno_display()}"
             except Exception:
                 self.resumen = self.nombre or ''
         super().save(*args, **kwargs)
 
+    def sync_from_horarios(self):
+        """Actualiza `resumen` desde `PuestoHorario` relacionados.
+
+        No realiza commits; asigna `resumen` en la instancia.
+        """
+        try:
+            horarios_qs = getattr(self, 'horarios', None)
+            if horarios_qs is None:
+                return
+            horas = 0
+            dias_code = ''
+            horas_list = list(horarios_qs.values_list('horas', flat=True))
+            dias_nums = list(horarios_qs.values_list('dia', flat=True))
+            turno_letter = 'M'
+            if horas_list:
+                unique = set(horas_list)
+                if len(unique) == 1:
+                    horas = int(unique.pop())
+            if dias_nums:
+                day_map = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'}
+                dias_code = ''.join([day_map.get(d, '') for d in sorted(set(dias_nums))])
+
+            turno_letter = 'M'
+            try:
+                turnos = list(horarios_qs.values_list('turno', flat=True))
+                if turnos:
+                    unique_turnos = set([t.strip().lower() for t in turnos if t])
+                    if len(unique_turnos) == 1:
+                        turno_letter = 'D' if list(unique_turnos)[0].startswith('d') else 'N'
+            except Exception:
+                turno_letter = 'M'
+            cantidad = int(self.cantidad_guardias) if self.cantidad_guardias is not None else 0
+            self.resumen = f"{cantidad} {horas}{turno_letter}{dias_code}"
+        except Exception:
+            return
+
+    def get_turno(self):
+        """Devuelve 'Diurno', 'Nocturno' o 'Mixto' según los turnos de `PuestoHorario`.
+        Si no hay horarios devuelve None.
+        """
+        try:
+            horarios_qs = getattr(self, 'horarios', None)
+            if not horarios_qs:
+                return None
+            turnos = [t for t in horarios_qs.values_list('turno', flat=True) if t]
+            if not turnos:
+                return None
+            unique = set([t.strip().lower() for t in turnos])
+            if len(unique) == 1:
+                return 'Diurno' if list(unique)[0].startswith('d') else 'Nocturno'
+            return 'Mixto'
+        except Exception:
+            return None
+
+    def get_turno_display(self):
+        t = self.get_turno()
+        return t or '-'
+
     def __str__(self):
         return self.nombre
+
+DIAS = (
+    (1, 'L'),
+    (2, 'M'),
+    (3, 'X'),
+    (4, 'J'),
+    (5, 'V'),
+    (6, 'S'),
+    (7, 'D'),
+)
+
+
+class PuestoHorario(models.Model):
+    """Horario por puesto, una fila por día (modelo normalizado).
+
+            turno_letter = 'M'
+            try:
+                turnos = list(horarios_qs.values_list('turno', flat=True))
+                if turnos:
+                    unique_turnos = set([t.strip().lower() for t in turnos if t])
+                    if len(unique_turnos) == 1:
+                        turno_letter = 'D' if list(unique_turnos)[0].startswith('d') else 'N'
+            except Exception:
+                turno_letter = 'M'
+    """
+    puesto = models.ForeignKey(Puesto, related_name='horarios', on_delete=models.CASCADE)
+    dia = models.PositiveSmallIntegerField(choices=DIAS)
+    horas = models.PositiveIntegerField(default=12)
+    turno = models.CharField(
+        max_length=10,
+        choices=[('Diurno', 'Diurno'), ('Nocturno', 'Nocturno')],
+        default='Diurno'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('puesto', 'dia')
+        verbose_name = 'Horario de Puesto'
+        verbose_name_plural = 'Horarios de Puestos'
+
+    def __str__(self):
+        return f"{self.puesto} - {self.get_dia_display()} {self.horas}h {self.turno}"
 
 
 cedula_validator = RegexValidator(regex=r'^\d{1,10}$', message='Cédula: sólo dígitos, máximo 10')
@@ -211,3 +306,5 @@ class AsignacionSemanal(models.Model):
 
     def __str__(self):
         return f"{self.puesto} - {self.week_start}"
+
+

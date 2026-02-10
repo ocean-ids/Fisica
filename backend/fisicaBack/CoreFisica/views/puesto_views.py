@@ -2,7 +2,8 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import  IsAuthenticated
 import json
-from ..models import Instalacion, Puesto
+from ..models import Instalacion, Puesto, PuestoHorario
+from ..utils import parse_input
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,36 +14,47 @@ def crear_puesto(request):
     data = json.loads(request.body)
     instalacion_id = data.get('instalacion_id')
     cantidad_guardias = data.get('cantidad_guardias', 1)
-    horas_trabajo = data.get('horas_trabajo')
-    turno_in = data.get('turno', 'Diurno')
-    # aceptar solo los valores exactos 'Diurno' o 'Nocturno'
-    if not isinstance(turno_in, str):
-        return JsonResponse({'error': 'Valor de turno inválido'}, status=400)
-    t = turno_in.strip()
-    if t not in ('Diurno', 'Nocturno'):
-        return JsonResponse({'error': "Valor de turno inválido: use 'Diurno' o 'Nocturno'"}, status=400)
-    turno = t
-    dias = data.get('dias', [])
+    # El turno ahora se define por cada `PuestoHorario`.
+    horarios = data.get('horarios')
+    horarios_text = data.get('horarios_text')
 
     instalacion = Instalacion.objects.get(id=instalacion_id)
     puesto = Puesto.objects.create(
         nombre=data.get('nombre'),
         cantidad_guardias=cantidad_guardias,
-        horas_trabajo=horas_trabajo,
-        turno=turno,  
-        dias=dias,
         instalacion_id=instalacion.id
     )
+    # crear horarios si vienen
+    try:
+        if horarios_text:
+            parsed = parse_input(horarios_text)
+            for r in parsed:
+                turno_val = r.get('turno') or 'Diurno'
+                PuestoHorario.objects.create(puesto=puesto, dia=r['dia'], horas=r.get('horas', 12), turno=turno_val)
+        elif isinstance(horarios, list):
+            for h in horarios:
+                dia = h.get('dia')
+                horas = h.get('horas')
+                if dia and horas is not None:
+                    turno_val = h.get('turno') or 'Diurno'
+                    PuestoHorario.objects.create(puesto=puesto, dia=dia, horas=h.get('horas', 12), turno=turno_val)
+    except Exception:
+        pass
+    # sincronizar resumen
+    try:
+        puesto.sync_from_horarios()
+        puesto.save()
+    except Exception:
+        pass
     return JsonResponse({
         'message': 'Puesto creado',
         'puesto': {
             'id': puesto.id,
             'nombre': puesto.nombre,
             'cantidad_guardias': puesto.cantidad_guardias,
-            'horas_trabajo': puesto.horas_trabajo,
-            'turno': puesto.turno,
+            'turno': puesto.get_turno(),
             'turno_display': puesto.get_turno_display(),
-            'dias': puesto.dias,
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in puesto.horarios.all()],
             'instalacion_id': puesto.instalacion_id,
             'resumen': puesto.resumen,
         }
@@ -59,10 +71,9 @@ def obtener_puestos(request):
             'id': p.id,
             'nombre': p.nombre,
             'cantidad_guardias': p.cantidad_guardias,
-            'horas_trabajo': p.horas_trabajo,
-            'turno': p.turno,
+            'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
-            'dias': p.dias,
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
             'instalacion_id': p.instalacion_id,
             'resumen': p.resumen,
         })
@@ -78,10 +89,9 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
             'id': p.id,
             'nombre': p.nombre,
             'cantidad_guardias': p.cantidad_guardias,
-            'horas_trabajo': p.horas_trabajo,
-            'turno': p.turno,
+            'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
-            'dias': p.dias,
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
             'instalacion_id': p.instalacion_id,
             'resumen': p.resumen,
         })
@@ -97,10 +107,9 @@ def obtener_puestos_por_cliente(request, cliente_id):
             'id': p.id,
             'nombre': p.nombre,
             'cantidad_guardias': p.cantidad_guardias,
-            'horas_trabajo': p.horas_trabajo,
-            'turno': p.turno,
+            'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
-            'dias': p.dias,
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
             'instalacion_id': p.instalacion_id,
             'resumen': p.resumen,
             'instalacion__provincia': getattr(p.instalacion, 'provincia', None),
@@ -125,28 +134,44 @@ def actualizar_puesto(request, id):
 
         puesto.nombre = data.get('nombre', puesto.nombre)
         puesto.cantidad_guardias = data.get('cantidad_guardias', puesto.cantidad_guardias)
-        puesto.horas_trabajo = data.get('horas_trabajo', puesto.horas_trabajo)
-        turno_in = data.get('turno')
-        if turno_in is not None:
-            if not isinstance(turno_in, str):
-                return JsonResponse({'error': 'Valor de turno inválido'}, status=400)
-            t = turno_in.strip()
-            if t not in ('Diurno', 'Nocturno'):
-                return JsonResponse({'error': "Valor de turno inválido: use 'Diurno' o 'Nocturno'"}, status=400)
-            puesto.turno = t
-        puesto.dias = data.get('dias', puesto.dias)
+        # turno ya no se guarda a nivel de Puesto; se maneja por horario
+        # actualizar horarios si vienen
+        horarios = data.get('horarios')
+        horarios_text = data.get('horarios_text')
 
+        # aplicar cambios básicos
         puesto.save()
+        try:
+            if horarios_text:
+                parsed = parse_input(horarios_text)
+                puesto.horarios.all().delete()
+                for r in parsed:
+                    turno_val = r.get('turno') or 'Diurno'
+                    PuestoHorario.objects.create(puesto=puesto, dia=r['dia'], horas=r['horas'], turno=turno_val)
+            elif isinstance(horarios, list):
+                puesto.horarios.all().delete()
+                for h in horarios:
+                    dia = h.get('dia')
+                    horas = h.get('horas')
+                    if dia and horas is not None:
+                        turno_val = h.get('turno') or 'Diurno'
+                        PuestoHorario.objects.create(puesto=puesto, dia=dia, horas=horas, turno=turno_val)
+        except Exception:
+            pass
+        try:
+            puesto.sync_from_horarios()
+            puesto.save()
+        except Exception:
+            pass
         return JsonResponse({
             'message': 'Puesto actualizado correctamente',
             'puesto': {
                 'id': puesto.id,
                 'nombre': puesto.nombre,
                 'cantidad_guardias': puesto.cantidad_guardias,
-                'horas_trabajo': puesto.horas_trabajo,
-                'turno': puesto.turno,
+                'turno': puesto.get_turno(),
                 'turno_display': puesto.get_turno_display(),
-                'dias': puesto.dias,
+                'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in puesto.horarios.all()],
                 'instalacion_id': puesto.instalacion_id,
             }
         }, status=200)
