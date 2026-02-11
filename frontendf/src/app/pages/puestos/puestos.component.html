@@ -42,8 +42,8 @@
             <tr class="text-center" *ngFor="let puesto of puestos">
               <td>{{ puesto.nombre }}</td>
               <td>{{ puesto.cantidad_guardias }}</td>
-              <td>{{ puesto.horas_trabajo }}</td>
-              <td>{{ puesto.turno_display }}</td>
+              <td>{{ getHoras(puesto) }}</td>
+              <td>{{ puesto.turno_display || '-' }}</td>
               <td>{{ getDias(puesto) }}</td>
               <!--<td>
                 <span

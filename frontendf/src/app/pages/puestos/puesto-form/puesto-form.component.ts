@@ -107,9 +107,9 @@ export class PuestoFormComponent implements OnInit {
     return this.puestoForm.get('horarios') as any;
   }
 
-  addHorario(horas: string | number | null = '12:00', turno: string = 'Diurno', days: number[] = []) {
+  addHorario(horas: string | number | null = '16:00', turno: string = 'Diurno', days: number[] = []) {
     const group = this.fb.group({
-      horas: [horas ?? '12:00', Validators.required],
+      horas: [horas ?? '16:00', Validators.required],
       turno: [turno, Validators.required],
       days: [days]
     });

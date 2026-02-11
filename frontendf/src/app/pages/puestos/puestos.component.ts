@@ -133,6 +133,16 @@ export class PuestosComponent implements OnInit {
     }
   }
 
+  getHoras(puesto: Puesto): string {
+    try {
+      if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
+      const unique = Array.from(new Set(puesto.horarios.map(h => h.horas))).sort((a,b)=>a-b);
+      return unique.length ? unique.map(h => `${h}h`).join(', ') : '-';
+    } catch (e) {
+      return '-';
+    }
+  }
+
 }
 
 
