@@ -17,7 +17,6 @@
           <ng-container *ngFor="let d of weekDays">
             <td>
               <input type="text" maxlength="4" class="form-control form-control-sm"
-                     [ngClass]="getCellClass(row[dayKeyFromDate(d.date)])"
                      [(ngModel)]="row[dayKeyFromDate(d.date)]"
                      (ngModelChange)="onCellChange(row, dayKeyFromDate(d.date), $event)"
                      [ngModelOptions]="{standalone:true}">
