@@ -245,16 +245,8 @@ export class AsignacionesComponent implements OnInit {
     this.asignacionActual.puesto = 0;
     this.instalaciones = [];
     this.puestos = [];
-
     if (this.clienteSeleccionado) {
-      this.instalacionService.getInstalaciones().subscribe({
-        next: data => {
-          this.instalaciones = data.filter(
-            i => i.cliente_id === this.clienteSeleccionado
-          );
-        },
-        error: err => console.error('Error al cargar instalaciones', err)
-      });
+      this.cargarInstalaciones(this.clienteSeleccionado);
     }
   }
 
@@ -262,14 +254,35 @@ export class AsignacionesComponent implements OnInit {
     this.asignacionActual.instalacion = this.instalacionSeleccionada!;
     this.asignacionActual.puesto = 0;
     this.puestos = [];
-
     if (this.instalacionSeleccionada) {
-      this.puestoService.getPuestosPorInstalacion(this.instalacionSeleccionada)
-        .subscribe({
-          next: data => this.puestos = data,
-          error: err => console.error('Error al cargar puestos', err)
-        });
+      this.cargarPuestos(this.instalacionSeleccionada);
     }
+  }
+
+  private cargarInstalaciones(clienteId: number, preselectInstalacionId?: number, preselectPuestoId?: number): void {
+    this.instalacionService.getInstalaciones().subscribe({
+      next: data => {
+        this.instalaciones = data.filter(i => i.cliente_id === clienteId);
+        if (preselectInstalacionId) {
+          this.instalacionSeleccionada = preselectInstalacionId;
+          this.asignacionActual.instalacion = preselectInstalacionId;
+          this.cargarPuestos(preselectInstalacionId, preselectPuestoId);
+        }
+      },
+      error: err => console.error('Error al cargar instalaciones', err)
+    });
+  }
+
+  private cargarPuestos(instalacionId: number, preselectPuestoId?: number): void {
+    this.puestoService.getPuestosPorInstalacion(instalacionId).subscribe({
+      next: data => {
+        this.puestos = data;
+        if (preselectPuestoId) {
+          this.asignacionActual.puesto = preselectPuestoId;
+        }
+      },
+      error: err => console.error('Error al cargar puestos', err)
+    });
   }
 
 
@@ -314,8 +327,15 @@ export class AsignacionesComponent implements OnInit {
     this.clienteSeleccionado = asignacion.cliente;
     this.instalacionSeleccionada = asignacion.instalacion;
 
-    this.onClientChange();
-    this.onInstalacionChange();
+    // cargar catálogos y preseleccionar instalación y puesto del registro
+    if (this.clienteSeleccionado) {
+      this.cargarInstalaciones(this.clienteSeleccionado, asignacion.instalacion, asignacion.puesto);
+    }
+
+    // asegurar horarios/personas disponibles
+    if (this.personas.length === 0 || this.horarios.length === 0) {
+      this.cargarCatalogos();
+    }
 
     this.mostrarModal = true;
   }
