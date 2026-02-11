@@ -56,7 +56,7 @@ export class AsignacionCalendarioComponent implements OnInit{
   
     this.computeWeekDays();
     this.loading = true;
-    this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart, page: this.currentPage, page_size: this.pageSize})
+    this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart, page: this.currentPage, page_size: this.pageSize, auto_create: false})
       .subscribe({
         next: (res: any) => {
         if (Array.isArray(res)) {

@@ -12,69 +12,71 @@ def listar_asignacion_semanal(request):
     """Listar asignaciones semanales. Filtrar por week_start (YYYY-MM-DD) y opcionalmente por cliente."""
     week_start = request.GET.get('week_start')
     cliente_id = request.GET.get('cliente')
+    auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
 
     qs = AsignacionSemanal.objects.select_related('puesto').all()
     if week_start:
         try:
             ws = datetime.fromisoformat(week_start).date()
-            # Antes de listar, asegurarnos de crear filas semanales para los puestos
+            # Antes de listar, opcionalmente crear filas semanales para los puestos
             # que tengan asignaciones activas o recurrentes que apliquen a esta semana.
-            try:
-                from ..models import Asignacion, Puesto
-                # encontrar asignaciones activas que aplican a esta semana
-                asigns = Asignacion.objects.filter(estado='ACTIVO').filter(
-                    Q(mes=ws.month, anio=ws.year) |
-                    (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
-                ).select_related('puesto')
+            if auto_create:
+                try:
+                    from ..models import Asignacion, Puesto
+                    # encontrar asignaciones activas que aplican a esta semana
+                    asigns = Asignacion.objects.filter(estado='ACTIVO').filter(
+                        Q(mes=ws.month, anio=ws.year) |
+                        (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
+                    ).select_related('puesto')
 
-                weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
+                    weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
 
-                def normalize_day_token(tok: str) -> str:
-                    t = str(tok).strip().lower()
-                    if not t:
-                        return ''
-                    map_short = {
-                        'l': 'lunes', 'lu': 'lunes', 'lun': 'lunes', 'lunes': 'lunes',
-                        'm': 'martes', 'ma': 'martes', 'mar': 'martes', 'martes': 'martes',
-                        'mi': 'miercoles', 'mie': 'miercoles', 'miercoles': 'miercoles', 'miércoles':'miercoles',
-                        'j': 'jueves', 'ju': 'jueves', 'jue': 'jueves', 'jueves': 'jueves',
-                        'v': 'viernes', 'vi': 'viernes', 'vie': 'viernes', 'viernes': 'viernes',
-                        's': 'sabado', 'sa': 'sabado', 'sab': 'sabado', 'sabado': 'sabado', 'sábado': 'sabado',
-                        'd': 'domingo', 'do': 'domingo', 'dom': 'domingo', 'domingo': 'domingo'
-                    }
-                    return map_short.get(t, t)
+                    def normalize_day_token(tok: str) -> str:
+                        t = str(tok).strip().lower()
+                        if not t:
+                            return ''
+                        map_short = {
+                            'l': 'lunes', 'lu': 'lunes', 'lun': 'lunes', 'lunes': 'lunes',
+                            'm': 'martes', 'ma': 'martes', 'mar': 'martes', 'martes': 'martes',
+                            'mi': 'miercoles', 'mie': 'miercoles', 'miercoles': 'miercoles', 'miércoles':'miercoles',
+                            'j': 'jueves', 'ju': 'jueves', 'jue': 'jueves', 'jueves': 'jueves',
+                            'v': 'viernes', 'vi': 'viernes', 'vie': 'viernes', 'viernes': 'viernes',
+                            's': 'sabado', 'sa': 'sabado', 'sab': 'sabado', 'sabado': 'sabado', 'sábado': 'sabado',
+                            'd': 'domingo', 'do': 'domingo', 'dom': 'domingo', 'domingo': 'domingo'
+                        }
+                        return map_short.get(t, t)
 
-                for asign in asigns:
-                    puesto_obj = getattr(asign, 'puesto', None)
-                    if not puesto_obj:
-                        try:
-                            puesto_obj = Puesto.objects.get(id=asign.puesto_id)
-                        except Exception:
-                            puesto_obj = None
+                    for asign in asigns:
+                        puesto_obj = getattr(asign, 'puesto', None)
+                        if not puesto_obj:
+                            try:
+                                puesto_obj = Puesto.objects.get(id=asign.puesto_id)
+                            except Exception:
+                                puesto_obj = None
 
-                    dias_puesto = []
-                    if puesto_obj:
-                        try:
-                            dias_puesto = puesto_obj.dias or []
-                        except Exception:
-                            dias_puesto = []
+                        dias_puesto = []
+                        if puesto_obj:
+                            try:
+                                dias_puesto = puesto_obj.dias or []
+                            except Exception:
+                                dias_puesto = []
 
-                    dias_norm = [normalize_day_token(d) for d in dias_puesto if d]
-                    turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
-                    default_code = 'N' if turno.startswith('n') else 'D'
+                        dias_norm = [normalize_day_token(d) for d in dias_puesto if d]
+                        turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
+                        default_code = 'N' if turno.startswith('n') else 'D'
 
-                    defaults = {}
-                    for idx, name in enumerate(weekday_names):
-                        key = ['mon','tue','wed','thu','fri','sat','sun'][idx]
-                        match = any(name == d or d in name or name in d for d in dias_norm)
-                        defaults[key] = default_code if match else ''
+                        defaults = {}
+                        for idx, name in enumerate(weekday_names):
+                            key = ['mon','tue','wed','thu','fri','sat','sun'][idx]
+                            match = any(name == d or d in name or name in d for d in dias_norm)
+                            defaults[key] = default_code if match else ''
 
-                    if puesto_obj:
-                        pid = puesto_obj.id if hasattr(puesto_obj, 'id') else puesto_obj
-                        AsignacionSemanal.objects.get_or_create(puesto_id=pid, week_start=ws, defaults=defaults)
+                        if puesto_obj:
+                            pid = puesto_obj.id if hasattr(puesto_obj, 'id') else puesto_obj
+                            AsignacionSemanal.objects.get_or_create(puesto_id=pid, week_start=ws, defaults=defaults)
 
-            except Exception as e:
-                print(f"⚠️ Error asegurando AsignacionSemanal para week_start {week_start}: {e}")
+                except Exception as e:
+                    print(f"⚠️ Error asegurando AsignacionSemanal para week_start {week_start}: {e}")
 
             qs = qs.filter(week_start=ws)
         except Exception:

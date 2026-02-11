@@ -12,7 +12,7 @@
           <th class="actions-col" style="width: 60px;">Acción</th>
         </tr>
       </thead>
-      <tbody style="height: 120px;" *ngIf="rows && rows.length>0" >
+      <tbody style="height: 60px;" *ngIf="rows && rows.length>0" >
         <tr *ngFor="let row of rows; let i = index" class="data-row p-0 m-0">
           <ng-container *ngFor="let d of weekDays">
             <td>
