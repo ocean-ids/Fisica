@@ -54,7 +54,7 @@
                 <td>{{ asig.puesto_detalle?.nombre }}</td>
                 <td>
                   <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
-                    {{ asig.puesto_detalle?.resumen }}
+                    {{ getResumenPuestoCompacto(asig.puesto_detalle) }}
                   </span>
 
                   <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">

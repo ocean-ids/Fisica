@@ -88,6 +88,74 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
+  getResumenPuestoDisplay(puesto: any): string {
+    try {
+      if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
+      const dayMap: any = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'};
+      const groups: Record<string, { horas: number; turno: string; dias: number[] }> = {};
+      puesto.horarios.forEach((h: any) => {
+        const horasVal = Number(h.horas) || 0;
+        const turnoVal = h.turno || '';
+        const key = `${horasVal}-${turnoVal}`;
+        if (!groups[key]) groups[key] = { horas: horasVal, turno: turnoVal, dias: [] };
+        if (h.dia && groups[key].dias.indexOf(h.dia) === -1) groups[key].dias.push(h.dia);
+      });
+      const parts = Object.values(groups)
+        .map(g => {
+          const diasStr = g.dias.sort((a, b) => a - b).map(d => dayMap[d] || '').join('');
+          const base = g.turno ? `${g.horas} ${g.turno}`.trim() : `${g.horas}`;
+          return diasStr ? `${base} (${diasStr})` : base;
+        })
+        .sort();
+      return parts.length ? parts.join(' / ') : '-';
+    } catch (e) {
+      return '-';
+    }
+  }
+
+  getResumenPuestoCompacto(puesto: any): string {
+    try {
+      if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
+      const dayMap: any = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'};
+      const groups: Record<string, { horas: number; turno: string; dias: number[] }> = {};
+      puesto.horarios.forEach((h: any) => {
+        const horasVal = Number(h.horas) || 0;
+        const turnoVal = (h.turno || '').toString();
+        const key = `${horasVal}-${turnoVal}`;
+        if (!groups[key]) groups[key] = { horas: horasVal, turno: turnoVal, dias: [] };
+        if (h.dia && groups[key].dias.indexOf(h.dia) === -1) groups[key].dias.push(h.dia);
+      });
+
+      const letter = (turno: string): string => {
+        const t = turno.toLowerCase();
+        if (t.startsWith('d')) return 'D';
+        if (t.startsWith('n')) return 'N';
+        if (t.startsWith('a')) return 'A';
+        return '';
+      };
+
+      const parts = Object.values(groups)
+        .map(g => {
+          const diasStr = g.dias.sort((a: number, b: number) => a - b).map(d => dayMap[d] || '').join('');
+          const base = `${g.horas}${letter(g.turno)}`.trim();
+          return diasStr ? `${base} ${diasStr}` : base;
+        })
+        .sort((a, b) => {
+          const numA = parseInt(a, 10);
+          const numB = parseInt(b, 10);
+          return (isNaN(numA) ? 0 : numA) - (isNaN(numB) ? 0 : numB);
+        });
+
+      const cant = puesto.cantidad_guardias ? `${puesto.cantidad_guardias}` : '';
+      const body = parts.join(' / ');
+      if (cant && body) return `${cant} ${body}`;
+      if (cant) return `${cant}`;
+      return body || '-';
+    } catch (e) {
+      return '-';
+    }
+  }
+
   getDiasPuesto(puesto: any): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
