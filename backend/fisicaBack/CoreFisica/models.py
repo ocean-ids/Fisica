@@ -78,7 +78,15 @@ class Puesto(models.Model):
                     if turnos:
                         unique_turnos = set([t.strip().lower() for t in turnos if t])
                         if len(unique_turnos) == 1:
-                            turno_letter = 'D' if list(unique_turnos)[0].startswith('d') else 'N'
+                            val = list(unique_turnos)[0]
+                            if val.startswith('d'):
+                                turno_letter = 'D'
+                            elif val.startswith('n'):
+                                turno_letter = 'N'
+                            else:
+                                turno_letter = 'A'
+                        else:
+                            turno_letter = 'M'
             except Exception:
                 turno_letter = 'M'
             self.resumen = f"{cantidad} {horas}{turno_letter}{dias_code}"
@@ -117,7 +125,15 @@ class Puesto(models.Model):
                 if turnos:
                     unique_turnos = set([t.strip().lower() for t in turnos if t])
                     if len(unique_turnos) == 1:
-                        turno_letter = 'D' if list(unique_turnos)[0].startswith('d') else 'N'
+                        val = list(unique_turnos)[0]
+                        if val.startswith('d'):
+                            turno_letter = 'D'
+                        elif val.startswith('n'):
+                            turno_letter = 'N'
+                        else:
+                            turno_letter = 'A'
+                    else:
+                        turno_letter = 'M'
             except Exception:
                 turno_letter = 'M'
             cantidad = int(self.cantidad_guardias) if self.cantidad_guardias is not None else 0
@@ -138,7 +154,12 @@ class Puesto(models.Model):
                 return None
             unique = set([t.strip().lower() for t in turnos])
             if len(unique) == 1:
-                return 'Diurno' if list(unique)[0].startswith('d') else 'Nocturno'
+                val = list(unique)[0]
+                if val.startswith('d'):
+                    return 'Diurno'
+                if val.startswith('n'):
+                    return 'Nocturno'
+                return 'Ambos'
             return 'Mixto'
         except Exception:
             return None
@@ -179,7 +200,7 @@ class PuestoHorario(models.Model):
     horas = models.PositiveIntegerField(default=12)
     turno = models.CharField(
         max_length=10,
-        choices=[('Diurno', 'Diurno'), ('Nocturno', 'Nocturno')],
+        choices=[('Diurno', 'Diurno'), ('Nocturno', 'Nocturno'), ('Ambos', 'Ambos')],
         default='Diurno'
     )
     created_at = models.DateTimeField(auto_now_add=True)

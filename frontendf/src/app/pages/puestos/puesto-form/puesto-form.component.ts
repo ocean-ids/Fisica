@@ -44,7 +44,6 @@ export class PuestoFormComponent implements OnInit {
       nombre: [puesto?.nombre || '', Validators.required],
       instalacion_id: [puesto?.instalacion_id || '', Validators.required],
       cantidad_guardias: [puesto?.cantidad_guardias ?? 1, Validators.required],
-      descripcion_sistema: [puesto?.descripcion_sistema || ''],
       horarios: this.fb.array([])
     });
 
@@ -105,7 +104,6 @@ export class PuestoFormComponent implements OnInit {
     }
   }
 
-  // Horarios FormArray helpers
   get horarios() {
     return this.puestoForm.get('horarios') as any;
   }

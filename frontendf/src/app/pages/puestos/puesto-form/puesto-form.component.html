@@ -1,5 +1,4 @@
 <h2 mat-dialog-title>{{ data.puesto?.id ? 'Editar' : 'Nuevo' }} Puesto</h2>
-
 <mat-dialog-content>
   <form [formGroup]="puestoForm">
     <mat-form-field appearance="outline" class="full-width">
@@ -33,8 +32,8 @@
       </mat-error>
     </mat-form-field>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <button mat-raised-button color="primary" (click)="addHorario()">+ Añadir horarios</button>
+    <div class="d-flex justify-content-between align-items-center mt-0 mb-3">
+      <button mat-raised-button color="primary" (click)="addHorario()">+</button>
     </div>
 
     <div formArrayName="horarios">
