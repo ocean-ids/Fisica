@@ -61,27 +61,20 @@ export class AsignacionesComponent implements OnInit {
   getHorasPuesto(puesto: any): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
-      const groups: Record<string, { horas: number; turno: string }> = {};
+      const entries: number[] = [];
       puesto.horarios.forEach((h: any) => {
         const horasVal = Number(h.horas) || 0;
         const turnoVal = (h.turno || '').toString();
+        // usar key para no contar duplicado exacto de horas+turno
         const key = `${horasVal}-${turnoVal}`;
-        if (!groups[key]) groups[key] = { horas: horasVal, turno: turnoVal };
+        if (!entries.some((v: any) => v.key === key)) {
+          (entries as any).push({ key, horas: horasVal });
+        }
       });
-      const letter = (turno: string): string => {
-        const t = turno.toLowerCase();
-        if (t.startsWith('d')) return 'D';
-        if (t.startsWith('n')) return 'N';
-        if (t.startsWith('a')) return 'A';
-        return '';
-      };
-      const parts = Object.values(groups)
-        .map(g => `${g.horas}${letter(g.turno)}`.trim())
-        .sort((a, b) => {
-          const numA = parseInt(a, 10);
-          const numB = parseInt(b, 10);
-          return (isNaN(numA) ? 0 : numA) - (isNaN(numB) ? 0 : numB);
-        });
+      const parts = (entries as any)
+        .map((e: any) => e.horas)
+        .sort((a: number, b: number) => a - b)
+        .map((h: number) => String(h));
       return parts.length ? parts.join(' / ') : '-';
     } catch (e) {
       return '-';
