@@ -133,6 +133,23 @@ export class PuestosComponent implements OnInit {
     }
   }
 
+  getTurnos(puesto: Puesto): string {
+    try {
+      if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
+      const ordered = ['Diurno', 'Nocturno', 'Ambos'];
+      const unique = new Set<string>();
+      puesto.horarios.forEach(h => {
+        if (h.turno) unique.add(h.turno);
+      });
+      const sorted = ordered.filter(t => unique.has(t));
+      const extras = [...unique].filter(t => !ordered.includes(t));
+      const all = [...sorted, ...extras];
+      return all.length ? all.join(' / ') : '-';
+    } catch (e) {
+      return '-';
+    }
+  }
+
   getHoras(puesto: Puesto): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
