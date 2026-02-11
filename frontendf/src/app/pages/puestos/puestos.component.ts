@@ -137,18 +137,29 @@ export class PuestosComponent implements OnInit {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
       const dayMap: any = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'};
-      const groups: Record<string, number[]> = {};
+      const groups: Record<string, { horas: number; dias: number[]; turno?: string }> = {};
       puesto.horarios.forEach(h => {
-        const key = `${h.horas || 0}`; // agrupa por horas
-        if (!groups[key]) groups[key] = [];
-        if (h.dia && groups[key].indexOf(h.dia) === -1) groups[key].push(h.dia);
+        const key = `${h.horas || 0}|${h.turno || ''}`; // agrupa por horas y turno
+        if (!groups[key]) {
+          groups[key] = { horas: Number(h.horas) || 0, dias: [], turno: h.turno };
+        }
+        if (h.dia && groups[key].dias.indexOf(h.dia) === -1) {
+          groups[key].dias.push(h.dia);
+        }
       });
-      const parts = Object.entries(groups)
-        .map(([horas, dias]) => {
-          const diasStr = dias.sort((a,b)=>a-b).map(d => dayMap[d] || '').join('');
-          return `${horas} ${diasStr}`;
+
+      const parts = Object.values(groups)
+        .map(group => {
+          const diasOrdenados = [...group.dias].sort((a, b) => a - b);
+          const diasStr = diasOrdenados.map(d => dayMap[d] || '').join('');
+          return { label: `${group.horas} ${diasStr}`, minDia: diasOrdenados[0] ?? 99, horas: group.horas };
         })
-        .sort();
+        .sort((a, b) => {
+          if (a.minDia !== b.minDia) return a.minDia - b.minDia; // ordena por el primer día (L..D)
+          return a.horas - b.horas; // si comparten primer día, ordena por horas
+        })
+        .map(item => item.label);
+
       return parts.length ? parts.join(' / ') : '-';
     } catch (e) {
       return '-';
