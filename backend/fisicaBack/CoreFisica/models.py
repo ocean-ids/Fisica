@@ -226,7 +226,6 @@ class Persona(models.Model):
     TIPO_CHOICES = [
         ('SUPERVISOR', 'SUPERVISOR'),
         ('FIJO', 'FIJO'),
-        ('FRANCO', 'FRANCO'),
         ('SACAFRANCO', 'SACAFRANCO'),
         ('EVENTUAL', 'EVENTUAL'),
     ]

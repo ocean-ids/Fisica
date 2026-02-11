@@ -60,9 +60,9 @@
                   <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
                     <div class="tooltip-content">
                       <div><strong>👮 Puesto:</strong> {{ asig.puesto_detalle?.cantidad_guardias }}</div>
-                      <div><strong>⏰ Horas:</strong> {{ asig.puesto_detalle?.horas_trabajo || '-' }}</div>
+                      <div><strong>⏰ Horas:</strong> {{ getHorasPuesto(asig.puesto_detalle) }}</div>
                       <div><strong>🌙 Turno:</strong> {{ asig.puesto_detalle?.turno_display || asig.puesto_detalle?.turno }}</div>
-                      <div><strong>📅 Días:</strong> {{ asig.puesto_detalle?.dias?.join(', ') || '-' }}</div>
+                      <div><strong>📅 Días:</strong> {{ getDiasPuesto(asig.puesto_detalle) }}</div>
                     </div>
                   </mat-menu>
                 </td>

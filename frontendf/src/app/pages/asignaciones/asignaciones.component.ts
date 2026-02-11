@@ -58,6 +58,45 @@ export class AsignacionesComponent implements OnInit {
     }, 0);
   }
 
+  getHorasPuesto(puesto: any): string {
+    try {
+      if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
+      const dayMap: any = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'};
+      const groups: Record<string, { horas: number; turno: string; dias: number[] }> = {};
+      puesto.horarios.forEach((h: any) => {
+        const horasVal = h.horas || 0;
+        const turnoVal = h.turno || '';
+        const key = `${horasVal}-${turnoVal}`;
+        if (!groups[key]) groups[key] = { horas: horasVal, turno: turnoVal, dias: [] };
+        if (h.dia && groups[key].dias.indexOf(h.dia) === -1) groups[key].dias.push(h.dia);
+      });
+      const parts = Object.values(groups)
+        .map(g => {
+          const diasStr = g.dias.sort((a,b)=>a-b).map(d => dayMap[d] || '').join('');
+          if (g.turno) {
+            return `${g.horas} ${g.turno} ${diasStr}`.trim();
+          }
+          return `${g.horas}${diasStr}`;
+        })
+        .sort();
+      return parts.length ? parts.join(' / ') : '-';
+    } catch (e) {
+      return '-';
+    }
+  }
+
+  getDiasPuesto(puesto: any): string {
+    try {
+      if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
+      const dayMap: any = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'};
+      const diasNums = Array.from(new Set(puesto.horarios.map((h:any)=>h.dia))).sort((a:any,b:any)=>a-b);
+      if (!diasNums.length) return '-';
+      return diasNums.map((d:any)=> dayMap[d] || '').filter((x:any)=>x).join(', ');
+    } catch (e) {
+      return '-';
+    }
+  }
+
   onSharedDateChange(): void {
     if (!this.dia) {
       this.cargarAsignaciones();
