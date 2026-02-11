@@ -136,8 +136,20 @@ export class PuestosComponent implements OnInit {
   getHoras(puesto: Puesto): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
-      const unique = Array.from(new Set(puesto.horarios.map(h => h.horas))).sort((a,b)=>a-b);
-      return unique.length ? unique.map(h => `${h}h`).join(', ') : '-';
+      const dayMap: any = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'};
+      const groups: Record<string, number[]> = {};
+      puesto.horarios.forEach(h => {
+        const key = `${h.horas || 0}`; // agrupa por horas
+        if (!groups[key]) groups[key] = [];
+        if (h.dia && groups[key].indexOf(h.dia) === -1) groups[key].push(h.dia);
+      });
+      const parts = Object.entries(groups)
+        .map(([horas, dias]) => {
+          const diasStr = dias.sort((a,b)=>a-b).map(d => dayMap[d] || '').join('');
+          return `${horas} ${diasStr}`;
+        })
+        .sort();
+      return parts.length ? parts.join(' / ') : '-';
     } catch (e) {
       return '-';
     }

@@ -49,9 +49,20 @@ export class PuestoFormComponent implements OnInit {
     // initialize horarios from existing puesto or a single empty horario
     const initialHorarios = puesto?.horarios && Array.isArray(puesto.horarios) ? puesto.horarios : [];
     if (initialHorarios.length) {
+      // Agrupa días que comparten mismas horas y turno para rearmar un solo bloque
+      const grouped: Record<string, { horas: string; turno: string; days: number[] }> = {};
       for (const h of initialHorarios) {
-        this.addHorario(this.toTimeString(h.horas ?? 12), h.turno || 'Diurno', h.dia ? [h.dia] : []);
+        const turno = h.turno || 'Diurno';
+        const horasStr = this.toTimeString(h.horas ?? '12:00');
+        const key = `${horasStr}-${turno}`;
+        if (!grouped[key]) {
+          grouped[key] = { horas: horasStr, turno, days: [] };
+        }
+        if (h.dia) {
+          grouped[key].days.push(h.dia);
+        }
       }
+      Object.values(grouped).forEach(g => this.addHorario(g.horas, g.turno, g.days));
     } else {
       this.addHorario('12:00', 'Diurno', []);
     }
@@ -181,6 +192,7 @@ export class PuestoFormComponent implements OnInit {
   toggleDay(horarioIndex: number, day: number, checked: boolean) {
     const group = this.horarios.at(horarioIndex);
     const current: number[] = group.get('days').value || [];
+
     if (checked) {
       if (current.indexOf(day) === -1) current.push(day);
     } else {
