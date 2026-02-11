@@ -51,7 +51,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'cantidad_guardias': obj.puesto.cantidad_guardias,
             'turno': obj.puesto.get_turno(),
             'turno_display': obj.puesto.get_turno_display(),
-            'horarios': [{'dia': h.dia, 'horas': h.horas} for h in obj.puesto.horarios.all()],
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in obj.puesto.horarios.all()],
             'resumen': obj.puesto.resumen
         }
     
@@ -79,7 +79,7 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
             'cantidad_guardias': p.cantidad_guardias,
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
-            'horarios': [{'dia': h.dia, 'horas': h.horas} for h in p.horarios.all()],
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
             'resumen': p.resumen,
         }
 

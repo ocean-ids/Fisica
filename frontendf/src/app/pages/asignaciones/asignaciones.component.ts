@@ -61,25 +61,28 @@ export class AsignacionesComponent implements OnInit {
   getHorasPuesto(puesto: any): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
-      const dayMap: any = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'};
-      const groups: Record<string, { horas: number; turno: string; dias: number[] }> = {};
-      puesto.horarios.forEach((h: any) => {
-        const horasVal = h.horas || 0;
-        const turnoVal = h.turno || '';
-        const key = `${horasVal}-${turnoVal}`;
-        if (!groups[key]) groups[key] = { horas: horasVal, turno: turnoVal, dias: [] };
-        if (h.dia && groups[key].dias.indexOf(h.dia) === -1) groups[key].dias.push(h.dia);
-      });
-      const parts = Object.values(groups)
-        .map(g => {
-          const diasStr = g.dias.sort((a,b)=>a-b).map(d => dayMap[d] || '').join('');
-          if (g.turno) {
-            return `${g.horas} ${g.turno} ${diasStr}`.trim();
-          }
-          return `${g.horas}${diasStr}`;
-        })
-        .sort();
+      const horasUnicas: number[] = Array.from(
+        new Set<number>(puesto.horarios.map((h: any) => Number(h.horas) || 0))
+      );
+      const parts = horasUnicas.sort((a: number, b: number) => a - b).map(h => String(h));
       return parts.length ? parts.join(' / ') : '-';
+    } catch (e) {
+      return '-';
+    }
+  }
+
+  getTurnosPuesto(puesto: any): string {
+    try {
+      if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
+      const ordered = ['Diurno', 'Nocturno', 'Ambos'];
+      const unique = new Set<string>();
+      puesto.horarios.forEach((h: any) => {
+        if (h.turno) unique.add(h.turno);
+      });
+      const sorted = ordered.filter(t => unique.has(t));
+      const extras = [...unique].filter(t => !ordered.includes(t));
+      const all = [...sorted, ...extras];
+      return all.length ? all.join(', ') : '-';
     } catch (e) {
       return '-';
     }
