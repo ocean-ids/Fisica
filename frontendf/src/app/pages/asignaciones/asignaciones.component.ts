@@ -61,10 +61,27 @@ export class AsignacionesComponent implements OnInit {
   getHorasPuesto(puesto: any): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
-      const horasUnicas: number[] = Array.from(
-        new Set<number>(puesto.horarios.map((h: any) => Number(h.horas) || 0))
-      );
-      const parts = horasUnicas.sort((a: number, b: number) => a - b).map(h => String(h));
+      const groups: Record<string, { horas: number; turno: string }> = {};
+      puesto.horarios.forEach((h: any) => {
+        const horasVal = Number(h.horas) || 0;
+        const turnoVal = (h.turno || '').toString();
+        const key = `${horasVal}-${turnoVal}`;
+        if (!groups[key]) groups[key] = { horas: horasVal, turno: turnoVal };
+      });
+      const letter = (turno: string): string => {
+        const t = turno.toLowerCase();
+        if (t.startsWith('d')) return 'D';
+        if (t.startsWith('n')) return 'N';
+        if (t.startsWith('a')) return 'A';
+        return '';
+      };
+      const parts = Object.values(groups)
+        .map(g => `${g.horas}${letter(g.turno)}`.trim())
+        .sort((a, b) => {
+          const numA = parseInt(a, 10);
+          const numB = parseInt(b, 10);
+          return (isNaN(numA) ? 0 : numA) - (isNaN(numB) ? 0 : numB);
+        });
       return parts.length ? parts.join(' / ') : '-';
     } catch (e) {
       return '-';
