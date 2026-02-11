@@ -41,9 +41,7 @@
         <div style="display:flex; gap:12px; align-items:center;">
           <mat-form-field appearance="outline">
             <mat-label>Horas</mat-label>
-            <mat-select formControlName="horas" required>
-              <mat-option *ngFor="let h of hoursOptions" [value]="h">{{ h }}</mat-option>
-            </mat-select>
+            <input matInput type="time" formControlName="horas" required min="0" max="24">
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -51,6 +49,7 @@
             <mat-select formControlName="turno" required>
               <mat-option value="Diurno">Diurno</mat-option>
               <mat-option value="Nocturno">Nocturno</mat-option>
+              <mat-option value="Ambos">Ambos</mat-option>
             </mat-select>
           </mat-form-field>
 

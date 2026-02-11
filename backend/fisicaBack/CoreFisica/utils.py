@@ -77,8 +77,8 @@ def expand_days(token: str) -> List[int]:
 def parse_input(text: str) -> List[Dict[str, int]]:
     """Parsea la entrada y devuelve una lista de reglas.
 
-    Ejemplo: "1 14H L-V / 9H S / 5H D" ->
-    [{'dia':1,'horas':14,'cantidad':1}, ...]
+    Ejemplo: "1 14H L-V Diurno / 9H S Ambos / 5H D" ->
+    [{'dia':1,'horas':14,'cantidad':1,'turno':'Diurno'}, ...]
     """
     text = (text or '').strip()
     if not text:
@@ -95,12 +95,26 @@ def parse_input(text: str) -> List[Dict[str, int]]:
         seg = seg.strip()
         if not seg:
             continue
-        m = re.match(r'(?P<h>\d+)\s*H\s*(?P<d>.+)$', seg, flags=re.I)
+        # Captura horas, días y turno opcional (Diurno/Nocturno/Ambos o D/N/A)
+        m = re.match(
+            r'(?P<h>\d+)\s*H\s*(?P<d>.+?)(?:\s+(?P<t>diurno|nocturno|ambos|d|n|a))?$',
+            seg,
+            flags=re.I,
+        )
         if not m:
             raise ValueError(f"Formato inválido en segmento: '{seg}'")
         hours = int(m.group('h'))
         days_token = m.group('d').strip()
+        raw_turno = (m.group('t') or '').lower()
+        if raw_turno.startswith('d'):
+            turno = 'Diurno'
+        elif raw_turno.startswith('n'):
+            turno = 'Nocturno'
+        elif raw_turno.startswith('a'):
+            turno = 'Ambos'
+        else:
+            turno = 'Diurno'  
         days = expand_days(days_token)
         for d in days:
-            rules.append({'dia': d, 'horas': hours, 'cantidad': qty})
+            rules.append({'dia': d, 'horas': hours, 'cantidad': qty, 'turno': turno})
     return rules

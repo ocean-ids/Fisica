@@ -115,7 +115,14 @@ class PuestoSerializer(serializers.ModelSerializer):
         if text:
             try:
                 parsed = parse_input(text)
-                horarios_data = [{"dia": r["dia"], "horas": r["horas"]} for r in parsed]
+                horarios_data = [
+                    {
+                        "dia": r["dia"],
+                        "horas": r["horas"],
+                        "turno": r.get("turno", "Diurno"),
+                    }
+                    for r in parsed
+                ]
             except ValueError as e:
                 raise serializers.ValidationError({"horarios_text": str(e)})
         with transaction.atomic():
@@ -141,7 +148,14 @@ class PuestoSerializer(serializers.ModelSerializer):
         if text:
             try:
                 parsed = parse_input(text)
-                horarios_data = [{"dia": r["dia"], "horas": r["horas"]} for r in parsed]
+                horarios_data = [
+                    {
+                        "dia": r["dia"],
+                        "horas": r["horas"],
+                        "turno": r.get("turno", "Diurno"),
+                    }
+                    for r in parsed
+                ]
             except ValueError as e:
                 raise serializers.ValidationError({"horarios_text": str(e)})
         for attr, value in validated_data.items():

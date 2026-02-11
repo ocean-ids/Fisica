@@ -29,7 +29,6 @@ import { Instalacion } from '../../../models';
 export class PuestoFormComponent implements OnInit {
   puestoForm!: FormGroup;
   instalaciones: Instalacion[] = [];
-  hoursOptions: number[] = Array.from({length:24}, (_,i) => i+1);
 
   constructor(
     private fb: FormBuilder,
@@ -51,10 +50,10 @@ export class PuestoFormComponent implements OnInit {
     const initialHorarios = puesto?.horarios && Array.isArray(puesto.horarios) ? puesto.horarios : [];
     if (initialHorarios.length) {
       for (const h of initialHorarios) {
-        this.addHorario(h.horas ?? 12, h.turno || 'Diurno', h.dia ? [h.dia] : []);
+        this.addHorario(this.toTimeString(h.horas ?? 12), h.turno || 'Diurno', h.dia ? [h.dia] : []);
       }
     } else {
-      this.addHorario(12, 'Diurno', []);
+      this.addHorario('12:00', 'Diurno', []);
     }
 
     this.instalacionService.getInstalaciones().subscribe({
@@ -89,7 +88,7 @@ export class PuestoFormComponent implements OnInit {
         const days: number[] = h.days || [];
         if (days.length) {
           for (const d of days) {
-            horariosPayload.push({ dia: d, horas: h.horas, turno: h.turno });
+            horariosPayload.push({ dia: d, horas: this.toNumberHours(h.horas, h.turno), turno: h.turno });
           }
         }
       }
@@ -108,13 +107,71 @@ export class PuestoFormComponent implements OnInit {
     return this.puestoForm.get('horarios') as any;
   }
 
-  addHorario(horas: number | null = 12, turno: string = 'Diurno', days: number[] = []) {
+  addHorario(horas: string | number | null = '12:00', turno: string = 'Diurno', days: number[] = []) {
     const group = this.fb.group({
-      horas: [horas ?? 12, Validators.required],
+      horas: [horas ?? '12:00', Validators.required],
       turno: [turno, Validators.required],
       days: [days]
     });
+
+    // Ajustar horas máximas según turno: Diurno/Nocturno hasta 12, Ambos hasta 24.
+    group.get('turno')?.valueChanges.subscribe((t: string | null) => {
+      const turnoVal = t ?? undefined;
+      // Si es Ambos, sugerimos el máximo visible en input time (23:59) y lo tratamos como 24 al enviar
+      if (turnoVal === 'Ambos') {
+        group.get('horas')?.setValue('23:59', { emitEvent: false });
+      }
+      this.enforceHourLimit(group, turnoVal);
+    });
+    group.get('horas')?.valueChanges.subscribe(() => {
+      this.enforceHourLimit(group, group.get('turno')?.value);
+    });
+
     this.horarios.push(group);
+  }
+
+  private enforceHourLimit(group: any, turno?: string | null) {
+    const horasCtrl = group.get('horas');
+    if (!horasCtrl) return;
+    const raw = horasCtrl.value;
+    const val = this.toNumberHours(raw, turno);
+    const max = (turno === 'Ambos') ? 24 : 12;
+    const clamped = Math.min(Math.max(val, 0), max);
+    if (clamped !== val) {
+      // Para mostrar en input time, 24 se representa como 23:59
+      horasCtrl.setValue(this.toTimeString(clamped === 24 ? 23.9833 : clamped), { emitEvent: false });
+    }
+  }
+
+  private toNumberHours(raw: any, turno?: string | null): number {
+    if (typeof raw === 'number') return raw;
+    if (typeof raw === 'string' && raw.includes(':')) {
+      const [hh, mm] = raw.split(':').map(Number);
+      let total = (hh || 0) + (mm || 0) / 60;
+      if (total > 23.9833 && (turno === 'Ambos' || turno === 'ambos')) {
+        total = 24; // tratar 23:59 como 24h al enviar
+      }
+      const max = turno === 'Ambos' ? 24 : 12;
+      return Math.min(Math.max(total, 0), max);
+    }
+    const n = Number(raw) || 0;
+    const max = turno === 'Ambos' ? 24 : 12;
+    return Math.min(Math.max(n, 0), max);
+  }
+
+  private toTimeString(hours: number | string): string {
+    if (typeof hours === 'string') {
+      if (hours.includes(':')) return hours;
+      const n = Number(hours) || 0;
+      const h = Math.floor(n);
+      const m = Math.round((n - h) * 60);
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    }
+    // Si es 24, devolvemos 23:59 porque input time no admite 24:00
+    if (hours >= 24) return '23:59';
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
   }
 
   removeHorario(index: number) {
