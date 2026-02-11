@@ -30,9 +30,9 @@
             <tr class="text-center">
               <th>Nombre</th>
               <th>Cantidad de Guardias</th>
-              <th>Horas de Trabajo</th>
+              <th> Horas Dias de Trabajo</th>
               <th>Turno</th>
-              <th>Días</th>
+              <!--<th>Días</th>-->
               <!--<th>Resumen</th> -->
               <th>Instalación</th>
               <th class="text-center">Acciones</th>
@@ -44,7 +44,7 @@
               <td>{{ puesto.cantidad_guardias }}</td>
               <td>{{ getHoras(puesto) }}</td>
               <td>{{ puesto.turno_display || '-' }}</td>
-              <td>{{ getDias(puesto) }}</td>
+              <!--<td>{{ getDias(puesto) }}</td>-->
               <!--<td>
                 <span
                   [matMenuTriggerFor]="tooltipMenu"
