@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
@@ -12,10 +12,20 @@ import { MatButtonModule } from '@angular/material/button';
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
   sidebarVisible: boolean = true;
+
+  ngOnInit(): void {
+    // Restaurar preferencia del usuario desde localStorage
+    const stored = localStorage.getItem('sidebarVisible');
+    if (stored !== null) {
+      this.sidebarVisible = stored === 'true';
+    }
+  }
 
   toggleSidebar(): void {
     this.sidebarVisible = !this.sidebarVisible;
+    // Persistir preferencia del usuario
+    localStorage.setItem('sidebarVisible', String(this.sidebarVisible));
   }
 }
