@@ -123,11 +123,35 @@ export class PuestosComponent implements OnInit {
   getDias(puesto: Puesto): string {
     try {
       if (!puesto) return '-';
-      const dayMap: any = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'};
-      const diasNums: number[] = (puesto.horarios && Array.isArray(puesto.horarios)) ? Array.from(new Set(puesto.horarios.map(h=>h.dia))) as number[] : [];
+      const dayMap: Record<number, string> = {
+        1: 'Lunes',
+        2: 'Martes',
+        3: 'Miércoles',
+        4: 'Jueves',
+        5: 'Viernes',
+        6: 'Sábado',
+        7: 'Domingo'
+      };
+      const diasNums: number[] = puesto.horarios && Array.isArray(puesto.horarios)
+        ? Array.from(new Set(puesto.horarios.map(h => h.dia))) as number[]
+        : [];
       if (!diasNums.length) return '-';
-      const names = diasNums.sort((a,b)=>a-b).map(n=> dayMap[n] || '').filter(x=>x);
-      return names.length ? names.join(', ') : '-';
+
+      const sorted = diasNums.sort((a, b) => a - b);
+      const weekdayRange = [1, 2, 3, 4, 5];
+      const hasWeekdaysStrict = weekdayRange.every(d => sorted.includes(d));
+      const hasWeekdaySpan = sorted.includes(1) && sorted.includes(5);
+      const useWeekdays = hasWeekdaysStrict || hasWeekdaySpan;
+      const remaining = useWeekdays ? sorted.filter(d => !weekdayRange.includes(d)) : sorted;
+
+      const parts: string[] = [];
+      if (useWeekdays) parts.push('Lunes - Viernes');
+      const extras = remaining
+        .map(n => dayMap[n] || '')
+        .filter(Boolean);
+      if (extras.length) parts.push(extras.join(' / '));
+
+      return parts.length ? parts.join(' / ') : '-';
     } catch (e) {
       return '-';
     }
@@ -152,32 +176,20 @@ export class PuestosComponent implements OnInit {
 
   getHoras(puesto: Puesto): string {
     try {
-      if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
-      const dayMap: any = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'};
-      const groups: Record<string, { horas: number; dias: number[]; turno?: string }> = {};
-      puesto.horarios.forEach(h => {
-        const key = `${h.horas || 0}|${h.turno || ''}`; // agrupa por horas y turno
-        if (!groups[key]) {
-          groups[key] = { horas: Number(h.horas) || 0, dias: [], turno: h.turno };
-        }
-        if (h.dia && groups[key].dias.indexOf(h.dia) === -1) {
-          groups[key].dias.push(h.dia);
-        }
-      });
+      const horarios = puesto?.horarios || [];
+      const horasUnicas = Array.from(new Set(horarios
+        .map(h => Number(h.horas))
+        .filter(h => !isNaN(h)))) as number[];
 
-      const parts = Object.values(groups)
-        .map(group => {
-          const diasOrdenados = [...group.dias].sort((a, b) => a - b);
-          const diasStr = diasOrdenados.map(d => dayMap[d] || '').join('');
-          return { label: `${group.horas} ${diasStr}`, minDia: diasOrdenados[0] ?? 99, horas: group.horas };
-        })
-        .sort((a, b) => {
-          if (a.minDia !== b.minDia) return a.minDia - b.minDia; // ordena por el primer día (L..D)
-          return a.horas - b.horas; // si comparten primer día, ordena por horas
-        })
-        .map(item => item.label);
+      if (horasUnicas.length) {
+        return horasUnicas.map(h => h.toString()).join(' / ');
+      }
 
-      return parts.length ? parts.join(' / ') : '-';
+      if (puesto.horas_trabajo !== undefined && puesto.horas_trabajo !== null) {
+        return puesto.horas_trabajo.toString();
+      }
+
+      return '-';
     } catch (e) {
       return '-';
     }

@@ -30,9 +30,9 @@
             <tr class="text-center">
               <th>Nombre</th>
               <th>Cantidad de Guardias</th>
-              <th> Horas y Dias</th>
+              <th>Días</th>
+              <th> Horas</th>
               <th>Turno</th>
-              <!--<th>Días</th>-->
               <!--<th>Resumen</th> -->
               <th>Instalación</th>
               <th class="text-center">Acciones</th>
@@ -42,9 +42,9 @@
             <tr class="text-center" *ngFor="let puesto of puestos">
               <td>{{ puesto.nombre }}</td>
               <td>{{ puesto.cantidad_guardias }}</td>
+              <td>{{ getDias(puesto) }}</td>
               <td>{{ getHoras(puesto) }}</td>
               <td>{{ getTurnos(puesto) }}</td>
-              <!--<td>{{ getDias(puesto) }}</td>-->
               <!--<td>
                 <span
                   [matMenuTriggerFor]="tooltipMenu"
