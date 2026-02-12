@@ -47,12 +47,10 @@ export class AsignacionesComponent implements OnInit {
   }
 
   ngAfterViewInit(): void {
-    // Suscribirse a cambios de semana del calendario para sincronizar filtros
     setTimeout(() => {
       if (this.calendario && this.calendario.weekStartChange) {
         this.calendario.weekStartChange.subscribe((ws: string) => {
           if (!ws) return;
-          // ws es YYYY-MM-DD (lunes). Usarlo como día filtro en asignaciones
           this.dia = ws;
           const parts = ws.split('-');
           if (parts.length === 3) {

@@ -197,7 +197,7 @@ export class PuestoFormComponent implements OnInit {
 
     if (checked) {
       if (current.length >= 2) {
-        // revert check to enforce max 2 selections
+        
         if (input) input.checked = false;
         return;
       }

@@ -376,10 +376,67 @@ def exportar_asignaciones_excel(request):
     asignaciones = Asignacion.objects.filter(estado='ACTIVO').filter(
         Q(mes=month, anio=year) |
         (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
-    ).select_related('horario', 'cliente', 'puesto', 'persona', 'instalacion')
+    ).select_related('horario', 'cliente', 'puesto', 'persona', 'instalacion').prefetch_related('puesto__horarios')
     start_row = 4
     # Precachear AsignacionSemanal por puesto y week_start para eficiencia
     semanal_cache = {}
+
+    def build_resumen(puesto):
+        try:
+            if not puesto:
+                return ''
+            horarios_qs = getattr(puesto, 'horarios', None)
+            horarios = list(horarios_qs.all()) if horarios_qs is not None else []
+            if not horarios:
+                return ''
+
+            day_map = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'}
+            groups = {}
+
+            for h in horarios:
+                horas_val = int(getattr(h, 'horas', 0) or 0)
+                turno_val = (getattr(h, 'turno', '') or '').strip()
+                key = f"{horas_val}-{turno_val}"
+                if key not in groups:
+                    groups[key] = {'horas': horas_val, 'turno': turno_val, 'dias': []}
+                dia_val = getattr(h, 'dia', None)
+                if dia_val and dia_val not in groups[key]['dias']:
+                    groups[key]['dias'].append(dia_val)
+
+            def turno_letter(t: str) -> str:
+                lower = (t or '').strip().lower()
+                if lower.startswith('d'):
+                    return 'D'
+                if lower.startswith('n'):
+                    return 'N'
+                if lower.startswith('a'):
+                    return 'A'
+                return ''
+
+            parts = []
+            for g in groups.values():
+                dias_str = ''.join([day_map.get(d, '') for d in sorted(g['dias'])]) if g['dias'] else ''
+                base = f"{g['horas']}{turno_letter(g['turno'])}".strip()
+                parts.append(f"{base} {dias_str}".strip())
+
+            # Ordenar priorizando horas numéricas bajas primero (coincide con la vista)
+            def sort_key(p: str):
+                try:
+                    return int(''.join([ch for ch in p if ch.isdigit()]) or 0)
+                except Exception:
+                    return 0
+
+            parts = sorted(parts, key=sort_key)
+            body = ' / '.join([p for p in parts if p])
+            cant = str(getattr(puesto, 'cantidad_guardias', '') or '').strip()
+            if cant and body:
+                return f"{cant} {body}"
+            if cant:
+                return cant
+            return body
+        except Exception:
+            return ''
+
     for asignacion in asignaciones:
         row_idx = start_row
         # datos izquierdos
@@ -391,12 +448,15 @@ def exportar_asignaciones_excel(request):
         inst = getattr(asignacion, 'instalacion', None)
         inst_codigo = getattr(inst, 'codigo', '') if inst else ''
         inst_dir = getattr(inst, 'direccion', '') if inst else ''
+        puesto_obj = getattr(asignacion, 'puesto', None)
+        # Forzamos a usar la lógica compacta (coincide con la vista). Si falla, caemos al campo almacenado.
+        resumen_val = build_resumen(puesto_obj) or getattr(puesto_obj, 'resumen', '')
         vals = [
             horario_txt,
             inst_codigo,
             getattr(asignacion.cliente, 'nombre_comercial', ''),
-            getattr(getattr(asignacion, 'puesto', None), 'nombre', ''),
-            getattr(getattr(asignacion, 'puesto', None), 'resumen', ''),
+            getattr(puesto_obj, 'nombre', ''),
+            resumen_val,
             inst_dir,
             getattr(getattr(asignacion, 'persona', None), 'cedula', ''),
             f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}",
