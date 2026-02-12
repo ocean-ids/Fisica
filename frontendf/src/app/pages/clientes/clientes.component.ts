@@ -8,6 +8,7 @@ import { ClienteService } from '../../services/cliente.service';
 import { Cliente } from '../../models/cliente.model';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ClienteFormComponent } from './cliente-form/cliente-form.component';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-clientes',
@@ -19,8 +20,6 @@ import { ClienteFormComponent } from './cliente-form/cliente-form.component';
 export class ClientesComponent implements OnInit {
   clientes: Cliente[] = [];
   displayedColumns = ['razon_social', 'nombre_comercial', 'acciones'];
-  showDeleteModal: boolean = false;
-  clienteEliminar: Cliente | null = null;
 
   constructor(
     private clienteService: ClienteService,
@@ -56,38 +55,49 @@ export class ClientesComponent implements OnInit {
 
   createCliente(cliente: Cliente): void {
     this.clienteService.createCliente(cliente).subscribe({
-      next: () => this.loadClientes(),
-      error: (err: any) => console.error('Error:', err)
+      next: () => {
+        this.loadClientes();
+        Swal.fire({ icon: 'success', title: 'Creado', timer: 1200, showConfirmButton: false });
+      },
+      error: (err: any) => {
+        console.error('Error:', err);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo crear' });
+      }
     });
   }
 
   updateCliente(id: number, cliente: Cliente): void {
     this.clienteService.updateCliente(id, cliente).subscribe({
-      next: () => this.loadClientes(),
-      error: (err: any) => console.error('Error:', err)
+      next: () => {
+        this.loadClientes();
+        Swal.fire({ icon: 'success', title: 'Actualizado', timer: 1200, showConfirmButton: false });
+      },
+      error: (err: any) => {
+        console.error('Error:', err);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar' });
+      }
     });
   }
 
-  confirmarEliminar(cliente: Cliente): void {
-    this.clienteEliminar = cliente;
-    this.showDeleteModal = true;
-  }
+  async confirmarEliminar(cliente: Cliente): Promise<void> {
+    const res = await Swal.fire({
+      title: '¿Eliminar cliente?',
+      text: `Se eliminará ${cliente.nombre_comercial}`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
 
-  eliminarCliente(): void {
-    if (this.clienteEliminar?.id) {
-      this.clienteService.deleteCliente(this.clienteEliminar.id).subscribe({
-        next: () => {
-          console.log('Cliente eliminado exitosamente');
-          this.loadClientes();
-          this.cancelarEliminar();
-        },
-        error: err => console.error('Error al eliminar:', err)
-      });
+    if (!res.isConfirmed) return;
+
+    try {
+      await this.clienteService.deleteCliente(cliente.id!).toPromise();
+      await Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1200, showConfirmButton: false });
+      this.loadClientes();
+    } catch (err) {
+      console.error('Error al eliminar:', err);
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar' });
     }
-  }
-
-  cancelarEliminar(): void {
-    this.showDeleteModal = false;
-    this.clienteEliminar = null;
   }
 }

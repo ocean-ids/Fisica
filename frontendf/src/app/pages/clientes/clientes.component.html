@@ -46,21 +46,3 @@
 </div>
 
 
-<div class="modal fade show" *ngIf="showDeleteModal" style="display: block; background-color: rgba(0,0,0,0.5);">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Confirmar Eliminación</h5>
-        <button type="button" class="btn-close" (click)="cancelarEliminar()"></button>
-      </div>
-      <div class="modal-body">
-        <p>¿Está seguro que desea eliminar al cliente <strong>{{ clienteEliminar?.razon_social }}</strong>?</p>
-        <p class="text-danger"><small>Esta acción no se puede deshacer.</small></p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" (click)="cancelarEliminar()">Cancelar</button>
-        <button type="button" class="btn btn-outline-danger" (click)="eliminarCliente()">Eliminar</button>
-      </div>
-    </div>
-  </div>
-</div>
