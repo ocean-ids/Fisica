@@ -9,6 +9,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {Persona} from '../../models/persona.model'
 import { PersonaService } from '../../services/persona.service';
 import { PersonaFormComponent } from './persona-form/persona-form.component';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-personas',
@@ -19,8 +20,6 @@ import { PersonaFormComponent } from './persona-form/persona-form.component';
 })
 export class PersonasComponent implements OnInit {
   personas: Persona[] = []
-  showDeleteModal: boolean = false;
-  personaEliminar: Persona | null = null;
 
   constructor(
     private personaService: PersonaService,
@@ -62,12 +61,12 @@ export class PersonasComponent implements OnInit {
   crearPersona(data: any): void {
     this.personaService.createPersona(data).subscribe({
       next: () => {
-        alert('Persona creada exitosamente');
         this.cargarPersonas();
+        Swal.fire({ icon: 'success', title: 'Creada', timer: 1200, showConfirmButton: false });
       },
       error: (error) => {
         console.error('Error al crear persona:', error);
-        alert('Error al crear persona');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo crear' });
       }
     });
   }
@@ -75,37 +74,38 @@ export class PersonasComponent implements OnInit {
   actualizarPersona(id: number, data: any): void {
     this.personaService.updatePersona(id, data).subscribe({
       next: () => {
-        alert('Persona actualizada exitosamente');
         this.cargarPersonas();
+        Swal.fire({ icon: 'success', title: 'Actualizada', timer: 1200, showConfirmButton: false });
       },
       error: (error) => {
         console.error('Error al actualizar persona:', error);
-        alert('Error al actualizar persona');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar' });
       }
     });
   }
 
-  confirmarEliminar(persona: Persona): void {
-    this.personaEliminar = persona;
-    this.showDeleteModal = true;
-  }
+  async confirmarEliminar(persona: Persona): Promise<void> {
+    const res = await Swal.fire({
+      title: '¿Eliminar persona?',
+      text: `Se eliminará ${persona.nombres} ${persona.apellidos}`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
 
-  eliminarPersona(): void {
-    if (this.personaEliminar && this.personaEliminar.id) {
-      this.personaService.deletePersona(this.personaEliminar.id).subscribe({
-        next: () => {
-          console.log('Persona eliminada exitosamente');
-          this.cargarPersonas();
-          this.cancelarEliminar();
-        },
-        error: (error) => console.error('Error al eliminar persona:', error)
-      });
-    }
-  }
+    if (!res.isConfirmed || !persona.id) return;
 
-  cancelarEliminar(): void {
-    this.showDeleteModal = false;
-    this.personaEliminar = null;
+    this.personaService.deletePersona(persona.id).subscribe({
+      next: () => {
+        this.cargarPersonas();
+        Swal.fire({ icon: 'success', title: 'Eliminada', timer: 1200, showConfirmButton: false });
+      },
+      error: (error) => {
+        console.error('Error al eliminar persona:', error);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar' });
+      }
+    });
   }
 
   toggleActive(persona: Persona, checked: boolean): void {
@@ -114,12 +114,18 @@ export class PersonasComponent implements OnInit {
     if (checked) {
       this.personaService.enablePersona(id).subscribe({
         next: () => { persona.is_active = true; },
-        error: (err) => { console.error('Error habilitando persona', err); alert('Error al habilitar persona'); }
+        error: (err) => {
+          console.error('Error habilitando persona', err);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo habilitar' });
+        }
       });
     } else {
       this.personaService.disablePersona(id).subscribe({
         next: () => { persona.is_active = false; },
-        error: (err) => { console.error('Error deshabilitando persona', err); alert('Error al deshabilitar persona'); }
+        error: (err) => {
+          console.error('Error deshabilitando persona', err);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo deshabilitar' });
+        }
       });
     }
   }

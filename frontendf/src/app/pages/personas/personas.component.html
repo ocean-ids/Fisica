@@ -56,24 +56,4 @@
       </div>
     </div>
   </div>
-  
-  
-  <div class="modal fade show" *ngIf="showDeleteModal" style="display: block; background-color: rgba(0,0,0,0.5);">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Confirmar Eliminación</h5>
-          <button type="button" class="btn-close" (click)="cancelarEliminar()"></button>
-        </div>
-        <div class="modal-body">
-          <p>¿Está seguro que desea eliminar a <strong>{{ personaEliminar?.nombres }} {{ personaEliminar?.apellidos }}</strong>?</p>
-          <p class="text-danger"><small>Esta acción no se puede deshacer.</small></p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-primary" (click)="cancelarEliminar()">Cancelar</button>
-          <button type="button" class="btn btn-outline-danger" (click)="eliminarPersona()">Eliminar</button>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
