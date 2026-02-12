@@ -111,8 +111,7 @@ def semanas_del_mes(request):
         return Response({'error': 'mes o anio inválidos'}, status=status.HTTP_400_BAD_REQUEST)
 
     first_day = date(anio, mes, 1)
-    offset = (0 - first_day.weekday()) % 7
-    current = first_day + timedelta(days=offset)
+    current = first_day
 
     weeks = []
     while current.month == mes:

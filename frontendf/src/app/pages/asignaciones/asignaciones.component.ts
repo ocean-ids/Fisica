@@ -491,8 +491,8 @@ export class AsignacionesComponent implements OnInit {
         }
       });
     } else {
-      // Enviar create_calendar según la casilla del modal
-      const payload = { ...this.asignacionActual, create_calendar: !!this.crearCalendarioAutom } as any;
+      // Forzar creación de calendario semanal al crear la asignación
+      const payload = { ...this.asignacionActual, create_calendar: true } as any;
       this.asignacionService.crearAsignacion(payload).subscribe({
         next: () => {
           Swal.fire({ icon: 'success', title: 'Asignación creada', timer: 1200, showConfirmButton: false });

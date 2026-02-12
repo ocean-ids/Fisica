@@ -48,8 +48,8 @@ def asignar_servicio(request):
         except Exception:
             pass
         # Crear filas de AsignacionSemanal para el puesto en las semanas del mes/año de la asignación
-        # Crear calendario si el payload solicita `create_calendar` o si la asignación es recurrente.
-        create_calendar = bool(request.data.get('create_calendar')) or bool(getattr(asignacion, 'recurring', False))
+        # Forzamos creación de calendario siempre (evita depender del flag del front y cubre el mes actual)
+        create_calendar = True
 
         if create_calendar:
             try:
@@ -62,9 +62,8 @@ def asignar_servicio(request):
                     next_month_first = datetime.date(anio, mes + 1, 1)
                 last_day = next_month_first - datetime.timedelta(days=1)
 
-                # encontrar el primer lunes en o después del primer día (lunes=0)
-                offset = (0 - first_day.weekday()) % 7
-                current = first_day + datetime.timedelta(days=offset)
+                # semanas del mes iniciando el día 1 y sumando bloques de 7 días (1,8,15,22,29)
+                current = first_day
 
                 weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
 
@@ -145,8 +144,8 @@ def asignar_servicio(request):
                     serializer2 = AsignacionSerializer(existing, data=request.data, partial=True)
                     if serializer2.is_valid():
                         asignacion = serializer2.save()
-                        # crear/actualizar filas semanales también si se solicitó o si la asignación es recurrente
-                        create_calendar = bool(request.data.get('create_calendar')) or bool(getattr(asignacion, 'recurring', False))
+                        # crear/actualizar filas semanales siempre
+                        create_calendar = True
                         if create_calendar:
                             try:
                                 mes = int(asignacion.mes)
@@ -157,8 +156,8 @@ def asignar_servicio(request):
                                 else:
                                     next_month_first = datetime.date(anio, mes + 1, 1)
                                 last_day = next_month_first - datetime.timedelta(days=1)
-                                offset = (0 - first_day.weekday()) % 7
-                                current = first_day + datetime.timedelta(days=offset)
+                                # semanas del mes iniciando el día 1 y sumando bloques de 7 días (1,8,15,22,29)
+                                current = first_day
 
                                 # Obtener puesto_obj
                                 puesto_obj = None

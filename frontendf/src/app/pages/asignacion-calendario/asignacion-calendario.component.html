@@ -5,8 +5,8 @@
         <tr class="text-center align-middle header-row">
           <th *ngFor="let d of weekDays" title="{{d.name}}">
             <div class="header-day">
-              <span class="short">{{d.short}}</span>
-              <span class="dayNum">{{d.dayNum}}</span>
+              <span class="short">{{d.short || ''}}</span>
+              <span class="dayNum">{{d.dayNum || ''}}</span>
             </div>
           </th>
           <th class="actions-col" style="width: 60px;">Acción</th>
@@ -15,12 +15,13 @@
       <tbody style="height: 60px;" *ngIf="rows && rows.length>0" >
         <tr *ngFor="let row of rows; let i = index" class="data-row p-0 m-0">
           <ng-container *ngFor="let d of weekDays">
-            <td>
+            <td *ngIf="d.date; else emptyDay">
               <input type="text" maxlength="4" class="form-control form-control-sm"
                      [(ngModel)]="row[dayKeyFromDate(d.date)]"
                      (ngModelChange)="onCellChange(row, dayKeyFromDate(d.date), $event)"
                      [ngModelOptions]="{standalone:true}">
             </td>
+            <ng-template #emptyDay><td></td></ng-template>
           </ng-container>
           <td class="text-center align-middle actions-col"><button class="btn btn-sm btn-outline-primary" (click)="saveRow(row)"><i class="bi bi-floppy"></i></button></td>
         </tr>

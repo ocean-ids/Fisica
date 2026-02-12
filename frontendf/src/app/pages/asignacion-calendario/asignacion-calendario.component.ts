@@ -17,9 +17,6 @@ export class AsignacionCalendarioComponent implements OnInit{
   weekStart: string = '';
   weeks: string[] = [];
   currentWeekIndex: number = 0;
-  pageSize: number = 10;
-  currentPage: number = 1;
-  totalCount: number = 0;
   weekDays: Array<{short:string, name:string, date:string, dayNum:number}> = [];
   rows: any[] = [];
   loading = false;
@@ -33,41 +30,39 @@ export class AsignacionCalendarioComponent implements OnInit{
   ){}
 
   ngOnInit(): void {
-    this.weekStart = this.computeCurrentMonday();
+    this.weekStart = this.computeCurrentMonthStart();
     const base = new Date(this.weekStart);
     this.loadWeeksForMonth(base.getMonth()+1, base.getFullYear());
   }
 
-  computeCurrentMonday(): string{
-    const today = new Date();
-    const day = today.getDay(); 
-    
-    const diffFromMonday = (day + 6) % 7; 
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - diffFromMonday);
+  private formatDateLocal(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
 
-    const y = monday.getFullYear();
-    const m = String(monday.getMonth() + 1).padStart(2, '0');
-    const d = String(monday.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+
+  computeCurrentMonthStart(): string{
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}-01`;
   }
 
   loadWeek(){
   
     this.computeWeekDays();
     this.loading = true;
-    this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart, page: this.currentPage, page_size: this.pageSize, auto_create: false})
+    this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart, auto_create: true})
       .subscribe({
         next: (res: any) => {
         if (Array.isArray(res)) {
           this.rows = res;
-          this.totalCount = (res||[]).length;
         } else if (res && Array.isArray(res.results)) {
           this.rows = res.results;
-          this.totalCount = res.count || 0;
         } else {
           this.rows = [];
-          this.totalCount = 0;
         }
 
         
@@ -96,32 +91,28 @@ export class AsignacionCalendarioComponent implements OnInit{
   }
 
   loadWeeksForMonth(mes: number, anio: number){
-    this.asignacionCalendarioService.obtenerSemanas(mes, anio).subscribe({
-      next: (res: any) => {
-        this.weeks = (res && res.weeks) ? res.weeks : [];
-        const idx = this.weeks.indexOf(this.weekStart);
-        this.currentWeekIndex = idx >= 0 ? idx : 0;
-        if(this.weeks.length && !this.weekStart){
-          this.weekStart = this.weeks[0];
-        }
-        if(this.weeks.length){
-          this.weekStart = this.weeks[this.currentWeekIndex];
-        }
-        this.currentPage = 1;
-        this.loadWeek();
-      },
-      error: () => {
-        this.weeks = [];
-        this.loadWeek();
-      }
-    });
+    const weeksLocal: string[] = [];
+    const d = new Date(anio, mes - 1, 1);
+    while (d.getMonth() === (mes - 1)) {
+      weeksLocal.push(this.formatDateLocal(d));
+      d.setDate(d.getDate() + 7);
+    }
+
+    this.weeks = weeksLocal;
+    const idx = this.weeks.indexOf(this.weekStart);
+    this.currentWeekIndex = idx >= 0 ? idx : 0;
+    if (this.weeks.length){
+      this.weekStart = this.weeks[this.currentWeekIndex] || this.weeks[0];
+    } else {
+      this.weekStart = '';
+    }
+    this.loadWeek();
   }
 
   prevWeek(){
     if(this.currentWeekIndex > 0){
       this.currentWeekIndex -= 1;
       this.weekStart = this.weeks[this.currentWeekIndex];
-      this.currentPage = 1;
       this.loadWeek();
     }
   }
@@ -130,22 +121,6 @@ export class AsignacionCalendarioComponent implements OnInit{
     if(this.currentWeekIndex < this.weeks.length - 1){
       this.currentWeekIndex += 1;
       this.weekStart = this.weeks[this.currentWeekIndex];
-      this.currentPage = 1;
-      this.loadWeek();
-    }
-  }
-
-  prevPage(){
-    if(this.currentPage > 1){
-      this.currentPage -= 1;
-      this.loadWeek();
-    }
-  }
-
-  nextPage(){
-    const maxPage = Math.ceil((this.totalCount || 0) / this.pageSize) || 1;
-    if(this.currentPage < maxPage){
-      this.currentPage += 1;
       this.loadWeek();
     }
   }
@@ -187,37 +162,42 @@ export class AsignacionCalendarioComponent implements OnInit{
 
   dayKeyFromDate(dateStr: string): string {
     // dateStr expected in YYYY-MM-DD
+    if(!dateStr) return '';
     try {
-      const d = new Date(dateStr);
+      const parts = dateStr.split('-').map(Number);
+      if (parts.length !== 3) return '';
+      const d = new Date(parts[0], parts[1]-1, parts[2]);
       const map = ['sun','mon','tue','wed','thu','fri','sat'];
       return map[d.getDay()];
     } catch (e) {
-      return 'mon';
+      return '';
     }
   }
   
   computeWeekDays(): void {
     this.weekDays = [];
     if (!this.weekStart) return;
-    const base = new Date(this.weekStart);
-
-    
-    const diffFromMonday = (base.getDay() + 6) % 7; // 0 for Monday, 6 for Sunday
-    const monday = new Date(base);
-    monday.setDate(base.getDate() - diffFromMonday);
-
-    const shortOrder = ['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
-    const fullOrder = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
+    const parts = this.weekStart.split('-').map(Number);
+    if (parts.length !== 3) return;
+    const base = new Date(parts[0], parts[1]-1, parts[2]);
+    const month = base.getMonth();
+    const shortOrder = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
+    const fullOrder = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 
     for (let i = 0; i < 7; i++){
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      this.weekDays.push({
-        short: shortOrder[i],
-        name: fullOrder[i],
-        date: d.toISOString().slice(0,10),
-        dayNum: d.getDate()
-      });
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      const dow = d.getDay();
+      if (d.getMonth() === month){
+        this.weekDays.push({
+          short: shortOrder[dow],
+          name: fullOrder[dow],
+          date: this.formatDateLocal(d),
+          dayNum: d.getDate()
+        });
+      } else {
+        this.weekDays.push({ short:'', name:'', date:'', dayNum:0 });
+      }
     }
   }
 
