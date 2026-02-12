@@ -189,11 +189,18 @@ export class PuestoFormComponent implements OnInit {
     this.horarios.removeAt(index);
   }
 
-  toggleDay(horarioIndex: number, day: number, checked: boolean) {
+  toggleDay(horarioIndex: number, day: number, ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const checked = !!input?.checked;
     const group = this.horarios.at(horarioIndex);
     const current: number[] = group.get('days').value || [];
 
     if (checked) {
+      if (current.length >= 2) {
+        // revert check to enforce max 2 selections
+        if (input) input.checked = false;
+        return;
+      }
       if (current.indexOf(day) === -1) current.push(day);
     } else {
       const idx = current.indexOf(day);
