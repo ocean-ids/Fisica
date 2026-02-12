@@ -15,6 +15,7 @@ import { Cliente } from '../../models';
 import { PuestoFormComponent } from './puesto-form/puesto-form.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
+import Swal from 'sweetalert2';
 
 
 @Component({
@@ -87,12 +88,12 @@ export class PuestosComponent implements OnInit {
   crearPuesto(data: any): void{
     this.puestoService.crearPuesto(data).subscribe({
       next: () => {
-        alert('Puesto creado exitosamente');
         this.cargarPuestos();
+        Swal.fire({ icon: 'success', title: 'Puesto Creado', timer: 1200, showConfirmButton: false });
       },
       error: (err) => {
         console.error('Error al crear puesto', err);
-        alert('Error al crear puesto');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo crear el puesto' });
       }
     });
   }
@@ -100,24 +101,39 @@ export class PuestosComponent implements OnInit {
   actualizarPuesto(id: number, data: any): void {
     this.puestoService.actualizarPuesto(id, data).subscribe({
       next: () => {
-        alert('Puesto actualizado exitosamente');
         this.cargarPuestos();
+        Swal.fire({ icon: 'success', title: 'Puesto Actualizado', timer: 1200, showConfirmButton: false });
       },
       error: err  => {
         console.error('Error al actualizar puesto', err);
-        alert('Error al actualizar puesto');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el puesto' });
+        
       }
     });
   }
 
-  eliminarPuesto(id: number): void {
-    if(confirm('¿Estás seguro de que deseas eliminar este puesto?')) {
-      this.puestoService.eliminarPuesto(id).subscribe({
-        next: () => this.cargarPuestos(),
-        error: err => console.error('Error al eliminar puesto', err)
-        
-      });
-    }
+  async eliminarPuesto(id: number): Promise<void> {
+    const res = await Swal.fire({
+      title: '¿Eliminar puesto?',
+      text: 'Esta acción no se puede deshacer',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!res.isConfirmed) return;
+
+    this.puestoService.eliminarPuesto(id).subscribe({
+      next: () => {
+        this.cargarPuestos();
+        Swal.fire({ icon: 'success', title: 'Puesto Eliminado', timer: 1200, showConfirmButton: false });
+      },
+      error: err => {
+        console.error('Error al eliminar puesto', err);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar el puesto' });
+      }
+    });
   }
 
   getDias(puesto: Puesto): string {
