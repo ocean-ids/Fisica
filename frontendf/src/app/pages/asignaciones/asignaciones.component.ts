@@ -16,6 +16,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { AsignacionCalendarioComponent } from '../asignacion-calendario/asignacion-calendario.component';
 import { HttpClient } from '@angular/common/http';
 import { saveAs } from 'file-saver';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-asignaciones',
@@ -395,7 +396,7 @@ export class AsignacionesComponent implements OnInit {
       },
       error: err => {
         console.error('Error descargando reporte:', err);
-        alert('Error al descargar el reporte. Revisa la consola.');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo descargar el reporte' });
       }
     });
   }
@@ -433,23 +434,23 @@ export class AsignacionesComponent implements OnInit {
   guardarAsignacion(): void {
 
     if (!this.clienteSeleccionado) {
-      alert('Debe seleccionar un Cliente');
+      Swal.fire({ icon: 'warning', title: 'Falta Cliente', text: 'Debe seleccionar un Cliente' });
       return;
     }
     if (!this.instalacionSeleccionada) {
-      alert('Debe seleccionar una Instalación');
+      Swal.fire({ icon: 'warning', title: 'Falta Instalación', text: 'Debe seleccionar una Instalación' });
       return;
     }
     if (!this.asignacionActual.puesto) {
-      alert('Debe seleccionar un Puesto');
+      Swal.fire({ icon: 'warning', title: 'Falta Puesto', text: 'Debe seleccionar un Puesto' });
       return;
     }
     if (!this.asignacionActual.persona) {
-      alert('Debe seleccionar una Persona');
+      Swal.fire({ icon: 'warning', title: 'Falta Persona', text: 'Debe seleccionar una Persona' });
       return;
     }
     if (!this.asignacionActual.horario) {
-      alert('Debe seleccionar un Horario');
+      Swal.fire({ icon: 'warning', title: 'Falta Horario', text: 'Debe seleccionar un Horario' });
       return;
     }
 
@@ -466,7 +467,7 @@ export class AsignacionesComponent implements OnInit {
     );
 
     if (yaExiste) {
-      alert('Ya existe una asignación para esta persona en este mes.');
+      Swal.fire({ icon: 'warning', title: 'Duplicado', text: 'Ya existe una asignación para esta persona en este mes.' });
       return;
     }
 
@@ -479,14 +480,14 @@ export class AsignacionesComponent implements OnInit {
         this.asignacionActual
       ).subscribe({
         next: () => {
-          alert('Asignación actualizada');
+          Swal.fire({ icon: 'success', title: 'Asignación actualizada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
           this.cerrarModal();
           this.calendario?.loadWeek();
         },
         error: err => {
           console.error(err);
-          alert('Error al actualizar');
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar la asignación' });
         }
       });
     } else {
@@ -494,14 +495,14 @@ export class AsignacionesComponent implements OnInit {
       const payload = { ...this.asignacionActual, create_calendar: !!this.crearCalendarioAutom } as any;
       this.asignacionService.crearAsignacion(payload).subscribe({
         next: () => {
-          alert('Asignación creada');
+          Swal.fire({ icon: 'success', title: 'Asignación creada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
           this.cerrarModal();
           this.calendario?.loadWeek();
         },
         error: err => {
           console.error(err);
-          alert('Error al crear');
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo crear la asignación' });
         }
       });
     }
@@ -539,19 +540,28 @@ export class AsignacionesComponent implements OnInit {
   }
 
   eliminarAsignacion(asignacion: Asignacion): void {
-    if (confirm(`¿Eliminar la asignación de ${asignacion.persona_detalle?.apellidos} ${asignacion.persona_detalle?.nombres} (${asignacion.persona_detalle?.tipo})?`)) {
-      this.asignacionService.eliminarAsignacion(asignacion.id!).subscribe({
+    Swal.fire({
+      title: '¿Eliminar asignación?',
+      text: `${asignacion.persona_detalle?.apellidos} ${asignacion.persona_detalle?.nombres} (${asignacion.persona_detalle?.tipo})`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then(res => {
+      if (!res.isConfirmed || !asignacion.id) return;
+
+      this.asignacionService.eliminarAsignacion(asignacion.id).subscribe({
         next: () => {
-          alert('Asignación eliminada');
+          Swal.fire({ icon: 'success', title: 'Asignación eliminada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
           this.calendario?.loadWeek();
         },
         error: err => {
           console.error(err);
-          alert('Error al eliminar');
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar la asignación' });
         }
       });
-    }
+    });
   }
 
   cambiarMesAnio(): void {
