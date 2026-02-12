@@ -8,6 +8,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Horario } from '../../models/horario.models';
 import { HorarioService } from '../../services/horario.service';
 import { HorarioFormComponent } from './horario-form/horario-form.component';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-horarios',
@@ -59,12 +60,12 @@ export class HorariosComponent implements OnInit{
   crearHorario(data: any): void {
     this.horarioService.crearHorario(data).subscribe({
       next: () => {
-        alert('Horario creado exitosamente');
         this.cargarHorarios();
+        Swal.fire({ icon: 'success', title: 'Creado', timer: 1200, showConfirmButton: false });
       },
       error: (err) => {
         console.error('Error al crear horario', err);
-        alert('Error al crear horario');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo crear' });
       }
     });
   }
@@ -72,12 +73,12 @@ export class HorariosComponent implements OnInit{
   actualizarHorario(id: number, data: any): void {
     this.horarioService.actualizarHorario(id, data).subscribe({
       next: () => {
-        alert('Horario actualizado exitosamente');
         this.cargarHorarios();
+        Swal.fire({ icon: 'success', title: 'Actualizado', timer: 1200, showConfirmButton: false });
       },
       error: (err) => {
         console.error('Error al actualizar horarios: ', err);
-        alert('Error al actualizar el horario');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar' });
       }
     });
   }
@@ -88,19 +89,28 @@ export class HorariosComponent implements OnInit{
     return hora.substring(0, 5);
   }
 
-  eliminarHorario(id: number): void{
-    if(confirm('¿Estas seguro de eliminar este horario?')){
-      this.horarioService.eliminarHorario(id).subscribe({
-        next: () => {
-          alert('Horario eliminado correctamente');
-          this.cargarHorarios();
-        },
-        error: (err) =>{
-          console.error('Error al eliminar horario:', err);
-          alert('Error al eliminar horario. Puede que este en uso.')
-        }
-      });
-    }
+  async eliminarHorario(id: number): Promise<void> {
+    const res = await Swal.fire({
+      title: '¿Eliminar horario?',
+      text: 'Esta acción no se puede deshacer',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!res.isConfirmed) return;
+
+    this.horarioService.eliminarHorario(id).subscribe({
+      next: () => {
+        this.cargarHorarios();
+        Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1200, showConfirmButton: false });
+      },
+      error: (err) => {
+        console.error('Error al eliminar horario:', err);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar (puede estar en uso)' });
+      }
+    });
   }
 
 }
