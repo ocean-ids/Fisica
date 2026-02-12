@@ -39,6 +39,13 @@ export class AsignacionesComponent implements OnInit {
   @ViewChild(AsignacionCalendarioComponent)
   calendario?: AsignacionCalendarioComponent;
 
+  private monthStartToday(): string {
+    const t = new Date();
+    const y = t.getFullYear();
+    const m = String(t.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}-01`;
+  }
+
   ngAfterViewInit(): void {
     // Suscribirse a cambios de semana del calendario para sincronizar filtros
     setTimeout(() => {
@@ -55,6 +62,11 @@ export class AsignacionesComponent implements OnInit {
           }
           this.cargarAsignaciones();
         });
+
+        // Forzar inicio en el mes actual al montar la vista
+        const ws = this.monthStartToday();
+        this.calendario.weekStart = ws;
+        this.calendario.loadWeeksForMonth(this.mes, this.anio);
       }
     }, 0);
   }
@@ -246,23 +258,12 @@ export class AsignacionesComponent implements OnInit {
     this.mes = Number(parts[1]);
     this.dia = null;
     this.cargarAsignaciones();
-
-    // calcular el primer lunes del mes y sincronizar calendario
-    const firstMonday = this.getFirstMonday(this.anio, this.mes);
     if (this.calendario) {
-      // Load the list of weeks for the selected month so prev/next week navigation works
+      // sincronizar calendario al día 1 del mes elegido
+      const ws = `${this.anio}-${String(this.mes).padStart(2,'0')}-01`;
+      this.calendario.weekStart = ws;
       this.calendario.loadWeeksForMonth(this.mes, this.anio);
     }
-  }
-
-  private getFirstMonday(year: number, month: number): string {
-    const d = new Date(year, month - 1, 1);
-    const day = d.getDay(); // 0..6 Sun..Sat
-    const offset = (8 - day) % 7; // days to add to reach Monday
-    const dayOfMonth = 1 + offset;
-    const mm = String(month).padStart(2, '0');
-    const dd = String(dayOfMonth).padStart(2, '0');
-    return `${year}-${mm}-${dd}`;
   }
 
   cargarCatalogos(): void {
