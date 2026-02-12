@@ -14,7 +14,7 @@ import { AsignacionCalendarioComponent } from './pages/asignacion-calendario/asi
 
 export const routes: Routes = [
   {path: '', component: LoginComponent},
-  {path: 'login', component: LoginComponent},
+  {path: '', component: LoginComponent},
   {path: 'forgot-password', component: ForgotPasswordComponent},
   {path: 'reset-password/:uidb64/:token', component: ResetPasswordComponent},
   {
