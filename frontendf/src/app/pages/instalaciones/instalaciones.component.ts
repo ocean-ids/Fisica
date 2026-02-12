@@ -9,6 +9,7 @@ import { Cliente } from '../../models';
 import { InstalacionService } from '../../services/instalacion.service';
 import { ClienteService } from '../../services/cliente.service';
 import { InstalacionFormComponent } from './instalacion-form/instalacion-form.component';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-instalaciones',
@@ -17,42 +18,38 @@ import { InstalacionFormComponent } from './instalacion-form/instalacion-form.co
   templateUrl: './instalaciones.component.html',
   styleUrl: './instalaciones.component.css'
 })
-export class InstalacionesComponent implements OnInit{
+export class InstalacionesComponent implements OnInit {
   instalaciones: any[] = [];
   clientes: Cliente[] = [];
-  showDeleteModal: boolean = false;
-  instalacionAEliminar: any = null;
 
   constructor(
     private instalacionService: InstalacionService,
     private clienteService: ClienteService,
     private dialog: MatDialog
-  ){}
+  ) {}
 
-  ngOnInit(): void{
+  ngOnInit(): void {
     this.cargarInstalaciones();
     this.cargarClientes();
   }
 
-  cargarInstalaciones(): void{
+  cargarInstalaciones(): void {
     this.instalacionService.getInstalaciones().subscribe({
-      next: (data) =>{
+      next: (data) => {
         this.instalaciones = data;
-        console.log('instalaciones cargadas', this.instalaciones);
       },
-      error: (error) => console.error('Error al cargar instalaciones: ')
+      error: (error) => console.error('Error al cargar instalaciones:', error)
     });
   }
 
-  cargarClientes(): void{
-  this.clienteService.getClientes().subscribe({
-    next: (data) => {
-      this.clientes = data;
-      console.log('Clientes cargados', this.clientes);   
-    },
-    error: (error: any) => console.error('Error al cargar clientes:', error)
-  });
-}
+  cargarClientes(): void {
+    this.clienteService.getClientes().subscribe({
+      next: (data) => {
+        this.clientes = data;
+      },
+      error: (error: any) => console.error('Error al cargar clientes:', error)
+    });
+  }
 
   abrirModal(instalacion?: any): void {
     const dialogRef = this.dialog.open(InstalacionFormComponent, {
@@ -83,12 +80,12 @@ export class InstalacionesComponent implements OnInit{
 
     this.instalacionService.createInstalacion(payload).subscribe({
       next: () => {
-        alert('Instalación creada exitosamente');
         this.cargarInstalaciones();
+        Swal.fire({ icon: 'success', title: 'Creada', timer: 1200, showConfirmButton: false });
       },
       error: (error: any) => {
         console.error('Error al crear instalación:', error);
-        alert('Error al crear instalación');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo crear' });
       }
     });
   }
@@ -105,40 +102,35 @@ export class InstalacionesComponent implements OnInit{
 
     this.instalacionService.updateInstalacion(id, payload).subscribe({
       next: () => {
-        alert('Instalación actualizada exitosamente');
         this.cargarInstalaciones();
+        Swal.fire({ icon: 'success', title: 'Actualizada', timer: 1200, showConfirmButton: false });
       },
       error: (error: any) => {
         console.error('Error al actualizar instalación:', error);
-        alert('Error al actualizar instalación');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar' });
       }
     });
   }
 
-  confirmarEliminar(instalacion: any): void{
-    this.instalacionAEliminar = instalacion;
-    this.showDeleteModal = true;
-  }
+  async confirmarEliminar(instalacion: any): Promise<void> {
+    const res = await Swal.fire({
+      title: '¿Eliminar instalación?',
+      text: `Se eliminará ${instalacion.nombre || ''}`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
 
-  cerrarModalEliminar(): void{
-    this.showDeleteModal = false;
-    this.instalacionAEliminar = null;
-  }
+    if (!res.isConfirmed) return;
 
-  eliminarInstalacion(): void {
-    if (this.instalacionAEliminar) {
-      this.instalacionService.deleteInstalacion(this.instalacionAEliminar.id).subscribe({
-        next: (response: any) => {
-          console.log('Instalación eliminada:', response);
-          alert('Instalación eliminada exitosamente');
-          this.cargarInstalaciones();
-          this.cerrarModalEliminar();
-        },
-        error: (error: any) => {
-          console.error('Error al eliminar instalación:', error);
-          alert('Error al eliminar instalación');
-        }
-      });
+    try {
+      await this.instalacionService.deleteInstalacion(instalacion.id).toPromise();
+      await Swal.fire({ icon: 'success', title: 'Eliminada', timer: 1200, showConfirmButton: false });
+      this.cargarInstalaciones();
+    } catch (error) {
+      console.error('Error al eliminar instalación:', error);
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar' });
     }
   }
 
@@ -146,5 +138,4 @@ export class InstalacionesComponent implements OnInit{
     const cliente = this.clientes.find(c => c.id === clienteId);
     return cliente ? cliente.nombre_comercial : 'N/A';
   }
-
 }
