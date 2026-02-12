@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, tap } from 'rxjs';
 
 interface LoginResponse {
@@ -20,8 +21,11 @@ export class AuthService {
   private apiUrl = 'http://localhost:8000/api';
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasToken());
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+  private tokenCheckId: any = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private router: Router) {
+    this.startTokenWatcher();
+  }
 
   login(username: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/login/`, 
@@ -56,11 +60,32 @@ export class AuthService {
     }
   }
 
+  /**
+   * Limpia tokens y emite estado no autenticado sin llamar al backend.
+   */
+  forceLogout(): void {
+    this.clearTokens();
+  }
+
   private clearTokens(): void {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     this.isAuthenticatedSubject.next(false);
+  }
+
+  private startTokenWatcher(): void {
+    if (this.tokenCheckId) {
+      clearInterval(this.tokenCheckId);
+    }
+    this.tokenCheckId = setInterval(() => {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      if (this.isTokenExpired(token)) {
+        this.forceLogout();
+        this.router.navigate(['/login']);
+      }
+    }, 30000); // chequeo cada 30s
   }
 
   getAccessToken(): string | null {
@@ -89,7 +114,25 @@ export class AuthService {
   }
 
   private hasToken(): boolean {
-    return !!localStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token');
+    if (!token) return false;
+    if (this.isTokenExpired(token)) {
+      this.clearTokens();
+      return false;
+    }
+    return true;
+  }
+
+  isTokenExpired(token: string): boolean {
+    try {
+      const [, payload] = token.split('.');
+      const decoded = JSON.parse(atob(payload));
+      const expMs = decoded?.exp ? decoded.exp * 1000 : 0;
+      if (!expMs) return true;
+      return Date.now() >= expMs;
+    } catch (e) {
+      return true;
+    }
   }
 
   getCurrentUser(): Observable<any> {

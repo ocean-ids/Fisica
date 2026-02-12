@@ -1,22 +1,37 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
+# Python
 *.py[cod]
-
-# Distribution / packaging
-build/
-dist/
-eggs/
+__pycache__/
+*.so
+*.egg
 *.egg-info/
+dist/
+build/
 
-# Virtual environments
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+/media
+/staticfiles
+/static
+
+# Entorno virtual
 venv/
-ENV/
 env/
+ENV/
 
-# VS Code
+# Variables de entorno
+.env
+.env.local
+
+# IDEs
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# OS files
+# OS
+.DS_Store
 Thumbs.db
-ehthumbs.db
-Desktop.ini
+
