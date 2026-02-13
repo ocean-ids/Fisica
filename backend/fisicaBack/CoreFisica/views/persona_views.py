@@ -148,7 +148,6 @@ def importar_personas(request):
         return JsonResponse({'error': 'Falta el archivo (campo file)'}, status=400)
 
     dry_run = str(request.GET.get('dry_run', 'false')).lower() in ['1', 'true', 'yes']
-    required_headers = ['CEDULA', 'APELLIDOS', 'NOMBRES']
     fullname_headers = ['APELLIDOS Y NOMBRES', 'APELLIDOS Y NOMBRE', 'NOMBRES Y APELLIDOS']
     allowed_tipos = {choice[0] for choice in Persona.TIPO_CHOICES}
 
