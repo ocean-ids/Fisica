@@ -279,9 +279,8 @@ def eliminar_asignacion(request, id):
                         next_month_first = datetime.date(int(anio), int(mes) + 1, 1)
                     last_day = next_month_first - datetime.timedelta(days=1)
 
-                    # calcular todos los lunes entre first_day y last_day
-                    offset = (0 - first_day.weekday()) % 7
-                    current = first_day + datetime.timedelta(days=offset)
+                    # Usar el mismo patrón de creación (días 1,8,15,22,29 del mes)
+                    current = first_day
                     to_delete = []
                     while current <= last_day:
                         to_delete.append(current)

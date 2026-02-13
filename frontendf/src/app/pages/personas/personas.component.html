@@ -15,11 +15,11 @@
       accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, .xlsx"
       class="d-none" (change)="onFileSelected($event)">
 
-  <div class="d-flex justify-content-center gap-2 pt-2 mb-3">
-    <input class="form-control" style="max-width: 80%;"
+  <div class="d-flex justify-content-center gap-2 pt-2 mb-3 filters-sticky ">
+    <input class="form-control" style="max-width: 70%;"
          placeholder="Buscar por cédula, nombre o apellido"
          [(ngModel)]="filtroTexto" (ngModelChange)="cargarPersonas()">
-    <select class="form-select" style="max-width: 20%;"
+    <select class="form-select" style="max-width: 15%;"
             [(ngModel)]="filtroTipo" (ngModelChange)="cargarPersonas()">
       <option value="">Todos los tipos</option>
       <option *ngFor="let t of tipos" [value]="t">{{ t }}</option>
