@@ -149,17 +149,36 @@ def importar_personas(request):
 
     dry_run = str(request.GET.get('dry_run', 'false')).lower() in ['1', 'true', 'yes']
     required_headers = ['CEDULA', 'APELLIDOS', 'NOMBRES']
+    fullname_headers = ['APELLIDOS Y NOMBRES', 'APELLIDOS Y NOMBRE', 'NOMBRES Y APELLIDOS']
     allowed_tipos = {choice[0] for choice in Persona.TIPO_CHOICES}
 
     def normalize_header(value):
-        return (str(value).strip().upper()) if value is not None else ''
+        if value is None:
+            return ''
+        import unicodedata
+        text = str(value).strip().upper()
+        # quitar acentos/diacríticos
+        text = ''.join(c for c in unicodedata.normalize('NFKD', text) if not unicodedata.combining(c))
+        return text
 
     def parse_bool(value):
         if value is None or value == '':
             return True
         return str(value).strip().lower() not in ['0', 'false', 'no', 'n']
 
+    def split_full_name(raw: str):
+        parts = [p for p in str(raw or '').strip().split() if p]
+        if not parts:
+            return '', ''
+        if len(parts) == 1:
+            return '', parts[0]
+        if len(parts) == 2:
+            return parts[0], parts[1]
+        # Heurística: dos primeras palabras como apellidos, resto como nombres
+        return ' '.join(parts[:2]), ' '.join(parts[2:])
+
     filas_raw = []
+    has_fullname_header = False
     ext = upload.name.lower().rsplit('.', 1)[-1] if '.' in upload.name else ''
 
     if ext in ['csv', 'txt']:
@@ -171,14 +190,27 @@ def importar_personas(request):
                 dialect = csv.Sniffer().sniff(raw_data[:1024], delimiters=',;\t|')
             except csv.Error:
                 dialect = csv.excel
-            reader = csv.DictReader(io.StringIO(raw_data), dialect=dialect)
-            headers_norm = [normalize_header(h) for h in (reader.fieldnames or [])]
-            missing = [h for h in required_headers if h not in headers_norm]
-            if missing:
-                return JsonResponse({'error': f'Faltan columnas: {", ".join(missing)}'}, status=400)
-            header_map = {normalize_header(h): h for h in (reader.fieldnames or [])}
-            for idx, row in enumerate(reader, start=2):  # fila 1 = cabecera
-                raw_row = {key: row.get(src_key) for key, src_key in header_map.items()}
+            reader_rows = list(csv.reader(io.StringIO(raw_data), dialect=dialect))
+            header_idx = None
+            header_norm = []
+            for i, row in enumerate(reader_rows[:15]):  # busca cabecera en primeras filas
+                norm = [normalize_header(c) for c in row]
+                has_cedula = 'CEDULA' in norm
+                has_fullname_header = any(h in fullname_headers for h in norm)
+                has_apellidos = 'APELLIDOS' in norm
+                has_nombres = 'NOMBRES' in norm
+                if has_cedula and ((has_apellidos and has_nombres) or has_fullname_header):
+                    header_idx = i
+                    header_norm = norm
+                    break
+            if header_idx is None:
+                return JsonResponse({'error': 'Faltan columnas: CEDULA y APELLIDOS/NOMBRES'}, status=400)
+            header_map_idx = {h: idx for idx, h in enumerate(header_norm)}
+            for idx, row in enumerate(reader_rows[header_idx+1:], start=header_idx+2):
+                raw_row = {}
+                for key in header_map_idx:
+                    pos = header_map_idx[key]
+                    raw_row[key] = row[pos] if pos < len(row) else None
                 if all((val is None or str(val).strip() == '') for val in raw_row.values()):
                     continue
                 filas_raw.append((idx, raw_row))
@@ -190,17 +222,27 @@ def importar_personas(request):
         try:
             wb = load_workbook(upload, read_only=True, data_only=True)
             ws = wb.active
-            header_row = [normalize_header(cell.value) for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-            missing = [h for h in required_headers if h not in header_row]
-            if missing:
-                return JsonResponse({'error': f'Faltan columnas: {", ".join(missing)}'}, status=400)
-            col_count = len(header_row)
-            for row_idx, row in enumerate(ws.iter_rows(min_row=2, max_row=ws.max_row), start=2):
+            header_row = None
+            header_norm = []
+            header_idx = None
+            for r_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=min(ws.max_row, 20)), start=1):
+                norm = [normalize_header(cell.value) for cell in row]
+                has_cedula = 'CEDULA' in norm
+                has_fullname_header = any(h in fullname_headers for h in norm)
+                has_apellidos = 'APELLIDOS' in norm
+                has_nombres = 'NOMBRES' in norm
+                if has_cedula and ((has_apellidos and has_nombres) or has_fullname_header):
+                    header_row = norm
+                    header_idx = r_idx
+                    break
+            if header_row is None:
+                return JsonResponse({'error': 'Faltan columnas: CEDULA y APELLIDOS/NOMBRES'}, status=400)
+            header_map_idx = {h: idx for idx, h in enumerate(header_row)}
+            for row_idx, row in enumerate(ws.iter_rows(min_row=header_idx+1, max_row=ws.max_row), start=header_idx+1):
                 raw_row = {}
-                for col_idx in range(col_count):
-                    key = header_row[col_idx] if col_idx < len(header_row) else ''
-                    if key:
-                        raw_row[key] = row[col_idx].value if col_idx < len(row) else None
+                for key in header_map_idx:
+                    pos = header_map_idx[key]
+                    raw_row[key] = row[pos].value if pos < len(row) else None
                 if all((val is None or str(val).strip() == '') for val in raw_row.values()):
                     continue
                 filas_raw.append((row_idx, raw_row))
@@ -215,10 +257,24 @@ def importar_personas(request):
 
     for fila_num, raw in filas_raw:
         cedula = str(raw.get('CEDULA') or '').strip()
-        apellidos = str(raw.get('APELLIDOS') or '').strip()
-        nombres = str(raw.get('NOMBRES') or '').strip()
         tipo = str(raw.get('TIPO') or 'FIJOS').strip().upper()
         is_active = parse_bool(raw.get('IS_ACTIVE'))
+
+        # obtener apellidos/nombres, permitiendo columna combinada
+        apellidos = str(raw.get('APELLIDOS') or '').strip()
+        nombres = str(raw.get('NOMBRES') or '').strip()
+        if not (apellidos and nombres) and has_fullname_header:
+            # buscar la primera columna fullname presente
+            fullname_val = None
+            for key in raw.keys():
+                if normalize_header(key) in fullname_headers:
+                    fullname_val = raw.get(key)
+                    break
+            a_split, n_split = split_full_name(fullname_val)
+            if not apellidos:
+                apellidos = a_split
+            if not nombres:
+                nombres = n_split
 
         if not cedula:
             errores.append({'fila': fila_num, 'error': 'CEDULA vacía'})
