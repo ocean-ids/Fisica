@@ -10,8 +10,8 @@ export class PersonaService {
 
   constructor(private apiService: ApiService) { }
 
-  getPersonas(): Observable<Persona[]>{
-    return this.apiService.get<Persona[]>('/personas/');
+  getPersonas(params?: { q?: string; tipo?: string }): Observable<Persona[]>{
+    return this.apiService.get<Persona[]>('/personas/', params);
   }
 
   getPersona(id: number): Observable<Persona>{

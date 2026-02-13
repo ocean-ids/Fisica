@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,7 +16,7 @@ import { ViewChild, ElementRef } from '@angular/core';
 @Component({
   selector: 'app-personas',
   standalone: true,
-  imports: [CommonModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule, MatSlideToggleModule],
+  imports: [CommonModule, FormsModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule, MatSlideToggleModule],
   templateUrl: './personas.component.html',
   styleUrl: './personas.component.css'
 })
@@ -25,6 +26,9 @@ export class PersonasComponent implements OnInit {
   isImporting = false;
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
+  filtroTexto = '';
+  filtroTipo = '';
+  tipos = [ 'FIJOS', 'RETENES', 'EVENTUALES', 'SACAFRANCO', 'SACAVACAIONES', 'SUPERVISOR ZONAL', 'SUPERVISOR MOTORIZADO']
 
   constructor(
     private personaService: PersonaService,
@@ -36,14 +40,20 @@ export class PersonasComponent implements OnInit {
   }
 
   cargarPersonas(): void {
-    this.personaService.getPersonas().subscribe({
-      next: (data) =>{
-        this.personas = data;
-        console.log('Personas cargadas', this.personas);
-      },
-      error: (error) => console.error('Error al cargar',error)
-      
+    const params: any = {};
+    if (this.filtroTexto) params.q = this.filtroTexto;
+    if (this.filtroTipo) params.tipo = this.filtroTipo;
+    this.personaService.getPersonas(params).subscribe({
+      next: data => this.personas = data,
+      error: err => console.error('Error al cargar', err)
     });
+  }
+
+
+  limpiarFiltros(): void {
+    this.filtroTexto = '';
+    this.filtroTipo = '';
+    this.cargarPersonas();
   }
 
   abrirModal(persona?: Persona): void {

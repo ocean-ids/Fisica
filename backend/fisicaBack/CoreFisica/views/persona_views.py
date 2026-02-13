@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from ..models import Persona
 import csv
 import io
@@ -39,8 +40,22 @@ def crear_persona(request):
 @permission_classes([IsAuthenticated])
 def obtener_personas(request):
     try:
-        personas = Persona.objects.all().order_by('apellidos')
-        # Include is_active so frontend can reflect current activation state
+        q = (request.GET.get('q') or '').strip()
+        tipo = (request.GET.get('tipo') or '').strip()
+
+        personas = Persona.objects.all()
+        if q:
+            personas = personas.filter(
+                Q(nombres__icontains=q) |
+                Q(apellidos__icontains=q) |
+                Q(cedula__icontains=q)
+            )
+
+        if tipo:
+            personas = personas.filter(tipo=tipo)
+
+        personas = personas.order_by('apellidos')
+        
         return JsonResponse(list(personas.values('id', 'nombres', 'apellidos', 'cedula', 'tipo', 'is_active')), safe=False)
     except Exception:
         logger.exception('Error obteniendo personas')
@@ -103,7 +118,7 @@ def disable_persona(request, id):
 
     if not persona.is_active:
         logger.info('Intento de deshabilitar persona ya inactiva id=%s', id)
-        # Idempotent: consider already-disabled as success
+        
         return JsonResponse({'status': 'already_disabled'}, status=200)
 
     try:
