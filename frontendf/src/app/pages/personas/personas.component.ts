@@ -10,6 +10,7 @@ import {Persona} from '../../models/persona.model'
 import { PersonaService } from '../../services/persona.service';
 import { PersonaFormComponent } from './persona-form/persona-form.component';
 import Swal from 'sweetalert2';
+import { ViewChild, ElementRef } from '@angular/core';
 
 @Component({
   selector: 'app-personas',
@@ -19,7 +20,11 @@ import Swal from 'sweetalert2';
   styleUrl: './personas.component.css'
 })
 export class PersonasComponent implements OnInit {
-  personas: Persona[] = []
+  personas: Persona[] = [];
+
+  isImporting = false;
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
 
   constructor(
     private personaService: PersonaService,
@@ -128,6 +133,39 @@ export class PersonasComponent implements OnInit {
         }
       });
     }
+  }
+
+
+  dispararImportacion() {
+    this.fileInput.nativeElement.value = '';
+    this.fileInput.nativeElement.click();
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files && input.files[0];
+    if (!file) return;
+    this.isImporting = true;
+    this.personaService.importPersonas(file).subscribe({
+      next: (res) => {
+        this.cargarPersonas();
+        const errs = res?.errores?.length ? `<br/>Errores: ${res.errores.length}` : '';
+        Swal.fire({
+          icon: res?.errores?.length ? 'warning' : 'success',
+          title: 'Importación de personas',
+          html: `Filas: ${res?.total_filas||0}<br/>Válidas: ${res?.filas_validas||0}<br/>Creadas: ${res?.creadas||0}<br/>Actualizadas: ${res?.actualizadas||0}${errs}`,
+        });
+        if (res?.errores?.length) console.warn('Errores importación', res.errores);
+      },
+      error: (err) => {
+        const msg = err?.error?.error || 'No se pudo importar personas';
+        Swal.fire({ icon: 'error', title: 'Importación falló', text: msg });
+      },
+      complete: () => {
+        this.isImporting = false;
+        this.fileInput.nativeElement.value = '';
+      }
+    });
   }
 
 }

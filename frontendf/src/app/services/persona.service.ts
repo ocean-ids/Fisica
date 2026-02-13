@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { Observable } from 'rxjs';
+import { from, Observable } from 'rxjs';
 import { Persona } from '../models';
 
 @Injectable({
@@ -36,6 +36,13 @@ export class PersonaService {
 
   enablePersona(id: number): Observable<any>{
     return this.apiService.post(`/enable-persona/${id}/`, {});
+  }
+
+  importPersonas(file: File, dryRun = false) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const endpoint = `/importar-personas/${dryRun ? '?dry_run=true' : ''}`;
+    return this.apiService.post<any>(endpoint, formData);
   }
 
 }
