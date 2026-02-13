@@ -27,7 +27,7 @@
               <td>{{ persona.apellidos }}</td>
               <td>{{ persona.nombres }}</td>
               <td>
-                <span class="badge" [ngClass]="persona.tipo === 'SUPERVISOR' ? 'bg-success' : 'bg-primary'">
+                <span class="badge" [ngClass]="persona.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
                   {{ persona.tipo }}
                 </span>
               </td>

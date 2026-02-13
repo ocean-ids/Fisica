@@ -35,10 +35,8 @@
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Tipo</mat-label>
       <mat-select formControlName="tipo" required>
-        <mat-option value="SUPERVISOR">Supervisor</mat-option>
-        <mat-option value="FIJO">Fijo</mat-option>
-        <mat-option value="SACAFRANCO">Sacafranco</mat-option>
-        <mat-option value="EVENTUAL">Eventual</mat-option>
+        <mat-option *ngFor="let tipo of tipos" [value]="tipo">{{ tipo }}</mat-option>
+        
       </mat-select>
       <mat-error *ngIf="personaForm.get('tipo')?.hasError('required')">
         El tipo es requerido

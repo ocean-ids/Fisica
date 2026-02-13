@@ -224,12 +224,15 @@ class ActiveManager(models.Manager):
 
 class Persona(models.Model):
     TIPO_CHOICES = [
-        ('SUPERVISOR', 'SUPERVISOR'),
-        ('FIJO', 'FIJO'),
+        ('FIJOS', 'FIJOS'),
+        ('RETENES', 'RETENES'),
+        ('EVENTUALES', 'EVENTUALES'),
         ('SACAFRANCO', 'SACAFRANCO'),
-        ('EVENTUAL', 'EVENTUAL'),
+        ('SACAVACACIONES', 'SACAVACACIONES'),
+        ('SUPERVISOR ZONAL', 'SUPERVISOR ZONAL'),
+        ('SUPERVISOR MOTORIZADO', 'SUPERVISOR MOTORIZADO'),
     ]
-    tipo = models.CharField(null=True, max_length=15, choices=TIPO_CHOICES)
+    tipo = models.CharField(null=True, max_length=25, choices=TIPO_CHOICES)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     cedula = models.CharField(max_length=10, unique=True, validators=[cedula_validator])

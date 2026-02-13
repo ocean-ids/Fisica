@@ -25,6 +25,15 @@ import { Persona } from '../../../models/persona.model';
 })
 export class PersonaFormComponent implements OnInit {
   personaForm!: FormGroup;
+  tipos: Persona['tipo'][] = [
+    'FIJOS',
+    'RETENES',
+    'EVENTUALES',
+    'SACAFRANCO',
+    'SACAVACACIONES',
+    'SUPERVISOR ZONAL',
+    'SUPERVISOR MOTORIZADO'
+  ];
 
   constructor(
     private fb: FormBuilder,
@@ -37,7 +46,7 @@ export class PersonaFormComponent implements OnInit {
       nombres: [this.persona?.nombres || '', Validators.required],
       apellidos: [this.persona?.apellidos || '', Validators.required],
       cedula: [this.persona?.cedula || '', [Validators.required, Validators.pattern('^[0-9]{1,10}$'), Validators.maxLength(10)]],
-      tipo: [this.persona?.tipo || 'FIJO', Validators.required]
+      tipo: [this.persona?.tipo ?? 'FIJOS', Validators.required]
     });
   }
 
