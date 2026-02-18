@@ -1,10 +1,15 @@
 <div class="container-fluid p-4">
   
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Gestión de Clientes</h2>
-    <button class="btn btn-primary" (click)="openDialog()">
+    <h2 class="m-0">Gestión de Clientes</h2>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary" >
+        <i class="bi bi-upload"></i> Importar
+      </button>
+      <button class="btn btn-primary" (click)="openDialog()">
       <i class="bi bi-plus-circle"></i> Nuevo Cliente
-    </button>
+      </button>
+    </div>
   </div>
 
   <div class="d-flex justify-content-center gap-2 pt-2 mb-3 sticky-top">
@@ -32,7 +37,6 @@
               <th>RUC</th>
               <th>Razón Social</th>
               <th>Nombre Comercial</th>
-              <th>Tamaño</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
@@ -41,7 +45,6 @@
               <td>{{ c.ruc || '-' }}</td>
               <td>{{ c.razon_social }}</td>
               <td>{{ c.nombre_comercial }}</td>
-              <td>{{ sizeLabels[c.size || 'MEDIANO'] }}</td>
               <td class="d-flex justify-content-around">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="openDialog(c)">
                   <i class="bi bi-pencil"></i> Editar
