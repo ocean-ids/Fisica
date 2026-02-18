@@ -132,4 +132,23 @@ export class ClientesComponent implements OnInit {
       Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar' });
     }
   }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files && input.files[0];
+    if (!file) return;
+    this.clienteService.importClientes(file).subscribe({
+      next: (res) => {
+        const resumen = `Creados: ${res?.clientes_creados || 0}, Actualizados: ${res?.clientes_actualizados || 0}, Instalaciones creadas: ${res?.instalaciones_creadas || 0}, actualizadas: ${res?.instalaciones_actualizadas || 0}, Errores: ${res?.errores_total || 0}`;
+        Swal.fire({ icon: 'success', title: 'Importación', text: resumen });
+        this.loadClientes();
+      },
+      error: (err) => {
+        const msg = err?.error?.error || 'No se pudo importar';
+        Swal.fire({ icon: 'error', title: 'Error', text: msg });
+      }
+    });
+    // reset input value to allow re-upload same file
+    input.value = '';
+  }
 }

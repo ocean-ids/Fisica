@@ -5,6 +5,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,)
 from .views.auth_views import login_view, logout_view, user_view, solicitar_reset_password, reset_password
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
+from .views.importar_clientes import importar_clientes
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
 from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona, disable_persona, enable_persona, importar_personas
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto
@@ -26,6 +27,7 @@ urlpatterns = [
     path('clientes/<str:id>/', obtener_cliente_id),
     path('actualizar-cliente/<int:id>/', actualizar_cliente),
     path('eliminar-cliente/<int:id>/', eliminar_cliente),
+    path('importar-clientes/', importar_clientes),
     path('personas/', obtener_personas),
     path('crear-persona/', crear_persona),
     path('actualizar-persona/<int:id>/', actualizar_persona),

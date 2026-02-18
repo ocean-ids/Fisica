@@ -29,4 +29,12 @@ export class ClienteService {
   deleteCliente(id: number): Observable<any> {
     return this.apiService.delete(`/eliminar-cliente/${id}/`);
   }
+
+  importClientes(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.apiService.post<any>('/importar-clientes/', formData);
+  }
+
+
 }
