@@ -3,6 +3,7 @@ from django.core.validators import RegexValidator
 
 
 class Cliente(models.Model):
+
     ruc = models.CharField(
         max_length=13,
         unique=True,
@@ -12,7 +13,17 @@ class Cliente(models.Model):
     )
     razon_social = models.CharField(max_length=100)
     nombre_comercial = models.CharField(max_length=100)
-    
+    SIZE_CHOICES = [
+        ('PEQUENO', 'Pequeño'),
+        ('MEDIANO', 'Mediano'),
+        ('GRANDE', 'Grande'),
+    ]
+    size = models.CharField(max_length=10,
+        choices=SIZE_CHOICES,
+        default='MEDIANO',
+        db_index=True,
+        verbose_name='Tamaño del Cliente',
+    )
     
 
     class Meta:

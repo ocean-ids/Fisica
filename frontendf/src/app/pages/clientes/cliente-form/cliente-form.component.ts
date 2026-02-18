@@ -6,6 +6,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { Cliente } from '../../../models/cliente.model';
+import { MatSelectModule } from '@angular/material/select';
+
 
 
 @Component({
@@ -16,13 +18,15 @@ import { Cliente } from '../../../models/cliente.model';
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
-    MatButtonModule
+    MatButtonModule, 
+    MatSelectModule
   ],
   templateUrl: './cliente-form.component.html',
   styleUrl: './cliente-form.component.css'
 })
-export class ClienteFormComponent {
+export class ClienteFormComponent implements OnInit {
   clienteForm!: FormGroup;
+  
    constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<ClienteFormComponent>,
@@ -37,7 +41,8 @@ export class ClienteFormComponent {
         Validators.pattern(/^\d{10}(\d{3})?$/),
         Validators.minLength(10),
         Validators.maxLength(13)
-      ]]
+      ]],
+      size: [this.cliente?.size || 'PEQUEÑO', Validators.required]
     });
   }
 

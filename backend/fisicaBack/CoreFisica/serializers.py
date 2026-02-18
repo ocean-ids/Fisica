@@ -31,7 +31,8 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'id': obj.cliente.id,
             'nombre_comercial': obj.cliente.nombre_comercial,
             'razon_social': obj.cliente.razon_social,
-            'ruc': getattr(obj.cliente, 'ruc', '') or ''
+            'ruc': getattr(obj.cliente, 'ruc', '') or '',
+            'size': getattr(obj.cliente, 'size', None)
         }
     
     def get_instalacion_detalle(self, obj):
