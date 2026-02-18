@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,13 +14,34 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [CommonModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.css'
 })
 export class ClientesComponent implements OnInit {
   clientes: Cliente[] = [];
-  displayedColumns = ['razon_social', 'nombre_comercial', 'acciones'];
+  displayedColumns = ['ruc', 'razon_social', 'nombre_comercial', 'size', 'acciones'];
+
+  filtroTexto = '';
+  filtroSize = '';
+
+  sizeLabels: Record<string, string> = {
+    PEQUENO: 'Pequeño',
+    MEDIANO: 'Mediano',
+    GRANDE: 'Grande'
+  };
+
+  get clientesFiltrados(): Cliente[] {
+    const texto = this.filtroTexto.trim().toLowerCase();
+    return this.clientes.filter(c => {
+      const matchTexto = !texto ||
+        (c.ruc || '').toLowerCase().includes(texto) ||
+        (c.razon_social || '').toLowerCase().includes(texto) ||
+        (c.nombre_comercial || '').toLowerCase().includes(texto);
+      const matchSize = !this.filtroSize || c.size === this.filtroSize;
+      return matchTexto && matchSize;
+    });
+  }
 
   constructor(
     private clienteService: ClienteService,
@@ -31,11 +53,21 @@ export class ClientesComponent implements OnInit {
   }
 
   loadClientes(): void {
-    this.clienteService.getClientes().subscribe({
+    const params: any = {};
+    if (this.filtroTexto) params.q = this.filtroTexto;
+    if (this.filtroSize) params.size = this.filtroSize;
+    this.clienteService.getClientes(params).subscribe({
       next: data => this.clientes = data,
       error: err => console.error('Error al cargar clientes:', err)
     });
   }
+
+  limpiarFiltros(): void {
+    this.filtroTexto = '';
+    this.filtroSize = '';
+    this.loadClientes();
+  }
+
   openDialog(cliente?: Cliente): void {
     const dialogRef = this.dialog.open(ClienteFormComponent, {
       width: '500px',

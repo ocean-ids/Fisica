@@ -10,8 +10,8 @@ export class ClienteService {
 
   constructor(private apiService: ApiService) { }
 
-  getClientes(): Observable<Cliente[]> {
-    return this.apiService.get<Cliente[]>('/clientes/');
+  getClientes(params?: any): Observable<Cliente[]> {
+    return this.apiService.get<Cliente[]>('/clientes/', { params });
   }
 
   getCliente(id: number): Observable<Cliente> {

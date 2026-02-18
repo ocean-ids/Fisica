@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from django.db.models import Q
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import json
@@ -10,7 +11,23 @@ ALLOWED_SIZES = {choice[0] for choice in Cliente.SIZE_CHOICES}
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_clientes(request):
-    qs = Cliente.objects.all().values('id', 'razon_social', 'nombre_comercial', 'ruc', 'size')
+
+    q = request.GET.get('q', '').strip()
+    size = request.GET.get('size', '').strip()
+
+    qs = Cliente.objects.all()
+
+    if q:
+        qs = qs.filter(
+            Q(ruc__icontains=q) |
+            Q(razon_social__icontains=q) |
+            Q(nombre_comercial__icontains=q)
+        )
+
+    if size:
+        qs = qs.filter(size=size)
+
+    qs = qs.values('id', 'razon_social', 'nombre_comercial', 'ruc', 'size')
     try:
         count = qs.count()
     except Exception:
@@ -48,7 +65,7 @@ def crear_cliente(request):
             razon_social = data.get('razon_social')
             nombre_comercial = data.get('nombre_comercial')
             ruc = data.get('ruc')
-            size = data.get('size', 'PEQUENO')
+            size = data.get('size', 'MEDIANO')
             
             if not razon_social or not nombre_comercial:
                 return JsonResponse({'error': 'Faltan campos obligatorios'}, status=400)

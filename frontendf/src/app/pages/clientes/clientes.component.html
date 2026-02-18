@@ -7,6 +7,22 @@
     </button>
   </div>
 
+  <div class="d-flex justify-content-center gap-2 pt-2 mb-3 sticky-top">
+    <input class="form-control"
+          placeholder="Buscar por RUC, Razón Social o Nombre Comercial"
+          [(ngModel)]="filtroTexto"
+           style="max-width: 70%;">
+    <select class="form-select"
+            [(ngModel)]="filtroSize"
+             style="max-width: 17%;">
+      <option value="">Tamaño del Cliente</option>
+      <option value="PEQUENO">Pequeño</option>
+      <option value="MEDIANO">Mediano</option>
+      <option value="GRANDE">Grande</option>
+    </select>
+    <button class="btn btn-outline-secondary" (click)="limpiarFiltros()">Limpiar</button>
+  </div>
+
   <div class="card">
     <div class="card-body">
       <div class="table-responsive">
@@ -16,14 +32,16 @@
               <th>RUC</th>
               <th>Razón Social</th>
               <th>Nombre Comercial</th>
+              <th>Tamaño</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr class="text-center" *ngFor="let c of clientes">
+            <tr class="text-center" *ngFor="let c of clientesFiltrados">
               <td>{{ c.ruc || '-' }}</td>
               <td>{{ c.razon_social }}</td>
               <td>{{ c.nombre_comercial }}</td>
+              <td>{{ sizeLabels[c.size || 'MEDIANO'] }}</td>
               <td class="d-flex justify-content-around">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="openDialog(c)">
                   <i class="bi bi-pencil"></i> Editar
