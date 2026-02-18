@@ -37,6 +37,7 @@
               <th>RUC</th>
               <th>Razón Social</th>
               <th>Nombre Comercial</th>
+              <th>Clasificación</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
@@ -45,13 +46,13 @@
               <td>{{ c.ruc || '-' }}</td>
               <td>{{ c.razon_social }}</td>
               <td>{{ c.nombre_comercial }}</td>
+              <td>{{ sizeLabels[c.size || 'PEQUENO'] }}</td>
               <td class="d-flex justify-content-around">
                 <button class="btn btn-sm btn-outline-primary me-2" (click)="openDialog(c)">
                   <i class="bi bi-pencil"></i> Editar
                 </button>
                 <button class="btn btn-sm btn-outline-danger" (click)="confirmarEliminar(c)">
                   <i class="bi bi-trash"></i> Eliminar
-                  
                 </button>
               </td>
             </tr>
