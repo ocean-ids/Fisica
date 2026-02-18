@@ -12,31 +12,33 @@
       <div class="table-responsive">
         <table class="table table-hover table-bordered">
           <thead class="table-light">
-            <tr class="text-center">
-              <th>Cliente</th>
-              <th>Código</th>
-              <th>Nombre</th>
-              <th>Provincia</th>
-              <th>Ciudad o Cantón</th>
-              <th>Dirección</th>
-              <th class="text-center">Acciones</th>
+            <tr class="text-center align-middle">
+              <th class="align-middle">Cliente</th>
+              <th class="align-middle">Código</th>
+              <th class="align-middle">Nombre</th>
+              <th class="align-middle">Provincia</th>
+              <th class="align-middle">Ciudad o Cantón</th>
+              <th class="align-middle">Dirección</th>
+              <th class="align-middle text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr class="text-center" *ngFor="let instalacion of instalaciones">
-                <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
-                <td>{{ instalacion.codigo || '-' }}</td>
-                <td>{{ instalacion.nombre || '-' }}</td>
-              <td>{{ instalacion.provincia }}</td>
-              <td>{{ instalacion.ciudad }}</td>
-              <td>{{ instalacion.direccion || '-' }}</td>
-              <td class="d-flex justify-content-around">
-                <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirModal(instalacion)">
-                  <i class="bi bi-pencil"></i> Editar
-                </button>
-                <button class="btn btn-sm btn-outline-danger" (click)="confirmarEliminar(instalacion)">
-                  <i class="bi bi-trash"></i> Eliminar
-                </button>
+            <tr class="text-center align-middle" *ngFor="let instalacion of instalaciones">
+              <td class="align-middle">{{ getNombreCliente(instalacion.cliente_id) }}</td>
+              <td class="align-middle">{{ instalacion.codigo || '-' }}</td>
+              <td class="align-middle">{{ instalacion.nombre || '-' }}</td>
+              <td class="align-middle">{{ instalacion.provincia }}</td>
+              <td class="align-middle">{{ instalacion.ciudad }}</td>
+              <td class="align-middle">{{ instalacion.direccion || '-' }}</td>
+              <td class="align-middle">
+                <div class="d-flex justify-content-center gap-2">
+                  <button class="btn btn-sm btn-outline-primary" (click)="abrirModal(instalacion)">
+                    <i class="bi bi-pencil"></i> Editar
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" (click)="confirmarEliminar(instalacion)">
+                    <i class="bi bi-trash"></i> Eliminar
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
