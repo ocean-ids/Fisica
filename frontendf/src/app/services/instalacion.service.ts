@@ -9,8 +9,8 @@ import { Instalacion } from '../models';
 export class InstalacionService {
   constructor(private apiService: ApiService){}
   
-  getInstalaciones(): Observable<Instalacion[]>{
-    return this.apiService.get<Instalacion[]>('/instalaciones/');
+  getInstalaciones(params?: any): Observable<Instalacion[]> {
+    return this.apiService.get<Instalacion[]>('/instalaciones/', params);
   }
 
   getInstalacion(id: number): Observable<Instalacion>{

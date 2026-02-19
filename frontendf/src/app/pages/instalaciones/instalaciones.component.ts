@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,13 +15,16 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-instalaciones',
   standalone: true,
-  imports: [CommonModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
   templateUrl: './instalaciones.component.html',
   styleUrl: './instalaciones.component.css'
 })
 export class InstalacionesComponent implements OnInit {
   instalaciones: any[] = [];
   clientes: Cliente[] = [];
+
+  filtroTexto = '';
+  filtroClienteId = '';
 
   constructor(
     private instalacionService: InstalacionService,
@@ -34,12 +38,22 @@ export class InstalacionesComponent implements OnInit {
   }
 
   cargarInstalaciones(): void {
-    this.instalacionService.getInstalaciones().subscribe({
+    const params: any = {};
+    if (this.filtroTexto.trim()) params.q = this.filtroTexto.trim();
+    if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
+
+    this.instalacionService.getInstalaciones(params).subscribe({
       next: (data) => {
         this.instalaciones = data;
       },
       error: (error) => console.error('Error al cargar instalaciones:', error)
     });
+  }
+
+  limpiarFiltros(): void {
+    this.filtroTexto = '';
+    this.filtroClienteId = '';
+    this.cargarInstalaciones();
   }
 
   cargarClientes(): void {

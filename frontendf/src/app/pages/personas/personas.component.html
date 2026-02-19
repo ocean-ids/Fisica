@@ -16,10 +16,10 @@
       class="d-none" (change)="onFileSelected($event)">
 
   <div class="d-flex justify-content-center gap-2 pt-2 mb-3 sticky-top ">
-    <input class="form-control" style="max-width: 70%;"
+    <input class="form-control" style="max-width: 60%;"
          placeholder="Buscar por cédula, nombre o apellido"
          [(ngModel)]="filtroTexto" (ngModelChange)="cargarPersonas()">
-    <select class="form-select" style="max-width: 15%;"
+    <select class="form-select" style="max-width: 20%;"
             [(ngModel)]="filtroTipo" (ngModelChange)="cargarPersonas()">
       <option value="">Todos los tipos</option>
       <option *ngFor="let t of tipos" [value]="t">{{ t }}</option>

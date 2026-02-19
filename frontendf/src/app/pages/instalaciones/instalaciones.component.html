@@ -1,10 +1,25 @@
 <div class="container-fluid p-4">
   
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Gestión de Instalaciones</h2>
-    <button class="btn btn-primary" (click)="abrirModal()">
-      <i class="bi bi-plus-circle"></i> Nueva Instalación
-    </button>
+    <h2 class="m-0">Gestión de Instalaciones</h2>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" (click)="abrirModal()">
+        <i class="bi bi-plus-circle"></i> Nueva Instalación
+      </button>
+    </div>
+  </div>
+  <div class="d-flex justify-content-center gap-2 pt-2 mb-3 sticky-top">
+  <input class="form-control" style="max-width: 60%;"
+          placeholder="Buscar por nombre, código, provincia, ciudad o dirección"
+          [(ngModel)]="filtroTexto"
+          (ngModelChange)="cargarInstalaciones()">
+    <select class="form-select" style="max-width: 20%;"
+            [(ngModel)]="filtroClienteId"
+            (ngModelChange)="cargarInstalaciones()">
+      <option value="">Todos los clientes</option>
+      <option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</option>
+    </select>
+    <button class="btn btn-outline-secondary" (click)="limpiarFiltros()">Limpiar</button>
   </div>
 
   <div class="card">
@@ -15,7 +30,7 @@
             <tr class="text-center align-middle">
               <th class="align-middle">Cliente</th>
               <th class="align-middle">Código</th>
-              <th class="align-middle">Nombre</th>
+              <th class="align-middle">Nombre de la Instalación</th>
               <th class="align-middle">Provincia</th>
               <th class="align-middle">Ciudad</th>
               <th class="align-middle">Dirección</th>

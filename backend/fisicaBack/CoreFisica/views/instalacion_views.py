@@ -2,13 +2,31 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import json
-from ..models import Cliente, Instalacion
+from ..models import Instalacion
+from django.db.models import Q
 from ..serializers import InstalacionSerializer
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_instalaciones(request):
-    instalaciones = Instalacion.objects.all().values('id', 'nombre', 'provincia', 'ciudad', 'cliente_id', 'codigo', 'direccion')
+    q = (request.GET.get('q') or '').strip()
+    cliente_id = request.GET.get('cliente_id')
+
+    qs = Instalacion.objects.select_related('cliente').all()
+
+    if cliente_id:
+        qs = qs.filter(cliente_id=cliente_id)
+
+    if q:
+        qs = qs.filter(
+            Q(nombre__icontains=q) |
+            Q(codigo__icontains=q) |
+            Q(provincia__icontains=q) |
+            Q(ciudad__icontains=q) |
+            Q(direccion__icontains=q)
+        )
+
+    instalaciones = qs.values('id', 'nombre', 'provincia', 'ciudad', 'cliente_id', 'codigo', 'direccion')
     return JsonResponse(list(instalaciones), safe=False)
 
 
