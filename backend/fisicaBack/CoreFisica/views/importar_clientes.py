@@ -20,10 +20,15 @@ HEADER_MAP = {
     'INSTALACIÓN': 'instalacion',
     'PROVINCIA': 'provincia',
     'CIUDAD': 'ciudad',
+    
+    'NOMBRE DE PUESTO': 'puesto_nombre',
+    'PUESTO NOMBRE': 'puesto_nombre',
+    'PUESTO_NOMBRE': 'puesto_nombre',
+    
     'PUESTO': 'puesto',
     'PUESTOS': 'puesto',
-    'PUESTO NOMBRE': 'puesto',
-    'PUESTO_NOMBRE': 'puesto',
+    'TIPO DE PUESTO': 'puesto_tipo',
+    'TIPO DE PUESTOS': 'puesto_tipo',
     'TIPO PUESTO': 'puesto_tipo',
     'TIPO_PUESTO': 'puesto_tipo',
     'PUESTO TIPO': 'puesto_tipo',
@@ -121,7 +126,8 @@ def importar_clientes(request):
             inst_nombre = col('instalacion') or 'SIN NOMBRE'
             provincia = col('provincia')
             ciudad = col('ciudad')
-            puesto_nombre = col('puesto')
+            # Preferimos la columna "NOMBRE DE PUESTO" si existe; si no, usamos el respaldo genérico "PUESTO"
+            puesto_nombre = col('puesto_nombre') or col('puesto')
             puesto_tipo = col('puesto_tipo') or None
 
             if not nombre_comercial:
