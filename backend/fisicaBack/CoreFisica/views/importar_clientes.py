@@ -6,7 +6,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from openpyxl import load_workbook
 from ..models import Cliente, Instalacion, Puesto
 
-# Mapear encabezados del Excel a nombres internos
+
 HEADER_MAP = {
     'RUC': 'ruc',
     'RAZON SOCIAL': 'razon_social',
@@ -66,7 +66,7 @@ def norm_class(val):
 def norm_header_key(val: str) -> str:
     key = norm(val).upper()
     key = key.replace('_', ' ')
-    key = ' '.join(key.split())  # colapsar espacios múltiples
+    key = ' '.join(key.split())  
     return key
 
 
@@ -126,7 +126,7 @@ def importar_clientes(request):
             inst_nombre = col('instalacion') or 'SIN NOMBRE'
             provincia = col('provincia')
             ciudad = col('ciudad')
-            # Preferimos la columna "NOMBRE DE PUESTO" si existe; si no, usamos el respaldo genérico "PUESTO"
+            
             puesto_nombre = col('puesto_nombre') or col('puesto')
             puesto_tipo = col('puesto_tipo') or None
 
@@ -134,7 +134,7 @@ def importar_clientes(request):
                 errors.append(f"Fila {i}: sin nombre_comercial")
                 continue
 
-            # Cliente por RUC si hay, si no por nombre_comercial
+            
             if ruc:
                 cliente, created = Cliente.objects.get_or_create(
                     ruc=ruc,
