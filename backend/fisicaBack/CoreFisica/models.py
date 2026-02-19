@@ -17,6 +17,7 @@ class Cliente(models.Model):
         ('PEQUENO', 'Pequeño'),
         ('MEDIANO', 'Mediano'),
         ('GRANDE', 'Grande'),
+        ('OFICINA', 'Oficina'),
     ]
     size = models.CharField(max_length=10,
         choices=SIZE_CHOICES,

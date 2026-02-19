@@ -28,7 +28,8 @@ export class ClientesComponent implements OnInit {
   sizeLabels: Record<string, string> = {
     PEQUENO: 'Pequeño',
     MEDIANO: 'Mediano',
-    GRANDE: 'Grande'
+    GRANDE: 'Grande',
+    OFICINA: 'Oficina'
   };
 
   get clientesFiltrados(): Cliente[] {

@@ -32,6 +32,7 @@ CLASSIF_MAP = {
     'MEDIANA': 'MEDIANO',
     'GRANDE': 'GRANDE',
     'GRAN': 'GRANDE',
+    'OFICINA': 'OFICINA',
 }
 
 
