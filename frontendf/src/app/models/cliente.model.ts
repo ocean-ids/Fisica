@@ -3,5 +3,5 @@ export interface Cliente {
   ruc?: string;
   razon_social: string;
   nombre_comercial: string;
-  size?: 'PEQUEÑO' | 'MEDIANO' | 'GRANDE';
+  size?: 'PEQUEÑO' | 'MEDIANO' | 'GRANDE' | 'OFICINA';
 }
