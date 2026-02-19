@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from openpyxl import load_workbook
-from ..models import Cliente, Instalacion
+from ..models import Cliente, Instalacion, Puesto
 
 # Mapear encabezados del Excel a nombres internos
 HEADER_MAP = {
@@ -20,6 +20,14 @@ HEADER_MAP = {
     'INSTALACIÓN': 'instalacion',
     'PROVINCIA': 'provincia',
     'CIUDAD': 'ciudad',
+    'PUESTO': 'puesto',
+    'PUESTOS': 'puesto',
+    'PUESTO NOMBRE': 'puesto',
+    'PUESTO_NOMBRE': 'puesto',
+    'TIPO PUESTO': 'puesto_tipo',
+    'TIPO_PUESTO': 'puesto_tipo',
+    'PUESTO TIPO': 'puesto_tipo',
+    'PUESTO_TIPO': 'puesto_tipo',
 }
 
 # Normalización de clasificación a los valores del modelo
@@ -95,6 +103,7 @@ def importar_clientes(request):
 
     created_clientes = updated_clientes = 0
     created_inst = updated_inst = 0
+    created_puestos = updated_puestos = 0
     errors = []
 
     start_row = (header_row_num or 0) + 1
@@ -112,6 +121,8 @@ def importar_clientes(request):
             inst_nombre = col('instalacion') or 'SIN NOMBRE'
             provincia = col('provincia')
             ciudad = col('ciudad')
+            puesto_nombre = col('puesto')
+            puesto_tipo = col('puesto_tipo') or None
 
             if not nombre_comercial:
                 errors.append(f"Fila {i}: sin nombre_comercial")
@@ -169,11 +180,34 @@ def importar_clientes(request):
             elif inst_created:
                 created_inst += 1
 
+            # Puesto por instalación + nombre
+            if puesto_nombre:
+                puesto_defaults = {'cantidad_guardias': 1}
+                if puesto_tipo:
+                    puesto_defaults['tipo'] = puesto_tipo
+                puesto, puesto_created = Puesto.objects.get_or_create(
+                    instalacion=instalacion,
+                    nombre=puesto_nombre,
+                    defaults=puesto_defaults,
+                )
+                if puesto_created:
+                    created_puestos += 1
+                else:
+                    changed = False
+                    if puesto_tipo and puesto.tipo != puesto_tipo:
+                        puesto.tipo = puesto_tipo
+                        changed = True
+                    if changed:
+                        puesto.save(update_fields=['tipo'])
+                        updated_puestos += 1
+
     summary = {
         'clientes_creados': created_clientes,
         'clientes_actualizados': updated_clientes,
         'instalaciones_creadas': created_inst,
         'instalaciones_actualizadas': updated_inst,
+        'puestos_creados': created_puestos,
+        'puestos_actualizados': updated_puestos,
         'errores': errors[:10],
         'errores_total': len(errors),
     }

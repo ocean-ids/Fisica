@@ -41,15 +41,16 @@ export class PuestoFormComponent implements OnInit {
     const puesto = this.data.puesto || {};
     this.puestoForm = this.fb.group({
       nombre: [puesto?.nombre || '', Validators.required],
+      tipo: [puesto?.tipo || ''],
       instalacion_id: [puesto?.instalacion_id || '', Validators.required],
       cantidad_guardias: [puesto?.cantidad_guardias ?? 1, Validators.required],
       horarios: this.fb.array([])
     });
 
-    // initialize horarios from existing puesto or a single empty horario
+    
     const initialHorarios = puesto?.horarios && Array.isArray(puesto.horarios) ? puesto.horarios : [];
     if (initialHorarios.length) {
-      // Agrupa días que comparten mismas horas y turno para rearmar un solo bloque
+      
       const grouped: Record<string, { horas: string; turno: string; days: number[] }> = {};
       for (const h of initialHorarios) {
         const turno = h.turno || 'Diurno';
@@ -81,7 +82,7 @@ export class PuestoFormComponent implements OnInit {
     if (!v) return null;
     if (v.startsWith('n')) return 'Nocturno';
     if (v.startsWith('d')) return 'Diurno';
-    // fallback: if already Diurno/Nocturno return as-is with capitalization
+
     if (v.includes('noct')) return 'Nocturno';
     if (v.includes('diurn')) return 'Diurno';
     return null;
@@ -91,7 +92,7 @@ export class PuestoFormComponent implements OnInit {
     if (this.puestoForm.valid) {
       const formValue = this.puestoForm.value;
       const selectedInstalacion = this.instalaciones.find(i => i.id === formValue.instalacion_id);
-      // build horarios payload: expand checked days into one object per day
+
       const horariosPayload: any[] = [];
       const horariosFA = this.puestoForm.get('horarios') as any;
       for (let i = 0; i < horariosFA.length; i++) {
@@ -125,10 +126,10 @@ export class PuestoFormComponent implements OnInit {
       days: [days]
     });
 
-    // Ajustar horas máximas según turno: Diurno/Nocturno hasta 12, Ambos hasta 24.
+    
     group.get('turno')?.valueChanges.subscribe((t: string | null) => {
       const turnoVal = t ?? undefined;
-      // Si es Ambos, sugerimos el máximo visible en input time (23:59) y lo tratamos como 24 al enviar
+      
       if (turnoVal === 'Ambos') {
         group.get('horas')?.setValue('23:59', { emitEvent: false });
       }
@@ -149,7 +150,7 @@ export class PuestoFormComponent implements OnInit {
     const max = (turno === 'Ambos') ? 24 : 12;
     const clamped = Math.min(Math.max(val, 0), max);
     if (clamped !== val) {
-      // Para mostrar en input time, 24 se representa como 23:59
+      
       horasCtrl.setValue(this.toTimeString(clamped === 24 ? 23.9833 : clamped), { emitEvent: false });
     }
   }
@@ -160,7 +161,7 @@ export class PuestoFormComponent implements OnInit {
       const [hh, mm] = raw.split(':').map(Number);
       let total = (hh || 0) + (mm || 0) / 60;
       if (total > 23.9833 && (turno === 'Ambos' || turno === 'ambos')) {
-        total = 24; // tratar 23:59 como 24h al enviar
+        total = 24; 
       }
       const max = turno === 'Ambos' ? 24 : 12;
       return Math.min(Math.max(total, 0), max);
@@ -178,7 +179,7 @@ export class PuestoFormComponent implements OnInit {
       const m = Math.round((n - h) * 60);
       return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
     }
-    // Si es 24, devolvemos 23:59 porque input time no admite 24:00
+    
     if (hours >= 24) return '23:59';
     const h = Math.floor(hours);
     const m = Math.round((hours - h) * 60);

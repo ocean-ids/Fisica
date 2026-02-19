@@ -29,6 +29,7 @@
           <thead class="table-light">
             <tr class="text-center">
               <th>Nombre</th>
+              <th>Tipo</th>
               <th>Cantidad de Guardias</th>
               <th>Días</th>
               <th> Horas</th>
@@ -41,6 +42,7 @@
           <tbody>
             <tr class="text-center" *ngFor="let puesto of puestos">
               <td>{{ puesto.nombre }}</td>
+              <td>{{puesto.tipo}}</td>
               <td>{{ puesto.cantidad_guardias }}</td>
               <td>{{ getDias(puesto) }}</td>
               <td>{{ getHoras(puesto) }}</td>

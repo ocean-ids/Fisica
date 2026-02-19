@@ -10,6 +10,11 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Tipo</mat-label>
+      <input matInput formControlName="tipo">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
       <mat-label>Instalación</mat-label>
       <mat-select formControlName="instalacion_id" required>
         <mat-option *ngFor="let instalacion of instalaciones" [value]="instalacion.id">

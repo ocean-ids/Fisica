@@ -107,7 +107,7 @@ class PuestoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Puesto
-        fields = ('id', 'instalacion', 'nombre', 'cantidad_guardias',
+        fields = ('id', 'instalacion', 'nombre', 'tipo', 'cantidad_guardias',
                   'resumen', 'horarios')
 
     def create(self, validated_data):
