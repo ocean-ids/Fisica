@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { HorarioService } from '../../../services/horario.service';
 
 @Component({
   selector: 'app-horario-form',
@@ -24,17 +25,29 @@ import { MatSelectModule } from '@angular/material/select';
 })
 export class HorarioFormComponent implements OnInit {
   horarioForm!: FormGroup;
+  patrones: any[] = [];
 
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<HorarioFormComponent>,
-    @Inject(MAT_DIALOG_DATA) public horario: any
+    @Inject(MAT_DIALOG_DATA) public horario: any,
+    private horarioService: HorarioService,
   ) {}
 
   ngOnInit(): void {
     this.horarioForm = this.fb.group({
       hora_ingreso: [this.horario?.hora_ingreso || null, Validators.required],
-      hora_salida: [this.horario?.hora_salida || null, Validators.required]
+      hora_salida: [this.horario?.hora_salida || null, Validators.required],
+      patron_id: [this.horario?.patronHorario?.id || null],
+    });
+
+    this.cargarPatrones();
+  }
+
+  private cargarPatrones(): void {
+    this.horarioService.obtenerPatrones().subscribe({
+      next: (data) => (this.patrones = data || []),
+      error: (err) => console.error('Error al cargar patrones', err),
     });
   }
 

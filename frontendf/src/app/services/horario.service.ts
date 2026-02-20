@@ -45,4 +45,29 @@ export class HorarioService {
       headers: this.getHeaders()
     });
   }
+
+  obtenerPatrones(): Observable<any[]>{
+    return this.http.get<any[]>(`${this.apiUrl}/patrones/`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  crearPatron(payload: any): Observable<any>{
+    return this.http.post(`${this.apiUrl}/crear-patron/`, payload, {
+      headers: this.getHeaders()
+    });
+  }
+
+  actualizarPatron(id: number, payload: any): Observable<any>{
+    return this.http.put(`${this.apiUrl}/actualizar-patron/${id}/`, payload, {
+      headers: this.getHeaders()
+    });
+  }
+
+  eliminarPatron(id: number): Observable<any>{
+    return this.http.delete(`${this.apiUrl}/eliminar-patron/${id}/`, {
+      headers: this.getHeaders()
+    });
+  }
+
 }
