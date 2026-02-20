@@ -29,7 +29,6 @@ export class HorarioService {
   }
 
   crearHorario(horario: Horario): Observable<any>{
-    // patron_id eliminado, solo se envía hora_ingreso y hora_salida
     return this.http.post(`${this.apiUrl}/crear-horario/`, {
       hora_ingreso: horario.hora_ingreso,
       hora_salida: horario.hora_salida
