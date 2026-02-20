@@ -9,7 +9,7 @@ from .views.importar_clientes import importar_clientes
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
 from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona, disable_persona, enable_persona, importar_personas
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto
-from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
+from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario, crear_patron, obtener_patrones, actualizar_patron, eliminar_patron
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion, exportar_asignaciones_excel
 from .views.asignacion_semanal_views import listar_asignacion_semanal, semanas_del_mes, crear_o_actualizar_asignacion_semanal, copiar_semana
 
@@ -44,6 +44,10 @@ urlpatterns = [
     path('crear-horario/', crear_horario),
     path('actualizar-horario/<int:id>/', actualizar_horario),
     path('eliminar-horario/<int:id>/', eliminar_horario),
+    path('patrones/', obtener_patrones),
+    path('crear-patron/', crear_patron),
+    path('actualizar-patron/<int:id>/', actualizar_patron),
+    path('eliminar-patron/<int:id>/', eliminar_patron),
     path('puestos/', obtener_puestos),
     path('crear-puesto/', crear_puesto),
     path('actualizar-puesto/<int:id>/', actualizar_puesto),

@@ -61,7 +61,13 @@ class AsignacionSerializer(serializers.ModelSerializer):
         return {
             'id': obj.horario.id,
             'hora_ingreso': str(obj.horario.hora_ingreso),
-            'hora_salida': str(obj.horario.hora_salida)
+            'hora_salida': str(obj.horario.hora_salida),
+            'patronHorario': {
+                'id': obj.horario.patronHorario.id,
+                'codigo': obj.horario.patronHorario.codigo,
+                'secuencia': obj.horario.patronHorario.secuencia
+            } if getattr(obj.horario, 'patronHorario', None) else None,
+
         }
     
     class Meta:

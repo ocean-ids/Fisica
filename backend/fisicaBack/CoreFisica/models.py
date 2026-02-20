@@ -272,13 +272,52 @@ class Persona(models.Model):
     def __str__(self):
         return f"{self.nombres} {self.apellidos}"
 
+class PatronHorario(models.Model):
+    codigo = models.CharField(
+        max_length=4,
+        unique=True,
+        db_index=True,
+        validators=[RegexValidator(regex=r'^\d{3,4}$', message='Use 3 o 4 dígitos')],
+    )
+    secuencia = models.JSONField(help_text="Ciclo ordenado (D/N/F/-)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    ALLOWED = {"D", "N", "F", "-"}
+
+    def clean(self):
+        seq = self.secuencia or []
+        if not isinstance(seq, list) or not seq:
+            raise ValueError("'secuencia' debe ser una lista no vacía")
+        cleaned = []
+        for token in seq:
+            t = str(token).strip().upper()
+            if t not in self.ALLOWED:
+                raise ValueError(f"Símbolo no permitido: {token}")
+            cleaned.append(t)
+        self.secuencia = cleaned
+
+    def __str__(self):
+        return f"{self.codigo} ({'-'.join(self.secuencia)})"
+    
+
+
 
 class Horario(models.Model):
     hora_ingreso = models.TimeField()
     hora_salida = models.TimeField()
+    patronHorario = models.ForeignKey(
+        PatronHorario,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='horarios')
+
+    
 
     def __str__(self):
-        return f"{self.hora_ingreso} - {self.hora_salida}"
+        patron_txt = f" {self.patronHorario.codigo}" if self.patronHorario else ""
+        return f"{self.hora_ingreso} - {self.hora_salida}{patron_txt}"
 
 
 class Asignacion(models.Model):
@@ -296,7 +335,7 @@ class Asignacion(models.Model):
     fecha = models.DateField(null=True, blank=True)
     mes = models.PositiveSmallIntegerField(default=1)
     anio = models.PositiveSmallIntegerField(default=2026)
-    # Recurrence: si `recurring` es True, la asignación aplica desde `start_date` hasta `end_date` (opcional)
+    
     recurring = models.BooleanField(default=False)
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
@@ -323,7 +362,7 @@ class AsignacionSemanal(models.Model):
     """
 
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE, related_name='asignaciones_semanales')
-    week_start = models.DateField()  # fecha del lunes de la semana
+    week_start = models.DateField()  
 
     mon = models.CharField(max_length=4, blank=True)
     tue = models.CharField(max_length=4, blank=True)
