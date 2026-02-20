@@ -23,49 +23,33 @@ export class HorarioService {
   }
 
   obtenerHorarios(): Observable<Horario[]>{
-    return this.http.get<Horario[]>(`${this.apiUrl}/horarios/`,{
+    return this.http.get<Horario[]>(`${this.apiUrl}/horarios/`, {
       headers: this.getHeaders()
     });
   }
 
   crearHorario(horario: Horario): Observable<any>{
-    return this.http.post(`${this.apiUrl}/crear-horario/`, horario,{
+    // patron_id eliminado, solo se envía hora_ingreso y hora_salida
+    return this.http.post(`${this.apiUrl}/crear-horario/`, {
+      hora_ingreso: horario.hora_ingreso,
+      hora_salida: horario.hora_salida
+    }, {
       headers: this.getHeaders()
     });
   }
 
   actualizarHorario(id: number, horario: Horario): Observable<any>{
-    return this.http.put(`${this.apiUrl}/actualizar-horario/${id}/`, horario, {
+    // patron_id eliminado, solo se envía hora_ingreso y hora_salida
+    return this.http.put(`${this.apiUrl}/actualizar-horario/${id}/`, {
+      hora_ingreso: horario.hora_ingreso,
+      hora_salida: horario.hora_salida
+    }, {
       headers: this.getHeaders()
     });
   }
 
   eliminarHorario(id:number): Observable<any>{
-    return this.http.delete(`${this.apiUrl}/eliminar-horario/${id}/`,{
-      headers: this.getHeaders()
-    });
-  }
-
-  obtenerPatrones(): Observable<any[]>{
-    return this.http.get<any[]>(`${this.apiUrl}/patrones/`, {
-      headers: this.getHeaders()
-    });
-  }
-
-  crearPatron(payload: any): Observable<any>{
-    return this.http.post(`${this.apiUrl}/crear-patron/`, payload, {
-      headers: this.getHeaders()
-    });
-  }
-
-  actualizarPatron(id: number, payload: any): Observable<any>{
-    return this.http.put(`${this.apiUrl}/actualizar-patron/${id}/`, payload, {
-      headers: this.getHeaders()
-    });
-  }
-
-  eliminarPatron(id: number): Observable<any>{
-    return this.http.delete(`${this.apiUrl}/eliminar-patron/${id}/`, {
+    return this.http.delete(`${this.apiUrl}/eliminar-horario/${id}/`, {
       headers: this.getHeaders()
     });
   }

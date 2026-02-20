@@ -18,15 +18,7 @@
       </mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Patrón</mat-label>
-      <mat-select formControlName="patron_id">
-        <mat-option [value]="null">Sin patrón</mat-option>
-        <mat-option *ngFor="let p of patrones" [value]="p.id">
-          {{ p.codigo }} ({{ p.secuencia.join('-') }})
-        </mat-option>
-      </mat-select>
-    </mat-form-field>
+    <!-- Campo de patrón eliminado: ya no se asigna patrón en horario -->
   </form>
 </mat-dialog-content>
 

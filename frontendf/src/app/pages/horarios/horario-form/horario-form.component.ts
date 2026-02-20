@@ -38,18 +38,18 @@ export class HorarioFormComponent implements OnInit {
     this.horarioForm = this.fb.group({
       hora_ingreso: [this.horario?.hora_ingreso || null, Validators.required],
       hora_salida: [this.horario?.hora_salida || null, Validators.required],
-      patron_id: [this.horario?.patronHorario?.id || null],
+      // patron_id removed, no longer used
     });
 
-    this.cargarPatrones();
+    // this.cargarPatrones(); // Eliminado: ya no se usan patrones en horario
   }
 
-  private cargarPatrones(): void {
-    this.horarioService.obtenerPatrones().subscribe({
-      next: (data) => (this.patrones = data || []),
-      error: (err) => console.error('Error al cargar patrones', err),
-    });
-  }
+  // private cargarPatrones(): void {
+  //   this.horarioService.obtenerPatrones().subscribe({
+  //     next: (data) => (this.patrones = data || []),
+  //     error: (err) => console.error('Error al cargar patrones', err),
+  //   });
+  // }
 
   onSubmit(): void {
     if (this.horarioForm.valid) {

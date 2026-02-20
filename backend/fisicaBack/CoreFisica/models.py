@@ -272,7 +272,7 @@ class Persona(models.Model):
     def __str__(self):
         return f"{self.nombres} {self.apellidos}"
 
-class PatronHorario(models.Model):
+class PatronAsignacion(models.Model):
     codigo = models.CharField(
         max_length=4,
         unique=True,
@@ -306,18 +306,9 @@ class PatronHorario(models.Model):
 class Horario(models.Model):
     hora_ingreso = models.TimeField()
     hora_salida = models.TimeField()
-    patronHorario = models.ForeignKey(
-        PatronHorario,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='horarios')
-
-    
 
     def __str__(self):
-        patron_txt = f" {self.patronHorario.codigo}" if self.patronHorario else ""
-        return f"{self.hora_ingreso} - {self.hora_salida}{patron_txt}"
+        return f"{self.hora_ingreso} - {self.hora_salida}"
 
 
 class Asignacion(models.Model):
@@ -331,6 +322,13 @@ class Asignacion(models.Model):
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE)
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE)
     horario = models.ForeignKey(Horario, on_delete=models.CASCADE)
+    patronAsignacion = models.ForeignKey(
+        PatronAsignacion,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='asignaciones'
+    )
 
     fecha = models.DateField(null=True, blank=True)
     mes = models.PositiveSmallIntegerField(default=1)
@@ -340,7 +338,6 @@ class Asignacion(models.Model):
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
 
-    # orden eliminado
     estado = models.CharField(
         max_length=10,
         choices=ESTADO_CHOICES,

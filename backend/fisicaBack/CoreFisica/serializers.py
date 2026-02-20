@@ -4,18 +4,17 @@ from .models import Asignacion, AsignacionSemanal, Instalacion, Puesto, PuestoHo
 from .utils import parse_input
 
 class AsignacionSerializer(serializers.ModelSerializer):
-    
     persona_detalle = serializers.SerializerMethodField(read_only=True)
     cliente_detalle = serializers.SerializerMethodField(read_only=True)
     instalacion_detalle = serializers.SerializerMethodField(read_only=True)
     puesto_detalle = serializers.SerializerMethodField(read_only=True)
     horario_detalle = serializers.SerializerMethodField(read_only=True)
+    patron_detalle = serializers.SerializerMethodField(read_only=True)
     fecha = serializers.DateField(required=False, allow_null=True)
     tipo = serializers.CharField(source='persona.tipo', read_only=True)
     recurring = serializers.BooleanField(required=False)
     start_date = serializers.DateField(required=False, allow_null=True)
     end_date = serializers.DateField(required=False, allow_null=True)
-
 
     def get_persona_detalle(self, obj):
         return {
@@ -25,7 +24,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'cedula': obj.persona.cedula,
             'tipo': obj.persona.tipo
         }
-    
+
     def get_cliente_detalle(self, obj):
         return {
             'id': obj.cliente.id,
@@ -34,7 +33,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'ruc': getattr(obj.cliente, 'ruc', '') or '',
             'size': getattr(obj.cliente, 'size', None)
         }
-    
+
     def get_instalacion_detalle(self, obj):
         inst = obj.instalacion
         return {
@@ -44,7 +43,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'codigo': getattr(inst, 'codigo', '') or '',
             'direccion': getattr(inst, 'direccion', '') or ''
         }
-    
+
     def get_puesto_detalle(self, obj):
         return {
             'id': obj.puesto.id,
@@ -55,21 +54,24 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in obj.puesto.horarios.all()],
             'resumen': obj.puesto.resumen
         }
-    
-    
+
     def get_horario_detalle(self, obj):
         return {
             'id': obj.horario.id,
             'hora_ingreso': str(obj.horario.hora_ingreso),
             'hora_salida': str(obj.horario.hora_salida),
-            'patronHorario': {
-                'id': obj.horario.patronHorario.id,
-                'codigo': obj.horario.patronHorario.codigo,
-                'secuencia': obj.horario.patronHorario.secuencia
-            } if getattr(obj.horario, 'patronHorario', None) else None,
-
         }
-    
+
+    def get_patron_detalle(self, obj):
+        patron = getattr(obj, 'patronAsignacion', None)
+        if patron:
+            return {
+                'id': patron.id,
+                'codigo': patron.codigo,
+                'secuencia': patron.secuencia,
+            }
+        return None
+
     class Meta:
         model = Asignacion
         fields = '__all__'
