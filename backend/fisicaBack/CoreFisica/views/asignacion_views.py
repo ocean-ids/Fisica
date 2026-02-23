@@ -395,9 +395,12 @@ def eliminar_asignacion(request, id):
         puesto = getattr(asignar, 'puesto', None)
         mes = getattr(asignar, 'mes', None)
         anio = getattr(asignar, 'anio', None)
-        # Nota: previamente se obtenía `patron_id` para borrar patrones no referenciados.
-        # Actualmente la lógica de borrado automático de `PatronAsignacion` fue
-        # eliminada para preservar patrones; por eso no necesitamos `patron_id`.
+        # Recuperar id del patron asociado (si existe) — lo usaremos más abajo
+        # para intentar eliminar el patrón si ya no lo referencian otras asignaciones.
+        try:
+            patron_id = getattr(asignar, 'patronAsignacion_id', None) or (getattr(asignar, 'patronAsignacion', None) and getattr(asignar.patronAsignacion, 'id', None))
+        except Exception:
+            patron_id = None
 
         asignar.delete()
 
@@ -407,29 +410,26 @@ def eliminar_asignacion(request, id):
             if puesto and mes and anio:
                 remaining = Asignacion.objects.filter(puesto_id=getattr(puesto, 'id', puesto), mes=mes, anio=anio, estado='ACTIVO').exists()
                 if not remaining:
-                    import datetime
-                    first_day = datetime.date(int(anio), int(mes), 1)
-                    if int(mes) == 12:
-                        next_month_first = datetime.date(int(anio) + 1, 1, 1)
-                    else:
-                        next_month_first = datetime.date(int(anio), int(mes) + 1, 1)
-                    last_day = next_month_first - datetime.timedelta(days=1)
+                    # Borrar todas las filas semanales para este puesto desde el mes
+                    # de la asignación en adelante (week_start >= primer día del mes)
+                    try:
+                        first_day = datetime.date(int(anio), int(mes), 1)
+                        AsignacionSemanal.objects.filter(puesto_id=getattr(puesto, 'id', puesto), week_start__gte=first_day).delete()
+                    except Exception as _e:
+                        # Fallback a borrado por conjunto limitado si falla el cálculo de fecha
+                        print(f"⚠️ Error calculando rango para borrar AsignacionSemanal: {_e}")
 
-                    # Usar el mismo patrón de creación (días 1,8,15,22,29 del mes)
-                    current = first_day
-                    to_delete = []
-                    while current <= last_day:
-                        to_delete.append(current)
-                        current += datetime.timedelta(days=7)
-
-                    # Borrar filas semanales para ese puesto y week_start en el conjunto
-                    AsignacionSemanal.objects.filter(puesto_id=getattr(puesto, 'id', puesto), week_start__in=to_delete).delete()
-
-            # No eliminar PatronAsignacion al borrar una Asignacion.
-            # Preservamos los patrones creados para que sigan disponibles en los selects
-            # y para mantener historial/reutilización por parte de usuarios o admins.
-            # Si en el futuro se desea limpieza automática, proponerlo como una
-            # acción administrativa separada (p. ej. comando manage.py para purge).
+            # Intentar eliminar el PatronAsignacion asociado si ya no lo referencia
+            # ninguna otra Asignacion. Esto borra el patrón globalmente solo cuando
+            # es realmente huérfano.
+            if patron_id:
+                try:
+                    still_used = Asignacion.objects.filter(patronAsignacion_id=patron_id).exists()
+                    if not still_used:
+                        from ..models import PatronAsignacion
+                        PatronAsignacion.objects.filter(id=patron_id).delete()
+                except Exception as e:
+                    print(f"⚠️ Error limpiando PatronAsignacion al eliminar asignación: {e}")
         except Exception as e:
             print(f"⚠️ Error limpiando AsignacionSemanal al eliminar asignación: {e}")
 
@@ -465,7 +465,8 @@ def exportar_asignaciones_excel(request):
     dates = [first_day + datetime.timedelta(days=i) for i in range(last_day_num)]
 
     # Columnas izquierdas (datos de asignación)
-    left_headers = ['Horario', 'Código', 'Cliente', 'Nombre Puesto', 'Resumen', 'Dirección Instalación', 'Cédula', 'Persona', 'Tipo']
+    # Se eliminó 'Dirección Instalación' según solicitud
+    left_headers = ['Horario', 'Código', 'Cliente', 'Nombre Puesto', 'Resumen', 'Cédula', 'Persona', 'Tipo']
     left_cols = len(left_headers)
 
     # Columnas de fecha comienzan después de las columnas izquierdas
@@ -588,7 +589,6 @@ def exportar_asignaciones_excel(request):
             horario_txt = ''
         inst = getattr(asignacion, 'instalacion', None)
         inst_codigo = getattr(inst, 'codigo', '') if inst else ''
-        inst_dir = getattr(inst, 'direccion', '') if inst else ''
         puesto_obj = getattr(asignacion, 'puesto', None)
         # Forzamos a usar la lógica compacta (coincide con la vista). Si falla, caemos al campo almacenado.
         resumen_val = build_resumen(puesto_obj) or getattr(puesto_obj, 'resumen', '')
@@ -598,7 +598,6 @@ def exportar_asignaciones_excel(request):
             getattr(asignacion.cliente, 'nombre_comercial', ''),
             getattr(puesto_obj, 'nombre', ''),
             resumen_val,
-            inst_dir,
             getattr(getattr(asignacion, 'persona', None), 'cedula', ''),
             f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}",
             getattr(getattr(asignacion, 'persona', None), 'tipo', '')
