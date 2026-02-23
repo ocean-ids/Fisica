@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Cliente, Persona, Instalacion, Puesto, Horario, Asignacion } from '../../models';
+import { PatronAsignacion } from '../../models/asignacion.model';
 import { ClienteService } from '../../services/cliente.service';
 import { InstalacionService } from '../../services/instalacion.service';
 import { PuestoService } from '../../services/puesto.service';
@@ -17,6 +18,7 @@ import { AsignacionCalendarioComponent } from '../asignacion-calendario/asignaci
 import { HttpClient } from '@angular/common/http';
 import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
+import { PatronAsignacionService } from '../../services/patron-asignacion.service';
 
 @Component({
   selector: 'app-asignaciones',
@@ -222,6 +224,7 @@ export class AsignacionesComponent implements OnInit {
   horarios: Horario[] = [];
   instalaciones: Instalacion[] = [];
   puestos: Puesto[] = [];
+  patrones: PatronAsignacion[] = [];
 
   clienteSeleccionado: number | null = null;
   instalacionSeleccionada: number | null = null;
@@ -238,7 +241,8 @@ export class AsignacionesComponent implements OnInit {
     private personaService: PersonaService,
     private horarioService: HorarioService,
     private asignacionService: AsignacionService,
-    private http: HttpClient
+    private http: HttpClient,
+    private patronService: PatronAsignacionService
   ) {}
 
   ngOnInit(): void {
@@ -279,6 +283,11 @@ export class AsignacionesComponent implements OnInit {
       next: data => this.horarios = data,
       error: err => console.error('Error al cargar horarios', err)
     });
+    
+    this.patronService.obtenerPatrones().subscribe({
+      next: data => this.patrones = data || [],
+      error: err => console.error('Error al cargar patrones', err)
+    });
   }
 
   cargarAsignaciones(): void {
@@ -315,6 +324,7 @@ export class AsignacionesComponent implements OnInit {
       estado: 'ACTIVO',
       clienteCodigo: '',
       recurring: true
+      ,patronAsignacion: 0
     };
   }
 
@@ -474,9 +484,13 @@ export class AsignacionesComponent implements OnInit {
     // (this.asignacionActual as any).fecha = this.dia ? this.dia : null;
 
     if (this.modoEdicion && this.asignacionActual.id) {
+      const payload = { 
+        ...this.asignacionActual,
+        patronAsignacion: this.asignacionActual.patronAsignacion || null
+      } as any;
       this.asignacionService.actualizarAsignacion(
         this.asignacionActual.id,
-        this.asignacionActual
+        payload
       ).subscribe({
         next: () => {
           Swal.fire({ icon: 'success', title: 'Asignación actualizada', timer: 1200, showConfirmButton: false });
@@ -491,7 +505,7 @@ export class AsignacionesComponent implements OnInit {
       });
     } else {
       // Forzar creación de calendario semanal al crear la asignación
-      const payload = { ...this.asignacionActual, create_calendar: true } as any;
+      const payload = { ...this.asignacionActual, patronAsignacion: this.asignacionActual.patronAsignacion || null, create_calendar: true } as any;
       this.asignacionService.crearAsignacion(payload).subscribe({
         next: () => {
           Swal.fire({ icon: 'success', title: 'Asignación creada', timer: 1200, showConfirmButton: false });

@@ -20,6 +20,7 @@ export interface Asignacion{
     recurring?: boolean;
     start_date?: string | null;
     end_date?: string | null;
+    patronAsignacion?: number;
     
 }
 
