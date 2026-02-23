@@ -11,6 +11,7 @@ import { PuestosComponent } from './pages/puestos/puestos.component';
 import { HorariosComponent } from './pages/horarios/horarios.component';
 import { AsignacionesComponent } from './pages/asignaciones/asignaciones.component';
 import { AsignacionCalendarioComponent } from './pages/asignacion-calendario/asignacion-calendario.component';
+import { PatronesListComponent } from './pages/patrones/patrones-list/patrones-list.component';
 
 export const routes: Routes = [
   {path: '', component: LoginComponent},
@@ -28,7 +29,8 @@ export const routes: Routes = [
       { path: 'puestos', component: PuestosComponent},
       { path: 'personas', component: PersonasComponent},
       { path: 'horarios', component: HorariosComponent},
-      { path: 'asignaciones', component: AsignacionesComponent}
+      { path: 'asignaciones', component: AsignacionesComponent},
+      { path: 'patrones', component: PatronesListComponent}
     ]
   },
   { path: '**', redirectTo: ''}

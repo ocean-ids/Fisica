@@ -1,7 +1,15 @@
 from rest_framework import serializers
 from django.db import transaction
-from .models import Asignacion, AsignacionSemanal, Instalacion, Puesto, PuestoHorario
+from .models import Asignacion, AsignacionSemanal, Instalacion, Puesto, PuestoHorario, PatronAsignacion
 from .utils import parse_input
+
+
+
+class PatronAsignacionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PatronAsignacion
+        fields = ['id', 'codigo', 'secuencia']
+
 
 class AsignacionSerializer(serializers.ModelSerializer):
     persona_detalle = serializers.SerializerMethodField(read_only=True)
@@ -9,7 +17,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
     instalacion_detalle = serializers.SerializerMethodField(read_only=True)
     puesto_detalle = serializers.SerializerMethodField(read_only=True)
     horario_detalle = serializers.SerializerMethodField(read_only=True)
-    patron_detalle = serializers.SerializerMethodField(read_only=True)
+    patron_detalle = PatronAsignacionSerializer(source='patronAsignacion', read_only=True)
     fecha = serializers.DateField(required=False, allow_null=True)
     tipo = serializers.CharField(source='persona.tipo', read_only=True)
     recurring = serializers.BooleanField(required=False)
@@ -62,15 +70,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'hora_salida': str(obj.horario.hora_salida),
         }
 
-    def get_patron_detalle(self, obj):
-        patron = getattr(obj, 'patronAsignacion', None)
-        if patron:
-            return {
-                'id': patron.id,
-                'codigo': patron.codigo,
-                'secuencia': patron.secuencia,
-            }
-        return None
+    # patron_detalle ahora es serializado automáticamente por PatronAsignacionSerializer
 
     class Meta:
         model = Asignacion
@@ -96,6 +96,10 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
         model = AsignacionSemanal
         fields = ['id', 'puesto', 'week_start', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'created_at', 'updated_at', 'puesto_detalle']
 
+class PatronAsignacionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PatronAsignacion
+        fields = ['id', 'codigo', 'secuencia']
 
 class InstalacionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -180,7 +184,7 @@ class PuestoSerializer(serializers.ModelSerializer):
                         horas=h.get('horas') if h.get('horas') is not None else 12,
                         turno=h.get('turno', 'Diurno')
                     )
-            # sincronizar campos derivados desde los horarios
+            
             try:
                 instance.sync_from_horarios()
                 instance.save()

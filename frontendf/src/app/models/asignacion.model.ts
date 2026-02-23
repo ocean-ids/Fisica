@@ -22,3 +22,9 @@ export interface Asignacion{
     end_date?: string | null;
     
 }
+
+export interface PatronAsignacion{
+    id?: number;
+    codigo: string;
+    secuencia: string[];
+}

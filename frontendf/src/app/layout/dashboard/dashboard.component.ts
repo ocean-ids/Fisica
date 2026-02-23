@@ -16,7 +16,7 @@ export class DashboardComponent implements OnInit {
   sidebarVisible: boolean = true;
 
   ngOnInit(): void {
-    // Restaurar preferencia del usuario desde localStorage
+    
     const stored = localStorage.getItem('sidebarVisible');
     if (stored !== null) {
       this.sidebarVisible = stored === 'true';

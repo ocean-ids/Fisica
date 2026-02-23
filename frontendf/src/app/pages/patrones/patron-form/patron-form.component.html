@@ -1,0 +1,22 @@
+
+<h2 mat-dialog-title class="modal-title">{{ data ? 'Editar Patrón' : 'Nuevo Patrón' }}</h2>
+<mat-dialog-content>
+  <form [formGroup]="patronForm" class="modal-form">
+    <mat-form-field appearance="fill" class="full-width">
+      <mat-label>Código</mat-label>
+      <input  matInput formControlName="codigo" maxlength="4" required>
+      <mat-error *ngIf="patronForm.get('codigo')?.hasError('required')">Código requerido</mat-error>
+      <mat-error *ngIf="patronForm.get('codigo')?.hasError('pattern')">Use 3 o 4 dígitos</mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="fill" class="full-width">
+      <mat-label>Secuencia</mat-label>
+      <input matInput formControlName="secuencia" required placeholder="Ej: D-N-F-D">
+      <mat-error *ngIf="patronForm.get('secuencia')?.hasError('required')">Secuencia requerida</mat-error>
+      <mat-error *ngIf="patronForm.get('secuencia')?.hasError('invalidSequence')">{{ patronForm.get('secuencia')?.getError('invalidSequence') }}</mat-error>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end" class="modal-actions">
+  <button mat-button (click)="onCancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!patronForm.valid">Guardar</button>
+</mat-dialog-actions>

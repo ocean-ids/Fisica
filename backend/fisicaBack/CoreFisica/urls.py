@@ -12,7 +12,7 @@ from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_p
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion, exportar_asignaciones_excel
 from .views.asignacion_semanal_views import listar_asignacion_semanal, semanas_del_mes, crear_o_actualizar_asignacion_semanal, copiar_semana
-
+from .views.patron_asignacion_views import PatronAsignacionListCreateView, PatronAsignacionRetrieveUpdateDestroyView
 
 urlpatterns = [
     path('login/', login_view),
@@ -44,7 +44,6 @@ urlpatterns = [
     path('crear-horario/', crear_horario),
     path('actualizar-horario/<int:id>/', actualizar_horario),
     path('eliminar-horario/<int:id>/', eliminar_horario),
-    # Endpoints de patrones eliminados
     path('puestos/', obtener_puestos),
     path('crear-puesto/', crear_puesto),
     path('actualizar-puesto/<int:id>/', actualizar_puesto),
@@ -61,6 +60,8 @@ urlpatterns = [
     path('asignacion-semanal/', listar_asignacion_semanal),
     path('asignacion-semanal/guardar/', crear_o_actualizar_asignacion_semanal),
     path('asignacion-semanal/copy/', copiar_semana),
-    path('semanas/', semanas_del_mes, name='semanas')
+    path('semanas/', semanas_del_mes, name='semanas'),
+    path('patrones/', PatronAsignacionListCreateView.as_view(), name='patron-list-create'),
+    path('patrones/<int:pk>/', PatronAsignacionRetrieveUpdateDestroyView.as_view(), name='patron-detail'),
 ]
 
