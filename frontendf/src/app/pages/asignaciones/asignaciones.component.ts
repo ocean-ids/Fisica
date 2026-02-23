@@ -19,6 +19,8 @@ import { HttpClient } from '@angular/common/http';
 import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
 import { PatronAsignacionService } from '../../services/patron-asignacion.service';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { PatronFormComponent } from '../patrones/patron-form/patron-form.component';
 
 @Component({
   selector: 'app-asignaciones',
@@ -29,9 +31,11 @@ import { PatronAsignacionService } from '../../services/patron-asignacion.servic
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatCardModule
-    ,MatMenuModule
-    ,AsignacionCalendarioComponent
+    MatDialogModule,
+    MatCardModule,
+    MatMenuModule,
+    AsignacionCalendarioComponent,
+    PatronFormComponent
   ],
   templateUrl: './asignaciones.component.html',
   styleUrl: './asignaciones.component.css'
@@ -242,15 +246,19 @@ export class AsignacionesComponent implements OnInit {
     private horarioService: HorarioService,
     private asignacionService: AsignacionService,
     private http: HttpClient,
-    private patronService: PatronAsignacionService
+    private patronService: PatronAsignacionService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
     this.cargarCatalogos();
-    // inicializar selector mensual y cargar asignaciones
+    
     this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
     this.cargarAsignaciones();
   }
+
+
+
 
   onMonthChange(): void {
     if (!this.monthValue) return;
@@ -310,7 +318,15 @@ export class AsignacionesComponent implements OnInit {
     if (this.calendario) this.calendario.nextWeek();
   }
 
-  
+  abrirNuevoPatron(): void {
+  const ref = this.dialog.open(PatronFormComponent, { width: '480px', data: null });
+  ref.afterClosed().subscribe((saved: boolean) => {
+    if (saved) {
+      
+      this.patronService.obtenerPatrones().subscribe({ next: d => this.patrones = d || [] });
+    }
+  });
+}
 
   nuevaAsignacion(): Asignacion {
     return {
