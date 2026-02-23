@@ -36,8 +36,8 @@
             <thead class="table-light text-center" style="height: 90px;">
               <tr class="text-center align-middle m-0" style="height: 60px">
                 <th rowspan="2">Horario</th>
-                <th rowspan="2">Código</th>
-                <th style="width: 50px; height: 30px;"rowspan="2">Cliente</th>
+                <th rowspan="2" style="width: 50px;">Código</th>
+                <th style="width: 200px; height: 30px;"rowspan="2">Cliente</th>
                 <th style="width: 50px;" colspan="2">Puesto</th>
                 <th rowspan="2">Cédula</th>
                 <th rowspan="2">Persona</th>
@@ -53,7 +53,7 @@
                 <tr class="text-center align-middle shared-row" *ngIf="asig.persona_detalle?.is_active !== false">
                 <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                 <td>{{ asig.instalacion_detalle?.codigo }}</td>
-                <td>{{ asig.cliente_detalle?.nombre_comercial }}</td>
+                <td style="max-width: 200px;">{{ asig.cliente_detalle?.nombre_comercial }}</td>
                 <td>{{ asig.puesto_detalle?.nombre }}</td>
                 <td>
                   <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
@@ -70,7 +70,7 @@
                   </mat-menu>
                 </td>
                 <td>{{ asig.persona_detalle?.cedula }}</td>
-                <td class="persona-cell" style="min-width: 150px;">
+                <td class="persona-cell" style="min-width: 200px;">
                     <div>
                       {{ asig.persona_detalle?.apellidos }}
                      </div>

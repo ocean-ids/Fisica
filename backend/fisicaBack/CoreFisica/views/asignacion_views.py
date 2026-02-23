@@ -124,9 +124,8 @@ def asignar_servicio(request):
                         name = weekday_names[day_date.weekday()]
                         weekday_keys = ['mon','tue','wed','thu','fri','sat','sun']
                         key = weekday_keys[day_date.weekday()]
-                        applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
 
-                        # intentar obtener secuencia de patron si existe
+                        # Obtener secuencia del patron antes de evaluar applies_by_puesto
                         seq = None
                         patron = None
                         try:
@@ -142,6 +141,8 @@ def asignar_servicio(request):
                                 seq = [str(x).strip().upper() for x in patron.secuencia if x]
                         except Exception:
                             seq = None
+
+                        applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
 
                         value = ''
                         if seq:
@@ -287,8 +288,8 @@ def asignar_servicio(request):
                                         name = weekday_names[day_date.weekday()]
                                         weekday_keys = ['mon','tue','wed','thu','fri','sat','sun']
                                         key = weekday_keys[day_date.weekday()]
-                                        applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
 
+                                        # Obtener secuencia del patron antes de evaluar applies_by_puesto
                                         seq = None
                                         patron = None
                                         try:
@@ -303,6 +304,8 @@ def asignar_servicio(request):
                                                 seq = [str(x).strip().upper() for x in patron.secuencia if x]
                                         except Exception:
                                             seq = None
+
+                                        applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
 
                                         value = ''
                                         if seq:
@@ -392,11 +395,9 @@ def eliminar_asignacion(request, id):
         puesto = getattr(asignar, 'puesto', None)
         mes = getattr(asignar, 'mes', None)
         anio = getattr(asignar, 'anio', None)
-        patron_id = None
-        try:
-            patron_id = asignar.patronAsignacion_id if hasattr(asignar, 'patronAsignacion_id') else (getattr(asignar, 'patronAsignacion', None) and getattr(asignar, 'patronAsignacion', None).id)
-        except Exception:
-            patron_id = None
+        # Nota: previamente se obtenía `patron_id` para borrar patrones no referenciados.
+        # Actualmente la lógica de borrado automático de `PatronAsignacion` fue
+        # eliminada para preservar patrones; por eso no necesitamos `patron_id`.
 
         asignar.delete()
 
