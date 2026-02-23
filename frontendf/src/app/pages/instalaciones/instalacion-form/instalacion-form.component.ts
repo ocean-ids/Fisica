@@ -53,8 +53,17 @@ export class InstalacionFormComponent implements OnInit {
       this.provincias = p;
       // si estamos editando, recordar la ciudad para preservarla
       this.initialCiudad = instalacion.ciudad || null;
-      const prov = instalacion.provincia;
-      if (prov) {
+      const storedProv = instalacion.provincia;
+      if (storedProv) {
+        // intentar mapear la provincia guardada: puede ser el id o el nombre
+        const provFound = this.provincias.find(x => x.id === storedProv || x.nombre.toLowerCase() === String(storedProv).toLowerCase());
+        if (provFound) {
+          // usar el id que espera el select
+          this.instalacionForm.get('provincia')?.setValue(provFound.id);
+        } else {
+          // dejar el valor tal cual (fallback)
+          this.instalacionForm.get('provincia')?.setValue(storedProv);
+        }
         this.onProvinciaChange();
       }
     });
@@ -69,9 +78,10 @@ export class InstalacionFormComponent implements OnInit {
     }
     this.provinciasService.getCiudadesPorProvincia(provinciaId).subscribe(c => {
       this.ciudades = c;
-      // si venimos de edición y la ciudad inicial está en la lista, úsala
+      // si venimos de edición y la ciudad inicial está en la lista, úsala (comparaciones case-insensitive)
       if (this.initialCiudad) {
-        const found = this.ciudades.find(x => x.nombre === this.initialCiudad || x.id === this.initialCiudad);
+        const search = String(this.initialCiudad).toLowerCase();
+        const found = this.ciudades.find(x => (x.nombre && x.nombre.toLowerCase() === search) || (x.id && x.id.toLowerCase() === search));
         if (found) {
           this.instalacionForm.get('ciudad')?.setValue(found.nombre);
           this.initialCiudad = null; // usar solo una vez
@@ -79,9 +89,9 @@ export class InstalacionFormComponent implements OnInit {
         }
         this.initialCiudad = null;
       }
-      // si la ciudad actual está en la nueva lista, conservarla
+      // si la ciudad actual está en la nueva lista, conservarla (case-insensitive)
       const current = this.instalacionForm.get('ciudad')?.value;
-      if (current && this.ciudades.find(x => x.nombre === current || x.id === current)) {
+      if (current && this.ciudades.find(x => (x.nombre && x.nombre.toLowerCase() === String(current).toLowerCase()) || (x.id && x.id.toLowerCase() === String(current).toLowerCase()))) {
         return;
       }
       // en caso contrario, asignar automáticamente la primera ciudad disponible
