@@ -424,15 +424,11 @@ def eliminar_asignacion(request, id):
                     # Borrar filas semanales para ese puesto y week_start en el conjunto
                     AsignacionSemanal.objects.filter(puesto_id=getattr(puesto, 'id', puesto), week_start__in=to_delete).delete()
 
-            # Eliminar PatronAsignacion si existía y ya no lo referencia ninguna otra asignación
-            if patron_id:
-                try:
-                    still_used = Asignacion.objects.filter(patronAsignacion_id=patron_id).exists()
-                    if not still_used:
-                        from ..models import PatronAsignacion
-                        PatronAsignacion.objects.filter(id=patron_id).delete()
-                except Exception as e:
-                    print(f"⚠️ Error limpiando PatronAsignacion al eliminar asignación: {e}")
+            # No eliminar PatronAsignacion al borrar una Asignacion.
+            # Preservamos los patrones creados para que sigan disponibles en los selects
+            # y para mantener historial/reutilización por parte de usuarios o admins.
+            # Si en el futuro se desea limpieza automática, proponerlo como una
+            # acción administrativa separada (p. ej. comando manage.py para purge).
         except Exception as e:
             print(f"⚠️ Error limpiando AsignacionSemanal al eliminar asignación: {e}")
 
