@@ -196,18 +196,6 @@ DIAS = (
 
 
 class PuestoHorario(models.Model):
-    """Horario por puesto, una fila por día (modelo normalizado).
-
-            turno_letter = 'M'
-            try:
-                turnos = list(horarios_qs.values_list('turno', flat=True))
-                if turnos:
-                    unique_turnos = set([t.strip().lower() for t in turnos if t])
-                    if len(unique_turnos) == 1:
-                        turno_letter = 'D' if list(unique_turnos)[0].startswith('d') else 'N'
-            except Exception:
-                turno_letter = 'M'
-    """
     puesto = models.ForeignKey(Puesto, related_name='horarios', on_delete=models.CASCADE)
     dia = models.PositiveSmallIntegerField(choices=DIAS)
     horas = models.PositiveIntegerField(default=12)
@@ -283,12 +271,14 @@ class PatronAsignacion(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    ALLOWED = {"D", "N", "F", "-"}
+    ALLOWED = {"D", "N", "F"}
 
     def clean(self):
         seq = self.secuencia or []
         if not isinstance(seq, list) or not seq:
             raise ValueError("'secuencia' debe ser una lista no vacía")
+        if len(seq) > 7:
+            raise ValueError("'secuencia' debe tener como máximo 7 símbolos")
         cleaned = []
         for token in seq:
             t = str(token).strip().upper()

@@ -11,6 +11,19 @@ class PatronAsignacionSerializer(serializers.ModelSerializer):
         max_length=4,
         validators=[RegexValidator(regex=r'^\d{3,4}$', message='Use 3 o 4 dígitos')]
     )
+    def validate_secuencia(self, value):
+        if not isinstance(value, list) or not value:
+            raise serializers.ValidationError("La secuencia debe ser una lista no vacía")
+        if len(value) > 7:
+            raise serializers.ValidationError("La secuencia puede tener como máximo 7 símbolos")
+        allowed = {"D", "N", "F"}
+        cleaned = []
+        for token in value:
+            t = str(token).strip().upper()
+            if t not in allowed:
+                raise serializers.ValidationError(f"Símbolo no permitido: {token}")
+            cleaned.append(t)
+        return cleaned
 
     class Meta:
         model = PatronAsignacion
@@ -107,6 +120,19 @@ class PatronAsignacionSerializer(serializers.ModelSerializer):
         max_length=4,
         validators=[RegexValidator(regex=r'^\d{3,4}$', message='Use 3 o 4 dígitos')]
     )
+    def validate_secuencia(self, value):
+        if not isinstance(value, list) or not value:
+            raise serializers.ValidationError("La secuencia debe ser una lista no vacía")
+        if len(value) > 7:
+            raise serializers.ValidationError("La secuencia puede tener como máximo 7 símbolos")
+        allowed = {"D", "N", "F"}
+        cleaned = []
+        for token in value:
+            t = str(token).strip().upper()
+            if t not in allowed:
+                raise serializers.ValidationError(f"Símbolo no permitido: {token}")
+            cleaned.append(t)
+        return cleaned
 
     class Meta:
         model = PatronAsignacion

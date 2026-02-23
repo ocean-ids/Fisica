@@ -26,28 +26,31 @@ export class PatronFormComponent {
   ) {
     this.patronForm = this.fb.group({
       codigo: [data?.codigo || '', [Validators.required, Validators.pattern(/^\d{3,4}$/)]],
-      secuencia: [data?.secuencia?.join('-') || '', [Validators.required, this.secuenciaValidator]]
+      secuencia: [data?.secuencia?.join('-') || '', [Validators.required, Validators.pattern(/^(?:[DNF]{1,7}|[DNF](?:-[DNF]){0,6})$/)]]
     });
   }
-
-  // Validador personalizado para la secuencia (texto separado por guiones)
-  private secuenciaValidator(control: AbstractControl): ValidationErrors | null {
-    const val = control.value as string;
-    if (!val || typeof val !== 'string') return { required: true };
-    const tokens = val.split('-').map(t => t.trim().toUpperCase()).filter(t => t.length > 0);
-    if (tokens.length === 0) return { invalidSequence: 'La secuencia no puede estar vacía' };
-    const allowed = new Set(['D', 'N', 'F', '-']);
-    for (const t of tokens) {
-      if (!allowed.has(t)) return { invalidSequence: `Símbolo no permitido: ${t}` };
-    }
-    return null;
+  
+  onSecuenciaInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let raw = input.value.toUpperCase().replace(/[^DNF\-]/g, '').replace(/\-+/g, '-');
+    raw = raw.replace(/^\-+/, '').replace(/\-+$/, '');
+    const hadHyphen = raw.includes('-');
+    let tokens = hadHyphen ? raw.split('-').map(t => t.trim()).filter(t => t.length > 0) : raw.split('').filter(t => t.length > 0);
+    if (tokens.length > 7) tokens = tokens.slice(0, 7);
+    const val = hadHyphen ? tokens.join('-') : tokens.join('');
+    input.value = val;
+    this.patronForm.get('secuencia')?.setValue(val, { emitEvent: false });
   }
 
   onSubmit(): void {
     if (this.patronForm.valid) {
       const patron: PatronAsignacion = {
         codigo: this.patronForm.value.codigo,
-        secuencia: (this.patronForm.value.secuencia as string).split('-').map((s: string) => s.trim())
+        secuencia: (() => {
+          const raw = (this.patronForm.value.secuencia as string) || '';
+          if (raw.includes('-')) return raw.split('-').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+          return raw.split('').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+        })()
       };
       if (this.data && this.data.id) {
         this.patronService.actualizarPatron(this.data.id, patron).subscribe(() => this.dialogRef.close(true));
