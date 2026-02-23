@@ -27,7 +27,7 @@ def listar_asignacion_semanal(request):
                     asigns = Asignacion.objects.filter(estado='ACTIVO').filter(
                         Q(mes=ws.month, anio=ws.year) |
                         (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
-                    ).select_related('puesto')
+                    ).select_related('puesto', 'patronAsignacion')
 
                     weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
 
@@ -57,19 +57,82 @@ def listar_asignacion_semanal(request):
                         dias_puesto = []
                         if puesto_obj:
                             try:
-                                dias_puesto = puesto_obj.dias or []
+                                if hasattr(puesto_obj, 'dias') and getattr(puesto_obj, 'dias'):
+                                    dias_puesto = puesto_obj.dias or []
+                                else:
+                                    horarios_qs = getattr(puesto_obj, 'horarios', None)
+                                    if horarios_qs is not None:
+                                        dias_nums = list(horarios_qs.values_list('dia', flat=True))
+                                        day_map = {1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado', 7: 'domingo'}
+                                        dias_puesto = [day_map.get(n, '') for n in dias_nums if n]
                             except Exception:
                                 dias_puesto = []
-
                         dias_norm = [normalize_day_token(d) for d in dias_puesto if d]
                         turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
                         default_code = 'N' if turno.startswith('n') else 'D'
 
+                        # Si la asignación tiene un patrón definido, construir la secuencia continua
+                        patron = getattr(asign, 'patronAsignacion', None)
+                        seq = None
+                        if patron and getattr(patron, 'secuencia', None):
+                            try:
+                                seq = [str(x).strip().upper() for x in patron.secuencia if x]
+                            except Exception:
+                                seq = None
+
                         defaults = {}
-                        for idx, name in enumerate(weekday_names):
-                            key = ['mon','tue','wed','thu','fri','sat','sun'][idx]
-                            match = any(name == d or d in name or name in d for d in dias_norm)
-                            defaults[key] = default_code if match else ''
+                        for idx in range(7):
+                            day_date = ws + timedelta(days=idx)
+                            name = weekday_names[day_date.weekday()]
+                            weekday_keys = ['mon','tue','wed','thu','fri','sat','sun']
+                            key = weekday_keys[day_date.weekday()]
+
+                            # verificar si la asignación aplica ese día: si tiene dias específicos del puesto
+                            applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+
+                            value = ''
+                            # si hay patrón y la asignación está activa ese día, calcular token según ciclo continuo
+                            if seq:
+                                # determinar fecha de inicio para indexación: start_date > fecha > week_start
+                                ref_date = None
+                                if asign.start_date:
+                                    ref_date = asign.start_date
+                                elif getattr(asign, 'fecha', None):
+                                    ref_date = asign.fecha
+                                else:
+                                    # fallback: use the first day of the month-year where asign applies or week_start
+                                    try:
+                                        ref_date = date(asign.anio, asign.mes, 1)
+                                    except Exception:
+                                        ref_date = ws
+
+                                # si the day_date is within asign's active window
+                                active = True
+                                if asign.recurring:
+                                    if asign.start_date and day_date < asign.start_date:
+                                        active = False
+                                    if asign.end_date and asign.end_date and day_date > asign.end_date:
+                                        active = False
+                                else:
+                                    # non-recurring: match by mes/anio or fecha
+                                    if getattr(asign, 'fecha', None):
+                                        active = (day_date == asign.fecha)
+                                    else:
+                                        active = (day_date.month == asign.mes and day_date.year == asign.anio)
+
+                                if active and applies_by_puesto:
+                                    try:
+                                        days_diff = (day_date - ref_date).days
+                                        idx_seq = days_diff % len(seq)
+                                        value = seq[idx_seq]
+                                    except Exception:
+                                        value = ''
+                            else:
+                                # sin patrón, usar comportamiento previo (turno por puesto)
+                                if applies_by_puesto:
+                                    value = default_code
+
+                            defaults[key] = value
 
                         if puesto_obj:
                             pid = puesto_obj.id if hasattr(puesto_obj, 'id') else puesto_obj

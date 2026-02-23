@@ -82,7 +82,14 @@ def asignar_servicio(request):
                 dias_puesto = []
                 if puesto_obj:
                     try:
-                        dias_puesto = puesto_obj.dias or []
+                        if hasattr(puesto_obj, 'dias') and getattr(puesto_obj, 'dias'):
+                            dias_puesto = puesto_obj.dias or []
+                        else:
+                            horarios_qs = getattr(puesto_obj, 'horarios', None)
+                            if horarios_qs is not None:
+                                dias_nums = list(horarios_qs.values_list('dia', flat=True))
+                                day_map = {1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado', 7: 'domingo'}
+                                dias_puesto = [day_map.get(n, '') for n in dias_nums if n]
                     except Exception:
                         dias_puesto = []
 
@@ -112,10 +119,70 @@ def asignar_servicio(request):
                         current += datetime.timedelta(days=7)
                         continue
                     defaults = {}
-                    for idx, name in enumerate(weekday_names):
-                        key = ['mon','tue','wed','thu','fri','sat','sun'][idx]
-                        match = any(name == d or d in name or name in d for d in dias_norm)
-                        defaults[key] = default_code if match else ''
+                    for idx in range(7):
+                        day_date = current + datetime.timedelta(days=idx)
+                        name = weekday_names[day_date.weekday()]
+                        weekday_keys = ['mon','tue','wed','thu','fri','sat','sun']
+                        key = weekday_keys[day_date.weekday()]
+                        applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+
+                        # intentar obtener secuencia de patron si existe
+                        seq = None
+                        patron = None
+                        try:
+                            patron = getattr(asignacion, 'patronAsignacion', None)
+                            # si es id, buscar objeto
+                            if patron and not hasattr(patron, 'secuencia'):
+                                from ..models import PatronAsignacion as _PA
+                                try:
+                                    patron = _PA.objects.get(id=int(patron))
+                                except Exception:
+                                    patron = None
+                            if patron and getattr(patron, 'secuencia', None):
+                                seq = [str(x).strip().upper() for x in patron.secuencia if x]
+                        except Exception:
+                            seq = None
+
+                        value = ''
+                        if seq:
+                            # definir fecha referencia
+                            ref_date = None
+                            if asignacion.start_date:
+                                ref_date = asignacion.start_date
+                            elif getattr(asignacion, 'fecha', None):
+                                ref_date = asignacion.fecha
+                            else:
+                                try:
+                                    ref_date = datetime.date(int(asignacion.anio), int(asignacion.mes), 1)
+                                except Exception:
+                                    ref_date = current
+
+                            # determinar si la asignación aplica ese día
+                            active = True
+                            if asignacion.recurring:
+                                if asignacion.start_date and day_date < asignacion.start_date:
+                                    active = False
+                                if asignacion.end_date and asignacion.end_date and day_date > asignacion.end_date:
+                                    active = False
+                            else:
+                                # non-recurring: match by fecha or month/year
+                                if getattr(asignacion, 'fecha', None):
+                                    active = (day_date == asignacion.fecha)
+                                else:
+                                    active = (day_date.month == asignacion.mes and day_date.year == asignacion.anio)
+
+                            if active and applies_by_puesto:
+                                try:
+                                    days_diff = (day_date - ref_date).days
+                                    idx_seq = days_diff % len(seq)
+                                    value = seq[idx_seq]
+                                except Exception:
+                                    value = ''
+                        else:
+                            if applies_by_puesto:
+                                value = default_code
+
+                        defaults[key] = value
 
                     AsignacionSemanal.objects.get_or_create(
                         puesto=puesto_obj,
@@ -179,7 +246,14 @@ def asignar_servicio(request):
                                 dias_puesto = []
                                 if puesto_obj:
                                     try:
-                                        dias_puesto = puesto_obj.dias or []
+                                        if hasattr(puesto_obj, 'dias') and getattr(puesto_obj, 'dias'):
+                                            dias_puesto = puesto_obj.dias or []
+                                        else:
+                                            horarios_qs = getattr(puesto_obj, 'horarios', None)
+                                            if horarios_qs is not None:
+                                                dias_nums = list(horarios_qs.values_list('dia', flat=True))
+                                                day_map = {1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado', 7: 'domingo'}
+                                                dias_puesto = [day_map.get(n, '') for n in dias_nums if n]
                                     except Exception:
                                         dias_puesto = []
 
@@ -208,10 +282,65 @@ def asignar_servicio(request):
                                         current += datetime.timedelta(days=7)
                                         continue
                                     defaults = {}
-                                    for idx, name in enumerate(weekday_names):
-                                        key = ['mon','tue','wed','thu','fri','sat','sun'][idx]
-                                        match = any(name == d or d in name or name in d for d in dias_norm)
-                                        defaults[key] = default_code if match else ''
+                                    for idx in range(7):
+                                        day_date = current + datetime.timedelta(days=idx)
+                                        name = weekday_names[day_date.weekday()]
+                                        weekday_keys = ['mon','tue','wed','thu','fri','sat','sun']
+                                        key = weekday_keys[day_date.weekday()]
+                                        applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+
+                                        seq = None
+                                        patron = None
+                                        try:
+                                            patron = getattr(asignacion, 'patronAsignacion', None)
+                                            if patron and not hasattr(patron, 'secuencia'):
+                                                from ..models import PatronAsignacion as _PA
+                                                try:
+                                                    patron = _PA.objects.get(id=int(patron))
+                                                except Exception:
+                                                    patron = None
+                                            if patron and getattr(patron, 'secuencia', None):
+                                                seq = [str(x).strip().upper() for x in patron.secuencia if x]
+                                        except Exception:
+                                            seq = None
+
+                                        value = ''
+                                        if seq:
+                                            ref_date = None
+                                            if asignacion.start_date:
+                                                ref_date = asignacion.start_date
+                                            elif getattr(asignacion, 'fecha', None):
+                                                ref_date = asignacion.fecha
+                                            else:
+                                                try:
+                                                    ref_date = datetime.date(int(asignacion.anio), int(asignacion.mes), 1)
+                                                except Exception:
+                                                    ref_date = current
+
+                                            active = True
+                                            if asignacion.recurring:
+                                                if asignacion.start_date and day_date < asignacion.start_date:
+                                                    active = False
+                                                if asignacion.end_date and asignacion.end_date and day_date > asignacion.end_date:
+                                                    active = False
+                                            else:
+                                                if getattr(asignacion, 'fecha', None):
+                                                    active = (day_date == asignacion.fecha)
+                                                else:
+                                                    active = (day_date.month == asignacion.mes and day_date.year == asignacion.anio)
+
+                                            if active and applies_by_puesto:
+                                                try:
+                                                    days_diff = (day_date - ref_date).days
+                                                    idx_seq = days_diff % len(seq)
+                                                    value = seq[idx_seq]
+                                                except Exception:
+                                                    value = ''
+                                        else:
+                                            if applies_by_puesto:
+                                                value = default_code
+
+                                        defaults[key] = value
                                     AsignacionSemanal.objects.get_or_create(
                                         puesto=puesto_obj,
                                         week_start=current,
@@ -259,10 +388,16 @@ def guardar_orden_asignacion(request):
 def eliminar_asignacion(request, id):
     try:
         asignar = Asignacion.objects.get(id=id)
-        # Guardar datos antes de eliminar para poder limpiar calendario si corresponde
+        # Guardar datos antes de eliminar para poder limpiar calendario y patron si corresponde
         puesto = getattr(asignar, 'puesto', None)
         mes = getattr(asignar, 'mes', None)
         anio = getattr(asignar, 'anio', None)
+        patron_id = None
+        try:
+            patron_id = asignar.patronAsignacion_id if hasattr(asignar, 'patronAsignacion_id') else (getattr(asignar, 'patronAsignacion', None) and getattr(asignar, 'patronAsignacion', None).id)
+        except Exception:
+            patron_id = None
+
         asignar.delete()
 
         # Si no existen más asignaciones activas para el mismo puesto/mes/anio,
@@ -288,6 +423,16 @@ def eliminar_asignacion(request, id):
 
                     # Borrar filas semanales para ese puesto y week_start en el conjunto
                     AsignacionSemanal.objects.filter(puesto_id=getattr(puesto, 'id', puesto), week_start__in=to_delete).delete()
+
+            # Eliminar PatronAsignacion si existía y ya no lo referencia ninguna otra asignación
+            if patron_id:
+                try:
+                    still_used = Asignacion.objects.filter(patronAsignacion_id=patron_id).exists()
+                    if not still_used:
+                        from ..models import PatronAsignacion
+                        PatronAsignacion.objects.filter(id=patron_id).delete()
+                except Exception as e:
+                    print(f"⚠️ Error limpiando PatronAsignacion al eliminar asignación: {e}")
         except Exception as e:
             print(f"⚠️ Error limpiando AsignacionSemanal al eliminar asignación: {e}")
 
