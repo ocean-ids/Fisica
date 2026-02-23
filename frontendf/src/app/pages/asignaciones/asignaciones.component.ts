@@ -35,7 +35,7 @@ import { PatronFormComponent } from '../patrones/patron-form/patron-form.compone
     MatCardModule,
     MatMenuModule,
     AsignacionCalendarioComponent,
-    PatronFormComponent
+  
   ],
   templateUrl: './asignaciones.component.html',
   styleUrl: './asignaciones.component.css'
@@ -67,7 +67,7 @@ export class AsignacionesComponent implements OnInit {
           this.cargarAsignaciones();
         });
 
-        // Forzar inicio en el mes actual al montar la vista
+       
         const ws = this.monthStartToday();
         this.calendario.weekStart = ws;
         this.calendario.loadWeeksForMonth(this.mes, this.anio);

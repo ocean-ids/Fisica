@@ -15,7 +15,7 @@
       accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, .xlsx"
       class="d-none" (change)="onFileSelected($event)">
 
-  <div class="d-flex justify-content-center gap-2 pt-2 mb-3 sticky-top ">
+  <div class="d-flex justify-content-center gap-2 pt-2 mb-3">
     <input class="form-control" style="max-width: 60%;"
          placeholder="Buscar por cédula, nombre o apellido"
          [(ngModel)]="filtroTexto" (ngModelChange)="cargarPersonas()">
