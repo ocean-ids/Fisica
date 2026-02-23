@@ -1,11 +1,17 @@
 from rest_framework import serializers
 from django.db import transaction
+from django.core.validators import RegexValidator
 from .models import Asignacion, AsignacionSemanal, Instalacion, Puesto, PuestoHorario, PatronAsignacion
 from .utils import parse_input
 
 
 
 class PatronAsignacionSerializer(serializers.ModelSerializer):
+    codigo = serializers.CharField(
+        max_length=4,
+        validators=[RegexValidator(regex=r'^\d{3,4}$', message='Use 3 o 4 dígitos')]
+    )
+
     class Meta:
         model = PatronAsignacion
         fields = ['id', 'codigo', 'secuencia']
@@ -97,6 +103,11 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
         fields = ['id', 'puesto', 'week_start', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'created_at', 'updated_at', 'puesto_detalle']
 
 class PatronAsignacionSerializer(serializers.ModelSerializer):
+    codigo = serializers.CharField(
+        max_length=4,
+        validators=[RegexValidator(regex=r'^\d{3,4}$', message='Use 3 o 4 dígitos')]
+    )
+
     class Meta:
         model = PatronAsignacion
         fields = ['id', 'codigo', 'secuencia']
