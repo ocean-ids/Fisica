@@ -108,9 +108,9 @@
           <div class="vertical-scroll-calendars">
             <ng-container *ngIf="weeksForMonth && weeksForMonth.length; else noWeeks">
               <ng-container *ngFor="let ws of weeksForMonth">
-                <div class="week-card mb-4">
+                <div class="week-card ">
                   <app-asignacion-calendario [weekStart]="ws"></app-asignacion-calendario>
-                  <div class="text-center"><strong>Semana: {{ ws }}</strong></div>
+                  <!--<div class="text-center"><strong>Semana: {{ ws }}</strong></div>-->
                 </div>
               </ng-container>
             </ng-container>
