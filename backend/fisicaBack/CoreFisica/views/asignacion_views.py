@@ -127,12 +127,7 @@ def asignar_servicio(request):
                 turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
                 default_code = 'N' if turno.startswith('n') else 'D'
 
-                today = datetime.date.today()
                 while current <= last_day:
-                    # Saltar semanas que ya terminaron antes de hoy
-                    if (current + datetime.timedelta(days=6)) < today:
-                        current += datetime.timedelta(days=7)
-                        continue
                     defaults = {}
                     for idx in range(7):
                         day_date = current + datetime.timedelta(days=idx)
@@ -369,9 +364,6 @@ def asignar_servicio(request):
 
                                 weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
                                 while current <= last_day:
-                                    if (current + datetime.timedelta(days=6)) < datetime.date.today():
-                                        current += datetime.timedelta(days=7)
-                                        continue
                                     defaults = {}
                                     for idx in range(7):
                                         day_date = current + datetime.timedelta(days=idx)
