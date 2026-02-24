@@ -201,8 +201,25 @@ def listar_asignacion_semanal(request):
 
                         if puesto_obj:
                             pid = puesto_obj.id if hasattr(puesto_obj, 'id') else puesto_obj
-                            # Crear la fila semanal ligada a la asignación para permitir borrado en cascada
-                            AsignacionSemanal.objects.get_or_create(asignacion=asign, week_start=ws, defaults={**defaults, 'puesto_id': pid})
+                            # Intentar obtener/crear por puesto+week_start (único). Si ya existe pero no tiene
+                            # asignacion vinculada, ligar la asignación; si existe y ya tiene asignacion, no crear duplicado.
+                            try:
+                                print(f"DEBUG: asegurando AsignacionSemanal para asignacion={getattr(asign,'id',None)} puesto={pid} week_start={ws} defaults={defaults}")
+                                obj, created = AsignacionSemanal.objects.get_or_create(puesto_id=pid, week_start=ws, defaults={**defaults, 'asignacion': asign})
+                                if created:
+                                    print(f"DEBUG: creada AsignacionSemanal id={obj.id} for puesto={pid} week_start={ws} asignacion={getattr(asign,'id',None)}")
+                                else:
+                                    print(f"DEBUG: AsignacionSemanal ya existe id={obj.id} puesto={pid} week_start={ws} asignacion={getattr(obj,'asignacion_id',None)}")
+                                    # Si la fila existe sin asignación ligada, ligar y actualizar valores
+                                    if getattr(obj, 'asignacion', None) is None:
+                                        obj.asignacion = asign
+                                        for k, v in defaults.items():
+                                            setattr(obj, k, v)
+                                        obj.save()
+                                        print(f"DEBUG: vinculada asignacion id={getattr(asign,'id',None)} a fila id={obj.id}")
+                            except Exception as e:
+                                # imprimir el error y continuar
+                                print(f"⚠️ Error creando/actualizando AsignacionSemanal (puesto {pid}, week_start {ws}): {e}")
 
                 except Exception as e:
                     print(f"⚠️ Error asegurando AsignacionSemanal para week_start {week_start}: {e}")

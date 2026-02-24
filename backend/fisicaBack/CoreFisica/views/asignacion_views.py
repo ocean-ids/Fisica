@@ -253,11 +253,18 @@ def asignar_servicio(request):
 
                         defaults[key] = value
 
-                    AsignacionSemanal.objects.get_or_create(
-                        asignacion=asignacion,
-                        week_start=current,
-                        defaults={**defaults, 'puesto': puesto_obj}
-                    )
+                    try:
+                        pid = puesto_obj.id if puesto_obj and hasattr(puesto_obj, 'id') else getattr(asignacion, 'puesto_id', None)
+                        obj, created = AsignacionSemanal.objects.get_or_create(puesto_id=pid, week_start=current, defaults={**defaults, 'asignacion': asignacion, 'puesto_id': pid})
+                        if not created:
+                            # Si existe pero no está ligada a una asignación, ligarla y actualizar valores
+                            if getattr(obj, 'asignacion', None) is None:
+                                obj.asignacion = asignacion
+                                for k, v in defaults.items():
+                                    setattr(obj, k, v)
+                                obj.save()
+                    except Exception as e:
+                        print(f"⚠️ Error creando/asegurando AsignacionSemanal en asignar_servicio (puesto {getattr(puesto_obj,'id',None)} week_start {current}): {e}")
                     current += datetime.timedelta(days=7)
             except Exception as e:
                 print(f"⚠️ Error creando AsignacionSemanal: {e}")
@@ -475,11 +482,17 @@ def asignar_servicio(request):
                                                 value = default_code
 
                                         defaults[key] = value
-                                    AsignacionSemanal.objects.get_or_create(
-                                        asignacion=asignacion,
-                                        week_start=current,
-                                        defaults={**defaults, 'puesto': puesto_obj}
-                                    )
+                                    try:
+                                        pid = puesto_obj.id if puesto_obj and hasattr(puesto_obj, 'id') else getattr(asignacion, 'puesto_id', None)
+                                        obj, created = AsignacionSemanal.objects.get_or_create(puesto_id=pid, week_start=current, defaults={**defaults, 'asignacion': asignacion, 'puesto_id': pid})
+                                        if not created:
+                                            if getattr(obj, 'asignacion', None) is None:
+                                                obj.asignacion = asignacion
+                                                for k, v in defaults.items():
+                                                    setattr(obj, k, v)
+                                                obj.save()
+                                    except Exception as e:
+                                        print(f"⚠️ Error creando/asegurando AsignacionSemanal al actualizar: {e}")
                                     current += datetime.timedelta(days=7)
                             except Exception as e:
                                 print(f"⚠️ Error creando AsignacionSemanal al actualizar: {e}")
