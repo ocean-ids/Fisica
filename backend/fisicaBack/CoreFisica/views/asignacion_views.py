@@ -110,6 +110,20 @@ def asignar_servicio(request):
                     return map_short.get(t, t)
 
                 dias_norm = [normalize_day_token(d) for d in dias_puesto if d]
+                # también obtener números de día (1..7) desde los horarios si existen (normalizados a int)
+                dias_nums = []
+                try:
+                    if puesto_obj is not None:
+                        horarios_qs = getattr(puesto_obj, 'horarios', None)
+                        if horarios_qs is not None:
+                            try:
+                                dias_nums = [int(n) for n in horarios_qs.values_list('dia', flat=True) if n is not None]
+                            except Exception:
+                                dias_nums = list(horarios_qs.values_list('dia', flat=True))
+                except Exception:
+                    dias_nums = []
+                # DEBUG: forzar aplicación del patrón ignorando dias/horarios del puesto
+                test_force_patron = True
                 turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
                 default_code = 'N' if turno.startswith('n') else 'D'
 
@@ -143,7 +157,18 @@ def asignar_servicio(request):
                         except Exception:
                             seq = None
 
-                        applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+                        # Preferir coincidencia por número de día si existen horarios registrados
+                        if dias_nums:
+                            applies_by_puesto = (day_date.isoweekday() in dias_nums)
+                        else:
+                            applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+
+                        # DEBUG override: si hay secuencia y la bandera de prueba está activa, forzamos aplicar el patron
+                        try:
+                            if seq and test_force_patron:
+                                applies_by_puesto = True
+                        except Exception:
+                            pass
 
                         value = ''
                         if seq:
@@ -176,7 +201,49 @@ def asignar_servicio(request):
                             if active and applies_by_puesto:
                                 try:
                                     days_diff = (day_date - ref_date).days
-                                    idx_seq = days_diff % len(seq)
+                                    # detectar si corresponde aplicar offset por 24h
+                                    offset = 0
+                                    try:
+                                        is_24h = False
+                                        # preferir la duración del horario de la asignación
+                                        if getattr(asignacion, 'horario', None):
+                                            hi = asignacion.horario.hora_ingreso
+                                            ho = asignacion.horario.hora_salida
+                                            dt1 = datetime.datetime.combine(datetime.date(1,1,1), hi)
+                                            dt2 = datetime.datetime.combine(datetime.date(1,1,1), ho)
+                                            if dt2 <= dt1:
+                                                dt2 += datetime.timedelta(days=1)
+                                            dur = (dt2 - dt1).total_seconds() / 3600.0
+                                            is_24h = dur >= 23.5
+                                        # si no se detectó por asignacion, caer en puesto horarios
+                                        if not is_24h and puesto_obj is not None:
+                                            horarios_qs = getattr(puesto_obj, 'horarios', None)
+                                            if horarios_qs is not None:
+                                                try:
+                                                    dia_num = day_date.isoweekday()
+                                                    horas_por_dia = list(horarios_qs.filter(dia=dia_num).values_list('horas', flat=True))
+                                                    if horas_por_dia:
+                                                        is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_por_dia)
+                                                    else:
+                                                        horas_list = list(horarios_qs.values_list('horas', flat=True))
+                                                        is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_list)
+                                                except Exception:
+                                                    horas_list = list(horarios_qs.values_list('horas', flat=True))
+                                                    is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_list)
+                                        if is_24h and seq:
+                                            # offset = longitud del primer bloque consecutivo igual al primer símbolo
+                                            first = seq[0]
+                                            cnt = 0
+                                            for s in seq:
+                                                if s == first:
+                                                    cnt += 1
+                                                else:
+                                                    break
+                                            offset = cnt
+                                    except Exception:
+                                        offset = 0
+
+                                    idx_seq = (days_diff + offset) % len(seq)
                                     value = seq[idx_seq]
                                 except Exception:
                                     value = ''
@@ -278,6 +345,21 @@ def asignar_servicio(request):
                                 turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
                                 default_code = 'N' if turno.startswith('n') else 'D'
 
+                                # también obtener números de día (1..7) desde los horarios si existen (normalizados a int)
+                                dias_nums = []
+                                try:
+                                    horarios_qs = getattr(puesto_obj, 'horarios', None)
+                                    if horarios_qs is not None:
+                                        try:
+                                            dias_nums = [int(n) for n in horarios_qs.values_list('dia', flat=True) if n is not None]
+                                        except Exception:
+                                            dias_nums = list(horarios_qs.values_list('dia', flat=True))
+                                except Exception:
+                                    dias_nums = []
+
+                                # DEBUG: forzar aplicación del patrón ignorando dias/horarios del puesto
+                                test_force_patron = True
+
                                 weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
                                 while current <= last_day:
                                     if (current + datetime.timedelta(days=6)) < datetime.date.today():
@@ -306,7 +388,11 @@ def asignar_servicio(request):
                                         except Exception:
                                             seq = None
 
-                                        applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+                                        # Preferir coincidencia por número de día si existen horarios registrados
+                                        if dias_nums:
+                                            applies_by_puesto = (day_date.isoweekday() in dias_nums)
+                                        else:
+                                            applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
 
                                         value = ''
                                         if seq:
@@ -336,7 +422,51 @@ def asignar_servicio(request):
                                             if active and applies_by_puesto:
                                                 try:
                                                     days_diff = (day_date - ref_date).days
-                                                    idx_seq = days_diff % len(seq)
+                                                    # detectar si corresponde aplicar offset por 24h
+                                                    offset = 0
+                                                    try:
+                                                        is_24h = False
+                                                        # preferir la duración del horario de la asignación
+                                                        if getattr(asignacion, 'horario', None):
+                                                            hi = asignacion.horario.hora_ingreso
+                                                            ho = asignacion.horario.hora_salida
+                                                            dt1 = datetime.datetime.combine(datetime.date(1,1,1), hi)
+                                                            dt2 = datetime.datetime.combine(datetime.date(1,1,1), ho)
+                                                            if dt2 <= dt1:
+                                                                dt2 += datetime.timedelta(days=1)
+                                                            dur = (dt2 - dt1).total_seconds() / 3600.0
+                                                            is_24h = dur >= 23.5
+                                                        # si no se detectó por asignacion, caer en puesto horarios
+                                                        if not is_24h and puesto_obj is not None:
+                                                            horarios_qs = getattr(puesto_obj, 'horarios', None)
+                                                            if horarios_qs is not None:
+                                                                # Preferir horario del día específico (dia de la semana)
+                                                                try:
+                                                                    dia_num = day_date.isoweekday()
+                                                                    horas_por_dia = list(horarios_qs.filter(dia=dia_num).values_list('horas', flat=True))
+                                                                    if horas_por_dia:
+                                                                        is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_por_dia)
+                                                                    else:
+                                                                        # fallback: si no hay fila para ese día, revisar cualquier horario 24h
+                                                                        horas_list = list(horarios_qs.values_list('horas', flat=True))
+                                                                        is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_list)
+                                                                except Exception:
+                                                                    horas_list = list(horarios_qs.values_list('horas', flat=True))
+                                                                    is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_list)
+                                                        if is_24h and seq:
+                                                            # offset = longitud del primer bloque consecutivo igual al primer símbolo
+                                                            first = seq[0]
+                                                            cnt = 0
+                                                            for s in seq:
+                                                                if s == first:
+                                                                    cnt += 1
+                                                                else:
+                                                                    break
+                                                            offset = cnt
+                                                    except Exception:
+                                                        offset = 0
+
+                                                    idx_seq = (days_diff + offset) % len(seq)
                                                     value = seq[idx_seq]
                                                 except Exception:
                                                     value = ''

@@ -68,6 +68,19 @@ def listar_asignacion_semanal(request):
                             except Exception:
                                 dias_puesto = []
                         dias_norm = [normalize_day_token(d) for d in dias_puesto if d]
+                        dias_nums = []
+                        try:
+                            if puesto_obj is not None:
+                                horarios_qs = getattr(puesto_obj, 'horarios', None)
+                                if horarios_qs is not None:
+                                    try:
+                                        dias_nums = [int(n) for n in horarios_qs.values_list('dia', flat=True) if n is not None]
+                                    except Exception:
+                                        dias_nums = list(horarios_qs.values_list('dia', flat=True))
+                        except Exception:
+                            dias_nums = []
+                        # DEBUG: forzar aplicación del patrón ignorando dias/horarios del puesto
+                        test_force_patron = True
                         turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
                         default_code = 'N' if turno.startswith('n') else 'D'
 
@@ -88,7 +101,17 @@ def listar_asignacion_semanal(request):
                             key = weekday_keys[day_date.weekday()]
 
                             # verificar si la asignación aplica ese día: si tiene dias específicos del puesto
-                            applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+                            if dias_nums:
+                                applies_by_puesto = (day_date.isoweekday() in dias_nums)
+                            else:
+                                applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+
+                            # DEBUG override: forzar aplicación si hay secuencia
+                            try:
+                                if seq and test_force_patron:
+                                    applies_by_puesto = True
+                            except Exception:
+                                pass
 
                             value = ''
                             # si hay patrón y la asignación está activa ese día, calcular token según ciclo continuo
@@ -123,7 +146,49 @@ def listar_asignacion_semanal(request):
                                 if active and applies_by_puesto:
                                     try:
                                         days_diff = (day_date - ref_date).days
-                                        idx_seq = days_diff % len(seq)
+                                        # detectar 24h: preferir horario de la asignación
+                                        offset = 0
+                                        try:
+                                            is_24h = False
+                                            try:
+                                                if getattr(asign, 'horario', None):
+                                                    hi = asign.horario.hora_ingreso
+                                                    ho = asign.horario.hora_salida
+                                                    dt1 = datetime.combine(date(1,1,1), hi)
+                                                    dt2 = datetime.combine(date(1,1,1), ho)
+                                                    if dt2 <= dt1:
+                                                        dt2 += timedelta(days=1)
+                                                    dur = (dt2 - dt1).total_seconds() / 3600.0
+                                                    is_24h = dur >= 23.5
+                                            except Exception:
+                                                is_24h = False
+                                            if not is_24h and puesto_obj is not None:
+                                                horarios_qs = getattr(puesto_obj, 'horarios', None)
+                                                if horarios_qs is not None:
+                                                    try:
+                                                        dia_num = day_date.isoweekday()
+                                                        horas_por_dia = list(horarios_qs.filter(dia=dia_num).values_list('horas', flat=True))
+                                                        if horas_por_dia:
+                                                            is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_por_dia)
+                                                        else:
+                                                            horas_list = list(horarios_qs.values_list('horas', flat=True))
+                                                            is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_list)
+                                                    except Exception:
+                                                        horas_list = list(horarios_qs.values_list('horas', flat=True))
+                                                        is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_list)
+                                            if is_24h and seq:
+                                                first = seq[0]
+                                                cnt = 0
+                                                for s in seq:
+                                                    if s == first:
+                                                        cnt += 1
+                                                    else:
+                                                        break
+                                                offset = cnt
+                                        except Exception:
+                                            offset = 0
+
+                                        idx_seq = (days_diff + offset) % len(seq)
                                         value = seq[idx_seq]
                                     except Exception:
                                         value = ''
