@@ -1,3 +1,32 @@
+/* Scroll horizontal para los calendarios semanales */
+.vertical-scroll-calendars {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 12px;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Apariencia de la barra de scroll horizontal (webkit) */
+.vertical-scroll-calendars::-webkit-scrollbar { height: 8px; }
+.vertical-scroll-calendars::-webkit-scrollbar-track { background: transparent; }
+.vertical-scroll-calendars::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border-radius: 6px; }
+
+/* Cada semana es una tarjeta con ancho fijo para evitar que el calendario se vaya hacia abajo */
+.vertical-scroll-calendars > .week-card {
+  flex: 0 0 520px; /* ancho fijo por semana */
+  min-width: 360px;
+  max-width: 720px;
+  border-right: 1px solid #e9ecef;
+  padding-right: 8px;
+}
+
+/* Ajuste: si el contenido es más angosto, que no rompa la tarjeta */
+.vertical-scroll-calendars > .week-card app-asignacion-calendario {
+  display: block;
+}
 .tooltip-menu {
   pointer-events: none; /* para que no se quede abierto */
 }

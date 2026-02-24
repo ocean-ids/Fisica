@@ -104,12 +104,19 @@
     </div>
     <div class="col-lg-4">
       <div class="card">
-        <div class="card-body">
-          <app-asignacion-calendario #calComp></app-asignacion-calendario>
-          <div class class="d-flex align-items-center justify-content-around">
-              <button class="btn btn-sm btn-outline-primary" (click)="calComp.prevWeek()">Anterior</button>
-              <div><strong *ngIf="calComp?.weekStart">Semana: {{ calComp.weekStart }}</strong></div>
-              <button class="btn btn-sm btn-outline-primary" (click)="calComp.nextWeek()">Siguiente</button>
+        <div class="card-body p-0">
+          <div class="vertical-scroll-calendars">
+            <ng-container *ngIf="weeksForMonth && weeksForMonth.length; else noWeeks">
+              <ng-container *ngFor="let ws of weeksForMonth">
+                <div class="week-card mb-4">
+                  <app-asignacion-calendario [weekStart]="ws"></app-asignacion-calendario>
+                  <div class="text-center"><strong>Semana: {{ ws }}</strong></div>
+                </div>
+              </ng-container>
+            </ng-container>
+            <ng-template #noWeeks>
+              <div class="p-3 text-center text-muted">No se encontraron semanas para el mes seleccionado.</div>
+            </ng-template>
           </div>
         </div>
       </div>

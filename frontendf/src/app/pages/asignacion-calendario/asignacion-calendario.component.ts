@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter, Input } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { AsignacionSemanal } from '../../models/asignacion-calendario';
 import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
 import { PuestoService } from '../../services/puesto.service';
@@ -13,8 +13,13 @@ import { CommonModule } from '@angular/common';
   templateUrl: './asignacion-calendario.component.html',
   styleUrl: './asignacion-calendario.component.css'
 })
-export class AsignacionCalendarioComponent implements OnInit{
-  weekStart: string = '';
+export class AsignacionCalendarioComponent implements OnInit, OnChanges{
+  @Input() weekStart: string = '';
+    ngOnChanges(changes: SimpleChanges): void {
+      if (changes['weekStart'] && !changes['weekStart'].firstChange) {
+        this.loadWeek();
+      }
+    }
   weeks: string[] = [];
   currentWeekIndex: number = 0;
   weekDays: Array<{short:string, name:string, date:string, dayNum:number}> = [];
@@ -30,9 +35,13 @@ export class AsignacionCalendarioComponent implements OnInit{
   ){}
 
   ngOnInit(): void {
-    this.weekStart = this.computeCurrentMonthStart();
-    const base = new Date(this.weekStart);
-    this.loadWeeksForMonth(base.getMonth()+1, base.getFullYear());
+    // Si no se proveyó `weekStart` desde el padre, usar el inicio del mes actual.
+    if (!this.weekStart) {
+      this.weekStart = this.computeCurrentMonthStart();
+    }
+    // Cargar la semana correspondiente al `weekStart` actual.
+    console.log('AsignacionCalendario ngOnInit weekStart=', this.weekStart);
+    this.loadWeek();
   }
 
   private formatDateLocal(d: Date): string {
@@ -66,6 +75,7 @@ export class AsignacionCalendarioComponent implements OnInit{
         }
 
         
+        console.log('loadWeek result for', this.weekStart, 'res=', res);
         if((!this.rows || this.rows.length === 0)){
           const parts = (this.weekStart||'').split('-').map(Number);
           const base = (parts.length===3) ? new Date(parts[0], parts[1]-1, parts[2]) : new Date();

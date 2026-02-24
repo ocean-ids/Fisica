@@ -45,6 +45,8 @@ export class AsignacionesComponent implements OnInit {
   @ViewChild(AsignacionCalendarioComponent)
   calendario?: AsignacionCalendarioComponent;
 
+  weeksForMonth: string[] = [];
+
   private monthStartToday(): string {
     const t = new Date();
     const y = t.getFullYear();
@@ -69,8 +71,8 @@ export class AsignacionesComponent implements OnInit {
 
        
         const ws = this.monthStartToday();
-        this.calendario.weekStart = ws;
-        this.calendario.loadWeeksForMonth(this.mes, this.anio);
+        this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
+        this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
       }
     }, 0);
   }
@@ -255,6 +257,9 @@ export class AsignacionesComponent implements OnInit {
     
     this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
     this.cargarAsignaciones();
+    // inicializar semanas para el mes actual para que el ngFor tenga datos
+    this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
+      console.log('weeksForMonth initialized', this.mes, this.anio, this.weeksForMonth);
   }
 
 
@@ -269,11 +274,26 @@ export class AsignacionesComponent implements OnInit {
     this.dia = null;
     this.cargarAsignaciones();
     if (this.calendario) {
-      // sincronizar calendario al día 1 del mes elegido
-      const ws = `${this.anio}-${String(this.mes).padStart(2,'0')}-01`;
-      this.calendario.weekStart = ws;
-      this.calendario.loadWeeksForMonth(this.mes, this.anio);
+      // sincronizar lista de semanas para el mes elegido
+      this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
     }
+  }
+
+  private formatDateLocal(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  private computeWeeksForMonth(mes: number, anio: number): string[] {
+    const weeksLocal: string[] = [];
+    const d = new Date(anio, mes - 1, 1);
+    while (d.getMonth() === (mes - 1)) {
+      weeksLocal.push(this.formatDateLocal(d));
+      d.setDate(d.getDate() + 7);
+    }
+    return weeksLocal;
   }
 
   cargarCatalogos(): void {
