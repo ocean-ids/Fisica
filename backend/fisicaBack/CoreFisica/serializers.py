@@ -113,7 +113,7 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AsignacionSemanal
-        fields = ['id', 'puesto', 'week_start', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'created_at', 'updated_at', 'puesto_detalle']
+        fields = ['id', 'asignacion', 'puesto', 'week_start', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'created_at', 'updated_at', 'puesto_detalle']
 
 class PatronAsignacionSerializer(serializers.ModelSerializer):
     codigo = serializers.CharField(

@@ -136,7 +136,8 @@ def listar_asignacion_semanal(request):
 
                         if puesto_obj:
                             pid = puesto_obj.id if hasattr(puesto_obj, 'id') else puesto_obj
-                            AsignacionSemanal.objects.get_or_create(puesto_id=pid, week_start=ws, defaults=defaults)
+                            # Crear la fila semanal ligada a la asignación para permitir borrado en cascada
+                            AsignacionSemanal.objects.get_or_create(asignacion=asign, week_start=ws, defaults={**defaults, 'puesto_id': pid})
 
                 except Exception as e:
                     print(f"⚠️ Error asegurando AsignacionSemanal para week_start {week_start}: {e}")
@@ -246,6 +247,7 @@ def copiar_semana(request):
                     'fri': row.fri,
                     'sat': row.sat,
                     'sun': row.sun,
+                    'asignacion': getattr(row, 'asignacion', None),
                 }
             )
             if was_created:

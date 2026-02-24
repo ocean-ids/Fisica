@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from rest_framework import status
 from ..models import Asignacion, AsignacionSemanal, Puesto
 from django.db.models import Q
+from django.db import transaction
 from ..serializers import AsignacionSerializer
 import openpyxl
 import datetime
@@ -186,9 +187,9 @@ def asignar_servicio(request):
                         defaults[key] = value
 
                     AsignacionSemanal.objects.get_or_create(
-                        puesto=puesto_obj,
+                        asignacion=asignacion,
                         week_start=current,
-                        defaults=defaults
+                        defaults={**defaults, 'puesto': puesto_obj}
                     )
                     current += datetime.timedelta(days=7)
             except Exception as e:
@@ -345,9 +346,9 @@ def asignar_servicio(request):
 
                                         defaults[key] = value
                                     AsignacionSemanal.objects.get_or_create(
-                                        puesto=puesto_obj,
+                                        asignacion=asignacion,
                                         week_start=current,
-                                        defaults=defaults
+                                        defaults={**defaults, 'puesto': puesto_obj}
                                     )
                                     current += datetime.timedelta(days=7)
                             except Exception as e:
@@ -392,46 +393,17 @@ def eliminar_asignacion(request, id):
     try:
         asignar = Asignacion.objects.get(id=id)
         # Guardar datos antes de eliminar para poder limpiar calendario y patron si corresponde
-        puesto = getattr(asignar, 'puesto', None)
-        mes = getattr(asignar, 'mes', None)
-        anio = getattr(asignar, 'anio', None)
-        # Recuperar id del patron asociado (si existe) — lo usaremos más abajo
-        # para intentar eliminar el patrón si ya no lo referencian otras asignaciones.
+        # No recuperamos/eliminamos el PatronAsignacion aquí: preservamos los
+        # patrones creados por los usuarios (se mantienen en el select).
+
+        # Borrar filas semanales y luego la asignación dentro de una transacción
         try:
-            patron_id = getattr(asignar, 'patronAsignacion_id', None) or (getattr(asignar, 'patronAsignacion', None) and getattr(asignar.patronAsignacion, 'id', None))
-        except Exception:
-            patron_id = None
-
-        asignar.delete()
-
-        # Si no existen más asignaciones activas para el mismo puesto/mes/anio,
-        # eliminar las filas semanales (AsignacionSemanal) generadas para ese puesto y mes.
-        try:
-            if puesto and mes and anio:
-                remaining = Asignacion.objects.filter(puesto_id=getattr(puesto, 'id', puesto), mes=mes, anio=anio, estado='ACTIVO').exists()
-                if not remaining:
-                    # Borrar todas las filas semanales para este puesto desde el mes
-                    # de la asignación en adelante (week_start >= primer día del mes)
-                    try:
-                        first_day = datetime.date(int(anio), int(mes), 1)
-                        AsignacionSemanal.objects.filter(puesto_id=getattr(puesto, 'id', puesto), week_start__gte=first_day).delete()
-                    except Exception as _e:
-                        # Fallback a borrado por conjunto limitado si falla el cálculo de fecha
-                        print(f"⚠️ Error calculando rango para borrar AsignacionSemanal: {_e}")
-
-            # Intentar eliminar el PatronAsignacion asociado si ya no lo referencia
-            # ninguna otra Asignacion. Esto borra el patrón globalmente solo cuando
-            # es realmente huérfano.
-            if patron_id:
-                try:
-                    still_used = Asignacion.objects.filter(patronAsignacion_id=patron_id).exists()
-                    if not still_used:
-                        from ..models import PatronAsignacion
-                        PatronAsignacion.objects.filter(id=patron_id).delete()
-                except Exception as e:
-                    print(f"⚠️ Error limpiando PatronAsignacion al eliminar asignación: {e}")
+            with transaction.atomic():
+                AsignacionSemanal.objects.filter(asignacion_id=id).delete()
+                asignar.delete()
         except Exception as e:
-            print(f"⚠️ Error limpiando AsignacionSemanal al eliminar asignación: {e}")
+            print(f"⚠️ Error eliminando asignación y sus semanales: {e}")
+            return Response({'error': 'No se pudo eliminar la asignación'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'mensaje': 'Asignación eliminada correctamente'}, status=status.HTTP_204_NO_CONTENT)
     except Asignacion.DoesNotExist:
@@ -607,21 +579,38 @@ def exportar_asignaciones_excel(request):
             cell.value = v
             cell.border = border
 
-        # rellenar las celdas de cada día con datos de AsignacionSemanal (por puesto y week_start)
+        # rellenar las celdas de cada día con datos de AsignacionSemanal (priorizando filas ligadas a la Asignacion)
         for di, d in enumerate(dates):
             col = date_start_col + di
             # calcular week_start (lunes)
             week_start = d - datetime.timedelta(days=d.weekday())
-            key = (getattr(asignacion.puesto, 'id', getattr(asignacion, 'puesto_id', None)), week_start)
+            puesto_id = getattr(asignacion.puesto, 'id', getattr(asignacion, 'puesto_id', None))
             semanal = None
-            if key in semanal_cache:
-                semanal = semanal_cache[key]
+            # Primero intentamos encontrar una fila ligada específicamente a la asignación
+            asign_key = ('a', getattr(asignacion, 'id', None), week_start)
+            if asign_key in semanal_cache:
+                semanal = semanal_cache[asign_key]
             else:
                 try:
-                    semanal = AsignacionSemanal.objects.filter(puesto_id=key[0], week_start=week_start).first()
+                    if getattr(asignacion, 'id', None):
+                        semanal = AsignacionSemanal.objects.filter(asignacion_id=asignacion.id, week_start=week_start).first()
+                    else:
+                        semanal = None
                 except Exception:
                     semanal = None
-                semanal_cache[key] = semanal
+                semanal_cache[asign_key] = semanal
+
+            # Si no hay fila ligada a la asignación, usamos la fila general por puesto (compatibilidad hacia atrás)
+            if not semanal:
+                puesto_key = ('p', puesto_id, week_start)
+                if puesto_key in semanal_cache:
+                    semanal = semanal_cache[puesto_key]
+                else:
+                    try:
+                        semanal = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start).first()
+                    except Exception:
+                        semanal = None
+                    semanal_cache[puesto_key] = semanal
 
             val = ''
             if semanal:

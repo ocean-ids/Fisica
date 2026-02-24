@@ -348,6 +348,7 @@ class AsignacionSemanal(models.Model):
     7 celdas con hasta 4 caracteres por día (límite `max_length=4`).
     """
 
+    asignacion = models.ForeignKey('Asignacion', on_delete=models.CASCADE, null=True, blank=True, related_name='semanales')
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE, related_name='asignaciones_semanales')
     week_start = models.DateField()  
 
@@ -363,10 +364,13 @@ class AsignacionSemanal(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = (('puesto', 'week_start'),)
+        unique_together = (('puesto', 'week_start'), ('asignacion', 'week_start'))
         indexes = [models.Index(fields=['week_start']),]
 
     def __str__(self):
         return f"{self.puesto} - {self.week_start}"
+
+
+
 
 
