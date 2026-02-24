@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChildren, QueryList, AfterViewInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Cliente, Persona, Instalacion, Puesto, Horario, Asignacion } from '../../models';
 import { PatronAsignacion } from '../../models/asignacion.model';
@@ -42,8 +42,8 @@ import { PatronFormComponent } from '../patrones/patron-form/patron-form.compone
 })
 export class AsignacionesComponent implements OnInit {
 
-  @ViewChild(AsignacionCalendarioComponent)
-  calendario?: AsignacionCalendarioComponent;
+  @ViewChildren(AsignacionCalendarioComponent)
+  calendarios?: QueryList<AsignacionCalendarioComponent>;
 
   weeksForMonth: string[] = [];
 
@@ -56,24 +56,25 @@ export class AsignacionesComponent implements OnInit {
 
   ngAfterViewInit(): void {
     setTimeout(() => {
-      if (this.calendario && this.calendario.weekStartChange) {
-        this.calendario.weekStartChange.subscribe((ws: string) => {
-          if (!ws) return;
-          this.dia = ws;
-          const parts = ws.split('-');
-          if (parts.length === 3) {
-            this.anio = Number(parts[0]);
-            this.mes = Number(parts[1]);
-            this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
-          }
-          this.cargarAsignaciones();
-        });
+        if (this.calendarios && this.calendarios.length) {
+          this.calendarios.forEach(c => {
+            try { c.weekStartChange.subscribe((ws: string) => {
+              if (!ws) return;
+              this.dia = ws;
+              const parts = ws.split('-');
+              if (parts.length === 3) {
+                this.anio = Number(parts[0]);
+                this.mes = Number(parts[1]);
+                this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
+              }
+              this.cargarAsignaciones();
+            }); } catch(e){}
+          });
 
-       
-        const ws = this.monthStartToday();
-        this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
-        this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
-      }
+          const ws = this.monthStartToday();
+          this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
+          this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
+        }
     }, 0);
   }
 
@@ -209,9 +210,11 @@ export class AsignacionesComponent implements OnInit {
       this.mes = Number(parts[1]);
     }
     // sincronizar calendario con la fecha seleccionada
-    if (this.calendario) {
-      this.calendario.weekStart = this.dia;
-      this.calendario.loadWeek();
+    if (this.calendarios && this.calendarios.length) {
+      this.calendarios.forEach(c => {
+        c.weekStart = this.dia || '';
+        try { c.loadWeek(); } catch(e){}
+      });
     }
     this.cargarAsignaciones();
   }
@@ -273,10 +276,8 @@ export class AsignacionesComponent implements OnInit {
     this.mes = Number(parts[1]);
     this.dia = null;
     this.cargarAsignaciones();
-    if (this.calendario) {
-      // sincronizar lista de semanas para el mes elegido
-      this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
-    }
+    // sincronizar lista de semanas para el mes elegido
+    this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
   }
 
   private formatDateLocal(d: Date): string {
@@ -331,11 +332,11 @@ export class AsignacionesComponent implements OnInit {
 
   // Methods invoked by template controls to sync both calendario and asignaciones
   prevWeekAndPage(): void {
-    if (this.calendario) this.calendario.prevWeek();
+    if (this.calendarios) this.calendarios.forEach(c => { try { c.prevWeek(); } catch(e){} });
   }
 
   nextWeekAndPage(): void {
-    if (this.calendario) this.calendario.nextWeek();
+    if (this.calendarios) this.calendarios.forEach(c => { try { c.nextWeek(); } catch(e){} });
   }
 
   abrirNuevoPatron(): void {
@@ -532,7 +533,7 @@ export class AsignacionesComponent implements OnInit {
           Swal.fire({ icon: 'success', title: 'Asignación actualizada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
           this.cerrarModal();
-          this.calendario?.loadWeek();
+          if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
         },
         error: err => {
           console.error(err);
@@ -547,7 +548,7 @@ export class AsignacionesComponent implements OnInit {
           Swal.fire({ icon: 'success', title: 'Asignación creada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
           this.cerrarModal();
-          this.calendario?.loadWeek();
+          if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
         },
         error: err => {
           console.error(err);
@@ -603,7 +604,7 @@ export class AsignacionesComponent implements OnInit {
         next: () => {
           Swal.fire({ icon: 'success', title: 'Asignación eliminada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
-          this.calendario?.loadWeek();
+          if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
         },
         error: err => {
           console.error(err);
