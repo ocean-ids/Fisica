@@ -4,9 +4,9 @@
   <form [formGroup]="patronForm" class="modal-form">
     <mat-form-field appearance="fill" class="full-width">
       <mat-label>Código</mat-label>
-      <input matInput type="number" inputmode="numeric" pattern="\d{3,4}" formControlName="codigo" maxlength="4" required>
+      <input matInput type="number" inputmode="numeric" pattern="\d{3}" formControlName="codigo" maxlength="3" required (input)="onCodigoInput($event)">
       <mat-error *ngIf="patronForm.get('codigo')?.hasError('required')">Código requerido</mat-error>
-      <mat-error *ngIf="patronForm.get('codigo')?.hasError('pattern')">Use 3 o 4 dígitos</mat-error>
+      <mat-error *ngIf="patronForm.get('codigo')?.hasError('pattern')">Use 3 dígitos</mat-error>
     </mat-form-field>
     <mat-form-field appearance="fill" class="full-width">
       <mat-label>Secuencia</mat-label>

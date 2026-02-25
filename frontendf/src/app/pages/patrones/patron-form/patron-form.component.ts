@@ -25,11 +25,18 @@ export class PatronFormComponent {
     private patronService: PatronAsignacionService
   ) {
     this.patronForm = this.fb.group({
-      codigo: [data?.codigo || '', [Validators.required, Validators.pattern(/^\d{3,4}$/)]],
+      codigo: [data?.codigo || '', [Validators.required, Validators.pattern(/^\d{3}$/), Validators.maxLength(3), Validators.minLength(3)]],
       secuencia: [data?.secuencia?.join('-') || '', [Validators.required, Validators.pattern(/^(?:[DNF]{1,7}|[DNF](?:-[DNF]){0,6})$/)]]
     });
   }
+
   
+  onCodigoInput(event: Event): void{
+    const input = event.target as HTMLInputElement;
+    input.value = input.value.replace(/\D/g, '').slice(0, 3);
+    this.patronForm.get('codigo')?.setValue(input.value, { emitEvent: false});
+  }
+
   onSecuenciaInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     let raw = input.value.toUpperCase().replace(/[^DNF\-]/g, '').replace(/\-+/g, '-');
