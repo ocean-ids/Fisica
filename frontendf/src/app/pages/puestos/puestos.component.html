@@ -64,11 +64,11 @@
                 </mat-menu>
               </td> -->
               <td>{{ puesto.instalacion_nombre || '-' }}</td>
-              <td class="text-center">
-                <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirFormularioNuevo(puesto)">
+              <td class="d-flex justify-content-around">
+                <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirFormularioNuevo(puesto)" >
                   <i class="bi bi-pencil"></i> Editar
                 </button>
-                <button class="btn btn-sm btn-outline-danger" (click)="eliminarPuesto(puesto.id!)">
+                <button class="btn btn-sm btn-outline-danger" (click)="eliminarPuesto(puesto.id!)" >
                   <i class="bi bi-trash"></i> Eliminar
                 </button>
               </td>
