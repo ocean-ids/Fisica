@@ -14,12 +14,12 @@
         matInput
         formControlName="secuencia"
         required
-        pattern="^(?:[DNF]{1,7}|[DNF](?:-[DNF]){0,6})$"
-        maxlength="13"
+        pattern="^(?:[DNF]{1,8}|[DNF](?:-[DNF]){0,7})$"
+        maxlength="8"
         (input)="onSecuenciaInput($event)"
       >
       <mat-error *ngIf="patronForm.get('secuencia')?.hasError('required')">Secuencia requerida</mat-error>
-      <mat-error *ngIf="patronForm.get('secuencia')?.hasError('pattern')">Use D, N o F (ej: D-N-F o DNF), máximo 7 símbolos</mat-error>
+      <mat-error *ngIf="patronForm.get('secuencia')?.hasError('pattern')">Use D, N o F (ej: D-N-F o DNF), máximo 8 símbolos</mat-error>
     </mat-form-field>
   </form>
 </mat-dialog-content>

@@ -123,8 +123,8 @@ class PatronAsignacionSerializer(serializers.ModelSerializer):
     def validate_secuencia(self, value):
         if not isinstance(value, list) or not value:
             raise serializers.ValidationError("La secuencia debe ser una lista no vacía")
-        if len(value) > 7:
-            raise serializers.ValidationError("La secuencia puede tener como máximo 7 símbolos")
+        if len(value) > 8:
+            raise serializers.ValidationError("La secuencia puede tener como máximo 8 símbolos")
         allowed = {"D", "N", "F"}
         cleaned = []
         for token in value:

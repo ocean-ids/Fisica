@@ -277,8 +277,8 @@ class PatronAsignacion(models.Model):
         seq = self.secuencia or []
         if not isinstance(seq, list) or not seq:
             raise ValueError("'secuencia' debe ser una lista no vacía")
-        if len(seq) > 7:
-            raise ValueError("'secuencia' debe tener como máximo 7 símbolos")
+        if len(seq) > 8:
+            raise ValueError("'secuencia' debe tener como máximo 8 símbolos")
         cleaned = []
         for token in seq:
             t = str(token).strip().upper()

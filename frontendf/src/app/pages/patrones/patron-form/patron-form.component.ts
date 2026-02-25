@@ -26,7 +26,7 @@ export class PatronFormComponent {
   ) {
     this.patronForm = this.fb.group({
       codigo: [data?.codigo || '', [Validators.required, Validators.pattern(/^\d{3}$/), Validators.maxLength(3), Validators.minLength(3)]],
-      secuencia: [data?.secuencia?.join('-') || '', [Validators.required, Validators.pattern(/^(?:[DNF]{1,7}|[DNF](?:-[DNF]){0,6})$/)]]
+      secuencia: [data?.secuencia?.join('-') || '', [Validators.required, Validators.pattern(/^(?:[DNF]{1,8}|[DNF](?:-[DNF]){0,7})$/)]]
     });
   }
 
@@ -43,7 +43,7 @@ export class PatronFormComponent {
     raw = raw.replace(/^\-+/, '').replace(/\-+$/, '');
     const hadHyphen = raw.includes('-');
     let tokens = hadHyphen ? raw.split('-').map(t => t.trim()).filter(t => t.length > 0) : raw.split('').filter(t => t.length > 0);
-    if (tokens.length > 7) tokens = tokens.slice(0, 7);
+    if (tokens.length > 8) tokens = tokens.slice(0, 8);
     const val = hadHyphen ? tokens.join('-') : tokens.join('');
     input.value = val;
     this.patronForm.get('secuencia')?.setValue(val, { emitEvent: false });
