@@ -109,7 +109,7 @@
             <ng-container *ngIf="weeksForMonth && weeksForMonth.length; else noWeeks">
               <ng-container *ngFor="let ws of weeksForMonth">
                 <div class="week-card ">
-                  <app-asignacion-calendario [weekStart]="ws"></app-asignacion-calendario>
+                  <app-asignacion-calendario [weekStart]="ws" (sacafrancoClick)="openSacafrancosModal($event.weekStart, $event.day, $event.puestoId)"></app-asignacion-calendario>
                   <!--<div class="text-center"><strong>Semana: {{ ws }}</strong></div>-->
                 </div>
               </ng-container>

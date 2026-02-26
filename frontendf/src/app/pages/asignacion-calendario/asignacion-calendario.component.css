@@ -68,3 +68,27 @@ input {
 
 /* Reduce table font size for more compact rows */
 .table { font-size: 13px; }
+
+/* Inline info button inside cell: absolute so it doesn't widen the cell */
+.cell-inner { position: relative; width: 100%; display: block; }
+.cell-inner .cell-letter { margin: 0; text-align: center; font-weight: 700; }
+.cell-inner input.form-control { padding-right: 40px; box-sizing: border-box; }
+.cell-inner .info-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 4px 6px;
+  min-width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  opacity: 0; /* hidden by default to keep compact look */
+  transition: opacity .12s ease-in-out, transform .12s;
+  transform: translateY(0);
+}
+/* reveal on hover of the td to keep compact default */
+td:hover .cell-inner .info-btn { opacity: 1; }
+/* slightly smaller icon */
+.cell-inner .info-btn .bi { font-size: 14px; }

@@ -15,6 +15,7 @@ import { CommonModule } from '@angular/common';
 })
 export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   @Input() weekStart: string = '';
+  @Output() sacafrancoClick: EventEmitter<any> = new EventEmitter<any>();
     ngOnChanges(changes: SimpleChanges): void {
       if (changes['weekStart'] && !changes['weekStart'].firstChange) {
         this.loadWeek();

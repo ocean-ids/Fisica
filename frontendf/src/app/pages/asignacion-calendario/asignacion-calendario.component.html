@@ -16,10 +16,23 @@
         <tr style="height: 60px;" *ngFor="let row of rows; let i = index" class="data-row p-0 m-0">
           <ng-container *ngFor="let d of weekDays">
             <td *ngIf="d.date; else emptyDay">
-              <input type="text" maxlength="4" class="form-control form-control-sm"
-                     [(ngModel)]="row[dayKeyFromDate(d.date)]"
-                     (ngModelChange)="onCellChange(row, dayKeyFromDate(d.date), $event)"
-                     [ngModelOptions]="{standalone:true}">
+              <ng-container *ngIf="(row[dayKeyFromDate(d.date)] || '').toString().toUpperCase().startsWith('F'); else normalInput">
+                <button class="info-btn btn btn-sm btn-outline-info" (click)="$event.stopPropagation(); sacafrancoClick.emit({ weekStart: weekStart, day: dayKeyFromDate(d.date), puestoId: row.puesto });">
+                  <div class="cell-inner">
+                    <input type="text" maxlength="4" class="form-control form-control-sm"
+                          [(ngModel)]="row[dayKeyFromDate(d.date)]"
+                          (ngModelChange)="onCellChange(row, dayKeyFromDate(d.date), $event)"
+                          [ngModelOptions]="{standalone:true}">
+                      
+                  </div>
+                </button>
+              </ng-container>
+              <ng-template #normalInput>
+                <input type="text" maxlength="4" class="form-control form-control-sm"
+                       [(ngModel)]="row[dayKeyFromDate(d.date)]"
+                       (ngModelChange)="onCellChange(row, dayKeyFromDate(d.date), $event)"
+                       [ngModelOptions]="{standalone:true}">
+              </ng-template>
             </td>
             <ng-template #emptyDay><td></td></ng-template>
           </ng-container>

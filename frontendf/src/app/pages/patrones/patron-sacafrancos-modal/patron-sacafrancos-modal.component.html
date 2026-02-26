@@ -1,0 +1,23 @@
+<h2 mat-dialog-title class="text-center">Sacafrancos </h2>
+<mat-dialog-content>
+    <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Seleccionar sacafranco</mat-label>
+        <mat-select (selectionChange)="onSelect($event)">
+            <mat-option *ngFor="let p of lista" [value]="p">
+                <div class="option-content">
+                    <div class="info">
+                        <div class="name">{{ p.nombres }} {{ p.apellidos }}</div>
+                        <div class="muted">{{ p.cedula }}</div>
+                    </div>
+                    <div class="status">
+                        <mat-chip [color]="getChipColor(p.status)">{{ displayStatus(p.status) }}</mat-chip>
+                    </div>
+                </div>
+            </mat-option>
+        </mat-select>
+    </mat-form-field>
+  
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+    <button mat-button (click)="close()">Cerrar</button>
+</mat-dialog-actions>

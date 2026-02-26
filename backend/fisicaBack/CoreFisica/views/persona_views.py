@@ -1,9 +1,11 @@
 from django.http import JsonResponse
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from ..models import Persona
+from ..models import Persona, AsignacionSemanal
 import csv
 import io
 import re
@@ -361,3 +363,38 @@ def importar_personas(request):
     except Exception:
         logger.exception('Error importando personas')
         return JsonResponse({'error': 'No se pudo importar personas'}, status=500)
+
+class SacafrancoListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        week_start = request.query_params.get('week_start')
+        day = request.query_params.get('day')
+        puesto_id = request.query_params.get('puesto_id')
+
+        qs = Persona.objects.filter(tipo='SACAFRANCO', is_active=True).order_by('nombres', 'apellidos')
+        results = []
+        for p in qs:
+            occupied = False
+            if week_start and day:
+                
+                if AsignacionSemanal.objects.filter(asignacion__persona=p, week_start=week_start).exclude(**{day: ''}).exists():
+                    occupied = True
+            assigned_for_puesto = None
+            if puesto_id and week_start and day:
+                assigned = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start, asignacion__persona=p).exclude(**{day: ''}).first()
+                if assigned:
+                    assigned_for_puesto = p.id
+
+            results.append({
+                'id': p.id,
+                'nombres': p.nombres,
+                'apellidos': p.apellidos,
+                'cedula': p.cedula,
+                'status': 'occupied' if occupied else 'available',
+                'assigned_for_puesto': assigned_for_puesto,
+            })
+
+        return Response(results)
+
+

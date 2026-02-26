@@ -34,4 +34,13 @@ export class PatronAsignacionService {
   eliminarPatron(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}${id}/`, { headers: this.getHeaders() });
   }
+
+  getSacafrancos(weekStart: string, day: string, puestoId?: number) {
+    const params = new URLSearchParams();
+    if (weekStart) params.set('week_start', weekStart);
+    if (day) params.set('day', day);
+    if (puestoId) params.set('puesto_id', String(puestoId));
+    const url = `http://localhost:8000/api/personas/sacafrancos/?${params.toString()}`;
+    return this.http.get<any[]>(url, { headers: this.getHeaders() });
+  }
 }

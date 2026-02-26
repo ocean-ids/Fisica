@@ -19,8 +19,9 @@ import { HttpClient } from '@angular/common/http';
 import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
 import { PatronAsignacionService } from '../../services/patron-asignacion.service';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import {  MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { PatronFormComponent } from '../patrones/patron-form/patron-form.component';
+import { PatronSacafrancosModalComponent } from '../patrones/patron-sacafrancos-modal/patron-sacafrancos-modal.component';
 
 @Component({
   selector: 'app-asignaciones',
@@ -35,7 +36,7 @@ import { PatronFormComponent } from '../patrones/patron-form/patron-form.compone
     MatCardModule,
     MatMenuModule,
     AsignacionCalendarioComponent,
-  
+    
   ],
   templateUrl: './asignaciones.component.html',
   styleUrl: './asignaciones.component.css'
@@ -265,9 +266,6 @@ export class AsignacionesComponent implements OnInit {
       console.log('weeksForMonth initialized', this.mes, this.anio, this.weeksForMonth);
   }
 
-
-
-
   onMonthChange(): void {
     if (!this.monthValue) return;
     const parts = this.monthValue.split('-');
@@ -430,6 +428,18 @@ export class AsignacionesComponent implements OnInit {
       this.onInstalacionChange();
     }
     this.mostrarModal = true;
+  }
+
+  openSacafrancosModal(weekStart: string, day: string, puestoId?: number){
+    this.patronService.getSacafrancos(weekStart, day, puestoId).subscribe(list => {
+      this.dialog.open(PatronSacafrancosModalComponent, {
+        data: { lista: list, weekStart, day },
+        width: '480px',
+        maxHeight: '70vh',
+        panelClass: 'sacafrancos-dialog'
+      });
+    });
+
   }
 
   descargarReporteExcel() {
