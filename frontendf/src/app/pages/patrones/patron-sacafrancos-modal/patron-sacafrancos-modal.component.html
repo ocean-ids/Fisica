@@ -2,7 +2,7 @@
 <mat-dialog-content>
     <mat-form-field appearance="outline" class="full-width">
         <mat-label>Seleccionar sacafranco</mat-label>
-        <mat-select (selectionChange)="onSelect($event)">
+        <mat-select [(value)]="selected" (selectionChange)="onSelect($event)">
             <mat-option *ngFor="let p of lista" [value]="p">
                 <div class="option-content">
                     <div class="info">
@@ -19,5 +19,10 @@
   
 </mat-dialog-content>
 <mat-dialog-actions align="end">
-    <button mat-button (click)="close()">Cerrar</button>
+        <button mat-button (click)="close()">Cerrar</button>
+        <ng-container *ngIf="data?.manage">
+            <button mat-raised-button color="primary" [disabled]="!selected || loading" (click)="asignar()">Asignar</button>
+            <button mat-stroked-button color="warn" [disabled]="!selected || loading || selected.assigned_for_puesto !== selected.id" (click)="desasignar()">Quitar</button>
+        </ng-container>
+    <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
 </mat-dialog-actions>

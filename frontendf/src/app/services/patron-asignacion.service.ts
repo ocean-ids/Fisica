@@ -43,4 +43,14 @@ export class PatronAsignacionService {
     const url = `http://localhost:8000/api/personas/sacafrancos/?${params.toString()}`;
     return this.http.get<any[]>(url, { headers: this.getHeaders() });
   }
+
+  asignarSacafranco(payload: any) {
+    const url = `http://localhost:8000/api/personas/sacafrancos/assign/`;
+    return this.http.post<any>(url, payload, { headers: this.getHeaders() });
+  }
+
+  desasignarSacafranco(payload: any) {
+    const url = `http://localhost:8000/api/personas/sacafrancos/unassign/`;
+    return this.http.post<any>(url, payload, { headers: this.getHeaders() });
+  }
 }

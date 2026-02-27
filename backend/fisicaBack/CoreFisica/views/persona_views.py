@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from ..models import Persona, AsignacionSemanal
+from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario
 import csv
 import io
 import re
@@ -391,10 +391,110 @@ class SacafrancoListView(APIView):
                 'nombres': p.nombres,
                 'apellidos': p.apellidos,
                 'cedula': p.cedula,
-                'status': 'occupied' if occupied else 'available',
+                'status': 'asignado' if occupied else 'available',
                 'assigned_for_puesto': assigned_for_puesto,
             })
 
         return Response(results)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def asignar_sacafranco(request):
+    data = request.data
+    persona_id = data.get('persona_id')
+    puesto_id = data.get('puesto_id')
+    week_start = data.get('week_start')
+    day = data.get('day')
+    value = data.get('value', 'S')
+
+    if not all([persona_id, puesto_id, week_start, day]):
+        return JsonResponse({'error': 'Faltan parámetros requeridos'}, status=400)
+
+    try:
+        persona = Persona.objects.get(id=persona_id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    try:
+        puesto = Puesto.objects.get(id=puesto_id)
+    except Puesto.DoesNotExist:
+        return JsonResponse({'error': 'Puesto no encontrado'}, status=404)
+
+    asignacion = Asignacion.objects.filter(persona=persona, puesto=puesto).first()
+    try:
+        if not asignacion:
+            cliente = getattr(puesto.instalacion, 'cliente', None)
+            instalacion = getattr(puesto, 'instalacion', None)
+            horario = Horario.objects.first()
+            if horario is None:
+                horario = Horario.objects.create(hora_ingreso='08:00', hora_salida='20:00')
+            asignacion = Asignacion.objects.create(
+                persona=persona,
+                cliente=cliente,
+                instalacion=instalacion,
+                puesto=puesto,
+                horario=horario,
+                mes=1,
+                anio=2026,
+                recurring=False
+            )
+
+        semanal, created = AsignacionSemanal.objects.get_or_create(puesto=puesto, week_start=week_start, defaults={'asignacion': asignacion})
+        if semanal.asignacion_id != asignacion.id:
+            semanal.asignacion = asignacion
+
+        if hasattr(semanal, day):
+            setattr(semanal, day, value)
+        else:
+            return JsonResponse({'error': 'Día inválido'}, status=400)
+
+        semanal.save()
+        return JsonResponse({'status': 'assigned', 'semanal_id': semanal.id})
+    except Exception:
+        logger.exception('Error asignando sacafranco')
+        return JsonResponse({'error': 'No se pudo asignar sacafranco'}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def desasignar_sacafranco(request):
+    data = request.data
+    persona_id = data.get('persona_id')
+    puesto_id = data.get('puesto_id')
+    week_start = data.get('week_start')
+    day = data.get('day')
+
+    if not all([persona_id, puesto_id, week_start, day]):
+        return JsonResponse({'error': 'Faltan parámetros requeridos'}, status=400)
+
+    try:
+        persona = Persona.objects.get(id=persona_id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    try:
+        puesto = Puesto.objects.get(id=puesto_id)
+    except Puesto.DoesNotExist:
+        return JsonResponse({'error': 'Puesto no encontrado'}, status=404)
+
+    try:
+        asignacion = Asignacion.objects.filter(persona=persona, puesto=puesto).first()
+        if not asignacion:
+            return JsonResponse({'error': 'No existe asignación para esa persona en el puesto'}, status=404)
+
+        semanal = AsignacionSemanal.objects.filter(puesto=puesto, week_start=week_start, asignacion=asignacion).first()
+        if not semanal:
+            return JsonResponse({'error': 'No hay programación semanal para ese puesto/semana'}, status=404)
+
+        if hasattr(semanal, day):
+            setattr(semanal, day, '')
+            semanal.save()
+            return JsonResponse({'status': 'unassigned', 'semanal_id': semanal.id})
+        else:
+            return JsonResponse({'error': 'Día inválido'}, status=400)
+    except Exception:
+        logger.exception('Error desasignando sacafranco')
+        return JsonResponse({'error': 'No se pudo desasignar sacafranco'}, status=500)
 
 

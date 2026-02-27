@@ -5,6 +5,7 @@ import { PuestoService } from '../../services/puesto.service';
 import { AsignacionService } from '../../services/asignacion.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { PatronAsignacionService } from '../../services/patron-asignacion.service';
 
 @Component({
   selector: 'app-asignacion-calendario',
@@ -29,18 +30,22 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   @Input() allowCreateEmptyRows: boolean = false;
   
 
+ 
+  sacafrancoPreview: { [puestoId: string]: { [day: string]: string } } = {};
+
   constructor(
     private asignacionCalendarioService: AsignacionCalendarioService,
     private puestoService: PuestoService,
-    private asignacionService: AsignacionService
+    private asignacionService: AsignacionService,
+    private patronAsignacionService: PatronAsignacionService
   ){}
 
   ngOnInit(): void {
-    // Si no se proveyó `weekStart` desde el padre, usar el inicio del mes actual.
+    
     if (!this.weekStart) {
       this.weekStart = this.computeCurrentMonthStart();
     }
-    // Cargar la semana correspondiente al `weekStart` actual.
+
     console.log('AsignacionCalendario ngOnInit weekStart=', this.weekStart);
     this.loadWeek();
   }
@@ -172,7 +177,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   }
 
   dayKeyFromDate(dateStr: string): string {
-    // dateStr expected in YYYY-MM-DD
+   
     if(!dateStr) return '';
     try {
       const parts = dateStr.split('-').map(Number);
@@ -210,6 +215,64 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         this.weekDays.push({ short:'', name:'', date:'', dayNum:0 });
       }
     }
+  }
+
+  private _clickTimer: any = null;
+
+  handleCellClick(event: MouseEvent, row: any, day: string, puestoId: any) {
+    event.stopPropagation();
+   
+    if (this._clickTimer) return;
+    this._clickTimer = setTimeout(() => {
+      this._clickTimer = null;
+      this.sacafrancoClick.emit({ weekStart: this.weekStart, day: day, puestoId: puestoId, manage: false });
+    }, 250);
+  }
+
+  handleCellDblClick(event: MouseEvent, row: any, day: string, puestoId: any) {
+    event.stopPropagation();
+    if (this._clickTimer) {
+      clearTimeout(this._clickTimer);
+      this._clickTimer = null;
+    }
+    this.sacafrancoClick.emit({ weekStart: this.weekStart, day: day, puestoId: puestoId, manage: true });
+  }
+
+  // Mostrar preview del sacafranco asignado al pasar el cursor
+  showPreview(puestoId: any, day: string) {
+    try {
+      const key = String(puestoId || '');
+      this.sacafrancoPreview[key] = this.sacafrancoPreview[key] || {};
+      // Si ya tenemos texto, no volvemos a pedir
+      if (this.sacafrancoPreview[key][day]) return;
+      this.patronAsignacionService.getSacafrancos(this.weekStart, day, puestoId)
+        .subscribe((list: any[]) => {
+          const assigned = (list || []).find(p => p.assigned_for_puesto || p.status === 'assigned');
+          if (assigned) {
+            this.sacafrancoPreview[key][day] = (assigned.nombre || assigned.first_name || '') + (assigned.apellidos ? (' ' + assigned.apellidos) : '');
+          } else {
+            this.sacafrancoPreview[key][day] = 'Sin asignar';
+          }
+        }, () => {
+          this.sacafrancoPreview[key][day] = '';
+        });
+    } catch (e) {}
+  }
+
+  clearPreview(puestoId: any, day: string) {
+    const key = String(puestoId || '');
+    if (this.sacafrancoPreview[key]) this.sacafrancoPreview[key][day] = '';
+  }
+
+  getPreviewTitle(puestoId: any, day: string) {
+    const key = String(puestoId || '');
+    return (this.sacafrancoPreview[key] && this.sacafrancoPreview[key][day]) || '';
+  }
+
+  onInfoClick(event: MouseEvent, puestoId: any, day: string) {
+    event.stopPropagation();
+    
+    this.sacafrancoClick.emit({ weekStart: this.weekStart, day: day, puestoId: puestoId, manage: true });
   }
 
 }

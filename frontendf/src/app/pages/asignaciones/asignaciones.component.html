@@ -50,7 +50,7 @@
             </thead>
             <tbody>
               <ng-container *ngFor="let asig of asignaciones">
-                <tr class="text-center align-middle shared-row" *ngIf="asig.persona_detalle?.is_active !== false">
+                <tr class="text-center align-middle shared-row" *ngIf="asig.persona_detalle?.is_active !== false" style="height: 70px;">
                 <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                 <td>{{ asig.instalacion_detalle?.codigo }}</td>
                 <td style="max-width: 200px;">{{ asig.cliente_detalle?.nombre_comercial }}</td>
@@ -109,7 +109,7 @@
             <ng-container *ngIf="weeksForMonth && weeksForMonth.length; else noWeeks">
               <ng-container *ngFor="let ws of weeksForMonth">
                 <div class="week-card ">
-                  <app-asignacion-calendario [weekStart]="ws" (sacafrancoClick)="openSacafrancosModal($event.weekStart, $event.day, $event.puestoId)"></app-asignacion-calendario>
+                  <app-asignacion-calendario [weekStart]="ws" (sacafrancoClick)="openSacafrancosModal($event.weekStart, $event.day, $event.puestoId, $event.manage)"></app-asignacion-calendario>
                   <!--<div class="text-center"><strong>Semana: {{ ws }}</strong></div>-->
                 </div>
               </ng-container>

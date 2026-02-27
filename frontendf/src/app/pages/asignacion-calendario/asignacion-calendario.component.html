@@ -13,25 +13,28 @@
         </tr>
       </thead>
       <tbody  *ngIf="rows && rows.length>0" >
-        <tr style="height: 60px;" *ngFor="let row of rows; let i = index" class="data-row p-0 m-0">
+        <tr style="height: 70px;" *ngFor="let row of rows; let i = index" class="data-row p-0 m-0">
           <ng-container *ngFor="let d of weekDays">
             <td *ngIf="d.date; else emptyDay">
-              <ng-container *ngIf="(row[dayKeyFromDate(d.date)] || '').toString().toUpperCase().startsWith('F'); else normalInput">
-                <button class="info-btn btn btn-sm btn-outline-info" (click)="$event.stopPropagation(); sacafrancoClick.emit({ weekStart: weekStart, day: dayKeyFromDate(d.date), puestoId: row.puesto });">
+              <ng-container *ngIf="((row[dayKeyFromDate(d.date)] || '').toString().toUpperCase().charAt(0) === 'F'); else normalInput">
+                <button class="info-btn btn btn-sm btn-outline-info"
+                        (click)="onInfoClick($event, row.puesto, dayKeyFromDate(d.date))"
+                        (mouseenter)="showPreview(row.puesto, dayKeyFromDate(d.date))"
+                        (mouseleave)="clearPreview(row.puesto, dayKeyFromDate(d.date))"
+                        [title]="getPreviewTitle(row.puesto, dayKeyFromDate(d.date))">
                   <div class="cell-inner">
-                    <input type="text" maxlength="4" class="form-control form-control-sm"
-                          [(ngModel)]="row[dayKeyFromDate(d.date)]"
-                          (ngModelChange)="onCellChange(row, dayKeyFromDate(d.date), $event)"
-                          [ngModelOptions]="{standalone:true}">
+                    <span class="form-control form-control-sm text-center" style="min-width:3rem;">
+                      {{ (row[dayKeyFromDate(d.date)] || '').toString().toUpperCase() }}
+                    </span>
                       
                   </div>
                 </button>
               </ng-container>
               <ng-template #normalInput>
-                <input type="text" maxlength="4" class="form-control form-control-sm"
-                       [(ngModel)]="row[dayKeyFromDate(d.date)]"
-                       (ngModelChange)="onCellChange(row, dayKeyFromDate(d.date), $event)"
-                       [ngModelOptions]="{standalone:true}">
+                      <input type="text" maxlength="4" class="form-control form-control-sm"
+                        [(ngModel)]="row[dayKeyFromDate(d.date)]"
+                        (ngModelChange)="onCellChange(row, dayKeyFromDate(d.date), $event)"
+                        [ngModelOptions]="{standalone:true}">
               </ng-template>
             </td>
             <ng-template #emptyDay><td></td></ng-template>

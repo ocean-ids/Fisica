@@ -7,7 +7,7 @@ from .views.auth_views import login_view, logout_view, user_view, solicitar_rese
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
 from .views.importar_clientes import importar_clientes
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
-from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona, disable_persona, enable_persona, importar_personas, SacafrancoListView
+from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona, disable_persona, enable_persona, importar_personas, SacafrancoListView, asignar_sacafranco, desasignar_sacafranco
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion, exportar_asignaciones_excel
@@ -34,6 +34,8 @@ urlpatterns = [
     path('eliminar-persona/<int:id>/', eliminar_persona),
     path('importar-personas/', importar_personas),
     path('personas/sacafrancos/', SacafrancoListView.as_view(), name='sacafrancos-list'),
+    path('personas/sacafrancos/assign/', asignar_sacafranco, name='sacafrancos-assign'),
+    path('personas/sacafrancos/unassign/', desasignar_sacafranco, name='sacafrancos-unassign'),
     path('disable-persona/<int:id>/', disable_persona),
     path('enable-persona/<int:id>/', enable_persona),
     path('crear-horario/', crear_horario),
