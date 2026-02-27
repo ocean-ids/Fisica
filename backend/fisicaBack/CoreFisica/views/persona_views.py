@@ -11,6 +11,7 @@ import csv
 import io
 import re
 import logging
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -406,7 +407,7 @@ def asignar_sacafranco(request):
     puesto_id = data.get('puesto_id')
     week_start = data.get('week_start')
     day = data.get('day')
-    value = data.get('value', 'S')
+   
 
     if not all([persona_id, puesto_id, week_start, day]):
         return JsonResponse({'error': 'Faltan parámetros requeridos'}, status=400)
@@ -440,18 +441,42 @@ def asignar_sacafranco(request):
                 recurring=False
             )
 
-        # Propagar la asignación a semanas futuras **solo** en celdas vacías
-        # No sobrescribimos celdas que ya contienen 'F' (u otros códigos).
+        # Propagar la asignación a semanas futuras a partir de la semana indicada,
+        # pero sin tocar semanas pasadas ni sobrescribir códigos existentes.
         try:
-            desde_qs = AsignacionSemanal.objects.filter(puesto=puesto, week_start__gte=week_start)
+            # parsear week_start a date
+            try:
+                if isinstance(week_start, str):
+                    week_start_date = datetime.date.fromisoformat(week_start)
+                else:
+                    week_start_date = week_start
+            except Exception:
+                week_start_date = week_start
+
+            today = datetime.date.today()
+            # empezamos a propagar desde la semana seleccionada (incluso si es pasada)
+            prop_start = week_start_date if isinstance(week_start_date, datetime.date) else today
+            # propagamos sólo hasta el fin del año correspondiente (31-dic)
+            try:
+                year_for_end = week_start_date.year if isinstance(week_start_date, datetime.date) else today.year
+                prop_end = datetime.date(year_for_end, 12, 31)
+            except Exception:
+                prop_end = datetime.date(today.year, 12, 31)
+
+            desde_qs = AsignacionSemanal.objects.filter(puesto=puesto, week_start__gte=prop_start, week_start__lte=prop_end)
             from django.db.models import Q as _Q
-            target_qs = desde_qs.filter(_Q(**{f"{day}": ""}) | _Q(**{f"{day}__isnull": True}))
-            if target_qs.exists():
-                target_qs.update(asignacion_id=asignacion.id, **{day: value})
+            # Para las celdas vacías: asignamos asignacion_id y escribimos el marcador 'F'
+            empty_qs = desde_qs.filter(_Q(**{f"{day}": ""}) | _Q(**{f"{day}__isnull": True}))
+            if empty_qs.exists():
+                empty_qs.update(asignacion_id=asignacion.id, **{day: 'F'})
+            # Para las celdas que ya contienen 'F': solo enlazamos la asignación (no sobrescribimos el valor)
+            f_qs = desde_qs.filter(_Q(**{f"{day}__istartswith": 'F'}))
+            if f_qs.exists():
+                f_qs.update(asignacion_id=asignacion.id)
         except Exception:
             logger.exception('Error propagando sacafranco a semanas futuras')
 
-        semanal, created = AsignacionSemanal.objects.get_or_create(puesto=puesto, week_start=week_start, defaults={'asignacion': asignacion})
+        semanal, created = AsignacionSemanal.objects.get_or_create(puesto=puesto, week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start, defaults={'asignacion': asignacion})
         # obtener valor actual del día para decidir si lo sobrescribimos
         current_val = None
         try:
@@ -459,18 +484,21 @@ def asignar_sacafranco(request):
         except Exception:
             current_val = None
 
-        # Solo vinculamos la asignación y escribimos el día si la celda
-        # está vacía ('' o NULL). De este modo preservamos 'F'.
+        # Vinculamos la asignación para la semana seleccionada si la celda está vacía
+        # o contiene 'F' (no sobrescribimos el marcador 'F').
         if hasattr(semanal, day):
-            is_empty = (current_val is None) or (str(current_val).strip() == '')
-            if is_empty:
+            cur = (current_val or '')
+            cur_str = str(cur).strip() if cur is not None else ''
+            # permitimos enlace si la celda está vacía o ya es 'F'
+            if cur_str == '' or cur_str.upper().startswith('F'):
                 if semanal.asignacion_id != asignacion.id:
                     semanal.asignacion = asignacion
-                setattr(semanal, day, value)
+                # si está vacía escribimos 'F', si ya es 'F' no la tocamos
+                if cur_str == '':
+                    setattr(semanal, day, 'F')
                 semanal.save()
                 return JsonResponse({'status': 'assigned', 'semanal_id': semanal.id})
             else:
-                # No sobrescribimos; devolvemos que ya existe un valor (preservado)
                 return JsonResponse({'status': 'preserved', 'semanal_id': semanal.id, 'value': current_val})
         else:
             return JsonResponse({'error': 'Día inválido'}, status=400)
