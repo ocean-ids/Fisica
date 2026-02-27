@@ -440,24 +440,40 @@ def asignar_sacafranco(request):
                 recurring=False
             )
 
-        # Propagar la asignación a semanas futuras donde la celda actual sea 'F'
+        # Propagar la asignación a semanas futuras **solo** en celdas vacías
+        # No sobrescribimos celdas que ya contienen 'F' (u otros códigos).
         try:
-            filtro = {f"{day}__istartswith": 'F'}
-            AsignacionSemanal.objects.filter(puesto=puesto, week_start__gte=week_start).filter(**filtro).update(asignacion_id=asignacion.id, **{day: value})
+            desde_qs = AsignacionSemanal.objects.filter(puesto=puesto, week_start__gte=week_start)
+            from django.db.models import Q as _Q
+            target_qs = desde_qs.filter(_Q(**{f"{day}": ""}) | _Q(**{f"{day}__isnull": True}))
+            if target_qs.exists():
+                target_qs.update(asignacion_id=asignacion.id, **{day: value})
         except Exception:
             logger.exception('Error propagando sacafranco a semanas futuras')
 
         semanal, created = AsignacionSemanal.objects.get_or_create(puesto=puesto, week_start=week_start, defaults={'asignacion': asignacion})
-        if semanal.asignacion_id != asignacion.id:
-            semanal.asignacion = asignacion
+        # obtener valor actual del día para decidir si lo sobrescribimos
+        current_val = None
+        try:
+            current_val = getattr(semanal, day, None)
+        except Exception:
+            current_val = None
 
+        # Solo vinculamos la asignación y escribimos el día si la celda
+        # está vacía ('' o NULL). De este modo preservamos 'F'.
         if hasattr(semanal, day):
-            setattr(semanal, day, value)
+            is_empty = (current_val is None) or (str(current_val).strip() == '')
+            if is_empty:
+                if semanal.asignacion_id != asignacion.id:
+                    semanal.asignacion = asignacion
+                setattr(semanal, day, value)
+                semanal.save()
+                return JsonResponse({'status': 'assigned', 'semanal_id': semanal.id})
+            else:
+                # No sobrescribimos; devolvemos que ya existe un valor (preservado)
+                return JsonResponse({'status': 'preserved', 'semanal_id': semanal.id, 'value': current_val})
         else:
             return JsonResponse({'error': 'Día inválido'}, status=400)
-
-        semanal.save()
-        return JsonResponse({'status': 'assigned', 'semanal_id': semanal.id})
     except Exception:
         logger.exception('Error asignando sacafranco')
         return JsonResponse({'error': 'No se pudo asignar sacafranco'}, status=500)

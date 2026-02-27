@@ -538,25 +538,36 @@ def eliminar_asignacion(request, id):
                 AsignacionSemanal.objects.filter(asignacion_id=id).delete()
 
                 # Además, intentar eliminar posibles filas huérfanas creadas
-                # para el mismo puesto dentro del mes/año de la asignación.
+                # para el mismo puesto cuyas semanas solapan con el mes/año
+                # de la asignación. Usamos un margen: week_start puede caer
+                # hasta 6 días antes del primer día del mes (semana que empieza
+                # antes pero contiene días del mes), por eso expandimos el rango.
                 try:
                     mes = int(getattr(asignar, 'mes', None) or 0)
                     anio = int(getattr(asignar, 'anio', None) or 0)
-                    if mes and anio and getattr(asignar, 'puesto_id', None):
+                    puesto_id = getattr(asignar, 'puesto_id', None)
+                    if mes and anio and puesto_id:
                         from datetime import date, timedelta
                         first_day = date(anio, mes, 1)
+                        # incluir semanas cuyo week_start esté hasta 6 días antes
+                        window_start = first_day - timedelta(days=6)
                         if mes == 12:
                             next_month_first = date(anio + 1, 1, 1)
                         else:
                             next_month_first = date(anio, mes + 1, 1)
                         last_day = next_month_first - timedelta(days=1)
 
-                        AsignacionSemanal.objects.filter(
-                            puesto_id=getattr(asignar, 'puesto_id', None),
-                            week_start__gte=first_day,
+                        # borrar filas huérfanas (sin asignacion) del puesto
+                        orphan_qs = AsignacionSemanal.objects.filter(
+                            puesto_id=puesto_id,
+                            week_start__gte=window_start,
                             week_start__lte=last_day,
-                            asignacion__isnull=True
-                        ).delete()
+                            asignacion__isnull=True,
+                        )
+                        orphan_count = orphan_qs.count()
+                        if orphan_count:
+                            print(f"DEBUG eliminar_asignacion: borrando {orphan_count} filas huérfanas para puesto {puesto_id} entre {window_start} y {last_day}")
+                            orphan_qs.delete()
                 except Exception:
                     # no crítico: continuar con la eliminación principal
                     pass
