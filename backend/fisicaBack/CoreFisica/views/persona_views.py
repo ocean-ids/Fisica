@@ -454,8 +454,9 @@ def asignar_sacafranco(request):
                 week_start_date = week_start
 
             today = datetime.date.today()
-            # empezamos a propagar desde la semana seleccionada (incluso si es pasada)
-            prop_start = week_start_date if isinstance(week_start_date, datetime.date) else today
+            # empezamos a propagar desde la semana seleccionada solo si es futura,
+            # en caso contrario desde hoy (no tocamos semanas ya pasadas)
+            prop_start = week_start_date if (isinstance(week_start_date, datetime.date) and week_start_date > today) else today
             # propagamos sólo hasta el fin del año correspondiente (31-dic)
             try:
                 year_for_end = week_start_date.year if isinstance(week_start_date, datetime.date) else today.year
@@ -534,16 +535,57 @@ def desasignar_sacafranco(request):
         if not asignacion:
             return JsonResponse({'error': 'No existe asignación para esa persona en el puesto'}, status=404)
 
-        semanal = AsignacionSemanal.objects.filter(puesto=puesto, week_start=week_start, asignacion=asignacion).first()
+        # parse week_start
+        try:
+            if isinstance(week_start, str):
+                week_start_date = datetime.date.fromisoformat(week_start)
+            else:
+                week_start_date = week_start
+        except Exception:
+            week_start_date = week_start
+
+        today = datetime.date.today()
+        # comenzamos a afectar desde la semana seleccionada solo si es futura; si no, desde hoy
+        prop_start = week_start_date if (isinstance(week_start_date, datetime.date) and week_start_date > today) else today
+        try:
+            year_for_end = week_start_date.year if isinstance(week_start_date, datetime.date) else today.year
+            prop_end = datetime.date(year_for_end, 12, 31)
+        except Exception:
+            prop_end = datetime.date(today.year, 12, 31)
+
+        semanal = AsignacionSemanal.objects.filter(puesto=puesto, week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start, asignacion=asignacion).first()
         if not semanal:
             return JsonResponse({'error': 'No hay programación semanal para ese puesto/semana'}, status=404)
 
-        if hasattr(semanal, day):
-            setattr(semanal, day, '')
-            semanal.save()
-            return JsonResponse({'status': 'unassigned', 'semanal_id': semanal.id})
-        else:
+        # Si la semana seleccionada es pasada (antes de prop_start), no la tocamos
+        try:
+            if isinstance(semanal.week_start, datetime.date) and semanal.week_start < prop_start:
+                return JsonResponse({'status': 'preserved_past', 'semanal_id': semanal.id, 'value': getattr(semanal, day, '')})
+        except Exception:
+            pass
+
+        if not hasattr(semanal, day):
             return JsonResponse({'error': 'Día inválido'}, status=400)
+
+        # Limpiar la semana seleccionada (si está en o después de prop_start)
+        setattr(semanal, day, '')
+        # desvincular asignacion de esta fila si corresponde
+        if semanal.asignacion_id == asignacion.id:
+            semanal.asignacion = None
+        semanal.save()
+
+        # Propagar la eliminación a semanas futuras hasta fin de año (solo filas ligadas a la misma asignacion)
+        try:
+            from django.db.models import Q as _Q
+            future_qs = AsignacionSemanal.objects.filter(puesto=puesto, week_start__gte=prop_start, week_start__lte=prop_end, asignacion_id=asignacion.id)
+            # Solo limpiar celdas que contienen 'F' (o comienzan con 'F')
+            target_qs = future_qs.filter(_Q(**{f"{day}__istartswith": 'F'}))
+            if target_qs.exists():
+                target_qs.update(**{day: ''}, asignacion_id=None)
+        except Exception:
+            logger.exception('Error propagando desasignación a semanas futuras')
+
+        return JsonResponse({'status': 'unassigned', 'semanal_id': semanal.id})
     except Exception:
         logger.exception('Error desasignando sacafranco')
         return JsonResponse({'error': 'No se pudo desasignar sacafranco'}, status=500)

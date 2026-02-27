@@ -22,6 +22,7 @@ import { PatronAsignacionService } from '../../services/patron-asignacion.servic
 import {  MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { PatronFormComponent } from '../patrones/patron-form/patron-form.component';
 import { PatronSacafrancosModalComponent } from '../patrones/patron-sacafrancos-modal/patron-sacafrancos-modal.component';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-asignaciones',
@@ -35,6 +36,7 @@ import { PatronSacafrancosModalComponent } from '../patrones/patron-sacafrancos-
     MatDialogModule,
     MatCardModule,
     MatMenuModule,
+    MatButtonModule,
     AsignacionCalendarioComponent,
     
   ],

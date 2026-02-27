@@ -201,8 +201,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
-        <button class="btn btn-outline-primary" (click)="guardarAsignacion()">
+        <button mat-button mat-dialog-close (click)="cerrarModal()">Cancelar</button>
+        <button mat-raised-button color="primary" (click)="guardarAsignacion()">
           {{ textoBotonAsignacion }}
         </button>
       </div>
