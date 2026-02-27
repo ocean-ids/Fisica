@@ -432,14 +432,22 @@ export class AsignacionesComponent implements OnInit {
 
   openSacafrancosModal(weekStart: string, day: string, puestoId?: number, manage: boolean = false){
     this.patronService.getSacafrancos(weekStart, day, puestoId).subscribe(list => {
-      this.dialog.open(PatronSacafrancosModalComponent, {
+      const ref = this.dialog.open(PatronSacafrancosModalComponent, {
         data: { lista: list, weekStart, day, puestoId, manage },
         width: '480px',
         maxHeight: '70vh',
         panelClass: 'sacafrancos-dialog'
       });
+      ref.afterClosed().subscribe(result => {
+        if (result?.action === 'assigned' || result?.action === 'unassigned') {
+          
+          this.cargarAsignaciones();
+          if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
+        }
+      })
+    
     });
-  }
+}
 
   descargarReporteExcel() {
   const mm = String(this.mes).padStart(2, '0');

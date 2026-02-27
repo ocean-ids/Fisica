@@ -534,7 +534,33 @@ def eliminar_asignacion(request, id):
         # Borrar filas semanales y luego la asignación dentro de una transacción
         try:
             with transaction.atomic():
+                # Eliminar filas ligadas explícitamente a la asignación
                 AsignacionSemanal.objects.filter(asignacion_id=id).delete()
+
+                # Además, intentar eliminar posibles filas huérfanas creadas
+                # para el mismo puesto dentro del mes/año de la asignación.
+                try:
+                    mes = int(getattr(asignar, 'mes', None) or 0)
+                    anio = int(getattr(asignar, 'anio', None) or 0)
+                    if mes and anio and getattr(asignar, 'puesto_id', None):
+                        from datetime import date, timedelta
+                        first_day = date(anio, mes, 1)
+                        if mes == 12:
+                            next_month_first = date(anio + 1, 1, 1)
+                        else:
+                            next_month_first = date(anio, mes + 1, 1)
+                        last_day = next_month_first - timedelta(days=1)
+
+                        AsignacionSemanal.objects.filter(
+                            puesto_id=getattr(asignar, 'puesto_id', None),
+                            week_start__gte=first_day,
+                            week_start__lte=last_day,
+                            asignacion__isnull=True
+                        ).delete()
+                except Exception:
+                    # no crítico: continuar con la eliminación principal
+                    pass
+
                 asignar.delete()
         except Exception as e:
             print(f"⚠️ Error eliminando asignación y sus semanales: {e}")

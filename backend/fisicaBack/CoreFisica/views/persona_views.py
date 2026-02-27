@@ -6,11 +6,11 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario
+from openpyxl import load_workbook
 import csv
 import io
 import re
 import logging
-from openpyxl import load_workbook
 
 logger = logging.getLogger(__name__)
 
@@ -439,6 +439,13 @@ def asignar_sacafranco(request):
                 anio=2026,
                 recurring=False
             )
+
+        # Propagar la asignación a semanas futuras donde la celda actual sea 'F'
+        try:
+            filtro = {f"{day}__istartswith": 'F'}
+            AsignacionSemanal.objects.filter(puesto=puesto, week_start__gte=week_start).filter(**filtro).update(asignacion_id=asignacion.id, **{day: value})
+        except Exception:
+            logger.exception('Error propagando sacafranco a semanas futuras')
 
         semanal, created = AsignacionSemanal.objects.get_or_create(puesto=puesto, week_start=week_start, defaults={'asignacion': asignacion})
         if semanal.asignacion_id != asignacion.id:

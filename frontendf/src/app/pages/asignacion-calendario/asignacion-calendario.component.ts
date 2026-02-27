@@ -144,19 +144,22 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         @Output() weekStartChange: EventEmitter<string> = new EventEmitter<string>();
 
   saveRow(row: any){
-    const payload: AsignacionSemanal = {
-      puesto: row.puesto || (row.puesto_detalle && row.puesto_detalle.id),
-      week_start: this.weekStart,
-      mon: row.mon || '',
-      tue: row.tue || '',
-      wed: row.wed || '',
-      thu: row.thu || '',
-      fri: row.fri || '',
-      sat: row.sat || '',
-      sun: row.sun || ''
-    };
-    this.asignacionCalendarioService.crearAsignacionCalendario(payload)
-      .subscribe({ next: () => this.loadWeek() });
+    const payload: any = {
+    puesto: row.puesto || (row.puesto_detalle && row.puesto_detalle.id),
+    week_start: this.weekStart,
+    mon: row.mon || '',
+    tue: row.tue || '',
+    wed: row.wed || '',
+    thu: row.thu || '',
+    fri: row.fri || '',
+    sat: row.sat || '',
+    sun: row.sun || ''
+  };
+  if (row.asignacion || row.asignacion_id) {
+    payload.asignacion_id = row.asignacion || row.asignacion_id;
+  }
+  this.asignacionCalendarioService.crearAsignacionCalendario(payload)
+    .subscribe({ next: () => this.loadWeek() });
   }
   
 
