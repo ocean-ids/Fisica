@@ -283,12 +283,26 @@ def crear_o_actualizar_asignacion_semanal(request):
 
     try:
         with transaction.atomic():
-            obj, created = AsignacionSemanal.objects.get_or_create(puesto_id=puesto_id, week_start=ws)
-            # actualizar campos de días
+            asignacion_id = data.get('asignacion_id')
+            # preparar defaults solo con los días que vienen en el payload
+            defaults = {}
             for d in ['mon','tue','wed','thu','fri','sat','sun']:
                 if d in data:
-                    setattr(obj, d, data.get(d) or '')
-            obj.save()
+                    defaults[d] = data.get(d) or ''
+            if asignacion_id:
+                defaults['asignacion_id'] = asignacion_id
+
+            obj, created = AsignacionSemanal.objects.get_or_create(puesto_id=puesto_id, week_start=ws, defaults=defaults)
+
+            # Si no se creó (existía), actualizar campos proporcionados y ligar asignacion si se indicó
+            if not created:
+                for d in ['mon','tue','wed','thu','fri','sat','sun']:
+                    if d in data:
+                        setattr(obj, d, data.get(d) or '')
+                if asignacion_id and getattr(obj, 'asignacion_id', None) is None:
+                    obj.asignacion_id = asignacion_id
+                obj.save()
+
             serializer = AsignacionSemanalSerializer(obj)
             return Response({'created': created, 'result': serializer.data}, status=status.HTTP_200_OK)
     except Exception as e:
