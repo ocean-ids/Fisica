@@ -24,7 +24,7 @@ def listar_asignacion_semanal(request):
                 try:
                     from ..models import Asignacion, Puesto
                     # encontrar asignaciones activas que aplican a esta semana
-                    asigns = Asignacion.objects.filter(estado='ACTIVO').filter(
+                    asigns = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').filter(
                         Q(mes=ws.month, anio=ws.year) |
                         (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
                     ).select_related('puesto', 'patronAsignacion')
@@ -205,7 +205,7 @@ def listar_asignacion_semanal(request):
                             # asignacion vinculada, ligar la asignación; si existe y ya tiene asignacion, no crear duplicado.
                             try:
                                 print(f"DEBUG: asegurando AsignacionSemanal para asignacion={getattr(asign,'id',None)} puesto={pid} week_start={ws} defaults={defaults}")
-                                obj, created = AsignacionSemanal.objects.update_or_create(
+                                obj, created = AsignacionSemanal.objects.get_or_create(
                                     puesto_id=pid,
                                     week_start=ws,
                                     defaults={**defaults, 'asignacion': asign}
@@ -213,13 +213,24 @@ def listar_asignacion_semanal(request):
                                 if created:
                                     print(f"DEBUG: creada AsignacionSemanal id={obj.id} for puesto={pid} week_start={ws} asignacion={getattr(asign,'id',None)}")
                                 else:
-                                    # Reasignar y actualizar siempre para evitar filas sin vincular o desactualizadas
-                                    if getattr(obj, 'asignacion_id', None) != getattr(asign, 'id', None):
+                                    changed = False
+                                    # solo enlazar asignación si no hay una ya ligada (no pisar sacafranco u otras)
+                                    if getattr(obj, 'asignacion_id', None) is None:
                                         obj.asignacion = asign
+                                        changed = True
+                                    # rellenar solo celdas vacías para no sobreescribir 'F' u otros códigos existentes
                                     for k, v in defaults.items():
-                                        setattr(obj, k, v)
-                                    obj.save()
-                                    print(f"DEBUG: AsignacionSemanal actualizada id={obj.id} puesto={pid} week_start={ws} asignacion={getattr(obj,'asignacion_id',None)}")
+                                        try:
+                                            cur = getattr(obj, k, '')
+                                        except Exception:
+                                            cur = ''
+                                        cur_str = str(cur or '').strip()
+                                        if (cur_str == '' or cur is None) and v:
+                                            setattr(obj, k, v)
+                                            changed = True
+                                    if changed:
+                                        obj.save()
+                                    print(f"DEBUG: AsignacionSemanal conservada id={obj.id} puesto={pid} week_start={ws} asignacion={getattr(obj,'asignacion_id',None)}")
                             except Exception as e:
                                 # imprimir el error y continuar
                                 print(f"⚠️ Error creando/actualizando AsignacionSemanal (puesto {pid}, week_start {ws}): {e}")

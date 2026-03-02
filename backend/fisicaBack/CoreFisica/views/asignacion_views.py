@@ -21,14 +21,14 @@ def obtener_asignaciones(request, mes=None, anio=None):
 
         asignaciones = Asignacion.objects.filter(
             estado='ACTIVO'
-        ).filter(
+        ).exclude(persona__tipo='SACAFRANCO').filter(
             Q(mes=mes, anio=anio) |
             (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
         ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario')
     else:
         asignaciones = Asignacion.objects.filter(
             estado='ACTIVO'
-        ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario')
+        ).exclude(persona__tipo='SACAFRANCO').select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario')
     
     serializer = AsignacionSerializer(asignaciones, many=True)
     return Response(serializer.data)

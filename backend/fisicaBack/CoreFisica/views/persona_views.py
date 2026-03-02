@@ -373,17 +373,37 @@ class SacafrancoListView(APIView):
         day = request.query_params.get('day')
         puesto_id = request.query_params.get('puesto_id')
 
+        def normalize_day(tok):
+            t = str(tok or '').strip().lower()
+            mapping = {
+                'l': 'mon', 'lu': 'mon', 'lun': 'mon', 'lunes': 'mon',
+                'm': 'tue', 'ma': 'tue', 'mar': 'tue', 'martes': 'tue',
+                'mi': 'wed', 'mie': 'wed', 'mié': 'wed', 'mier': 'wed', 'miercoles': 'wed', 'miércoles': 'wed',
+                'j': 'thu', 'ju': 'thu', 'jue': 'thu', 'jueves': 'thu',
+                'v': 'fri', 'vi': 'fri', 'vie': 'fri', 'viernes': 'fri',
+                's': 'sat', 'sa': 'sat', 'sab': 'sat', 'sabado': 'sat', 'sábado': 'sat',
+                'd': 'sun', 'do': 'sun', 'dom': 'sun', 'domingo': 'sun'
+            }
+            if t in ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']:
+                return t
+            return mapping.get(t, '')
+
+        if day:
+            day_norm = normalize_day(day)
+            if not day_norm:
+                return Response({'error': 'Día inválido'}, status=400)
+            day = day_norm
+
         qs = Persona.objects.filter(tipo='SACAFRANCO', is_active=True).order_by('nombres', 'apellidos')
         results = []
         for p in qs:
             occupied = False
             if week_start and day:
-                
-                if AsignacionSemanal.objects.filter(asignacion__persona=p, week_start=week_start).exclude(**{day: ''}).exists():
+                if AsignacionSemanal.objects.filter(asignacion__persona=p, week_start=week_start, **{f"{day}__istartswith": 'F'}).exists():
                     occupied = True
             assigned_for_puesto = None
             if puesto_id and week_start and day:
-                assigned = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start, asignacion__persona=p).exclude(**{day: ''}).first()
+                assigned = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start, asignacion__persona=p, **{f"{day}__istartswith": 'F'}).first()
                 if assigned:
                     assigned_for_puesto = p.id
 
@@ -412,6 +432,27 @@ def asignar_sacafranco(request):
     if not all([persona_id, puesto_id, week_start, day]):
         return JsonResponse({'error': 'Faltan parámetros requeridos'}, status=400)
 
+    # Normalizar día a las claves del modelo (mon..sun)
+    def normalize_day(tok):
+        t = str(tok or '').strip().lower()
+        mapping = {
+            'l': 'mon', 'lu': 'mon', 'lun': 'mon', 'lunes': 'mon',
+            'm': 'tue', 'ma': 'tue', 'mar': 'tue', 'martes': 'tue',
+            'mi': 'wed', 'mie': 'wed', 'mié': 'wed', 'mier': 'wed', 'miercoles': 'wed', 'miércoles': 'wed',
+            'j': 'thu', 'ju': 'thu', 'jue': 'thu', 'jueves': 'thu',
+            'v': 'fri', 'vi': 'fri', 'vie': 'fri', 'viernes': 'fri',
+            's': 'sat', 'sa': 'sat', 'sab': 'sat', 'sabado': 'sat', 'sábado': 'sat',
+            'd': 'sun', 'do': 'sun', 'dom': 'sun', 'domingo': 'sun'
+        }
+        if t in ['mon','tue','wed','thu','fri','sat','sun']:
+            return t
+        return mapping.get(t, '')
+
+    day_norm = normalize_day(day)
+    if not day_norm:
+        return JsonResponse({'error': 'Día inválido'}, status=400)
+    day = day_norm
+
     try:
         persona = Persona.objects.get(id=persona_id)
     except Persona.DoesNotExist:
@@ -422,7 +463,28 @@ def asignar_sacafranco(request):
     except Puesto.DoesNotExist:
         return JsonResponse({'error': 'Puesto no encontrado'}, status=404)
 
-    asignacion = Asignacion.objects.filter(persona=persona, puesto=puesto).first()
+    # Determinar mes/año desde week_start (respeta unicidad persona/mes/anio)
+    try:
+        if isinstance(week_start, str):
+            week_start_date = datetime.date.fromisoformat(week_start)
+        else:
+            week_start_date = week_start if isinstance(week_start, datetime.date) else datetime.date.today()
+    except Exception:
+        week_start_date = datetime.date.today()
+
+    # No modificar semanas anteriores al inicio de la semana actual (semana corre de domingo a sábado)
+    try:
+        today = datetime.date.today()
+        start_current_week = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
+        if isinstance(week_start_date, datetime.date) and week_start_date < start_current_week:
+            return JsonResponse({'status': 'preserved_past', 'detail': 'Semana pasada, no se modifica'}, status=200)
+    except Exception:
+        pass
+
+    mes_ref = week_start_date.month
+    anio_ref = week_start_date.year
+
+    asignacion = Asignacion.objects.filter(persona=persona, mes=mes_ref, anio=anio_ref).first()
     try:
         if not asignacion:
             cliente = getattr(puesto.instalacion, 'cliente', None)
@@ -430,16 +492,46 @@ def asignar_sacafranco(request):
             horario = Horario.objects.first()
             if horario is None:
                 horario = Horario.objects.create(hora_ingreso='08:00', hora_salida='20:00')
-            asignacion = Asignacion.objects.create(
-                persona=persona,
-                cliente=cliente,
-                instalacion=instalacion,
-                puesto=puesto,
-                horario=horario,
-                mes=1,
-                anio=2026,
-                recurring=False
-            )
+            try:
+                asignacion = Asignacion.objects.create(
+                    persona=persona,
+                    cliente=cliente,
+                    instalacion=instalacion,
+                    puesto=puesto,
+                    horario=horario,
+                    mes=mes_ref,
+                    anio=anio_ref,
+                    recurring=False
+                )
+            except IntegrityError:
+                asignacion = Asignacion.objects.filter(persona=persona, mes=mes_ref, anio=anio_ref).first()
+                if not asignacion:
+                    return JsonResponse({'error': 'Conflicto de asignación existente'}, status=400)
+        else:
+            # Reusar la asignación del mes/año y actualizar si cambió puesto/cliente/instalación/horario
+            changed = False
+            if asignacion.puesto_id != puesto.id:
+                asignacion.puesto = puesto
+                changed = True
+            try:
+                cliente = getattr(puesto.instalacion, 'cliente', None)
+                instalacion = getattr(puesto, 'instalacion', None)
+                if asignacion.instalacion_id != getattr(instalacion, 'id', None):
+                    asignacion.instalacion = instalacion
+                    changed = True
+                if asignacion.cliente_id != getattr(cliente, 'id', None):
+                    asignacion.cliente = cliente
+                    changed = True
+            except Exception:
+                pass
+            if not asignacion.horario_id:
+                horario = Horario.objects.first()
+                if horario is None:
+                    horario = Horario.objects.create(hora_ingreso='08:00', hora_salida='20:00')
+                asignacion.horario = horario
+                changed = True
+            if changed:
+                asignacion.save()
 
         # Propagar la asignación a semanas futuras a partir de la semana indicada,
         # pero sin tocar semanas pasadas ni sobrescribir códigos existentes.
@@ -454,9 +546,14 @@ def asignar_sacafranco(request):
                 week_start_date = week_start
 
             today = datetime.date.today()
-            # empezamos a propagar desde la semana seleccionada solo si es futura,
-            # en caso contrario desde hoy (no tocamos semanas ya pasadas)
-            prop_start = week_start_date if (isinstance(week_start_date, datetime.date) and week_start_date > today) else today
+            start_current_week = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
+            # Si la semana está antes de la semana actual, no tocamos
+            if isinstance(week_start_date, datetime.date) and week_start_date < start_current_week:
+                return JsonResponse({'status': 'preserved_past', 'detail': 'Semana pasada, no se modifica'}, status=200)
+
+            # empezamos a propagar desde la semana seleccionada si es >= inicio semana actual,
+            # en caso contrario desde el inicio de la semana actual
+            prop_start = week_start_date if (isinstance(week_start_date, datetime.date) and week_start_date >= start_current_week) else start_current_week
             # propagamos sólo hasta el fin del año correspondiente (31-dic)
             try:
                 year_for_end = week_start_date.year if isinstance(week_start_date, datetime.date) else today.year
@@ -464,16 +561,30 @@ def asignar_sacafranco(request):
             except Exception:
                 prop_end = datetime.date(today.year, 12, 31)
 
-            desde_qs = AsignacionSemanal.objects.filter(puesto=puesto, week_start__gte=prop_start, week_start__lte=prop_end)
-            from django.db.models import Q as _Q
-            # Para las celdas vacías: asignamos asignacion_id y escribimos el marcador 'F'
-            empty_qs = desde_qs.filter(_Q(**{f"{day}": ""}) | _Q(**{f"{day}__isnull": True}))
-            if empty_qs.exists():
-                empty_qs.update(asignacion_id=asignacion.id, **{day: 'F'})
-            # Para las celdas que ya contienen 'F': solo enlazamos la asignación (no sobrescribimos el valor)
-            f_qs = desde_qs.filter(_Q(**{f"{day}__istartswith": 'F'}))
-            if f_qs.exists():
-                f_qs.update(asignacion_id=asignacion.id)
+            # asegurar filas semanales desde prop_start hasta fin de año, paso 7 días
+            weeks = []
+            cursor = prop_start
+            while cursor <= prop_end:
+                weeks.append(cursor)
+                cursor += datetime.timedelta(days=7)
+
+            for ws in weeks:
+                semanal_obj, _ = AsignacionSemanal.objects.get_or_create(puesto=puesto, week_start=ws)
+                try:
+                    cur_val = getattr(semanal_obj, day, '') or ''
+                except Exception:
+                    cur_val = ''
+                cur_str = str(cur_val).strip()
+                # si está vacío, marcamos F y enlazamos asignación; si ya tiene F, solo enlazamos asignación
+                if cur_str == '':
+                    setattr(semanal_obj, day, 'F')
+                    semanal_obj.asignacion_id = asignacion.id
+                    semanal_obj.save()
+                elif cur_str.upper().startswith('F'):
+                    if semanal_obj.asignacion_id != asignacion.id:
+                        semanal_obj.asignacion_id = asignacion.id
+                        semanal_obj.save()
+                # si tiene otro valor, no tocar
         except Exception:
             logger.exception('Error propagando sacafranco a semanas futuras')
 
