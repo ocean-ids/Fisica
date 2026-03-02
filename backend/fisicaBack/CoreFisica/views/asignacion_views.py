@@ -581,6 +581,29 @@ def eliminar_asignacion(request, id):
                 # Eliminar filas ligadas explícitamente a la asignación
                 AsignacionSemanal.objects.filter(asignacion_id=id).delete()
 
+                # Limpiar filas del mismo puesto sin asignación pero con códigos (evita celdas huérfanas)
+                try:
+                    if puesto_id:
+                        qs_clean = AsignacionSemanal.objects.filter(puesto_id=puesto_id)
+                        if window_start:
+                            qs_clean = qs_clean.filter(week_start__gte=window_start)
+                        if window_end:
+                            qs_clean = qs_clean.filter(week_start__lte=window_end)
+                        # filas sin asignación o ligadas a esta asignación
+                        qs_clean = qs_clean.filter(Q(asignacion__isnull=True) | Q(asignacion_id=id))
+                        for row in qs_clean:
+                            dirty = False
+                            for d in ['mon','tue','wed','thu','fri','sat','sun']:
+                                val = getattr(row, d, '') or ''
+                                if val != '':
+                                    setattr(row, d, '')
+                                    dirty = True
+                            if dirty or row.asignacion_id:
+                                row.asignacion = None
+                                row.save()
+                except Exception:
+                    pass
+
                 # Limpiar celdas 'F' del mismo puesto dentro de la ventana para evitar sacafranco huérfano
                 try:
                     if puesto_id:
