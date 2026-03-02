@@ -573,7 +573,7 @@ def asignar_sacafranco(request):
                 except Exception:
                     cur_val = ''
                 cur_str = str(cur_val).strip()
-                # si está vacío, marcamos F y enlazamos asignación; si ya tiene F, solo enlazamos asignación
+                
                 if cur_str == '':
                     setattr(semanal_obj, day, 'F')
                     semanal_obj.asignacion_id = asignacion.id
@@ -582,12 +582,12 @@ def asignar_sacafranco(request):
                     if semanal_obj.asignacion_id != asignacion.id:
                         semanal_obj.asignacion_id = asignacion.id
                         semanal_obj.save()
-                # si tiene otro valor, no tocar
+                
         except Exception:
             logger.exception('Error propagando sacafranco a semanas futuras')
 
         semanal, created = AsignacionSemanal.objects.get_or_create(puesto=puesto, week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start, defaults={'asignacion': asignacion})
-        # obtener valor actual del día para decidir si lo sobrescribimos
+        
         current_val = None
         try:
             current_val = getattr(semanal, day, None)
@@ -644,7 +644,7 @@ def desasignar_sacafranco(request):
         if not asignacion:
             return JsonResponse({'error': 'No existe asignación para esa persona en el puesto'}, status=404)
 
-        # parse week_start
+        
         try:
             if isinstance(week_start, str):
                 week_start_date = datetime.date.fromisoformat(week_start)
