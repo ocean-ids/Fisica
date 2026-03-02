@@ -554,16 +554,8 @@ def asignar_sacafranco(request):
             # empezamos a propagar desde la semana seleccionada si es >= inicio semana actual,
             # en caso contrario desde el inicio de la semana actual
             prop_start = week_start_date if (isinstance(week_start_date, datetime.date) and week_start_date >= start_current_week) else start_current_week
-            # propagamos sólo hasta el fin del año correspondiente (31-dic)
-            try:
-                year_for_end = week_start_date.year if isinstance(week_start_date, datetime.date) else today.year
-                prop_end = datetime.date(year_for_end, 12, 31)
-            except Exception:
-                prop_end = datetime.date(today.year, 12, 31)
-
             # asegurar filas semanales alineadas con el front (semanas por mes: día 1 y saltos de 7)
             weeks = []
-            year_end = prop_end.year
             month_cursor = prop_start.month
             while month_cursor <= 12:
                 base = datetime.date(prop_start.year, month_cursor, 1)
