@@ -581,6 +581,35 @@ def eliminar_asignacion(request, id):
                 # Eliminar filas ligadas explícitamente a la asignación
                 AsignacionSemanal.objects.filter(asignacion_id=id).delete()
 
+                # Limpiar celdas 'F' del mismo puesto dentro de la ventana para evitar sacafranco huérfano
+                try:
+                    if puesto_id:
+                        from django.db.models import Q as _Q
+                        qs_f = AsignacionSemanal.objects.filter(puesto_id=puesto_id)
+                        if window_start:
+                            qs_f = qs_f.filter(week_start__gte=window_start)
+                        if window_end:
+                            qs_f = qs_f.filter(week_start__lte=window_end)
+                        # Celdas 'F' y asignacion nula o la misma que se elimina
+                        f_filter = (
+                            _Q(mon__istartswith='F') | _Q(tue__istartswith='F') | _Q(wed__istartswith='F') |
+                            _Q(thu__istartswith='F') | _Q(fri__istartswith='F') | _Q(sat__istartswith='F') |
+                            _Q(sun__istartswith='F')
+                        )
+                        qs_f = qs_f.filter(f_filter).filter(_Q(asignacion__isnull=True) | _Q(asignacion_id=id))
+                        for row in qs_f:
+                            try:
+                                for d in ['mon','tue','wed','thu','fri','sat','sun']:
+                                    val = getattr(row, d, '') or ''
+                                    if str(val).upper().startswith('F'):
+                                        setattr(row, d, '')
+                                row.asignacion = None
+                                row.save()
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
                 # Además, intentar eliminar posibles filas huérfanas creadas
                 # para el mismo puesto dentro de la ventana calculada.
                 try:
