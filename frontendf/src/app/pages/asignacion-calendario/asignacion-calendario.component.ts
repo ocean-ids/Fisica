@@ -241,7 +241,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     this.sacafrancoClick.emit({ weekStart: this.weekStart, day: day, puestoId: puestoId, manage: true });
   }
 
-  // Mostrar preview del sacafranco asignado al pasar el cursor
+ 
   showPreview(puestoId: any, day: string) {
     try {
       const key = String(puestoId || '');

@@ -228,7 +228,7 @@ export class AsignacionesComponent implements OnInit {
 
   mes: number = new Date().getMonth() + 1;
   anio: number = new Date().getFullYear();
-  dia: string | null = null; // formato YYYY-MM-DD (opcional)
+  dia: string | null = null; 
   monthValue: string = '';
 
   clientes: Cliente[] = [];
@@ -244,7 +244,7 @@ export class AsignacionesComponent implements OnInit {
   mostrarModal: boolean = false;
   asignacionActual: Asignacion = this.nuevaAsignacion();
   modoEdicion: boolean = false;
-  crearCalendarioAutom = true; // crear calendario automáticamente por defecto
+  crearCalendarioAutom = true; 
 
   constructor(
     private clienteService: ClienteService,
@@ -330,7 +330,7 @@ export class AsignacionesComponent implements OnInit {
 
   
 
-  // Methods invoked by template controls to sync both calendario and asignaciones
+ 
   prevWeekAndPage(): void {
     if (this.calendarios) this.calendarios.forEach(c => { try { c.prevWeek(); } catch(e){} });
   }

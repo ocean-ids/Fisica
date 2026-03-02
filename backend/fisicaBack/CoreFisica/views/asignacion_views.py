@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from rest_framework import status
 from ..models import Asignacion, AsignacionSemanal, Puesto
-from django.db.models import Q
+from django.db.models import Q, Max
 from django.db import transaction
 from ..serializers import AsignacionSerializer
 import openpyxl
@@ -250,14 +250,19 @@ def asignar_servicio(request):
 
                     try:
                         pid = puesto_obj.id if puesto_obj and hasattr(puesto_obj, 'id') else getattr(asignacion, 'puesto_id', None)
-                        obj, created = AsignacionSemanal.objects.get_or_create(puesto_id=pid, week_start=current, defaults={**defaults, 'asignacion': asignacion, 'puesto_id': pid})
+                        # update_or_create garantiza que la fila del puesto/semana siempre quede ligada a la asignación actual
+                        obj, created = AsignacionSemanal.objects.update_or_create(
+                            puesto_id=pid,
+                            week_start=current,
+                            defaults={**defaults, 'asignacion': asignacion, 'puesto_id': pid}
+                        )
                         if not created:
-                            # Si existe pero no está ligada a una asignación, ligarla y actualizar valores
-                            if getattr(obj, 'asignacion', None) is None:
+                            # Asegurar asignacion vinculada y días actualizados
+                            if getattr(obj, 'asignacion_id', None) != getattr(asignacion, 'id', None):
                                 obj.asignacion = asignacion
-                                for k, v in defaults.items():
-                                    setattr(obj, k, v)
-                                obj.save()
+                            for k, v in defaults.items():
+                                setattr(obj, k, v)
+                            obj.save()
                     except Exception as e:
                         print(f"⚠️ Error creando/asegurando AsignacionSemanal en asignar_servicio (puesto {getattr(puesto_obj,'id',None)} week_start {current}): {e}")
                     current += datetime.timedelta(days=7)
@@ -476,13 +481,17 @@ def asignar_servicio(request):
                                         defaults[key] = value
                                     try:
                                         pid = puesto_obj.id if puesto_obj and hasattr(puesto_obj, 'id') else getattr(asignacion, 'puesto_id', None)
-                                        obj, created = AsignacionSemanal.objects.get_or_create(puesto_id=pid, week_start=current, defaults={**defaults, 'asignacion': asignacion, 'puesto_id': pid})
+                                        obj, created = AsignacionSemanal.objects.update_or_create(
+                                            puesto_id=pid,
+                                            week_start=current,
+                                            defaults={**defaults, 'asignacion': asignacion, 'puesto_id': pid}
+                                        )
                                         if not created:
-                                            if getattr(obj, 'asignacion', None) is None:
+                                            if getattr(obj, 'asignacion_id', None) != getattr(asignacion, 'id', None):
                                                 obj.asignacion = asignacion
-                                                for k, v in defaults.items():
-                                                    setattr(obj, k, v)
-                                                obj.save()
+                                            for k, v in defaults.items():
+                                                setattr(obj, k, v)
+                                            obj.save()
                                     except Exception as e:
                                         print(f"⚠️ Error creando/asegurando AsignacionSemanal al actualizar: {e}")
                                     current += datetime.timedelta(days=7)
@@ -531,6 +540,41 @@ def eliminar_asignacion(request, id):
         # No recuperamos/eliminamos el PatronAsignacion aquí: preservamos los
         # patrones creados por los usuarios (se mantienen en el select).
 
+        # Calcular una ventana de fechas para limpiar filas semanales huérfanas del mismo puesto.
+        # Preferimos start_date/end_date si existen; si no, usamos mes/año y extendemos
+        # hasta la última semana existente para ese puesto.
+        puesto_id = getattr(asignar, 'puesto_id', None)
+        window_start = None
+        window_end = None
+        try:
+            start_ref = getattr(asignar, 'start_date', None) or getattr(asignar, 'fecha', None)
+            if not start_ref and getattr(asignar, 'mes', None) and getattr(asignar, 'anio', None):
+                start_ref = datetime.date(int(asignar.anio), int(asignar.mes), 1)
+
+            end_ref = getattr(asignar, 'end_date', None)
+            if not end_ref and start_ref:
+                # Fin de mes del start_ref
+                next_month = (start_ref.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
+                end_ref = next_month - datetime.timedelta(days=1)
+
+            if start_ref and end_ref:
+                window_start = start_ref - datetime.timedelta(days=6)
+                window_end = end_ref
+        except Exception:
+            window_start = None
+            window_end = None
+
+        # Ampliar la ventana usando las filas existentes del mismo puesto (cubrir recurrentes sin end_date).
+        try:
+            if puesto_id:
+                max_week = AsignacionSemanal.objects.filter(puesto_id=puesto_id).aggregate(Max('week_start')).get('week_start__max')
+                if max_week:
+                    window_end = window_end or max_week
+                if start_ref and not window_start:
+                    window_start = start_ref - datetime.timedelta(days=6)
+        except Exception:
+            pass
+
         # Borrar filas semanales y luego la asignación dentro de una transacción
         try:
             with transaction.atomic():
@@ -538,36 +582,18 @@ def eliminar_asignacion(request, id):
                 AsignacionSemanal.objects.filter(asignacion_id=id).delete()
 
                 # Además, intentar eliminar posibles filas huérfanas creadas
-                # para el mismo puesto cuyas semanas solapan con el mes/año
-                # de la asignación. Usamos un margen: week_start puede caer
-                # hasta 6 días antes del primer día del mes (semana que empieza
-                # antes pero contiene días del mes), por eso expandimos el rango.
+                # para el mismo puesto dentro de la ventana calculada.
                 try:
-                    mes = int(getattr(asignar, 'mes', None) or 0)
-                    anio = int(getattr(asignar, 'anio', None) or 0)
-                    puesto_id = getattr(asignar, 'puesto_id', None)
-                    if mes and anio and puesto_id:
-                        from datetime import date, timedelta
-                        first_day = date(anio, mes, 1)
-                        # incluir semanas cuyo week_start esté hasta 6 días antes
-                        window_start = first_day - timedelta(days=6)
-                        if mes == 12:
-                            next_month_first = date(anio + 1, 1, 1)
-                        else:
-                            next_month_first = date(anio, mes + 1, 1)
-                        last_day = next_month_first - timedelta(days=1)
-
-                        # borrar filas huérfanas (sin asignacion) del puesto
-                        orphan_qs = AsignacionSemanal.objects.filter(
-                            puesto_id=puesto_id,
-                            week_start__gte=window_start,
-                            week_start__lte=last_day,
-                            asignacion__isnull=True,
-                        )
-                        orphan_count = orphan_qs.count()
+                    if puesto_id:
+                        qs = AsignacionSemanal.objects.filter(puesto_id=puesto_id, asignacion__isnull=True)
+                        if window_start:
+                            qs = qs.filter(week_start__gte=window_start)
+                        if window_end:
+                            qs = qs.filter(week_start__lte=window_end)
+                        orphan_count = qs.count()
                         if orphan_count:
-                            print(f"DEBUG eliminar_asignacion: borrando {orphan_count} filas huérfanas para puesto {puesto_id} entre {window_start} y {last_day}")
-                            orphan_qs.delete()
+                            print(f"DEBUG eliminar_asignacion: borrando {orphan_count} filas huérfanas para puesto {puesto_id} entre {window_start or '-inf'} y {window_end or '+inf'}")
+                            qs.delete()
                 except Exception:
                     # no crítico: continuar con la eliminación principal
                     pass

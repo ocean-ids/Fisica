@@ -205,18 +205,21 @@ def listar_asignacion_semanal(request):
                             # asignacion vinculada, ligar la asignación; si existe y ya tiene asignacion, no crear duplicado.
                             try:
                                 print(f"DEBUG: asegurando AsignacionSemanal para asignacion={getattr(asign,'id',None)} puesto={pid} week_start={ws} defaults={defaults}")
-                                obj, created = AsignacionSemanal.objects.get_or_create(puesto_id=pid, week_start=ws, defaults={**defaults, 'asignacion': asign})
+                                obj, created = AsignacionSemanal.objects.update_or_create(
+                                    puesto_id=pid,
+                                    week_start=ws,
+                                    defaults={**defaults, 'asignacion': asign}
+                                )
                                 if created:
                                     print(f"DEBUG: creada AsignacionSemanal id={obj.id} for puesto={pid} week_start={ws} asignacion={getattr(asign,'id',None)}")
                                 else:
-                                    print(f"DEBUG: AsignacionSemanal ya existe id={obj.id} puesto={pid} week_start={ws} asignacion={getattr(obj,'asignacion_id',None)}")
-                                    # Si la fila existe sin asignación ligada, ligar y actualizar valores
-                                    if getattr(obj, 'asignacion', None) is None:
+                                    # Reasignar y actualizar siempre para evitar filas sin vincular o desactualizadas
+                                    if getattr(obj, 'asignacion_id', None) != getattr(asign, 'id', None):
                                         obj.asignacion = asign
-                                        for k, v in defaults.items():
-                                            setattr(obj, k, v)
-                                        obj.save()
-                                        print(f"DEBUG: vinculada asignacion id={getattr(asign,'id',None)} a fila id={obj.id}")
+                                    for k, v in defaults.items():
+                                        setattr(obj, k, v)
+                                    obj.save()
+                                    print(f"DEBUG: AsignacionSemanal actualizada id={obj.id} puesto={pid} week_start={ws} asignacion={getattr(obj,'asignacion_id',None)}")
                             except Exception as e:
                                 # imprimir el error y continuar
                                 print(f"⚠️ Error creando/actualizando AsignacionSemanal (puesto {pid}, week_start {ws}): {e}")

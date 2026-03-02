@@ -78,7 +78,7 @@ export class PatronSacafrancosModalComponent {
     const s = status.toString().toLowerCase();
     if (s === 'available') { return 'Disponible'; }
     if (s === 'assigned' || s === 'asignado') { return 'Asignado'; }
-    // fallback: capitalize first letter
+    
     return status.toString();
   }
 
