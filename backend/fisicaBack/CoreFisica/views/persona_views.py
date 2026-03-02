@@ -561,12 +561,18 @@ def asignar_sacafranco(request):
             except Exception:
                 prop_end = datetime.date(today.year, 12, 31)
 
-            # asegurar filas semanales desde prop_start hasta fin de año, paso 7 días
+            # asegurar filas semanales alineadas con el front (semanas por mes: día 1 y saltos de 7)
             weeks = []
-            cursor = prop_start
-            while cursor <= prop_end:
-                weeks.append(cursor)
-                cursor += datetime.timedelta(days=7)
+            year_end = prop_end.year
+            month_cursor = prop_start.month
+            while month_cursor <= 12:
+                base = datetime.date(prop_start.year, month_cursor, 1)
+                cursor = base
+                while cursor.month == month_cursor:
+                    if cursor >= prop_start:
+                        weeks.append(cursor)
+                    cursor += datetime.timedelta(days=7)
+                month_cursor += 1
 
             for ws in weeks:
                 semanal_obj, _ = AsignacionSemanal.objects.get_or_create(puesto=puesto, week_start=ws)
