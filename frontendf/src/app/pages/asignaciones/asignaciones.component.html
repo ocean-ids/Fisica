@@ -38,13 +38,14 @@
                 <th rowspan="2">Horario</th>
                 <th rowspan="2" style="width: 50px;">Código</th>
                 <th style="width: 200px; height: 30px;"rowspan="2">Cliente</th>
-                <th style="width: 50px;" colspan="2">Puesto</th>
+                <th style="width: 50px;" colspan="3">Puesto</th>
                 <th rowspan="2">Cédula</th>
                 <th rowspan="2">Persona</th>
                 <th rowspan="2">Acción</th>
               </tr>
               <tr>
                 <th>Nombre</th>
+                <th>Zona</th>
                 <th>Resumen</th>
               </tr>
             </thead>
@@ -55,6 +56,7 @@
                 <td>{{ asig.instalacion_detalle?.codigo }}</td>
                 <td style="max-width: 200px;">{{ asig.cliente_detalle?.nombre_comercial }}</td>
                 <td>{{ asig.puesto_detalle?.nombre }}</td>
+                <td>{{ asig.puesto_detalle?.zona_titulo || asig.puesto_detalle?.zona_codigo || '-' }}</td>
                 <td>
                   <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
                     {{ getResumenPuestoCompacto(asig.puesto_detalle) }}

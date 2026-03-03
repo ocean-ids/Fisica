@@ -17,18 +17,18 @@ export class UbicacionService {
   getCantones(provinciaId?: number): Observable<any[]>{
     let params = new HttpParams();
     if (provinciaId) params = params.set('provincia_id', provinciaId);
-    return this.apiService.get<any[]>('/cantones/', {params});
+    return this.apiService.get<any[]>('/cantones/', params);
   }
 
   getInstalaciones(clienteId?: number, q?:string): Observable<any[]>{
     let params = new HttpParams();
     if (clienteId) params = params.set('cliente_id', clienteId);
     if (q) params = params.set('q', q);
-    return this.apiService.get<any[]>('/instalaciones/', {params});
+    return this.apiService.get<any[]>('/instalaciones/', params);
   }
 
   getZonas(instalacionId: number): Observable<any[]> {
     const params = new HttpParams().set('instalacion_id', instalacionId);
-    return this.apiService.get<any[]>('/zonas/', {params})
+    return this.apiService.get<any[]>('/zonas/', params)
   }
 }

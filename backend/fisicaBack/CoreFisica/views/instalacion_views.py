@@ -2,9 +2,76 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import json
-from ..models import Instalacion
 from django.db.models import Q
+from ..models import Instalacion, Provincia, Canton
 from ..serializers import InstalacionSerializer
+
+
+def resolve_canton_id(canton_token, provincia_token=None):
+    """Resuelve un canton_id numérico a partir de un token que puede ser id o nombre."""
+    if not canton_token:
+        return None
+    try:
+        return int(canton_token)
+    except Exception:
+        pass
+
+    provincia_obj = None
+    if provincia_token:
+        try:
+            provincia_obj = Provincia.objects.filter(pk=int(provincia_token)).first()
+        except Exception:
+            provincia_obj = Provincia.objects.filter(nombre__iexact=str(provincia_token)).first()
+
+    qs = Canton.objects.all()
+    if provincia_obj:
+        qs = qs.filter(provincia=provincia_obj)
+
+    canton_obj = qs.filter(nombre__iexact=str(canton_token)).first()
+    if canton_obj:
+        return canton_obj.id
+    return None
+
+
+def get_or_create_provincia(provincia_token):
+    """Devuelve o crea Provincia a partir de id o nombre."""
+    if not provincia_token:
+        return None
+    try:
+        provincia_obj = Provincia.objects.filter(pk=int(provincia_token)).first()
+        if provincia_obj:
+            return provincia_obj
+    except Exception:
+        pass
+    provincia_obj = Provincia.objects.filter(nombre__iexact=str(provincia_token)).first()
+    if provincia_obj:
+        return provincia_obj
+    return Provincia.objects.create(nombre=str(provincia_token).strip())
+
+
+def get_or_create_canton(canton_token, provincia_token=None):
+    """Devuelve o crea Canton (y Provincia si falta) a partir de id o nombre."""
+    if not canton_token:
+        return None
+    try:
+        canton_obj = Canton.objects.filter(pk=int(canton_token)).first()
+        if canton_obj:
+            return canton_obj
+    except Exception:
+        pass
+
+    provincia_obj = get_or_create_provincia(provincia_token) if provincia_token else None
+
+    qs = Canton.objects.all()
+    if provincia_obj:
+        qs = qs.filter(provincia=provincia_obj)
+    canton_obj = qs.filter(nombre__iexact=str(canton_token)).first()
+    if canton_obj:
+        return canton_obj
+    if provincia_obj:
+        return Canton.objects.create(nombre=str(canton_token).strip(), provincia=provincia_obj)
+    return None
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -16,6 +83,7 @@ def obtener_instalaciones(request):
 
     if cliente_id:
         qs = qs.filter(cliente_id=cliente_id)
+
 
     if q:
         qs = qs.filter(
@@ -34,10 +102,17 @@ def obtener_instalaciones(request):
             'cliente_nombre': getattr(inst.cliente, 'nombre_comercial', ''),
             'canton_id': inst.canton_id,
             'canton_nombre': getattr(inst.canton, 'nombre', ''),
+            'provincia_id': getattr(getattr(inst.canton, 'provincia', None), 'id', None),
             'provincia_nombre': getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
             'direccion': inst.direccion or '',
             'zonas': [
-                {'id': z.id, 'codigo': z.codigo, 'titulo': z.titulo}
+                {
+                    'id': z.id,
+                    'codigo': z.codigo,
+                    'titulo': z.titulo,
+                    'provincia_id': getattr(z.provincia, 'id', None) or getattr(getattr(inst.canton, 'provincia', None), 'id', None),
+                    'provincia_nombre': getattr(z.provincia, 'nombre', '') or getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
+                }
                 for z in inst.zonas.all()
             ],
         })
@@ -55,6 +130,16 @@ def crear_instalacion(request):
     # soportar `cliente_id` desde frontend
     if 'cliente_id' in data and 'cliente' not in data:
         data['cliente'] = data.pop('cliente_id')
+
+    # Intentar resolver/crear provincia y cantón desde tokens (id o nombre)
+    provincia_token = data.get('provincia_id') or data.get('provincia')
+    canton_token = data.get('canton_id') or data.get('canton')
+    provincia_obj = get_or_create_provincia(provincia_token)
+    canton_obj = get_or_create_canton(canton_token, provincia_obj.id if provincia_obj else provincia_token)
+    if canton_obj:
+        data['canton'] = canton_obj.id
+    data.pop('canton_id', None)
+    data.pop('provincia_id', None)
 
     serializer = InstalacionSerializer(data=data)
     if serializer.is_valid():
@@ -77,6 +162,16 @@ def actualizar_instalacion(request, id):
         # soportar `cliente_id` desde frontend
         if 'cliente_id' in data and 'cliente' not in data:
             data['cliente'] = data.pop('cliente_id')
+
+        # Intentar resolver/crear provincia y cantón desde tokens (id o nombre)
+        provincia_token = data.get('provincia_id') or data.get('provincia')
+        canton_token = data.get('canton_id') or data.get('canton')
+        provincia_obj = get_or_create_provincia(provincia_token)
+        canton_obj = get_or_create_canton(canton_token, provincia_obj.id if provincia_obj else provincia_token)
+        if canton_obj:
+            data['canton'] = canton_obj.id
+        data.pop('canton_id', None)
+        data.pop('provincia_id', None)
 
         serializer = InstalacionSerializer(instalacion, data=data, partial=True)
         if serializer.is_valid():

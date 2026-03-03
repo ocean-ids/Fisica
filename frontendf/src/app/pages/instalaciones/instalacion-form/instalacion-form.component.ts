@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { Cliente } from '../../../models/cliente.model';
+import { UbicacionService } from '../../../services/ubicacion.service';
 import { ProvinciasService } from '../../../services/provincias.service';
 import { Province, City } from '../../../data/provincias';
 
@@ -27,15 +28,23 @@ import { Province, City } from '../../../data/provincias';
 })
 export class InstalacionFormComponent implements OnInit {
   instalacionForm!: FormGroup;
-  provincias: Province[] = [];
-  ciudades: City[] = [];
-  private initialCiudad: string | null = null;
+  provincias: (any | Province)[] = [];
+  cantones: (any | City)[] = [];
+  private useStaticProvincias = false;
+  zonaOptions: { id: any; label: string; titulo?: string; codigo?: string }[] = [
+    { id: 1, label: 'ZONA 1 / DAULE - SAMBORONDON', titulo: 'ZONA 1', codigo: 'Z1' },
+    { id: 2, label: 'ZONA 2 / SUR - CENTRO', titulo: 'ZONA 2', codigo: 'Z2' },
+    { id: 3, label: 'ZONA 3 / DAULE - NORTE', titulo: 'ZONA 3', codigo: 'Z3' },
+  ];
+  
+  private initialCanton: string | null = null;
 
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<InstalacionFormComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { instalacion: any, clientes: Cliente[] }
-    , private provinciasService: ProvinciasService
+    @Inject(MAT_DIALOG_DATA) public data: { instalacion: any, clientes: Cliente[] },
+    private ubicacionService: UbicacionService,
+    private provinciasService: ProvinciasService
   ) {}
 
   ngOnInit(): void {
@@ -43,63 +52,109 @@ export class InstalacionFormComponent implements OnInit {
     this.instalacionForm = this.fb.group({
       nombre: [instalacion.nombre || ''],
       cliente_id: [instalacion.cliente_id || '', Validators.required],
-      provincia: [instalacion.provincia || '', Validators.required],
-      ciudad: [instalacion.ciudad || '', Validators.required],
-      codigo: [instalacion.codigo || ''],
-      direccion: [instalacion.direccion || '']
+      provincia_id: [instalacion.provincia_id || '', Validators.required],
+      canton_id: [instalacion.canton_id || '', Validators.required],
+      direccion: [instalacion.direccion || ''],
+      zona_id: [instalacion.zona_id || this.zonaOptions[0]?.id || null]
     });
 
-    this.provinciasService.getProvincias().subscribe(p => {
-      this.provincias = p;
-      // si estamos editando, recordar la ciudad para preservarla
-      this.initialCiudad = instalacion.ciudad || null;
-      const storedProv = instalacion.provincia;
-      if (storedProv) {
-        // intentar mapear la provincia guardada: puede ser el id o el nombre
-        const provFound = this.provincias.find(x => x.id === storedProv || x.nombre.toLowerCase() === String(storedProv).toLowerCase());
-        if (provFound) {
-          // usar el id que espera el select
-          this.instalacionForm.get('provincia')?.setValue(provFound.id);
-        } else {
-          // dejar el valor tal cual (fallback)
-          this.instalacionForm.get('provincia')?.setValue(storedProv);
+    if (instalacion.zonas && Array.isArray(instalacion.zonas) && instalacion.zonas.length) {
+      this.zonaOptions = this.buildZonaOptions(instalacion.zonas);
+      this.instalacionForm.get('zona_id')?.setValue(this.zonaOptions[0]?.id || null);
+    }
+
+    if (instalacion.id) {
+      this.ubicacionService.getZonas(instalacion.id).subscribe({
+        next: zonas => {
+          if (zonas && Array.isArray(zonas) && zonas.length) {
+            this.zonaOptions = this.buildZonaOptions(zonas);
+            this.instalacionForm.get('zona_id')?.setValue(this.zonaOptions[0]?.id || null);
+          }
+        },
+        error: () => {}
+      });
+    }
+
+    this.loadProvincias(instalacion);
+  }
+
+  onProvinciaChange(): void {
+    const provinciaId = this.instalacionForm.get('provincia_id')?.value;
+    if (!provinciaId) {
+      this.cantones = [];
+      this.instalacionForm.get('canton_id')?.setValue('');
+      return;
+    }
+    if (this.useStaticProvincias) {
+      const prov = (this.provincias as Province[]).find(x => x.id === provinciaId);
+      this.cantones = prov ? prov.ciudades : [];
+      this.afterCantonesLoaded();
+    } else {
+      this.ubicacionService.getCantones(provinciaId).subscribe((cants: any[]) => {
+        this.cantones = cants || [];
+        this.afterCantonesLoaded();
+      });
+    }
+  }
+
+  private loadProvincias(instalacion: any): void {
+    this.ubicacionService.getProvincias().subscribe({
+      next: (p) => {
+        this.provincias = p || [];
+        this.useStaticProvincias = !p || !Array.isArray(p) || p.length === 0;
+        if (this.useStaticProvincias) {
+          this.provincias = this.provinciasService.getProvinciasSync();
         }
-        this.onProvinciaChange();
+        this.initialCanton = instalacion.canton_id || null;
+        const storedProv = instalacion.provincia_id;
+        if (storedProv) {
+          const provFound = this.provincias.find((x: any) => x.id === storedProv);
+          if (provFound) {
+            this.instalacionForm.get('provincia_id')?.setValue(provFound.id);
+            this.onProvinciaChange();
+          }
+        }
+      },
+      error: () => {
+        this.useStaticProvincias = true;
+        this.provincias = this.provinciasService.getProvinciasSync();
       }
     });
   }
 
-  onProvinciaChange(): void {
-    const provinciaId = this.instalacionForm.get('provincia')?.value;
-    if (!provinciaId) {
-      this.ciudades = [];
-      this.instalacionForm.get('ciudad')?.setValue('');
-      return;
-    }
-    this.provinciasService.getCiudadesPorProvincia(provinciaId).subscribe(c => {
-      this.ciudades = c;
-      // si venimos de edición y la ciudad inicial está en la lista, úsala (comparaciones case-insensitive)
-      if (this.initialCiudad) {
-        const search = String(this.initialCiudad).toLowerCase();
-        const found = this.ciudades.find(x => (x.nombre && x.nombre.toLowerCase() === search) || (x.id && x.id.toLowerCase() === search));
-        if (found) {
-          this.instalacionForm.get('ciudad')?.setValue(found.nombre);
-          this.initialCiudad = null; // usar solo una vez
-          return;
-        }
-        this.initialCiudad = null;
-      }
-      // si la ciudad actual está en la nueva lista, conservarla (case-insensitive)
-      const current = this.instalacionForm.get('ciudad')?.value;
-      if (current && this.ciudades.find(x => (x.nombre && x.nombre.toLowerCase() === String(current).toLowerCase()) || (x.id && x.id.toLowerCase() === String(current).toLowerCase()))) {
+  private afterCantonesLoaded(): void {
+    if (this.initialCanton) {
+      const found = this.cantones.find((x: any) => x.id === this.initialCanton);
+      if (found) {
+        this.instalacionForm.get('canton_id')?.setValue(found.id);
+        this.initialCanton = null;
         return;
       }
-      // en caso contrario, asignar automáticamente la primera ciudad disponible
-      if (this.ciudades.length > 0) {
-        this.instalacionForm.get('ciudad')?.setValue(this.ciudades[0].nombre);
-      } else {
-        this.instalacionForm.get('ciudad')?.setValue('');
-      }
+      this.initialCanton = null;
+    }
+    const current = this.instalacionForm.get('canton_id')?.value;
+    if (current && this.cantones.find((x: any) => x.id === current)) {
+      return;
+    }
+    if (this.cantones.length > 0) {
+      this.instalacionForm.get('canton_id')?.setValue(this.cantones[0].id);
+    } else {
+      this.instalacionForm.get('canton_id')?.setValue('');
+    }
+  }
+
+  private buildZonaOptions(zonas: any[]): { id: any; label: string; titulo?: string; codigo?: string }[] {
+    return zonas.map((z: any) => {
+      const titulo = z?.titulo || '';
+      const codigo = z?.codigo || '';
+      const prov = z?.provincia_nombre || '';
+      const labelParts = [titulo || codigo || 'Zona', prov].filter(Boolean);
+      return {
+        id: z?.id,
+        titulo,
+        codigo,
+        label: labelParts.join(' · ')
+      };
     });
   }
 

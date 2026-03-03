@@ -83,13 +83,12 @@ export class InstalacionesComponent implements OnInit {
   }
 
   crearInstalacion(data: any): void {
-    const payload = {
+    const payload: any = {
       nombre: data.nombre || '',
       cliente: data.cliente_id,
-      provincia: data.provincia,
-      ciudad: data.ciudad,
-      codigo: data.codigo || '',
-      direccion: data.direccion || ''
+      direccion: data.direccion || '',
+      provincia_id: data.provincia_id || data.provincia,
+      canton_id: data.canton_id || data.canton
     };
 
     this.instalacionService.createInstalacion(payload).subscribe({
@@ -105,13 +104,12 @@ export class InstalacionesComponent implements OnInit {
   }
 
   actualizarInstalacion(id: number, data: any): void {
-    const payload = {
+    const payload: any = {
       nombre: data.nombre || '',
       cliente: data.cliente_id,
-      provincia: data.provincia,
-      ciudad: data.ciudad,
-      codigo: data.codigo || '',
-      direccion: data.direccion || ''
+      direccion: data.direccion || '',
+      provincia_id: data.provincia_id || data.provincia,
+      canton_id: data.canton_id || data.canton
     };
 
     this.instalacionService.updateInstalacion(id, payload).subscribe({

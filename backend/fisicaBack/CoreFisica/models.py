@@ -50,9 +50,10 @@ class Canton(models.Model):
         ordering = ['provincia', 'nombre']
 
 class Zona(models.Model):
+    instalacion = models.ForeignKey('Instalacion', on_delete=models.CASCADE, related_name='zonas')
+    provincia = models.ForeignKey(Provincia, on_delete=models.PROTECT, null=True, blank=True, related_name='zonas')
     codigo = models.CharField(max_length=10)
     titulo = models.CharField(max_length=100)
-    instalacion = models.ForeignKey('Instalacion', on_delete=models.CASCADE, related_name='zonas')
     orden = models.PositiveIntegerField(default=0)
 
     class Meta:

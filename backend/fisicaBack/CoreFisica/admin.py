@@ -19,8 +19,9 @@ class ProvinciaAdmin(admin.ModelAdmin):
 
 @admin.register(Zona)
 class ZonaAdmin(admin.ModelAdmin):
-	list_display = ('codigo', 'titulo', 'instalacion')
-	search_fields = ('codigo', 'titulo', 'instalacion__nombre')
+	list_display = ('codigo', 'titulo', 'instalacion', 'provincia')
+	search_fields = ('codigo', 'titulo', 'instalacion__nombre', 'provincia__nombre', 'instalacion__canton__nombre')
+	list_filter = ('provincia', 'instalacion')
 
 
 

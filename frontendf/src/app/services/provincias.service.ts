@@ -4,7 +4,9 @@ import { PROVINCIAS, Province, City } from '../data/provincias';
 
 @Injectable({ providedIn: 'root' })
 export class ProvinciasService {
-  constructor() {}
+  getProvinciasSync(): Province[] {
+    return PROVINCIAS;
+  }
 
   getProvincias(): Observable<Province[]> {
     return of(PROVINCIAS);

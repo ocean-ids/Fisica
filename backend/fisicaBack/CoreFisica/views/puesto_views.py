@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import  IsAuthenticated
 import json
-from ..models import Instalacion, Puesto, PuestoHorario
+from ..models import Instalacion, Puesto, PuestoHorario, Zona
 from ..utils import parse_input
 import logging
 
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 def crear_puesto(request):
     data = json.loads(request.body)
     instalacion_id = data.get('instalacion_id')
+    zona_id = data.get('zona_id') or data.get('zona')
     cantidad_guardias = data.get('cantidad_guardias', 1)
     tipo = data.get('tipo')
     horarios = data.get('horarios')
@@ -22,11 +23,22 @@ def crear_puesto(request):
         instalacion = Instalacion.objects.get(id=instalacion_id)
     except Instalacion.DoesNotExist:
         return JsonResponse({'error': 'Instalación no encontrada'}, status=404)
+
+    # Validar zona pertenece a la instalación
+    zona = None
+    if zona_id:
+        try:
+            zona = Zona.objects.get(id=zona_id)
+        except Zona.DoesNotExist:
+            return JsonResponse({'error': 'Zona no encontrada'}, status=404)
+        if zona.instalacion_id != instalacion.id:
+            return JsonResponse({'error': 'La zona no pertenece a la instalación'}, status=400)
     puesto = Puesto.objects.create(
         nombre=data.get('nombre'),
         tipo=tipo,
         cantidad_guardias=cantidad_guardias,
-        instalacion_id=instalacion.id
+        instalacion_id=instalacion.id,
+        zona=zona
     )
     # crear horarios si vienen
     try:
@@ -61,6 +73,7 @@ def crear_puesto(request):
             'turno_display': puesto.get_turno_display(),
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in puesto.horarios.all()],
             'instalacion_id': puesto.instalacion_id,
+            'zona_id': puesto.zona_id,
             'resumen': puesto.resumen,
         }
     })
@@ -81,6 +94,9 @@ def obtener_puestos(request):
             'turno_display': p.get_turno_display(),
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
             'instalacion_id': p.instalacion_id,
+            'zona_id': p.zona_id,
+            'zona_codigo': getattr(p.zona, 'codigo', None),
+            'zona_titulo': getattr(p.zona, 'titulo', None),
             'resumen': p.resumen,
         })
     return JsonResponse(resultado, safe=False)
@@ -100,6 +116,9 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
             'turno_display': p.get_turno_display(),
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
             'instalacion_id': p.instalacion_id,
+            'zona_id': p.zona_id,
+            'zona_codigo': getattr(p.zona, 'codigo', None),
+            'zona_titulo': getattr(p.zona, 'titulo', None),
             'resumen': p.resumen,
         })
     return JsonResponse(resultado, safe=False)
@@ -107,7 +126,7 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_cliente(request, cliente_id):
-    puestos_qs = Puesto.objects.filter(instalacion__cliente_id=cliente_id).select_related('instalacion')
+    puestos_qs = Puesto.objects.filter(instalacion__cliente_id=cliente_id).select_related('instalacion', 'zona')
     resultado = []
     for p in puestos_qs:
         resultado.append({
@@ -123,6 +142,9 @@ def obtener_puestos_por_cliente(request, cliente_id):
             'instalacion__provincia': getattr(p.instalacion, 'provincia', None),
             'instalacion__ciudad': getattr(p.instalacion, 'ciudad', None),
             'instalacion_nombre': getattr(p.instalacion, 'nombre', None),
+            'zona_id': p.zona_id,
+            'zona_codigo': getattr(p.zona, 'codigo', None),
+            'zona_titulo': getattr(p.zona, 'titulo', None),
         })
     return JsonResponse(resultado, safe=False)
 
@@ -135,10 +157,22 @@ def actualizar_puesto(request, id):
         puesto = Puesto.objects.get(id=id)
 
         instalacion_id = data.get('instalacion_id')
+        zona_id = data.get('zona_id') or data.get('zona')
         if instalacion_id:
             if not Instalacion.objects.filter(id=instalacion_id).exists():
                 return JsonResponse({'error': 'Instalación no encontrada'}, status=404)
             puesto.instalacion_id = instalacion_id
+
+        if zona_id:
+            try:
+                zona = Zona.objects.get(id=zona_id)
+            except Zona.DoesNotExist:
+                return JsonResponse({'error': 'Zona no encontrada'}, status=404)
+            if instalacion_id and zona.instalacion_id != instalacion_id:
+                return JsonResponse({'error': 'La zona no pertenece a la instalación'}, status=400)
+            if not instalacion_id and zona.instalacion_id != puesto.instalacion_id:
+                return JsonResponse({'error': 'La zona no pertenece a la instalación'}, status=400)
+            puesto.zona = zona
 
         puesto.nombre = data.get('nombre', puesto.nombre)
         puesto.tipo = data.get('tipo', puesto.tipo)
@@ -183,6 +217,7 @@ def actualizar_puesto(request, id):
                 'turno_display': puesto.get_turno_display(),
                 'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in puesto.horarios.all()],
                 'instalacion_id': puesto.instalacion_id,
+                'zona_id': puesto.zona_id,
             }
         }, status=200)
     except Puesto.DoesNotExist:
