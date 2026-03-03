@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion
 
 
 @admin.register(Cliente)
@@ -7,11 +7,27 @@ class ClienteAdmin(admin.ModelAdmin):
 	list_display = ('nombre_comercial', 'razon_social', 'ruc')
 	search_fields = ('nombre_comercial', 'razon_social', 'ruc')
 
+@admin.register(Canton)
+class CantonAdmin(admin.ModelAdmin):
+	list_display = ('nombre', 'provincia')
+	search_fields = ('nombre', 'provincia__nombre')
+
+@admin.register(Provincia)
+class ProvinciaAdmin(admin.ModelAdmin):
+	list_display = ('nombre',)
+	search_fields = ('nombre',)
+
+@admin.register(Zona)
+class ZonaAdmin(admin.ModelAdmin):
+	list_display = ('codigo', 'titulo', 'instalacion')
+	search_fields = ('codigo', 'titulo', 'instalacion__nombre')
+
+
 
 @admin.register(Instalacion)
 class InstalacionAdmin(admin.ModelAdmin):
-	list_display = ('nombre', 'cliente', 'provincia', 'ciudad', 'codigo')
-	search_fields = ('nombre', 'cliente__nombre_comercial', 'provincia', 'ciudad', 'codigo')
+	list_display = ('nombre', 'cliente')
+	search_fields = ('nombre', 'cliente__nombre_comercial', 'canton__provincia__nombre', 'canton__nombre')
 
 class PuestoHorarioInline(admin.TabularInline):
 	model = PuestoHorario
@@ -43,7 +59,6 @@ class PuestoAdmin(admin.ModelAdmin):
 		except Exception:
 			
 			pass
-
 
 @admin.action(description='Deshabilitar seleccionadas')
 def make_disabled(modeladmin, request, queryset):

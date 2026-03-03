@@ -35,22 +35,47 @@ class Cliente(models.Model):
     def __str__(self):
         return self.nombre_comercial
 
+class Provincia(models.Model):
+    nombre = models.CharField(max_length=50, unique=True)
+    
+    def __str__(self):
+        return self.nombre
+
+class Canton(models.Model):
+    nombre = models.CharField(max_length=50, db_index=True)
+    provincia = models.ForeignKey(Provincia, on_delete=models.PROTECT, related_name='cantones')
+
+    class Meta:
+        unique_together = (('provincia', 'nombre'),)
+        ordering = ['provincia', 'nombre']
+
+class Zona(models.Model):
+    codigo = models.CharField(max_length=10)
+    titulo = models.CharField(max_length=100)
+    instalacion = models.ForeignKey('Instalacion', on_delete=models.CASCADE, related_name='zonas')
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = (('codigo', 'instalacion'),)
+        ordering = ['instalacion', 'orden', 'codigo']
 
 class Instalacion(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='instalaciones')
+    canton = models.ForeignKey(Canton, on_delete=models.PROTECT, related_name='instalaciones', null=True, blank=True)
     nombre = models.CharField(max_length=150, blank=True, null=True)
-    provincia = models.CharField(max_length=50)
-    ciudad = models.CharField(max_length=50)
-    codigo = models.CharField(max_length=50, blank=True, null=True)
     direccion = models.CharField(max_length=200, blank=True, null=True)
-    
 
     def __str__(self):
-        return f"{self.cliente.nombre_comercial} - {self.provincia}, {self.ciudad}"
-
+        try:
+            prov = self.canton.provincia.nombre
+        except Exception:
+            prov = ''
+        ciudad_val = getattr(self, 'ciudad', '')
+        return f"{self.cliente.nombre_comercial} - {prov}, {ciudad_val}"
 
 class Puesto(models.Model):
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='puestos')
+    zona = models.ForeignKey(Zona, on_delete=models.PROTECT, related_name='puestos', null=True, blank=True)
     nombre = models.CharField(max_length=100)
     tipo = models.CharField(max_length=50, blank=True, null=True)
     cantidad_guardias = models.IntegerField(default=1)

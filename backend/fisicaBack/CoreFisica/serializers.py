@@ -1,9 +1,8 @@
 from rest_framework import serializers
 from django.db import transaction
 from django.core.validators import RegexValidator
-from .models import Asignacion, AsignacionSemanal, Instalacion, Puesto, PuestoHorario, PatronAsignacion
 from .utils import parse_input
-
+from .models import Asignacion, AsignacionSemanal, Instalacion, Puesto, PuestoHorario, PatronAsignacion
 
 
 class PatronAsignacionSerializer(serializers.ModelSerializer):
@@ -11,11 +10,12 @@ class PatronAsignacionSerializer(serializers.ModelSerializer):
         max_length=4,
         validators=[RegexValidator(regex=r'^\d{3,4}$', message='Use 3 o 4 dígitos')]
     )
+
     def validate_secuencia(self, value):
         if not isinstance(value, list) or not value:
             raise serializers.ValidationError("La secuencia debe ser una lista no vacía")
-        if len(value) > 7:
-            raise serializers.ValidationError("La secuencia puede tener como máximo 7 símbolos")
+        if len(value) > 8:
+            raise serializers.ValidationError("La secuencia puede tener como máximo 8 símbolos")
         allowed = {"D", "N", "F"}
         cleaned = []
         for token in value:
@@ -28,6 +28,7 @@ class PatronAsignacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = PatronAsignacion
         fields = ['id', 'codigo', 'secuencia']
+
 
 
 class AsignacionSerializer(serializers.ModelSerializer):
@@ -65,9 +66,9 @@ class AsignacionSerializer(serializers.ModelSerializer):
         inst = obj.instalacion
         return {
             'id': inst.id,
-            'provincia': inst.provincia,
-            'ciudad': inst.ciudad,
-            'codigo': getattr(inst, 'codigo', '') or '',
+            'canton_id': inst.canton_id,
+            'canton_nombre': getattr(inst.canton, 'nombre', ''),
+            'provincia_nombre': getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
             'direccion': getattr(inst, 'direccion', '') or ''
         }
 
@@ -115,33 +116,10 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
         model = AsignacionSemanal
         fields = ['id', 'asignacion', 'puesto', 'week_start', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'created_at', 'updated_at', 'puesto_detalle']
 
-class PatronAsignacionSerializer(serializers.ModelSerializer):
-    codigo = serializers.CharField(
-        max_length=4,
-        validators=[RegexValidator(regex=r'^\d{3,4}$', message='Use 3 o 4 dígitos')]
-    )
-    def validate_secuencia(self, value):
-        if not isinstance(value, list) or not value:
-            raise serializers.ValidationError("La secuencia debe ser una lista no vacía")
-        if len(value) > 8:
-            raise serializers.ValidationError("La secuencia puede tener como máximo 8 símbolos")
-        allowed = {"D", "N", "F"}
-        cleaned = []
-        for token in value:
-            t = str(token).strip().upper()
-            if t not in allowed:
-                raise serializers.ValidationError(f"Símbolo no permitido: {token}")
-            cleaned.append(t)
-        return cleaned
-
-    class Meta:
-        model = PatronAsignacion
-        fields = ['id', 'codigo', 'secuencia']
-
 class InstalacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instalacion
-        fields = ['id', 'cliente', 'nombre', 'provincia', 'ciudad', 'codigo', 'direccion']
+        fields = ['id', 'cliente', 'canton', 'nombre', 'direccion']
         read_only_fields = ['id']
         
 
@@ -156,8 +134,10 @@ class PuestoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Puesto
-        fields = ('id', 'instalacion', 'nombre', 'tipo', 'cantidad_guardias',
-                  'resumen', 'horarios')
+        fields = (
+            'id', 'instalacion', 'zona', 'nombre', 'tipo', 'cantidad_guardias',
+            'resumen', 'horarios', 'horarios_text'
+        )
 
     def create(self, validated_data):
         text = validated_data.pop('horarios_text', None)

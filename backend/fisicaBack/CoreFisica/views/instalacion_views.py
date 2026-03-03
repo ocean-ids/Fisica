@@ -12,7 +12,7 @@ def obtener_instalaciones(request):
     q = (request.GET.get('q') or '').strip()
     cliente_id = request.GET.get('cliente_id')
 
-    qs = Instalacion.objects.select_related('cliente').all()
+    qs = Instalacion.objects.select_related('cliente', 'canton', 'canton__provincia').prefetch_related('zonas').all()
 
     if cliente_id:
         qs = qs.filter(cliente_id=cliente_id)
@@ -20,14 +20,28 @@ def obtener_instalaciones(request):
     if q:
         qs = qs.filter(
             Q(nombre__icontains=q) |
-            Q(codigo__icontains=q) |
-            Q(provincia__icontains=q) |
-            Q(ciudad__icontains=q) |
+            Q(canton__nombre__icontains=q) |
+            Q(canton__provincia__nombre__icontains=q) |
             Q(direccion__icontains=q)
         )
 
-    instalaciones = qs.values('id', 'nombre', 'provincia', 'ciudad', 'cliente_id', 'codigo', 'direccion')
-    return JsonResponse(list(instalaciones), safe=False)
+    instalaciones = []
+    for inst in qs:
+        instalaciones.append({
+            'id': inst.id,
+            'nombre': inst.nombre or '',
+            'cliente_id': inst.cliente_id,
+            'cliente_nombre': getattr(inst.cliente, 'nombre_comercial', ''),
+            'canton_id': inst.canton_id,
+            'canton_nombre': getattr(inst.canton, 'nombre', ''),
+            'provincia_nombre': getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
+            'direccion': inst.direccion or '',
+            'zonas': [
+                {'id': z.id, 'codigo': z.codigo, 'titulo': z.titulo}
+                for z in inst.zonas.all()
+            ],
+        })
+    return JsonResponse(instalaciones, safe=False)
 
 
 @api_view(['POST'])
