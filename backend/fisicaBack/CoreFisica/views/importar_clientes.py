@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from openpyxl import load_workbook
-from ..models import Cliente, Instalacion, Puesto
+from ..models import Cliente, Instalacion, Puesto, Provincia, Canton
 
 
 HEADER_MAP = {
@@ -47,6 +47,36 @@ CLASSIF_MAP = {
     'GRAN': 'GRANDE',
     'OFICINA': 'OFICINA',
 }
+
+
+def get_or_create_provincia_token(token):
+    if not token:
+        return None
+    nombre = norm(token)
+    if not nombre:
+        return None
+    prov = Provincia.objects.filter(nombre__iexact=nombre).first()
+    if prov:
+        return prov
+    return Provincia.objects.create(nombre=nombre)
+
+
+def get_or_create_canton_token(token, provincia_token=None):
+    if not token:
+        return None
+    nombre = norm(token)
+    if not nombre:
+        return None
+    provincia_obj = get_or_create_provincia_token(provincia_token) if provincia_token else None
+    qs = Canton.objects.all()
+    if provincia_obj:
+        qs = qs.filter(provincia=provincia_obj)
+    canton = qs.filter(nombre__iexact=nombre).first()
+    if canton:
+        return canton
+    if provincia_obj:
+        return Canton.objects.create(nombre=nombre, provincia=provincia_obj)
+    return None
 
 
 def norm(val):
@@ -161,30 +191,20 @@ def importar_clientes(request):
                     cliente.save(update_fields=['size'])
                     updated_clientes += 1
 
-            # Instalación por cliente + nombre
-            inst_defaults = {}
-            if provincia:
-                inst_defaults['provincia'] = provincia
-            if ciudad:
-                inst_defaults['ciudad'] = ciudad
+            # Instalación por cliente + nombre, resolviendo provincia/cantón
+            canton_obj = get_or_create_canton_token(ciudad, provincia)
             instalacion, inst_created = Instalacion.objects.get_or_create(
                 cliente=cliente,
                 nombre=inst_nombre,
-                defaults=inst_defaults,
+                defaults={'canton': canton_obj} if canton_obj else {},
             )
-            if not inst_created and inst_defaults:
-                changed = False
-                if provincia and not instalacion.provincia:
-                    instalacion.provincia = provincia
-                    changed = True
-                if ciudad and not instalacion.ciudad:
-                    instalacion.ciudad = ciudad
-                    changed = True
-                if changed:
-                    instalacion.save(update_fields=['provincia', 'ciudad'])
-                    updated_inst += 1
-            elif inst_created:
+            if inst_created:
                 created_inst += 1
+            else:
+                if canton_obj and instalacion.canton_id != getattr(canton_obj, 'id', None):
+                    instalacion.canton = canton_obj
+                    instalacion.save(update_fields=['canton'])
+                    updated_inst += 1
 
             # Puesto por instalación + nombre
             if puesto_nombre:
