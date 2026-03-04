@@ -27,7 +27,7 @@
       <div class="table-responsive">
         <table class="table table-hover table-bordered">
           <thead class="table-light">
-            <tr class="text-center">
+            <tr class="text-center align-middle">
               <th>Nombre de Puesto</th>
               <th>Tipo de Puesto</th>
               <th>Cantidad de Guardias</th>
@@ -40,7 +40,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="text-center" *ngFor="let puesto of puestos">
+            <tr class="text-center align-middle" *ngFor="let puesto of puestos">
               <td>{{ puesto.nombre }}</td>
               <td>{{puesto.tipo}}</td>
               <td>{{ puesto.cantidad_guardias }}</td>
