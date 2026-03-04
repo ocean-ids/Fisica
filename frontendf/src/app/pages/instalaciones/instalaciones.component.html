@@ -8,17 +8,11 @@
       </button>
     </div>
   </div>
-  <div class="d-flex justify-content-center gap-2 pt-2 mb-3">
-  <input class="form-control" style="max-width: 60%;"
-          placeholder="Buscar por nombre, código, provincia, ciudad o dirección"
+  <div class="d-flex flex-wrap justify-content-center gap-2 pt-2 mb-3">
+    <input class="form-control" style="width: 80%; "
+          placeholder="Buscar por cualquier campo (nombre, código, provincia, ciudad, zona, dirección, cliente)"
           [(ngModel)]="filtroTexto"
           (ngModelChange)="cargarInstalaciones()">
-    <select class="form-select" style="max-width: 20%;"
-            [(ngModel)]="filtroClienteId"
-            (ngModelChange)="cargarInstalaciones()">
-      <option value="">Todos los clientes</option>
-      <option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</option>
-    </select>
     <button class="btn btn-outline-secondary" (click)="limpiarFiltros()">Limpiar</button>
   </div>
 

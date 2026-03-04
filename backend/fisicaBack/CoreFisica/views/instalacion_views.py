@@ -118,11 +118,29 @@ def set_instalacion_zona(instalacion: Instalacion, zona_token):
 def obtener_instalaciones(request):
     q = (request.GET.get('q') or '').strip()
     cliente_id = request.GET.get('cliente_id')
+    provincia_id = request.GET.get('provincia_id')
+    canton_id = request.GET.get('canton_id')
+    zona_token = request.GET.get('zona_id') or request.GET.get('zona_titulo')
 
     qs = Instalacion.objects.select_related('cliente', 'canton', 'canton__provincia').prefetch_related('zonas').all()
 
     if cliente_id:
         qs = qs.filter(cliente_id=cliente_id)
+
+    if provincia_id:
+        qs = qs.filter(canton__provincia_id=provincia_id)
+
+    if canton_id:
+        qs = qs.filter(canton_id=canton_id)
+
+    if zona_token:
+        try:
+            zona_id = int(zona_token)
+            qs = qs.filter(zonas__id=zona_id)
+        except Exception:
+            qs = qs.filter(zonas__titulo__iexact=str(zona_token).strip())
+
+    qs = qs.distinct()
 
 
     if q:
@@ -131,7 +149,8 @@ def obtener_instalaciones(request):
             Q(codigo__icontains=q) |
             Q(canton__nombre__icontains=q) |
             Q(canton__provincia__nombre__icontains=q) |
-            Q(direccion__icontains=q)
+            Q(direccion__icontains=q) |
+            Q(zonas__titulo__icontains=q)
         )
 
     instalaciones = []
