@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import json
 from django.db.models import Q
-from ..models import Instalacion, Provincia, Canton
+from ..models import Instalacion, Provincia, Canton, Zona
 from ..serializers import InstalacionSerializer
 
 
@@ -71,6 +71,46 @@ def get_or_create_canton(canton_token, provincia_token=None):
     if provincia_obj:
         return Canton.objects.create(nombre=str(canton_token).strip(), provincia=provincia_obj)
     return None
+
+
+def ensure_default_zonas(instalacion: Instalacion):
+    """Garantiza que haya solo una Zona 1 por instalación cuando no se especifica otra.
+
+    Si no hay zonas, crea Zona 1. Si hay más de una, deja la primera y elimina el resto.
+    """
+    zonas_qs = instalacion.zonas.order_by('id')
+    count = zonas_qs.count()
+    if count == 0:
+        Zona.objects.create(instalacion=instalacion, titulo='Zona 1')
+        return
+    if count > 1:
+        keep = zonas_qs.first()
+        zonas_qs.exclude(id=keep.id).delete()
+
+
+def set_instalacion_zona(instalacion: Instalacion, zona_token):
+    """Selecciona/crea una zona según el token (id o título) y elimina el resto.
+
+    - Si zona_token es numérico y existe, conserva esa y borra otras.
+    - Si es texto, crea/usa esa Zona para la instalación y borra otras.
+    - Si no viene nada, delega en ensure_default_zonas (Zona 1).
+    """
+    if not zona_token:
+        ensure_default_zonas(instalacion)
+        return
+
+    try:
+        zona_id = int(zona_token)
+        zona = Zona.objects.filter(id=zona_id, instalacion=instalacion).first()
+        if not zona:
+            # Si el id no corresponde, cae a crear por título
+            raise ValueError()
+    except Exception:
+        titulo = str(zona_token).strip() or 'Zona 1'
+        zona, _ = Zona.objects.get_or_create(instalacion=instalacion, titulo=titulo)
+
+    # Eliminar zonas distintas a la seleccionada
+    instalacion.zonas.exclude(id=zona.id).delete()
 
 
 @api_view(['GET'])
@@ -143,6 +183,7 @@ def crear_instalacion(request):
     serializer = InstalacionSerializer(data=data)
     if serializer.is_valid():
         instalacion = serializer.save()
+        set_instalacion_zona(instalacion, data.get('zona_id') or data.get('zona_titulo'))
         return JsonResponse({'message': 'Instalación creada', 'id': instalacion.id})
     else:
         return JsonResponse({'error': 'Datos inválidos', 'details': serializer.errors}, status=400)
@@ -175,6 +216,7 @@ def actualizar_instalacion(request, id):
         serializer = InstalacionSerializer(instalacion, data=data, partial=True)
         if serializer.is_valid():
             instalacion = serializer.save()
+            set_instalacion_zona(instalacion, data.get('zona_id') or data.get('zona_titulo'))
             return JsonResponse({'message': 'Instalación actualizada', 'id': instalacion.id})
         else:
             return JsonResponse({'error': 'Datos inválidos', 'details': serializer.errors}, status=400)

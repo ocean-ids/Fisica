@@ -32,6 +32,8 @@ export class InstalacionFormComponent implements OnInit {
   cantones: (any | City)[] = [];
   private useStaticProvincias = false;
   zonaOptions: { id: any; label: string; titulo?: string }[] = [];
+  private defaultZonaTitles = ['Zona 1'];
+  private zonaTitles = ['Zona 1', 'Zona 2', 'Zona 3'];
   
   private initialCanton: string | null = null;
 
@@ -56,7 +58,7 @@ export class InstalacionFormComponent implements OnInit {
     });
 
     if (instalacion.zonas && Array.isArray(instalacion.zonas) && instalacion.zonas.length) {
-      this.zonaOptions = this.buildZonaOptions(instalacion.zonas);
+      this.zonaOptions = this.withDefaultZonaTitles(this.buildZonaOptions(instalacion.zonas));
       this.instalacionForm.get('zona_id')?.setValue(this.zonaOptions[0]?.id || null);
     }
 
@@ -64,12 +66,16 @@ export class InstalacionFormComponent implements OnInit {
       this.ubicacionService.getZonas(instalacion.id).subscribe({
         next: zonas => {
           if (zonas && Array.isArray(zonas) && zonas.length) {
-            this.zonaOptions = this.buildZonaOptions(zonas);
+            this.zonaOptions = this.withDefaultZonaTitles(this.buildZonaOptions(zonas));
             this.instalacionForm.get('zona_id')?.setValue(this.zonaOptions[0]?.id || null);
           }
         },
         error: () => {}
       });
+    } else {
+      // En creación, ofrece Zona 1/2/3 como títulos; backend creará solo la elegida
+      this.zonaOptions = this.zonaTitles.map(t => ({ id: t, titulo: t, label: t }));
+      this.instalacionForm.get('zona_id')?.setValue(this.zonaOptions[0]?.id || null);
     }
 
     this.loadProvincias(instalacion);
@@ -145,11 +151,22 @@ export class InstalacionFormComponent implements OnInit {
       const titulo = z?.titulo || '';
       const labelParts = [titulo || 'Zona'].filter(Boolean);
       return {
-        id: z?.id,
+        id: z?.id ?? titulo,
         titulo,
         label: labelParts.join(' · ')
       };
     });
+  }
+
+  private withDefaultZonaTitles(options: { id: any; label: string; titulo?: string }[]): { id: any; label: string; titulo?: string }[] {
+    const titles = new Set((options || []).map(o => (o.titulo || '').trim()).filter(Boolean));
+    const merged = [...options];
+    this.zonaTitles.forEach(t => {
+      if (!titles.has(t)) {
+        merged.push({ id: t, titulo: t, label: t });
+      }
+    });
+    return merged;
   }
 
   onSubmit(): void {

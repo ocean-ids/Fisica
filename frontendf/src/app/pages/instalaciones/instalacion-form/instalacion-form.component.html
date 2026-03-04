@@ -49,6 +49,7 @@
       <mat-select formControlName="zona_id">
         <mat-option *ngFor="let z of zonaOptions" [value]="z.id">{{ z.label }}</mat-option>
       </mat-select>
+      <mat-hint *ngIf="!data.instalacion?.id">Se creará solo la zona seleccionada</mat-hint>
     </mat-form-field>
   </form>
 </mat-dialog-content>

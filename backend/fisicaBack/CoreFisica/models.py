@@ -51,7 +51,12 @@ class Canton(models.Model):
 
 class Zona(models.Model):
     instalacion = models.ForeignKey('Instalacion', on_delete=models.CASCADE, related_name='zonas')
-    titulo = models.CharField(max_length=100)
+    opcionesZona = [
+        ('Zona 1', 'Zona 1'),
+        ('Zona 2', 'Zona 2'),
+        ('Zona 3', 'Zona 3'),
+    ]
+    titulo = models.CharField(max_length=100, choices=opcionesZona, db_index=True)
 
     class Meta:
         ordering = ['instalacion', 'titulo']
