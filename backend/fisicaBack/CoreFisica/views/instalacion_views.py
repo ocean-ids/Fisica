@@ -88,6 +88,7 @@ def obtener_instalaciones(request):
     if q:
         qs = qs.filter(
             Q(nombre__icontains=q) |
+            Q(codigo__icontains=q) |
             Q(canton__nombre__icontains=q) |
             Q(canton__provincia__nombre__icontains=q) |
             Q(direccion__icontains=q)
@@ -98,6 +99,7 @@ def obtener_instalaciones(request):
         instalaciones.append({
             'id': inst.id,
             'nombre': inst.nombre or '',
+            'codigo': inst.codigo or '',
             'cliente_id': inst.cliente_id,
             'cliente_nombre': getattr(inst.cliente, 'nombre_comercial', ''),
             'canton_id': inst.canton_id,
@@ -108,10 +110,7 @@ def obtener_instalaciones(request):
             'zonas': [
                 {
                     'id': z.id,
-                    'codigo': z.codigo,
                     'titulo': z.titulo,
-                    'provincia_id': getattr(z.provincia, 'id', None) or getattr(getattr(inst.canton, 'provincia', None), 'id', None),
-                    'provincia_nombre': getattr(z.provincia, 'nombre', '') or getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
                 }
                 for z in inst.zonas.all()
             ],

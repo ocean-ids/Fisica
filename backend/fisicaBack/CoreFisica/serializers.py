@@ -66,6 +66,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
         inst = obj.instalacion
         return {
             'id': inst.id,
+            'codigo': getattr(inst, 'codigo', '') or '',
             'canton_id': inst.canton_id,
             'canton_nombre': getattr(inst.canton, 'nombre', ''),
             'provincia_nombre': getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
@@ -78,7 +79,6 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'nombre': obj.puesto.nombre,
             'cantidad_guardias': obj.puesto.cantidad_guardias,
             'zona_id': getattr(obj.puesto, 'zona_id', None),
-            'zona_codigo': getattr(getattr(obj.puesto, 'zona', None), 'codigo', ''),
             'zona_titulo': getattr(getattr(obj.puesto, 'zona', None), 'titulo', ''),
             'turno': obj.puesto.get_turno(),
             'turno_display': obj.puesto.get_turno_display(),
@@ -110,7 +110,6 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
             'nombre': p.nombre,
             'cantidad_guardias': p.cantidad_guardias,
             'zona_id': getattr(p, 'zona_id', None),
-            'zona_codigo': getattr(getattr(p, 'zona', None), 'codigo', ''),
             'zona_titulo': getattr(getattr(p, 'zona', None), 'titulo', ''),
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
@@ -125,7 +124,7 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
 class InstalacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instalacion
-        fields = ['id', 'cliente', 'canton', 'nombre', 'direccion']
+        fields = ['id', 'cliente', 'canton', 'codigo', 'nombre', 'direccion']
         read_only_fields = ['id']
         
 

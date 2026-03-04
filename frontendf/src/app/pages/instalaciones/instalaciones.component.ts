@@ -84,6 +84,7 @@ export class InstalacionesComponent implements OnInit {
 
   crearInstalacion(data: any): void {
     const payload: any = {
+      codigo: data.codigo || '',
       nombre: data.nombre || '',
       cliente: data.cliente_id,
       direccion: data.direccion || '',
@@ -105,6 +106,7 @@ export class InstalacionesComponent implements OnInit {
 
   actualizarInstalacion(id: number, data: any): void {
     const payload: any = {
+      codigo: data.codigo || '',
       nombre: data.nombre || '',
       cliente: data.cliente_id,
       direccion: data.direccion || '',

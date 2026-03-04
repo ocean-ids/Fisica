@@ -31,11 +31,7 @@ export class InstalacionFormComponent implements OnInit {
   provincias: (any | Province)[] = [];
   cantones: (any | City)[] = [];
   private useStaticProvincias = false;
-  zonaOptions: { id: any; label: string; titulo?: string; codigo?: string }[] = [
-    { id: 1, label: 'ZONA 1 / DAULE - SAMBORONDON', titulo: 'ZONA 1', codigo: 'Z1' },
-    { id: 2, label: 'ZONA 2 / SUR - CENTRO', titulo: 'ZONA 2', codigo: 'Z2' },
-    { id: 3, label: 'ZONA 3 / DAULE - NORTE', titulo: 'ZONA 3', codigo: 'Z3' },
-  ];
+  zonaOptions: { id: any; label: string; titulo?: string }[] = [];
   
   private initialCanton: string | null = null;
 
@@ -50,6 +46,7 @@ export class InstalacionFormComponent implements OnInit {
   ngOnInit(): void {
     const instalacion = this.data.instalacion || {};
     this.instalacionForm = this.fb.group({
+      codigo: [instalacion.codigo || ''],
       nombre: [instalacion.nombre || ''],
       cliente_id: [instalacion.cliente_id || '', Validators.required],
       provincia_id: [instalacion.provincia_id || '', Validators.required],
@@ -143,16 +140,13 @@ export class InstalacionFormComponent implements OnInit {
     }
   }
 
-  private buildZonaOptions(zonas: any[]): { id: any; label: string; titulo?: string; codigo?: string }[] {
+  private buildZonaOptions(zonas: any[]): { id: any; label: string; titulo?: string }[] {
     return zonas.map((z: any) => {
       const titulo = z?.titulo || '';
-      const codigo = z?.codigo || '';
-      const prov = z?.provincia_nombre || '';
-      const labelParts = [titulo || codigo || 'Zona', prov].filter(Boolean);
+      const labelParts = [titulo || 'Zona'].filter(Boolean);
       return {
         id: z?.id,
         titulo,
-        codigo,
         label: labelParts.join(' · ')
       };
     });

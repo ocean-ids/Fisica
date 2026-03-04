@@ -95,7 +95,6 @@ def obtener_puestos(request):
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
             'instalacion_id': p.instalacion_id,
             'zona_id': p.zona_id,
-            'zona_codigo': getattr(p.zona, 'codigo', None),
             'zona_titulo': getattr(p.zona, 'titulo', None),
             'resumen': p.resumen,
         })
@@ -117,7 +116,6 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
             'instalacion_id': p.instalacion_id,
             'zona_id': p.zona_id,
-            'zona_codigo': getattr(p.zona, 'codigo', None),
             'zona_titulo': getattr(p.zona, 'titulo', None),
             'resumen': p.resumen,
         })
@@ -143,7 +141,6 @@ def obtener_puestos_por_cliente(request, cliente_id):
             'instalacion__ciudad': getattr(p.instalacion, 'ciudad', None),
             'instalacion_nombre': getattr(p.instalacion, 'nombre', None),
             'zona_id': p.zona_id,
-            'zona_codigo': getattr(p.zona, 'codigo', None),
             'zona_titulo': getattr(p.zona, 'titulo', None),
         })
     return JsonResponse(resultado, safe=False)

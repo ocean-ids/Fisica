@@ -49,7 +49,7 @@
               <td class="align-middle text-start">
                 <ng-container *ngIf="instalacion.zonas?.length; else sinZonas">
                   <div *ngFor="let z of instalacion.zonas">
-                    {{ z.titulo || z.codigo || '-' }}
+                    {{ z.titulo || '-' }}
                   </div>
                 </ng-container>
                 <ng-template #sinZonas>-</ng-template>

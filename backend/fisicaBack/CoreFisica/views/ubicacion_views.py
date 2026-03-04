@@ -25,6 +25,6 @@ def obtener_zonas(request):
     instalacion_id = request.GET.get('instalacion_id')
     if not instalacion_id:
         return JsonResponse({'error': 'instalacion_id es requerido'}, status=400)
-    qs = Zona.objects.filter(instalacion_id=instalacion_id).order_by('orden', 'codigo')
-    zonas = qs.values('id', 'codigo', 'titulo', 'instalacion_id')
+    qs = Zona.objects.filter(instalacion_id=instalacion_id).order_by('titulo')
+    zonas = qs.values('id', 'titulo', 'instalacion_id')
     return JsonResponse(list(zonas), safe=False)

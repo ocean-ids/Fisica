@@ -51,18 +51,15 @@ class Canton(models.Model):
 
 class Zona(models.Model):
     instalacion = models.ForeignKey('Instalacion', on_delete=models.CASCADE, related_name='zonas')
-    provincia = models.ForeignKey(Provincia, on_delete=models.PROTECT, null=True, blank=True, related_name='zonas')
-    codigo = models.CharField(max_length=10)
     titulo = models.CharField(max_length=100)
-    orden = models.PositiveIntegerField(default=0)
 
     class Meta:
-        unique_together = (('codigo', 'instalacion'),)
-        ordering = ['instalacion', 'orden', 'codigo']
+        ordering = ['instalacion', 'titulo']
 
 class Instalacion(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='instalaciones')
     canton = models.ForeignKey(Canton, on_delete=models.PROTECT, related_name='instalaciones', null=True, blank=True)
+    codigo = models.CharField(max_length=20, blank=True, null=True)
     nombre = models.CharField(max_length=150, blank=True, null=True)
     direccion = models.CharField(max_length=200, blank=True, null=True)
 
