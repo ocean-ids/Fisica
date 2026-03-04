@@ -180,10 +180,15 @@ def crear_instalacion(request):
     data.pop('canton_id', None)
     data.pop('provincia_id', None)
 
+    # extraer zona antes de validar serializer para evitar campos no permitidos
+    zona_token = data.get('zona_id') or data.get('zona_titulo')
+    data.pop('zona_id', None)
+    data.pop('zona_titulo', None)
+
     serializer = InstalacionSerializer(data=data)
     if serializer.is_valid():
         instalacion = serializer.save()
-        set_instalacion_zona(instalacion, data.get('zona_id') or data.get('zona_titulo'))
+        set_instalacion_zona(instalacion, zona_token)
         return JsonResponse({'message': 'Instalación creada', 'id': instalacion.id})
     else:
         return JsonResponse({'error': 'Datos inválidos', 'details': serializer.errors}, status=400)
@@ -213,10 +218,15 @@ def actualizar_instalacion(request, id):
         data.pop('canton_id', None)
         data.pop('provincia_id', None)
 
+        # extraer zona antes de validar serializer para evitar campos no permitidos
+        zona_token = data.get('zona_id') or data.get('zona_titulo')
+        data.pop('zona_id', None)
+        data.pop('zona_titulo', None)
+
         serializer = InstalacionSerializer(instalacion, data=data, partial=True)
         if serializer.is_valid():
             instalacion = serializer.save()
-            set_instalacion_zona(instalacion, data.get('zona_id') or data.get('zona_titulo'))
+            set_instalacion_zona(instalacion, zona_token)
             return JsonResponse({'message': 'Instalación actualizada', 'id': instalacion.id})
         else:
             return JsonResponse({'error': 'Datos inválidos', 'details': serializer.errors}, status=400)

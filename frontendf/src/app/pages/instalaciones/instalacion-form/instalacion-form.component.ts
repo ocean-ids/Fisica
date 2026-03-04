@@ -47,6 +47,8 @@ export class InstalacionFormComponent implements OnInit {
 
   ngOnInit(): void {
     const instalacion = this.data.instalacion || {};
+    // opciones por defecto para casos antiguos sin zonas cargadas
+    this.zonaOptions = this.zonaTitles.map(t => ({ id: t, titulo: t, label: t }));
     this.instalacionForm = this.fb.group({
       codigo: [instalacion.codigo || ''],
       nombre: [instalacion.nombre || ''],
@@ -67,8 +69,11 @@ export class InstalacionFormComponent implements OnInit {
         next: zonas => {
           if (zonas && Array.isArray(zonas) && zonas.length) {
             this.zonaOptions = this.withDefaultZonaTitles(this.buildZonaOptions(zonas));
-            this.instalacionForm.get('zona_id')?.setValue(this.zonaOptions[0]?.id || null);
+          } else {
+            // instalaciones antiguas sin zonas: ofrecer Zona 1/2/3
+            this.zonaOptions = this.zonaTitles.map(t => ({ id: t, titulo: t, label: t }));
           }
+          this.instalacionForm.get('zona_id')?.setValue(this.zonaOptions[0]?.id || null);
         },
         error: () => {}
       });
