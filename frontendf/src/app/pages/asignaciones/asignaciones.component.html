@@ -1,7 +1,7 @@
 <div class="container-fluid p-4">
   <h2>Gestión de Asignaciones</h2>
   <div class="d-flex justify-content-end align-items-center mb-4" >
-    <button class="btn btn-primary me-2" (click)="abrirNuevoPatron()" disabled>
+    <button class="btn btn-primary me-2" (click)="abrirNuevoPatron()" >
       <i class="bi bi-bricks"></i> Nuevo Patrón
     </button>
     <button class="btn btn-primary" (click)="abrirModalNuevo()">
@@ -45,7 +45,6 @@
               </tr>
               <tr>
                 <th>Nombre</th>
-                <th>Zona</th>
                 <th>Resumen</th>
               </tr>
             </thead>
@@ -56,7 +55,6 @@
                 <td>{{ asig.instalacion_detalle?.codigo }}</td>
                 <td style="max-width: 200px;">{{ asig.cliente_detalle?.nombre_comercial }}</td>
                 <td>{{ asig.puesto_detalle?.nombre }}</td>
-                <td>{{ asig.puesto_detalle?.zona_titulo || asig.puesto_detalle?.zona_codigo || '-' }}</td>
                 <td>
                   <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
                     {{ getResumenPuestoCompacto(asig.puesto_detalle) }}
