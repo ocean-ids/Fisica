@@ -22,25 +22,25 @@
         <table class="table table-hover table-bordered">
           <thead class="table-light">
             <tr class="text-center align-middle">
-              <th class="align-middle">Código</th>
-              <th class="align-middle">Cliente</th>
-              <th class="align-middle">Nombre de la Instalación</th>
-              <th class="align-middle">Provincia</th>
-              <th class="align-middle">Ciudad o Cantón</th>
-              <th class="align-middle">Dirección</th>
-              <th class="align-middle">Zonas</th>
-              <th class="align-middle text-center">Acciones</th>
+              <th>Código</th>
+              <th>Cliente</th>
+              <th>Nombre de la Instalación</th>
+              <th>Provincia</th>
+              <th>Ciudad o Cantón</th>
+              <th>Dirección</th>
+              <th class="text-center"  style="width: 80px;">Zonas</th>
+              <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr class="text-center align-middle" *ngFor="let instalacion of instalaciones">
-              <td class="align-middle">{{ instalacion.codigo || '-' }}</td>
-              <td class="align-middle">{{ getNombreCliente(instalacion.cliente_id) }}</td>
-              <td class="align-middle">{{ instalacion.nombre || '-' }}</td>
-              <td class="align-middle">{{ instalacion.provincia_nombre || '-' }}</td>
-              <td class="align-middle">{{ instalacion.canton_nombre || '-' }}</td>
-              <td class="align-middle">{{ instalacion.direccion || '-' }}</td>
-              <td class="align-middle text-start">
+              <td>{{ instalacion.codigo || '-' }}</td>
+              <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
+              <td>{{ instalacion.nombre || '-' }}</td>
+              <td>{{ instalacion.provincia_nombre || '-' }}</td>
+              <td>{{ instalacion.canton_nombre || '-' }}</td>
+              <td>{{ instalacion.direccion || '-' }}</td>
+              <td>
                 <ng-container *ngIf="instalacion.zonas?.length; else sinZonas">
                   <div *ngFor="let z of instalacion.zonas">
                     {{ z.titulo || '-' }}
