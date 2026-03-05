@@ -1,6 +1,7 @@
 <div class="container-fluid p-3">
     <h3 class="text-center">Reporte de Asistencia</h3>
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <input type="date" class="form-control" style="max-width:200px" [(ngModel)]="filtroFecha" (change)="cargarReporte()">
         <button class="btn btn-outline-secondary" (click)="limpiarFiltros()">Limpiar</button>
     </div>
     <div *ngIf="loading" class="text-muted">Cargando...</div>
@@ -8,7 +9,7 @@
     <div class="table-responsive" *ngIf="!loading">
         <table class="table table-bordered table-hover">
             <thead class="table-light text-center">
-                <tr>
+                <tr class="text-center align-middle">
                     <th>Código</th>
                     <th>Cliente</th>
                     <th>Puesto (Tipo)</th>
@@ -19,7 +20,7 @@
                 </tr>
             </thead>
             <tbody>
-                <tr *ngFor="let r of reporte" class="align-middle">
+                <tr *ngFor="let r of reporte" class="text-center align-middle">
                     <td>{{ r.codigo || '-' }}</td>
                     <td>{{ r.cliente || '-' }}</td>
                     <td>{{ r.puesto || '-' }}</td>
