@@ -109,3 +109,5 @@ class PuestoHorarioAdmin(admin.ModelAdmin):
 @admin.register(ReporteAsistencia)
 class ReporteAsistenciaAdmin(admin.ModelAdmin):
 	list_display = ('codigo', 'cliente', 'persona', 'fecha', 'estado')
+	search_fields = ('codigo', 'persona__nombres', 'persona__apellidos', 'cliente__nombre_comercial')
+	list_filter = ('fecha', 'estado')

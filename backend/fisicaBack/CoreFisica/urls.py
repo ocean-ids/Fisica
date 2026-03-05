@@ -14,6 +14,7 @@ from .views.horario_views import obtener_horarios, crear_horario, actualizar_hor
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion, exportar_asignaciones_excel
 from .views.asignacion_semanal_views import listar_asignacion_semanal, semanas_del_mes, crear_o_actualizar_asignacion_semanal, copiar_semana
 from .views.patron_asignacion_views import PatronAsignacionListCreateView, PatronAsignacionRetrieveUpdateDestroyView
+from .views.reporte_asistencia_views import obtener_reporte_asistencia
 
 urlpatterns = [
     path('login/', login_view),
@@ -69,5 +70,7 @@ urlpatterns = [
     path('semanas/', semanas_del_mes, name='semanas'),
     path('patrones/', PatronAsignacionListCreateView.as_view(), name='patron-list-create'),
     path('patrones/<int:pk>/', PatronAsignacionRetrieveUpdateDestroyView.as_view(), name='patron-detail'),
+    path('reporte-asistencia/', obtener_reporte_asistencia, name='reporte-asistencia'),
+
 ]
 
