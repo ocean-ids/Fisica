@@ -1,5 +1,14 @@
 from django.db import models
 from django.core.validators import RegexValidator
+import datetime
+
+
+def current_month():
+    return datetime.date.today().month
+
+
+def current_year():
+    return datetime.date.today().year
 
 
 class Cliente(models.Model):
@@ -69,12 +78,9 @@ class Instalacion(models.Model):
     direccion = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self):
-        try:
-            prov = self.canton.provincia.nombre
-        except Exception:
-            prov = ''
-        ciudad_val = getattr(self, 'ciudad', '')
-        return f"{self.cliente.nombre_comercial} - {prov}, {ciudad_val}"
+        prov = getattr(self.canton.provincia, 'nombre', '') if self.canton else ''
+        canton_nombre = getattr(self.canton, 'nombre', '') if self.canton else ''
+        return f"{self.cliente.nombre_comercial} - {prov}, {canton_nombre}".strip(' - ,')
 
 class Puesto(models.Model):
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='puestos')
@@ -317,8 +323,6 @@ class PatronAsignacion(models.Model):
 
     def __str__(self):
         return f"{self.codigo} ({'-'.join(self.secuencia)})"
-    
-
 
 
 class Horario(models.Model):
@@ -349,8 +353,8 @@ class Asignacion(models.Model):
     )
 
     fecha = models.DateField(null=True, blank=True)
-    mes = models.PositiveSmallIntegerField(default=1)
-    anio = models.PositiveSmallIntegerField(default=2026)
+    mes = models.PositiveSmallIntegerField(default=current_month)
+    anio = models.PositiveSmallIntegerField(default=current_year)
     
     recurring = models.BooleanField(default=False)
     start_date = models.DateField(null=True, blank=True)
@@ -367,7 +371,6 @@ class Asignacion(models.Model):
 
     def __str__(self):
         return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio})"
-        
 
 class AsignacionSemanal(models.Model):
     """Programación semanal por puesto.
@@ -399,6 +402,37 @@ class AsignacionSemanal(models.Model):
         return f"{self.puesto} - {self.week_start}"
 
 
+class ReporteAsistencia(models.Model):
+    ESTADO_CHOICES = [
+        ('TURNO', 'Turno'),
+        ('ADICIONAL', 'Adicional')
+    ]
+
+    codigo = models.CharField(max_length=20, unique=True)
+
+    persona = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True, related_name='reportes_asistencia')
+    cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True, related_name='reportes_asistencia')
+    instalacion = models.ForeignKey(Instalacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='reportes_asistencia')
+    puesto = models.ForeignKey(Puesto, on_delete=models.SET_NULL, null=True, blank=True, related_name='reportes_asistencia')
+    horario = models.ForeignKey(Horario, on_delete=models.SET_NULL, null=True, blank=True, related_name='reportes_asistencia')
+
+    puesto_tipo = models.CharField(max_length=50, blank=True, null=True)
+
+    estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='TURNO')
+    descripcion = models.CharField(max_length=200, blank=True, null=True)
+
+    fecha = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha', '-created_at']
+        indexes = [
+            models.Index(fields=['fecha']),
+            models.Index(fields=['estado']),
+        ]
+
+    def __str__(self):
+        return self.codigo
 
 
 

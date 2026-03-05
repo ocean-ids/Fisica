@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia
 
 
 @admin.register(Cliente)
@@ -90,6 +90,11 @@ class AsignacionAdmin(admin.ModelAdmin):
 	list_filter = ('mes', 'anio', 'estado')
 	search_fields = ('persona__nombres', 'persona__apellidos', 'cliente__nombre_comercial', 'instalacion__nombre', 'puesto__nombre')
 
+@admin.register(PatronAsignacion)
+class PatronAsignacionAdmin(admin.ModelAdmin):
+    list_display = ('codigo', 'secuencia')
+    list_display_links = ('codigo',)   
+    search_fields = ('codigo',)
 
 @admin.register(AsignacionSemanal)
 class AsignacionSemanalAdmin(admin.ModelAdmin):
@@ -100,8 +105,7 @@ class AsignacionSemanalAdmin(admin.ModelAdmin):
 class PuestoHorarioAdmin(admin.ModelAdmin):
 	list_display = ('puesto', 'dia', 'horas', 'turno')
 
-@admin.register(PatronAsignacion)
-class PatronAsignacionAdmin(admin.ModelAdmin):
-    list_display = ('codigo', 'secuencia')
-    list_display_links = ('codigo',)   
-    search_fields = ('codigo',)
+
+@admin.register(ReporteAsistencia)
+class ReporteAsistenciaAdmin(admin.ModelAdmin):
+	list_display = ('codigo', 'cliente', 'persona', 'fecha', 'estado')
