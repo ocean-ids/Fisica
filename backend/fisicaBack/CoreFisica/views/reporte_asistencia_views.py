@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from django.db.models import Q
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from ..models import Asignacion, Persona
@@ -16,7 +17,8 @@ def obtener_reporte_asistencia(request):
     ).filter(persona__is_active=True)
 
     if fecha:
-        asig_qs = asig_qs.filter(fecha=fecha)
+        # incluir asignaciones sin fecha para no ocultar registros históricos
+        asig_qs = asig_qs.filter(Q(fecha=fecha) | Q(fecha__isnull=True))
     if cliente_id:
         asig_qs = asig_qs.filter(cliente_id=cliente_id)
 

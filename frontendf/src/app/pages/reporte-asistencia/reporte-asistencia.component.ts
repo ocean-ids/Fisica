@@ -15,11 +15,22 @@ export class ReporteAsistenciaComponent implements OnInit {
   loading = false;
   filtroFecha = '';
   filtroClienteId = '';
+  filtroFechaDisplay = '';
 
   constructor(private reporteSvc: ReporteAsistenciaService) {}
 
   ngOnInit(): void {
+    this.setHoy();
     this.cargarReporte();
+  }
+
+  private setHoy(): void {
+    const hoy = new Date();
+    const isoLocal = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 10);
+    this.filtroFecha = isoLocal;
+    this.filtroFechaDisplay = isoLocal.split('-').reverse().join('/');
   }
 
   cargarReporte(): void {
@@ -34,8 +45,15 @@ export class ReporteAsistenciaComponent implements OnInit {
     })
   }
   limpiarFiltros(): void {
-    this.filtroFecha = '';
+    this.setHoy();
     this.filtroClienteId = '';
+    this.cargarReporte();
+  }
+
+  onFechaChange(event: Event): void {
+    const iso = (event.target as HTMLInputElement).value;
+    this.filtroFecha = iso || '';
+    this.filtroFechaDisplay = iso ? iso.split('-').reverse().join('/') : '';
     this.cargarReporte();
   }
 

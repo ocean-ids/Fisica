@@ -1,7 +1,16 @@
 <div class="container-fluid p-3">
     <h3 class="text-center">Reporte de Asistencia</h3>
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <input type="date" class="form-control" style="max-width:200px" [(ngModel)]="filtroFecha" (change)="cargarReporte()">
+        <input
+            type="date"
+            lang="es"
+            class="form-control"
+            style="max-width:200px"
+            [value]="filtroFecha"
+            (change)="onFechaChange($event)"
+            placeholder="dd/mm/aaaa"
+        >
+        
     </div>
     <div *ngIf="loading" class="text-muted">Cargando...</div>
 
@@ -15,7 +24,7 @@
                     <th style="width: 120px;">Horario</th>
                     <th>Nombre y Apellidos</th>
                     <th>Estado</th>
-                    <th>Descripción</th>
+                    <th style="min-width: 200px;">Descripción</th>
                 </tr>
             </thead>
             <tbody>
@@ -24,7 +33,7 @@
                     <td>{{ r.cliente || '-' }}</td>
                     <td>{{ r.puesto || '-' }}</td>
                     <td>{{ r.horario || '-' }}</td>
-                    <td>{{ r.nombre_apellidos || '-' }}</td>
+                    <td >{{ r.nombre_apellidos || '-' }}</td>
                     <td><span [class]="estadoClass(r.estado)">{{ r.estado }}</span></td>
                     <td>{{ r.descripcion || '-' }}</td>
                 </tr>
