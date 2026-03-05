@@ -7,7 +7,6 @@ from ..models import Asignacion, Persona
 @permission_classes([IsAuthenticated])
 def obtener_reporte_asistencia(request):
     # filtros
-    fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
 
     # traer asignaciones filtradas por fecha/cliente (si se envían)
@@ -15,8 +14,6 @@ def obtener_reporte_asistencia(request):
         'cliente', 'instalacion', 'puesto', 'horario', 'persona'
     ).filter(persona__is_active=True)
 
-    if fecha:
-        asig_qs = asig_qs.filter(fecha=fecha)
     if cliente_id:
         asig_qs = asig_qs.filter(cliente_id=cliente_id)
 
@@ -44,7 +41,6 @@ def obtener_reporte_asistencia(request):
             'nombre_apellidos': nombre_apellidos,
             'estado': 'TURNO' if asig else '',
             'descripcion': '',
-            'fecha': asig.fecha.isoformat() if asig and asig.fecha else '',
         })
 
     return JsonResponse(data, safe=False)

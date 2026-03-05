@@ -13,7 +13,6 @@ import { ReporteAsistenciaService } from '../../services/reporte-asistencia.serv
 export class ReporteAsistenciaComponent implements OnInit {
   reporte: any[] = [];
   loading = false;
-  filtroFecha = '';
   filtroClienteId = '';
 
   constructor(private reporteSvc: ReporteAsistenciaService) {}
@@ -24,7 +23,6 @@ export class ReporteAsistenciaComponent implements OnInit {
 
   cargarReporte(): void {
     const params: any = {};
-    if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
     this.loading = true;
     this.reporteSvc.getReporteAsistencia(params).subscribe({
@@ -34,7 +32,6 @@ export class ReporteAsistenciaComponent implements OnInit {
     })
   }
   limpiarFiltros(): void {
-    this.filtroFecha = '';
     this.filtroClienteId = '';
     this.cargarReporte();
   }

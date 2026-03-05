@@ -419,14 +419,11 @@ class ReporteAsistencia(models.Model):
 
     estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='TURNO')
     descripcion = models.CharField(max_length=200, blank=True, null=True)
-
-    fecha = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-fecha', '-created_at']
+        ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['fecha']),
             models.Index(fields=['estado']),
         ]
 
