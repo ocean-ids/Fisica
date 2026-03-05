@@ -17,7 +17,7 @@ export class SidebarComponent {
     { path: '/dashboard/personas', label: 'Personal', icon: 'people' },
     { path: '/dashboard/horarios', label: 'Horarios', icon: 'schedule' },
     { path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'how_to_reg' },
-    { path: '/dashboard/asignaciones', label: 'Reportes Asistencia', icon: 'assignment_ind'  },
+    { path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'assignment_ind'  },
 
   ];
 }
