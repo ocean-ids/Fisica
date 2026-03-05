@@ -21,3 +21,7 @@ class PatronAsignacionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAP
     queryset = PatronAsignacion.objects.all()
     serializer_class = PatronAsignacionSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+
+
+    #hola como estas
