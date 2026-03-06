@@ -9,7 +9,6 @@
               <span class="dayNum">{{d.dayNum || ''}}</span>
             </div>
           </th>
-          <th class="actions-col" style="width: 60px;">Acción</th>
         </tr>
       </thead>
       <tbody  *ngIf="rows && rows.length>0" >
@@ -33,18 +32,17 @@
               <ng-template #normalInput>
                       <input type="text" maxlength="4" class="form-control form-control-sm"
                         [(ngModel)]="row[dayKeyFromDate(d.date)]"
-                        (ngModelChange)="onCellChange(row, dayKeyFromDate(d.date), $event)"
+                        (change)="onCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
                         [ngModelOptions]="{standalone:true}">
               </ng-template>
             </td>
             <ng-template #emptyDay><td></td></ng-template>
           </ng-container>
-          <td class="text-center align-middle actions-col"><button class="btn btn-sm btn-outline-primary" (click)="saveRow(row)"><i class="bi bi-floppy"></i></button></td>
         </tr>
       </tbody>
       <tbody *ngIf="!rows || rows.length===0" >
         <tr>
-          <td [attr.colspan]="(weekDays.length || 7) + 1" class="text-center text-muted" style="height:30px">No hay asignaciones semanales para esta semana.</td>
+          <td [attr.colspan]="(weekDays.length || 7)" class="text-center text-muted" style="height:30px">No hay asignaciones semanales para esta semana.</td>
         </tr>
       </tbody>
     </table>

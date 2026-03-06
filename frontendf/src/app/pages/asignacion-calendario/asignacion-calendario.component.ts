@@ -159,13 +159,17 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     payload.asignacion_id = row.asignacion || row.asignacion_id;
   }
   this.asignacionCalendarioService.crearAsignacionCalendario(payload)
-    .subscribe({ next: () => this.loadWeek() });
+    .subscribe({
+      next: () => {},
+      error: () => {}
+    });
   }
   
 
   onCellChange(row: any, day: string, value: any){
     const v = value ? String(value).toUpperCase().slice(0,4) : '';
     row[day] = v;
+    this.saveRow(row);
   }
 
   getCellClass(value: string){
