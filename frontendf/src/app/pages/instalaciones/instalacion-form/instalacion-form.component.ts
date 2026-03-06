@@ -47,7 +47,7 @@ export class InstalacionFormComponent implements OnInit {
 
   ngOnInit(): void {
     const instalacion = this.data.instalacion || {};
-    // opciones por defecto para casos antiguos sin zonas cargadas
+    
     this.zonaOptions = this.zonaTitles.map(t => ({ id: t, titulo: t, label: t }));
     this.instalacionForm = this.fb.group({
       codigo: [instalacion.codigo || ''],

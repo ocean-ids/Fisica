@@ -10,7 +10,7 @@
             (change)="onFechaChange($event)"
             placeholder="dd/mm/aaaa"
         >
-        
+        <small class="text-muted ms-2">Código, Estado y Descripción se editan directamente en la tabla.</small>
     </div>
     <div *ngIf="loading" class="text-muted">Cargando...</div>
 
@@ -23,19 +23,40 @@
                     <th>Puesto (Tipo)</th>
                     <th style="width: 120px;">Horario</th>
                     <th>Nombre y Apellidos</th>
-                    <th>Estado</th>
+                    <th style="width: 130px;">Estado</th>
                     <th style="min-width: 200px;">Descripción</th>
                 </tr>
             </thead>
             <tbody>
                 <tr *ngFor="let r of reporte" class="text-center align-middle">
-                    <td>{{ r.codigo || '-' }}</td>
+                    <td>
+                        <ng-container *ngIf="r.asignacion_id; else noCodigo">
+                            <input class="form-control form-control-sm" [value]="r.codigo"
+                                (change)="onInlineChange(r, 'codigo', $any($event.target).value)">
+                        </ng-container>
+                        <ng-template #noCodigo>-</ng-template>
+                    </td>
                     <td>{{ r.cliente || '-' }}</td>
                     <td>{{ r.puesto || '-' }}</td>
                     <td>{{ r.horario || '-' }}</td>
-                    <td >{{ r.nombre_apellidos || '-' }}</td>
-                    <td><span [class]="estadoClass(r.estado)">{{ r.estado }}</span></td>
-                    <td>{{ r.descripcion || '-' }}</td>
+                    <td class="text-lg-start">{{ r.nombre_apellidos || '-' }}</td>
+                    <td>
+                        <ng-container *ngIf="r.asignacion_id; else noEstado">
+                                <select class="form-select form-select-sm" [value]="r.estado"
+                                    (change)="onInlineChange(r, 'estado', $any($event.target).value)">
+                                <option value="TURNO">TURNO</option>
+                                <option value="ADICIONAL">ADICIONAL</option>
+                            </select>
+                        </ng-container>
+                        <ng-template #noEstado><span [class]="estadoClass(r.estado)">{{ r.estado }}</span></ng-template>
+                    </td>
+                    <td>
+                        <ng-container *ngIf="r.asignacion_id; else noDescripcion">
+                            <input class="form-control form-control-sm" [value]="r.descripcion"
+                                (change)="onInlineChange(r, 'descripcion', $any($event.target).value)">
+                        </ng-container>
+                        <ng-template #noDescripcion>-</ng-template>
+                    </td>
                 </tr>
                 <tr *ngIf="reporte.length === 0">
                     <td colspan="7" class="text-center text-muted">Sin datos</td>

@@ -44,8 +44,8 @@
           <tbody>
             <tr class="text-center" *ngFor="let persona of personas" [class.inactive-row]="persona.is_active === false">
               <td>{{ persona.cedula }}</td>
-              <td>{{ persona.apellidos }}</td>
-              <td>{{ persona.nombres }}</td>
+              <td >{{ persona.apellidos }}</td>
+              <td >{{ persona.nombres }}</td>
               <td>
                 <span class="badge" [ngClass]="persona.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
                   {{ persona.tipo }}

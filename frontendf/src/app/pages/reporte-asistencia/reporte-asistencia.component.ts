@@ -44,6 +44,21 @@ export class ReporteAsistenciaComponent implements OnInit {
       complete: () => this.loading = false
     })
   }
+
+  onInlineChange(row: any, field: 'codigo'|'estado'|'descripcion', value: string) {
+    if (!row.asignacion_id) return;
+    const payload: any = {};
+    payload[field] = (value === '' ? null : value);
+    this.reporteSvc.updateReporteAsistencia(row.asignacion_id, payload).subscribe({
+      next: (res) => {
+        row.codigo = res.codigo;
+        row.estado = res.estado;
+        row.descripcion = res.descripcion;
+      },
+      error: err => console.error('Error actualizada reporte', err)
+    });
+  }
+
   limpiarFiltros(): void {
     this.setHoy();
     this.filtroClienteId = '';

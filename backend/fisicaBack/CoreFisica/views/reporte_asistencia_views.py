@@ -1,8 +1,9 @@
 from django.http import JsonResponse
 from django.db.models import Q
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from ..models import Asignacion, Persona
+from ..models import Asignacion, Persona, ReporteAsistencia
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -11,7 +12,8 @@ def obtener_reporte_asistencia(request):
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
 
-    # traer asignaciones filtradas por fecha/cliente (si se envían)
+    overrides = {r.asignacion_id: r for r in ReporteAsistencia.objects.select_related('asignacion')}
+
     asig_qs = Asignacion.objects.select_related(
         'cliente', 'instalacion', 'puesto', 'horario', 'persona'
     ).filter(persona__is_active=True)
@@ -31,6 +33,8 @@ def obtener_reporte_asistencia(request):
     personas = Persona.objects.filter(is_active=True).order_by('apellidos', 'nombres')
     for p in personas:
         asig = asig_map.get(p.id)
+        override = overrides.get(asig.id) if asig else None
+
         cliente_nombre = getattr(asig.cliente, 'nombre_comercial', '') if asig else ''
         puesto_tipo = getattr(asig.puesto, 'tipo', '') if asig else ''
         horario_str = ''
@@ -39,13 +43,31 @@ def obtener_reporte_asistencia(request):
         nombre_apellidos = f"{p.nombres} {p.apellidos}".strip()
 
         data.append({
-            'codigo': f"RA-{asig.id}" if asig else '',
+            'asignacion_id': asig.id if asig else None,
+            'codigo': (override.codigo or f"RA-{asig.id}") if (asig and override) else (f"RA-{asig.id}" if asig else ''),
             'cliente': cliente_nombre,
             'puesto': puesto_tipo,
             'horario': horario_str,
             'nombre_apellidos': nombre_apellidos,
-            'estado': 'TURNO' if asig else '',
-            'descripcion': '',
+            'estado': (override.estado or 'TURNO') if (asig and override) else ('TURNO' if asig else ''),
+            'descripcion': (override.descripcion or '') if override else '',
         })
 
     return JsonResponse(data, safe=False)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def insertar_reporte_asistencia(request, asignacion_id):
+    override, _ = ReporteAsistencia.objects.get_or_create(asignacion_id=asignacion_id)
+    for field in ['codigo', 'estado', 'descripcion']:
+        if field in request.data:
+            val = request.data.get(field) or None
+            setattr(override, field, val)
+    override.save()
+    return JsonResponse({
+        'codigo': override.codigo or f"RA-{asignacion_id}",
+        'estado': override.estado or 'TURNO',
+        'descripcion': override.descripcion or ''
+    }, status=status.HTTP_200_OK)
+    

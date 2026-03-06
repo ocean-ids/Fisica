@@ -11,4 +11,8 @@ export class ReporteAsistenciaService {
   getReporteAsistencia(params?: any) {
   return this.apiService.get<any[]>('/reporte-asistencia/', params);
   }
+
+  updateReporteAsistencia(asignacionId: number, payload: any) {
+    return this.apiService.put<any>(`/reporte-asistencia/${asignacionId}/`, payload);
+  }
 }
