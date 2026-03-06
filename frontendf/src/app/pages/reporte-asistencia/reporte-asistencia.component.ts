@@ -54,6 +54,8 @@ export class ReporteAsistenciaComponent implements OnInit {
         row.codigo = res.codigo;
         row.estado = res.estado;
         row.descripcion = res.descripcion;
+        row.modificado_por = res.modificado_por;
+        row.modificado_en = res.modificado_en;
       },
       error: err => console.error('Error actualizada reporte', err)
     });

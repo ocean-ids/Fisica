@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import RegexValidator
+from django.conf import settings    
 import datetime
 
 def current_month():
@@ -414,6 +415,14 @@ class ReporteAsistencia(models.Model):
 
     estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default='TURNO')
     descripcion = models.CharField(max_length=200, blank=True, null=True)
+    modificado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reportes_asistencia_modificados'
+    )
+    modificado_en = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -23,6 +23,7 @@
                     <th>Nombre y Apellidos</th>
                     <th style="width: 130px;">Estado</th>
                     <th style="min-width: 200px;">Descripción</th>
+                    <th style="min-width: 180px;">Última modificación</th>
                 </tr>
             </thead>
             <tbody>
@@ -57,9 +58,13 @@
                         </ng-container>
                         <ng-template #noDescripcion>-</ng-template>
                     </td>
+                    <td class="text-start" style="font-size: 0.85rem;">
+                        <div><strong>{{ r.modificado_por || '-' }}</strong></div>
+                        <div class="text-muted">{{ r.modificado_en ? (r.modificado_en | date:'short') : '-' }}</div>
+                    </td>
                 </tr>
                 <tr *ngIf="reporte.length === 0">
-                    <td colspan="7" class="text-center text-muted">Sin datos</td>
+                    <td colspan="8" class="text-center text-muted">Sin datos</td>
                 </tr>
             </tbody>
         </table>

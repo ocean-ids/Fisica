@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -12,7 +13,10 @@ def obtener_reporte_asistencia(request):
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
 
-    overrides = {r.asignacion_id: r for r in ReporteAsistencia.objects.select_related('asignacion')}
+    overrides = {
+        r.asignacion_id: r
+        for r in ReporteAsistencia.objects.select_related('asignacion', 'modificado_por')
+    }
 
     asig_qs = Asignacion.objects.select_related(
         'cliente', 'instalacion', 'puesto', 'horario', 'persona'
@@ -42,6 +46,11 @@ def obtener_reporte_asistencia(request):
             horario_str = f"{asig.horario.hora_ingreso.strftime('%H:%M')} - {asig.horario.hora_salida.strftime('%H:%M')}"
         nombre_apellidos = f"{p.nombres} {p.apellidos}".strip()
 
+        modificado_por_nombre = ''
+        if override and override.modificado_por:
+            full_name = f"{override.modificado_por.first_name} {override.modificado_por.last_name}".strip()
+            modificado_por_nombre = full_name or override.modificado_por.get_username()
+
         data.append({
             'asignacion_id': asig.id if asig else None,
             # Mostrar vacío si no hay override, para que el usuario ingrese su propio código
@@ -52,6 +61,8 @@ def obtener_reporte_asistencia(request):
             'nombre_apellidos': nombre_apellidos,
             'estado': (override.estado or 'TURNO') if (asig and override) else ('TURNO' if asig else ''),
             'descripcion': (override.descripcion or '') if override else '',
+            'modificado_por': modificado_por_nombre,
+            'modificado_en': override.modificado_en.isoformat() if (override and override.modificado_en) else None,
         })
 
     return JsonResponse(data, safe=False)
@@ -65,10 +76,19 @@ def insertar_reporte_asistencia(request, asignacion_id):
         if field in request.data:
             val = request.data.get(field) or None
             setattr(override, field, val)
+    if request.user and request.user.is_authenticated:
+        override.modificado_por = request.user
+    override.modificado_en = timezone.now()
     override.save()
+    modificado_por_nombre = ''
+    if override.modificado_por:
+        full_name = f"{override.modificado_por.first_name} {override.modificado_por.last_name}".strip()
+        modificado_por_nombre = full_name or override.modificado_por.get_username()
     return JsonResponse({
         'codigo': override.codigo or '',
         'estado': override.estado or 'TURNO',
-        'descripcion': override.descripcion or ''
+        'descripcion': override.descripcion or '',
+        'modificado_por': modificado_por_nombre,
+        'modificado_en': override.modificado_en.isoformat() if override.modificado_en else None,
     }, status=status.HTTP_200_OK)
     
