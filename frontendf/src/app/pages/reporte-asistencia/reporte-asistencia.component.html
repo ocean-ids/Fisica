@@ -60,7 +60,7 @@
                     </td>
                     <td class="text-start" style="font-size: 0.85rem;">
                         <div><strong>{{ r.modificado_por || '-' }}</strong></div>
-                        <div class="text-muted">{{ r.modificado_en ? (r.modificado_en | date:'short') : '-' }}</div>
+                        <div class="text-muted">{{ r.modificado_en ? (r.modificado_en | date:'shortTime') : '-' }}</div>
                     </td>
                 </tr>
                 <tr *ngIf="reporte.length === 0">
