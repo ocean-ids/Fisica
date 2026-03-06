@@ -245,23 +245,23 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     this.sacafrancoClick.emit({ weekStart: this.weekStart, day: day, puestoId: puestoId, manage: true });
   }
 
- 
   showPreview(puestoId: any, day: string) {
     try {
       const key = String(puestoId || '');
-      this.sacafrancoPreview[key] = this.sacafrancoPreview[key] || {};
-      
+      this.sacafrancoPreview[key] = this.sacafrancoPreview[key] || {};  // <--- faltaba
       if (this.sacafrancoPreview[key][day]) return;
+
       this.patronAsignacionService.getSacafrancos(this.weekStart, day, puestoId)
-        .subscribe((list: any[]) => {
-          const assigned = (list || []).find(p => p.assigned_for_puesto || p.status === 'assigned');
-          if (assigned) {
-            this.sacafrancoPreview[key][day] = (assigned.nombre || assigned.first_name || '') + (assigned.apellidos ? (' ' + assigned.apellidos) : '');
-          } else {
-            this.sacafrancoPreview[key][day] = 'Sin asignar';
-          }
-        }, () => {
-          this.sacafrancoPreview[key][day] = '';
+        .subscribe({
+          next: (list: any[]) => {
+            const assigned = (list || []).find(p => p.assigned_for_puesto || p.status === 'assigned');
+            if (assigned) {
+              this.sacafrancoPreview[key][day] = (assigned.nombre || assigned.first_name || '') + (assigned.apellidos ? (' ' + assigned.apellidos) : '');
+            } else {
+              this.sacafrancoPreview[key][day] = 'Sin asignar';
+            }
+          },
+          error: () => { this.sacafrancoPreview[key][day] = ''; }
         });
     } catch (e) {}
   }
