@@ -390,7 +390,9 @@ class AsignacionSemanal(models.Model):
 class ReporteAsistencia(models.Model):
     ESTADO_CHOICES = [
         ('TURNO', 'Turno'),
-        ('ADICIONAL', 'Adicional')
+        ('ADICIONAL', 'Adicional'),
+        ('EVENTUAL', 'Eventual'),
+        ('ADEL/TURNO', 'Adel/Turno')
     ]
 
     asignacion = models.OneToOneField(
@@ -410,7 +412,7 @@ class ReporteAsistencia(models.Model):
 
     puesto_tipo = models.CharField(max_length=50, blank=True, null=True)
 
-    estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='TURNO')
+    estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default='TURNO')
     descripcion = models.CharField(max_length=200, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

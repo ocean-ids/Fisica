@@ -44,6 +44,8 @@
                                     (change)="onInlineChange(r, 'estado', $any($event.target).value)">
                                 <option value="TURNO">TURNO</option>
                                 <option value="ADICIONAL">ADICIONAL</option>
+                                <option value="EVENTUAL">EVENTUAL</option>
+                                <option value="ADEL/TURNO">ADEL/ TURNO</option>
                             </select>
                         </ng-container>
                         <ng-template #noEstado><span [class]="estadoClass(r.estado)">{{ r.estado }}</span></ng-template>
