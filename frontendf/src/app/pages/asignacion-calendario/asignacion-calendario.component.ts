@@ -248,7 +248,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   showPreview(puestoId: any, day: string) {
     try {
       const key = String(puestoId || '');
-      this.sacafrancoPreview[key] = this.sacafrancoPreview[key] || {};  // <--- faltaba
+      this.sacafrancoPreview[key] = this.sacafrancoPreview[key] || {};  
       if (this.sacafrancoPreview[key][day]) return;
 
       this.patronAsignacionService.getSacafrancos(this.weekStart, day, puestoId)
