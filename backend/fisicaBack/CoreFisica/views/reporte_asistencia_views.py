@@ -44,7 +44,8 @@ def obtener_reporte_asistencia(request):
 
         data.append({
             'asignacion_id': asig.id if asig else None,
-            'codigo': (override.codigo or f"RA-{asig.id}") if (asig and override) else (f"RA-{asig.id}" if asig else ''),
+            # Mostrar vacío si no hay override, para que el usuario ingrese su propio código
+            'codigo': override.codigo if (asig and override and override.codigo) else '',
             'cliente': cliente_nombre,
             'puesto': puesto_tipo,
             'horario': horario_str,
@@ -66,7 +67,7 @@ def insertar_reporte_asistencia(request, asignacion_id):
             setattr(override, field, val)
     override.save()
     return JsonResponse({
-        'codigo': override.codigo or f"RA-{asignacion_id}",
+        'codigo': override.codigo or '',
         'estado': override.estado or 'TURNO',
         'descripcion': override.descripcion or ''
     }, status=status.HTTP_200_OK)
