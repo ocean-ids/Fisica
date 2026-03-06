@@ -87,15 +87,14 @@ class Puesto(models.Model):
     nombre = models.CharField(max_length=100)
     tipo = models.CharField(max_length=50, blank=True, null=True)
     cantidad_guardias = models.IntegerField(default=1)
-    # `horas_trabajo` moved to `PuestoHorario` (one row per day). Kept out of model.
-    # `turno` ahora se almacena por fila en `PuestoHorario` (cada dia puede tener turno distinto)
-    resumen = models.CharField(max_length=50, blank=True, editable=False)  # campo para el resumen
+    
+    resumen = models.CharField(max_length=50, blank=True, editable=False)  
 
     def save(self, *args, **kwargs):
-        # Calcular resumen compacto a partir de los horarios relacionados si existen.
+        
         try:
             cantidad = int(self.cantidad_guardias) if self.cantidad_guardias is not None else 0
-            # Determine horas y dias desde los horarios relacionados
+            
             horas = 0
             dias_code = ''
             try:
@@ -114,8 +113,7 @@ class Puesto(models.Model):
                 horas = 0
                 dias_code = ''
 
-            # Determinar turno global del puesto a partir de los horarios: si todos los horarios
-            # comparten el mismo turno usamos ese, si no, marcamos como 'M' (mixto)
+            
             turno_letter = 'M'
             try:
                 horarios_qs = getattr(self, 'horarios', None)
@@ -144,10 +142,6 @@ class Puesto(models.Model):
         super().save(*args, **kwargs)
 
     def sync_from_horarios(self):
-        """Actualiza `resumen` desde `PuestoHorario` relacionados.
-
-        No realiza commits; asigna `resumen` en la instancia.
-        """
         try:
             horarios_qs = getattr(self, 'horarios', None)
             if horarios_qs is None:
@@ -188,9 +182,6 @@ class Puesto(models.Model):
             return
 
     def get_turno(self):
-        """Devuelve 'Diurno', 'Nocturno' o 'Mixto' según los turnos de `PuestoHorario`.
-        Si no hay horarios devuelve None.
-        """
         try:
             horarios_qs = getattr(self, 'horarios', None)
             if not horarios_qs:
@@ -372,11 +363,6 @@ class Asignacion(models.Model):
         return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio})"
 
 class AsignacionSemanal(models.Model):
-    """Programación semanal por puesto.
-
-    Cada fila representa una semana (fecha del lunes en `week_start`) y contiene
-    7 celdas con hasta 4 caracteres por día (límite `max_length=4`).
-    """
 
     asignacion = models.ForeignKey('Asignacion', on_delete=models.CASCADE, null=True, blank=True, related_name='semanales')
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE, related_name='asignaciones_semanales')
@@ -407,7 +393,14 @@ class ReporteAsistencia(models.Model):
         ('ADICIONAL', 'Adicional')
     ]
 
-    codigo = models.CharField(max_length=20, unique=True)
+    asignacion = models.OneToOneField(
+        'Asignacion',
+        on_delete=models.CASCADE,
+        related_name='reporte_asistencia',
+        null=True,
+        blank=True
+    )
+    codigo = models.CharField(max_length=20, blank=True, null=True)
 
     persona = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True, related_name='reportes_asistencia')
     cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True, related_name='reportes_asistencia')
@@ -428,7 +421,9 @@ class ReporteAsistencia(models.Model):
         ]
 
     def __str__(self):
-        return self.codigo
+        if self.codigo:
+            return self.codigo
+        return f"Reporte {self.asignacion_id}"
 
 
 
