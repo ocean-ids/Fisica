@@ -40,7 +40,10 @@ def obtener_reporte_asistencia(request):
         override = overrides.get(asig.id) if asig else None
 
         cliente_nombre = getattr(asig.cliente, 'nombre_comercial', '') if asig else ''
-        puesto_tipo = getattr(asig.puesto, 'tipo', '') if asig else ''
+        # En asignaciones se muestra el nombre del puesto; usar el mismo valor en reporte.
+        puesto_nombre = getattr(asig.puesto, 'nombre', '') if asig else ''
+        if not puesto_nombre and asig:
+            puesto_nombre = getattr(asig.puesto, 'tipo', '')
         horario_str = ''
         if asig and asig.horario:
             horario_str = f"{asig.horario.hora_ingreso.strftime('%H:%M')} - {asig.horario.hora_salida.strftime('%H:%M')}"
@@ -56,7 +59,7 @@ def obtener_reporte_asistencia(request):
             # Mostrar vacío si no hay override, para que el usuario ingrese su propio código
             'codigo': override.codigo if (asig and override and override.codigo) else '',
             'cliente': cliente_nombre,
-            'puesto': puesto_tipo,
+            'puesto': puesto_nombre,
             'horario': horario_str,
             'nombre_apellidos': nombre_apellidos,
             'estado': (override.estado or 'TURNO') if (asig and override) else ('TURNO' if asig else ''),

@@ -1,12 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
 import { ReporteAsistenciaService } from '../../services/reporte-asistencia.service';
+import { ReporteAsistenciaEditDialogComponent } from './reporte-asistencia-edit-dialog.component';
 
 @Component({
   selector: 'app-reporte-asistencia',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, MatButtonModule],
   templateUrl: './reporte-asistencia.component.html',
   styleUrl: './reporte-asistencia.component.css'
 })
@@ -17,7 +19,10 @@ export class ReporteAsistenciaComponent implements OnInit {
   filtroClienteId = '';
   filtroFechaDisplay = '';
 
-  constructor(private reporteSvc: ReporteAsistenciaService) {}
+  constructor(
+    private reporteSvc: ReporteAsistenciaService,
+    private dialog: MatDialog
+  ) {}
 
   ngOnInit(): void {
     this.setHoy();
@@ -45,19 +50,22 @@ export class ReporteAsistenciaComponent implements OnInit {
     })
   }
 
-  onInlineChange(row: any, field: 'codigo'|'estado'|'descripcion', value: string) {
-    if (!row.asignacion_id) return;
-    const payload: any = {};
-    payload[field] = (value === '' ? null : value);
-    this.reporteSvc.updateReporteAsistencia(row.asignacion_id, payload).subscribe({
-      next: (res) => {
-        row.codigo = res.codigo;
-        row.estado = res.estado;
-        row.descripcion = res.descripcion;
-        row.modificado_por = res.modificado_por;
-        row.modificado_en = res.modificado_en;
-      },
-      error: err => console.error('Error actualizada reporte', err)
+  abrirModalEdicion(row: any): void {
+    if (!row?.asignacion_id) return;
+
+    const dialogRef = this.dialog.open(ReporteAsistenciaEditDialogComponent, {
+      width: '700px',
+      maxWidth: '95vw',
+      data: { row: { ...row } }
+    });
+
+    dialogRef.afterClosed().subscribe((res) => {
+      if (!res) return;
+      row.codigo = res.codigo;
+      row.estado = res.estado;
+      row.descripcion = res.descripcion;
+      row.modificado_por = res.modificado_por;
+      row.modificado_en = res.modificado_en;
     });
   }
 

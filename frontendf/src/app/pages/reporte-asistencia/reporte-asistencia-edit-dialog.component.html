@@ -1,0 +1,53 @@
+<h2 mat-dialog-title>Editar Asistencia</h2>
+
+<mat-dialog-content>
+  <div class="readonly-grid">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Cliente</mat-label>
+      <input matInput [value]="data.row.cliente || '-'" readonly>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Puesto (Tipo)</mat-label>
+      <input matInput [value]="data.row.puesto || '-'" readonly>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Horario</mat-label>
+      <input matInput [value]="data.row.horario || '-'" readonly>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nombre y Apellidos</mat-label>
+      <input matInput [value]="data.row.nombre_apellidos || '-'" readonly>
+    </mat-form-field>
+  </div>
+
+  <form [formGroup]="form" class="editable-grid">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Codigo</mat-label>
+      <input matInput formControlName="codigo" [readonly]="guardando">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Estado</mat-label>
+      <mat-select formControlName="estado" [disabled]="guardando">
+        <mat-option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Descripcion</mat-label>
+      <textarea matInput rows="3" formControlName="descripcion" [readonly]="guardando"></textarea>
+    </mat-form-field>
+  </form>
+
+  <div class="error" *ngIf="error">{{ error }}</div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancelar()" [disabled]="guardando">Cancelar</button>
+  <button mat-raised-button color="primary" type="button" (click)="guardar()" [disabled]="guardando || form.invalid">
+    {{ guardando ? 'Guardando...' : 'Guardar' }}
+  </button>
+</mat-dialog-actions>

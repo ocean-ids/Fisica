@@ -1,0 +1,37 @@
+mat-dialog-content {
+  min-width: 560px;
+  max-width: 90vw;
+  padding-top: 8px;
+}
+
+.readonly-grid,
+.editable-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.editable-grid {
+  margin-top: 8px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.error {
+  margin-top: 6px;
+  color: #b00020;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  mat-dialog-content {
+    min-width: 0;
+  }
+
+  .readonly-grid,
+  .editable-grid {
+    grid-template-columns: 1fr;
+  }
+}
