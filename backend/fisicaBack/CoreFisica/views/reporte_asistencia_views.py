@@ -90,6 +90,13 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
         if override and override.reemplazo:
             reemplazo_id = override.reemplazo.id
             reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
+        modificado_por_nombre = ''
+        modificado_en_iso = None
+        if override:
+            if override.modificado_por:
+                full_name = f"{override.modificado_por.first_name} {override.modificado_por.last_name}".strip()
+                modificado_por_nombre = full_name or override.modificado_por.get_username()
+            modificado_en_iso = override.modificado_en.isoformat() if override.modificado_en else None
 
         data.append({
             'asignacion_id': asig.id if asig else None,
@@ -102,6 +109,8 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
             'reemplazo': reemplazo_nombre,
             'estado': (override.estado or 'TURNO') if (asig and override) else ('TURNO' if asig else ''),
             'descripcion': (override.descripcion or '') if override else '',
+            'modificado_por': modificado_por_nombre,
+            'modificado_en': modificado_en_iso,
         })
 
     return data
@@ -118,6 +127,20 @@ def obtener_reporte_asistencia(request):
 @permission_classes([IsAuthenticated])
 def insertar_reporte_asistencia(request, asignacion_id):
     override, _ = ReporteAsistencia.objects.get_or_create(asignacion_id=asignacion_id)
+
+    asignacion = Asignacion.objects.select_related(
+        'persona', 'cliente', 'instalacion', 'puesto', 'horario'
+    ).filter(id=asignacion_id).first()
+    if not asignacion:
+        return JsonResponse({'error': 'Asignacion no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    override.persona = asignacion.persona
+    override.cliente = asignacion.cliente
+    override.instalacion = asignacion.instalacion
+    override.puesto = asignacion.puesto
+    override.horario = asignacion.horario
+    override.puesto_tipo = getattr(asignacion.puesto, 'tipo', None) if asignacion.puesto else None
+
     for field in ['codigo', 'estado', 'descripcion']:
         if field in request.data:
             val = request.data.get(field) or None
