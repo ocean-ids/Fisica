@@ -397,13 +397,13 @@ class ReporteAsistencia(models.Model):
     ]
 
     TIPOS_REEMPLAZO = [
+        'FIJOS',
         'SACAFRANCO',
         'RETENES',
         'SACAVACACIONES',
         'EVENTUALES',
         'SUPERVISOR ZONAL',
         'SUPERVISOR MOTORIZADO',
-
     ]
 
     asignacion = models.OneToOneField(
