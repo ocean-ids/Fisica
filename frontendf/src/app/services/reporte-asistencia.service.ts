@@ -15,4 +15,13 @@ export class ReporteAsistenciaService {
   updateReporteAsistencia(asignacionId: number, payload: any) {
     return this.apiService.put<any>(`/reporte-asistencia/${asignacionId}/`, payload);
   }
+
+  exportarExcel(params?: any) {
+    return this.apiService.getBlob('/reporte-asistencia/exportar-excel/', params);
+  }
+
+  exportarPdf(params?: any) {
+    return this.apiService.getBlob('/reporte-asistencia/exportar-pdf/', params);
+  }
+
 }

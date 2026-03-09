@@ -38,6 +38,10 @@ export class ReporteAsistenciaComponent implements OnInit {
     this.filtroFechaDisplay = isoLocal.split('-').reverse().join('/');
   }
 
+  descargarExcel(): void {
+    const params: any = {};
+  }
+
   cargarReporte(): void {
     const params: any = {};
     if (this.filtroFecha) params.fecha = this.filtroFecha;

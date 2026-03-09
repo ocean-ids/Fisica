@@ -43,4 +43,12 @@ export class ApiService {
       observe: 'body'
     });
   }
+
+  getBlob(endpoint: string, params?: any): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}${endpoint}`, {
+      headers: this.getHeaders(),
+      params,
+      responseType: 'blob'
+    });
+  }
 }
