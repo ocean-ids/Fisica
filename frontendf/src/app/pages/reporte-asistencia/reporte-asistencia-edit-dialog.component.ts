@@ -7,19 +7,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { ReporteAsistenciaService } from '../../services/reporte-asistencia.service';
+import { ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../../models';
+import { PersonaService } from '../../services/persona.service';
+import { Persona } from '../../models';
 
-type ReporteRow = {
-  asignacion_id?: number;
-  cliente?: string;
-  puesto?: string;
-  horario?: string;
-  nombre_apellidos?: string;
-  codigo?: string;
-  estado?: string;
-  descripcion?: string;
-  modificado_por?: string;
-  modificado_en?: string;
-};
 
 @Component({
   selector: 'app-reporte-asistencia-edit-dialog',
@@ -38,6 +29,17 @@ type ReporteRow = {
 })
 export class ReporteAsistenciaEditDialogComponent {
   readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'EVENTUAL', 'ADEL/TURNO'];
+  readonly tiposReemplazoPermitidos = new Set([
+    'SACAFRANCO',
+    'RETENES',
+    'EVENTUALES',
+    'SACAVACACIONES',
+    'SUPERVISOR MOTORIZADO',
+    'SUPERVISOR ZONAL'
+  ]);
+
+  reemplazos: Persona[] = [];
+  cargandoReemplazos = false;
   guardando = false;
   error = '';
   form: FormGroup;
@@ -45,15 +47,44 @@ export class ReporteAsistenciaEditDialogComponent {
   constructor(
     private fb: FormBuilder,
     private reporteSvc: ReporteAsistenciaService,
+    private personaSvc: PersonaService,
     private dialogRef: MatDialogRef<ReporteAsistenciaEditDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { row: ReporteRow }
+    @Inject(MAT_DIALOG_DATA) public data: { row: ReporteAsistenciaRow }
   ) {
     this.dialogRef.disableClose = true;
     this.form = this.fb.group({
       codigo: [data?.row?.codigo ?? ''],
       estado: [data?.row?.estado || 'TURNO', Validators.required],
+      reemplazo_id: [data?.row?.reemplazo_id ?? null],
       descripcion: [data?.row?.descripcion ?? '']
     });
+
+    this.cargarReemplazos();
+  }
+
+  private cargarReemplazos(): void {
+    this.cargandoReemplazos = true;
+    this.personaSvc.getPersonas().subscribe({
+      next: (data) => {
+        const list = Array.isArray(data) ? data : [];
+        this.reemplazos = list.filter((p) =>
+          !!p?.id &&
+          p?.is_active !== false &&
+          this.tiposReemplazoPermitidos.has(String(p?.tipo || ''))
+        );
+      },
+      error: (err) => {
+        console.error('Error al cargar reemplazos', err);
+        this.error = 'No se pudo cargar la lista de reemplazos.';
+      },
+      complete: () => {
+        this.cargandoReemplazos = false;
+      }
+    });
+  }
+
+  getNombrePersona(p: Persona): string {
+    return `${p.nombres || ''} ${p.apellidos || ''}`.trim();
   }
 
   cancelar(): void {
@@ -64,9 +95,10 @@ export class ReporteAsistenciaEditDialogComponent {
   guardar(): void {
     if (this.guardando || this.form.invalid || !this.data?.row?.asignacion_id) return;
 
-    const payload = {
+    const payload: UpdateReporteAsistenciaPayload = {
       codigo: this.form.value.codigo === '' ? null : this.form.value.codigo,
       estado: this.form.value.estado || null,
+      reemplazo_id: this.form.value.reemplazo_id === '' ? null : this.form.value.reemplazo_id,
       descripcion: this.form.value.descripcion === '' ? null : this.form.value.descripcion
     };
 
@@ -80,7 +112,7 @@ export class ReporteAsistenciaEditDialogComponent {
       },
       error: (err) => {
         this.guardando = false;
-        this.error = err?.error?.detail || 'No se pudo guardar la actualizacion.';
+        this.error = err?.error?.error || err?.error?.detail || 'No se pudo guardar la actualizacion.';
         console.error('Error al actualizar reporte de asistencia', err);
       }
     });

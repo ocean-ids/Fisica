@@ -35,8 +35,9 @@
                     <th>Cliente</th>
                     <th>Puesto (Tipo)</th>
                     <th style="width: 120px;">Horario</th>
-                    <th>Nombre y Apellidos</th>
+                    <th style="min-width: 150px;">Nombre y Apellidos</th>
                     <th style="width: 130px;">Estado</th>
+                    <th style="min-width: 150px;">Reemplazo</th>
                     <th style="min-width: 200px;">Descripción</th>
                     <th style="min-width: 180px;">Última modificación</th>
                     <th style="width: 120px;">Acciones</th>
@@ -51,13 +52,14 @@
                     <td>{{ r.cliente || '-' }}</td>
                     <td>{{ r.puesto || '-' }}</td>
                     <td>{{ r.horario || '-' }}</td>
-                    <td class="text-lg-start">{{ r.nombre_apellidos || '-' }}</td>
+                    <td>{{ r.nombre_apellidos || '-' }}</td>
                     <td>
                         <ng-container *ngIf="r.asignacion_id; else noEstado">
                             <span [class]="estadoClass(r.estado)">{{ r.estado || '-' }}</span>
                         </ng-container>
                         <ng-template #noEstado><span [class]="estadoClass(r.estado)">{{ r.estado }}</span></ng-template>
                     </td>
+                    <td>{{ r.reemplazo || '-' }}</td>
                     <td>
                         <ng-container *ngIf="r.asignacion_id; else noDescripcion">{{ r.descripcion || '-' }}</ng-container>
                         <ng-template #noDescripcion>-</ng-template>
@@ -78,7 +80,7 @@
                     </td>
                 </tr>
                 <tr *ngIf="reporte.length === 0">
-                    <td colspan="8" class="text-center text-muted">Sin datos</td>
+                    <td colspan="10" class="text-center text-muted">Sin datos</td>
                 </tr>
             </tbody>
         </table>

@@ -4,6 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { ReporteAsistenciaService } from '../../services/reporte-asistencia.service';
 import { ReporteAsistenciaEditDialogComponent } from './reporte-asistencia-edit-dialog.component';
+import { ReporteAsistenciaRow } from '../../models';
 
 @Component({
   selector: 'app-reporte-asistencia',
@@ -13,7 +14,7 @@ import { ReporteAsistenciaEditDialogComponent } from './reporte-asistencia-edit-
   styleUrl: './reporte-asistencia.component.css'
 })
 export class ReporteAsistenciaComponent implements OnInit {
-  reporte: any[] = [];
+  reporte: ReporteAsistenciaRow[] = [];
   loading = false;
   filtroFecha = '';
   filtroClienteId = '';
@@ -79,7 +80,7 @@ export class ReporteAsistenciaComponent implements OnInit {
     })
   }
 
-  abrirModalEdicion(row: any): void {
+  abrirModalEdicion(row: ReporteAsistenciaRow): void {
     if (!row?.asignacion_id) return;
 
     const dialogRef = this.dialog.open(ReporteAsistenciaEditDialogComponent, {
@@ -93,6 +94,8 @@ export class ReporteAsistenciaComponent implements OnInit {
       row.codigo = res.codigo;
       row.estado = res.estado;
       row.descripcion = res.descripcion;
+      row.reemplazo_id = res.reemplazo_id;
+      row.reemplazo = res.reemplazo;
       row.modificado_por = res.modificado_por;
       row.modificado_en = res.modificado_en;
     });
@@ -112,7 +115,7 @@ export class ReporteAsistenciaComponent implements OnInit {
   }
 
 
-  estadoClass(estado: string): string {
+  estadoClass(estado?: string): string {
     return estado === 'ADICIONAL' ? 'badge bg-danger' : 'badge bg-success';
   }
 }

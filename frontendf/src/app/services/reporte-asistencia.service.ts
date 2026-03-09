@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
+import { ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../models';
 
 @Injectable({
   providedIn: 'root'
@@ -9,11 +10,11 @@ export class ReporteAsistenciaService {
   constructor(private apiService: ApiService){}
 
   getReporteAsistencia(params?: any) {
-  return this.apiService.get<any[]>('/reporte-asistencia/', params);
+    return this.apiService.get<ReporteAsistenciaRow[]>('/reporte-asistencia/', params);
   }
 
-  updateReporteAsistencia(asignacionId: number, payload: any) {
-    return this.apiService.put<any>(`/reporte-asistencia/${asignacionId}/`, payload);
+  updateReporteAsistencia(asignacionId: number, payload: UpdateReporteAsistenciaPayload) {
+    return this.apiService.put<ReporteAsistenciaRow>(`/reporte-asistencia/${asignacionId}/`, payload);
   }
 
   exportarExcel(params?: any) {

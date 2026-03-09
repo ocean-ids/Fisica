@@ -37,6 +37,16 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Reemplazo</mat-label>
+      <mat-select formControlName="reemplazo_id" [disabled]="guardando || cargandoReemplazos">
+        <mat-option [value]="null">Sin reemplazo</mat-option>
+        <mat-option *ngFor="let p of reemplazos" [value]="p.id">
+          {{ getNombrePersona(p) }} - {{ p.tipo }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
       <mat-label>Descripcion</mat-label>
       <textarea matInput rows="3" formControlName="descripcion" [readonly]="guardando"></textarea>
     </mat-form-field>

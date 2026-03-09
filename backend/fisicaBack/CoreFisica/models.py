@@ -396,6 +396,16 @@ class ReporteAsistencia(models.Model):
         ('ADEL/TURNO', 'Adel/Turno')
     ]
 
+    TIPOS_REEMPLAZO = [
+        'SACAFRANCO',
+        'RETENES',
+        'SACAVACACIONES',
+        'EVENTUALES',
+        'SUPERVISOR ZONAL',
+        'SUPERVISOR MOTORIZADO',
+
+    ]
+
     asignacion = models.OneToOneField(
         'Asignacion',
         on_delete=models.CASCADE,
@@ -414,6 +424,14 @@ class ReporteAsistencia(models.Model):
     puesto_tipo = models.CharField(max_length=50, blank=True, null=True)
 
     estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default='TURNO')
+    reemplazo = models.ForeignKey(
+        Persona,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reportes_como_reemplazo',
+        limit_choices_to={'tipo__in': TIPOS_REEMPLAZO}
+    )
     descripcion = models.CharField(max_length=200, blank=True, null=True)
     modificado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,

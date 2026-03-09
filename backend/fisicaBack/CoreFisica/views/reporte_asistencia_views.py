@@ -13,11 +13,46 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
 
 
+TIPOS_REEMPLAZO_PERMITIDOS = set(ReporteAsistencia.TIPOS_REEMPLAZO)
+
+
+def _resolver_reemplazo_desde_request(request):
+    if 'reemplazo_id' not in request.data:
+        return 'no-enviado', None
+
+    reemplazo_id = request.data.get('reemplazo_id')
+    if reemplazo_id in [None, '', 'null']:
+        return None, None
+
+    try:
+        reemplazo_id = int(reemplazo_id)
+    except (TypeError, ValueError):
+        return None, JsonResponse(
+            {'error': 'reemplazo_id debe ser un entero valido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    persona = Persona.objects.filter(id=reemplazo_id, is_active=True).first()
+    if not persona:
+        return None, JsonResponse(
+            {'error': 'La persona enviada en reemplazo_id no existe o esta inactiva'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if persona.tipo not in TIPOS_REEMPLAZO_PERMITIDOS:
+        return None, JsonResponse(
+            {'error': f'El tipo {persona.tipo} no puede ser reemplazo. Permitidos: {sorted(TIPOS_REEMPLAZO_PERMITIDOS)}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    return persona, None
+
+
 
 def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
     overrides = {
         r.asignacion_id: r
-        for r in ReporteAsistencia.objects.select_related('asignacion', 'modificado_por')
+        for r in ReporteAsistencia.objects.select_related('asignacion', 'modificado_por', 'reemplazo')
     }
 
     asig_qs = Asignacion.objects.select_related(
@@ -50,6 +85,11 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
         if asig and asig.horario:
             horario_str = f"{asig.horario.hora_ingreso.strftime('%H:%M')} - {asig.horario.hora_salida.strftime('%H:%M')}"
         nombre_apellidos = f"{p.nombres} {p.apellidos}".strip()
+        reemplazo_nombre = ''
+        reemplazo_id = None
+        if override and override.reemplazo:
+            reemplazo_id = override.reemplazo.id
+            reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
 
         data.append({
             'asignacion_id': asig.id if asig else None,
@@ -58,6 +98,8 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
             'puesto': puesto_nombre,
             'horario': horario_str,
             'nombre_apellidos': nombre_apellidos,
+            'reemplazo_id': reemplazo_id,
+            'reemplazo': reemplazo_nombre,
             'estado': (override.estado or 'TURNO') if (asig and override) else ('TURNO' if asig else ''),
             'descripcion': (override.descripcion or '') if override else '',
         })
@@ -80,18 +122,33 @@ def insertar_reporte_asistencia(request, asignacion_id):
         if field in request.data:
             val = request.data.get(field) or None
             setattr(override, field, val)
+
+    reemplazo_result, err = _resolver_reemplazo_desde_request(request)
+    if err:
+        return err
+    if reemplazo_result != 'no-enviado':
+        override.reemplazo = reemplazo_result
+
     if request.user and request.user.is_authenticated:
         override.modificado_por = request.user
     override.modificado_en = timezone.now()
     override.save()
+
     modificado_por_nombre = ''
     if override.modificado_por:
         full_name = f"{override.modificado_por.first_name} {override.modificado_por.last_name}".strip()
         modificado_por_nombre = full_name or override.modificado_por.get_username()
+
+    reemplazo_nombre = ''
+    if override.reemplazo:
+        reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
+
     return JsonResponse({
         'codigo': override.codigo or '',
         'estado': override.estado or 'TURNO',
         'descripcion': override.descripcion or '',
+        'reemplazo_id': override.reemplazo_id,
+        'reemplazo': reemplazo_nombre,
         'modificado_por': modificado_por_nombre,
         'modificado_en': override.modificado_en.isoformat() if override.modificado_en else None,
     }, status=status.HTTP_200_OK)
@@ -109,7 +166,7 @@ def exportar_reporte_asistencia_excel(request):
 
     headers = [
         'Código', 'Cliente', 'Puesto', 'Horario',
-        'Nombre y Apellidos', 'Estado', 'Descripción',
+        'Nombre y Apellidos', 'Reemplazo', 'Estado', 'Descripción',
     ]
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -126,6 +183,7 @@ def exportar_reporte_asistencia_excel(request):
             item.get('puesto', ''),
             item.get('horario', ''),
             item.get('nombre_apellidos', ''),
+            item.get('reemplazo', ''),
             item.get('estado', ''),
             item.get('descripcion', ''),
         ]
@@ -133,7 +191,7 @@ def exportar_reporte_asistencia_excel(request):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.value = value
             cell.border = border
-            if col_idx in (1, 4, 6):
+            if col_idx in (1, 4, 7):
                 cell.alignment = Alignment(horizontal='center')
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -160,9 +218,9 @@ def exportar_reporte_asistencia_pdf(request):
 
     headers = [
         'Código', 'Cliente', 'Puesto', 'Horario',
-        'Nombre y Apellidos', 'Estado', 'Descripción',
+        'Nombre y Apellidos', 'Reemplazo', 'Estado', 'Descripción',
     ]
-    col_widths = [0.9, 1.5, 1.5, 1.4, 2.0, 0.9, 3.0]
+    col_widths = [0.8, 1.3, 1.3, 1.2, 1.8, 1.6, 0.8, 2.2]
     col_widths = [w * inch for w in col_widths]
 
     p.setFont('Helvetica-Bold', 12)
@@ -202,6 +260,7 @@ def exportar_reporte_asistencia_pdf(request):
             item.get('puesto', ''),
             item.get('horario', ''),
             item.get('nombre_apellidos', ''),
+            item.get('reemplazo', ''),
             item.get('estado', ''),
             (item.get('descripcion', '') or '')[:120],
         ]
