@@ -40,6 +40,31 @@ export class ReporteAsistenciaComponent implements OnInit {
 
   descargarExcel(): void {
     const params: any = {};
+    if (this.filtroFecha) params.fecha = this.filtroFecha;
+    if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
+    this.reporteSvc.exportarExcel(params).subscribe({
+      next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.xlsx`),
+      error: (err) => console.error("Error al descargar el excel", err)
+    });
+  }
+
+  descargarPdf(): void {
+    const params: any = {};
+    if(this.filtroFecha) params.fecha = this.filtroFecha;
+    if(this.filtroClienteId) params.cliente_id = this.filtroClienteId;
+    this.reporteSvc.exportarPdf(params).subscribe({
+      next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.pdf`),
+      error: (err) => console.error("Error al descargar el pdf", err)
+    })
+  }
+
+  private descargarArchivo(blob: Blob, nombre: string): void {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    a.click();
+    window.URL.revokeObjectURL(url);
   }
 
   cargarReporte(): void {

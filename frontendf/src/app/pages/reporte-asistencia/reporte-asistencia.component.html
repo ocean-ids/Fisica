@@ -11,7 +11,19 @@
             placeholder="dd/mm/aaaa"
         >
         <button type="button" class="btn btn-outline-secondary btn-sm" (click)="limpiarFiltros()">Hoy</button>
+        <div class="d-flex gap-4 ms-auto">
+            <button type="button" class="btn btn-outline-primary btn-sm" (click)="descargarExcel()" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
+                <img src="assets/images/excel-icon.png" alt="Excel" width="38" height="38" style="vertical-align: middle;" />
+                <span style="font-size: 13px; margin-top: 2px; text-align: center; color: #198754;">Descargar Excel</span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarPdf()" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
+                <img src="assets/images/pdf.png" alt="PDF" width="38" height="38" style="vertical-align: middle;" />
+                <span style="font-size: 13px; margin-top: 2px; text-align: center; color: #dc3545;">Descargar PDF</span>
+            </button>
+        </div>
+        
     </div>
+
 
     <div *ngIf="loading" class="text-muted">Cargando...</div>
 
@@ -66,7 +78,7 @@
                     </td>
                 </tr>
                 <tr *ngIf="reporte.length === 0">
-                    <td colspan="9" class="text-center text-muted">Sin datos</td>
+                    <td colspan="8" class="text-center text-muted">Sin datos</td>
                 </tr>
             </tbody>
         </table>
