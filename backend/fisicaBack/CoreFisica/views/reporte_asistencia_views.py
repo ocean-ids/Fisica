@@ -275,6 +275,7 @@ def exportar_reporte_asistencia_excel(request):
         cell.value = header
         cell.border = border
         cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
 
     for row_idx, item in enumerate(data, start=2):
         row_vals = [
@@ -291,10 +292,10 @@ def exportar_reporte_asistencia_excel(request):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.value = value
             cell.border = border
-            if col_idx in (1, 4, 7):
-                cell.alignment = Alignment(horizontal='center')
-            elif col_idx == 8:
-                cell.alignment = Alignment(wrap_text=True, vertical='top')
+            if col_idx == 8:
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            else:
+                cell.alignment = Alignment(horizontal='center', vertical='center')
         ws.row_dimensions[row_idx].height = 32
 
     # Anchos en proporcion similar al PDF: [0.8, 1.3, 1.3, 1.2, 1.8, 1.6, 0.8, 2.2]
@@ -306,7 +307,7 @@ def exportar_reporte_asistencia_excel(request):
         5: 40,  # Nombre y Apellidos
         6: 12,  # Estado
         7: 40,  # Reemplazo
-        8: 32,  # Descripcion
+        8: 28,  # Descripcion
     }
     for col_idx, width in column_widths.items():
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
@@ -335,9 +336,9 @@ def exportar_reporte_asistencia_pdf(request):
 
     headers = [
         'CÓDIGO', 'CLIENTE', 'PUESTO', 'HORARIO',
-        'NOMBRE Y APELLIDOS', 'REEMPLAZO', 'ESTADO', 'DESCRIPCIÓN',
+        'NOMBRE Y APELLIDOS', 'ESTADO', 'REEMPLAZO', 'DESCRIPCIÓN',
     ]
-    col_widths = [0.8, 1.3, 1.3, 0.75, 1.8, 1.6, 0.8, 2.2]
+    col_widths = [0.8, 1.3, 1.3, 0.75, 1.9, 0.8, 1.9, 1.1]
     col_widths = [w * inch for w in col_widths]
 
     p.setFont('Helvetica-Bold', 12)
@@ -347,7 +348,8 @@ def exportar_reporte_asistencia_pdf(request):
     p.setFont('Helvetica-Bold', 8)
     x = x_margin
     for i, header in enumerate(headers):
-        p.drawString(x, y, header)
+        header_w = pdfmetrics.stringWidth(header, 'Helvetica-Bold', 8)
+        p.drawString(x + max((col_widths[i] - header_w) / 2, 0), y, header)
         x += col_widths[i]
 
     y -= 0.25 * inch
@@ -366,7 +368,8 @@ def exportar_reporte_asistencia_pdf(request):
             p.setFont('Helvetica-Bold', 8)
             x = x_margin
             for i, header in enumerate(headers):
-                p.drawString(x, y, header)
+                header_w = pdfmetrics.stringWidth(header, 'Helvetica-Bold', 8)
+                p.drawString(x + max((col_widths[i] - header_w) / 2, 0), y, header)
                 x += col_widths[i]
             y -= 0.25 * inch
             p.setFont('Helvetica', 7)
@@ -377,8 +380,8 @@ def exportar_reporte_asistencia_pdf(request):
             item.get('puesto', ''),
             item.get('horario', ''),
             item.get('nombre_apellidos', ''),
-            item.get('reemplazo', ''),
             item.get('estado', ''),
+            item.get('reemplazo', ''),
             (item.get('descripcion', '') or '')[:120],
         ]
 
@@ -386,7 +389,8 @@ def exportar_reporte_asistencia_pdf(request):
         for i, value in enumerate(row_vals):
             text = str(value) if value is not None else ''
             text = _fit_text_to_width(text, col_widths[i] - 4, 'Helvetica', 7)
-            p.drawString(x, y, text)
+            txt_w = pdfmetrics.stringWidth(text, 'Helvetica', 7)
+            p.drawString(x + max((col_widths[i] - txt_w) / 2, 0), y, text)
             x += col_widths[i]
 
         y -= 0.2 * inch
