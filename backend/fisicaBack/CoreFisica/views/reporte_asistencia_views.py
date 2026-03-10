@@ -375,7 +375,7 @@ def exportar_reporte_asistencia_pdf(request):
         x += col_widths[i]
 
     y -= 0.25 * inch
-    p.setFont('Helvetica', 7)
+    p.setFont('Helvetica', 6)
 
     for item in data:
         if y < y_margin + 0.5 * inch:
@@ -394,7 +394,7 @@ def exportar_reporte_asistencia_pdf(request):
                 p.drawString(x + max((col_widths[i] - header_w) / 2, 0), y, header)
                 x += col_widths[i]
             y -= 0.25 * inch
-            p.setFont('Helvetica', 7)
+            p.setFont('Helvetica', 6)
 
         row_hex = _normalize_hex_color(item.get('row_color'))
         if row_hex:
@@ -420,8 +420,8 @@ def exportar_reporte_asistencia_pdf(request):
         x = x_margin
         for i, value in enumerate(row_vals):
             text = str(value) if value is not None else ''
-            text = _fit_text_to_width(text, col_widths[i] - 4, 'Helvetica', 7)
-            txt_w = pdfmetrics.stringWidth(text, 'Helvetica', 7)
+            text = _fit_text_to_width(text, col_widths[i] - 4, 'Helvetica', 6)
+            txt_w = pdfmetrics.stringWidth(text, 'Helvetica', 6)
             p.drawString(x + max((col_widths[i] - txt_w) / 2, 0), y, text)
             x += col_widths[i]
 
