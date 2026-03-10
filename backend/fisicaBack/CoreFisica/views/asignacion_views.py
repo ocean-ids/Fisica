@@ -917,6 +917,9 @@ def exportar_asignaciones_excel(request):
     # Ajustes de anchos de columna
     for i in range(1, left_cols + 1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 18
+    # Nombre Puesto (columna 4) y Persona (columna 7) con mayor ancho
+    ws.column_dimensions[openpyxl.utils.get_column_letter(4)].width = 28
+    ws.column_dimensions[openpyxl.utils.get_column_letter(7)].width = 38
     for i in range(date_start_col, date_start_col + num_days):
         ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 5
 
