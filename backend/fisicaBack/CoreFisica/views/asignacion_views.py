@@ -674,7 +674,7 @@ def eliminar_asignacion(request, id):
 
 def exportar_asignaciones_excel(request):
     import calendar
-    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.styles import Font, Alignment, Border, Side
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Asignaciones y Calendario"
@@ -844,8 +844,11 @@ def exportar_asignaciones_excel(request):
         # rellenar las celdas de cada día con datos de AsignacionSemanal (priorizando filas ligadas a la Asignacion)
         for di, d in enumerate(dates):
             col = date_start_col + di
-            # calcular week_start (lunes)
-            week_start = d - datetime.timedelta(days=d.weekday())
+            # calcular week_start usando bloques del mes (1, 8, 15, 22, 29),
+            # consistente con la creación de AsignacionSemanal en el sistema.
+            week_index = (d.day - 1) // 7
+            week_start = first_day + datetime.timedelta(days=week_index * 7)
+            legacy_week_start = d - datetime.timedelta(days=d.weekday())
             puesto_id = getattr(asignacion.puesto, 'id', getattr(asignacion, 'puesto_id', None))
             semanal = None
             # Primero intentamos encontrar una fila ligada específicamente a la asignación
@@ -856,6 +859,17 @@ def exportar_asignaciones_excel(request):
                 try:
                     if getattr(asignacion, 'id', None):
                         semanal = AsignacionSemanal.objects.filter(asignacion_id=asignacion.id, week_start=week_start).first()
+                        # Compatibilidad con filas antiguas guardadas por semana-lunes.
+                        if not semanal:
+                            legacy_asign_key = ('a', getattr(asignacion, 'id', None), legacy_week_start)
+                            if legacy_asign_key in semanal_cache:
+                                semanal = semanal_cache[legacy_asign_key]
+                            else:
+                                semanal = AsignacionSemanal.objects.filter(
+                                    asignacion_id=asignacion.id,
+                                    week_start=legacy_week_start
+                                ).first()
+                                semanal_cache[legacy_asign_key] = semanal
                     else:
                         semanal = None
                 except Exception:
@@ -870,6 +884,17 @@ def exportar_asignaciones_excel(request):
                 else:
                     try:
                         semanal = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start).first()
+                        # Compatibilidad con filas antiguas guardadas por semana-lunes.
+                        if not semanal:
+                            legacy_puesto_key = ('p', puesto_id, legacy_week_start)
+                            if legacy_puesto_key in semanal_cache:
+                                semanal = semanal_cache[legacy_puesto_key]
+                            else:
+                                semanal = AsignacionSemanal.objects.filter(
+                                    puesto_id=puesto_id,
+                                    week_start=legacy_week_start
+                                ).first()
+                                semanal_cache[legacy_puesto_key] = semanal
                     except Exception:
                         semanal = None
                     semanal_cache[puesto_key] = semanal
@@ -886,13 +911,6 @@ def exportar_asignaciones_excel(request):
             cell.value = val
             cell.alignment = Alignment(horizontal='center')
             cell.border = border
-            # color simple
-            if val == 'F':
-                cell.fill = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
-            elif val == 'D':
-                cell.fill = PatternFill(start_color='99CCFF', end_color='99CCFF', fill_type='solid')
-            elif val and str(val).upper().startswith('NK'):
-                cell.fill = PatternFill(start_color='CCFFCC', end_color='CCFFCC', fill_type='solid')
 
         start_row += 1
 
