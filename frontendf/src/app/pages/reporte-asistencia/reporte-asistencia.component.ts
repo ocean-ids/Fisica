@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { ReporteAsistenciaService } from '../../services/reporte-asistencia.service';
 import { ReporteAsistenciaEditDialogComponent } from './reporte-asistencia-edit-dialog.component';
 import { ReporteAsistenciaRow } from '../../models';
+import { ReporteAsistenciaColorDialogComponent } from './reporte-asistencia-color-dialog.component';
 
 @Component({
   selector: 'app-reporte-asistencia',
@@ -19,6 +20,18 @@ export class ReporteAsistenciaComponent implements OnInit {
   filtroFecha = '';
   filtroClienteId = '';
   filtroFechaDisplay = '';
+  readonly colorPalette: {name: string, value: string}[] = [
+    { name: 'Amarillo', value: '#fff8b3' },
+    { name: 'Rojo', value: '#ffb3b3' },
+    { name: 'Verde', value: '#b3ffb3' },
+    { name: 'Azul', value: '#b3d9ff' },
+    { name: 'Naranja', value: '#ffd9b3' },
+    { name: 'Morado', value: '#e6b3ff' },
+    { name: 'Gris', value: '#d9d9d9' },
+    { name: 'Celeste', value: '#b3e6ff' },
+    { name: 'Rosa', value: '#ffb3e6' },
+    { name: 'Beige', value: '#f5f5dc' }
+  ];
 
   constructor(
     private reporteSvc: ReporteAsistenciaService,
@@ -37,6 +50,38 @@ export class ReporteAsistenciaComponent implements OnInit {
       .slice(0, 10);
     this.filtroFecha = isoLocal;
     this.filtroFechaDisplay = isoLocal.split('-').reverse().join('/');
+  }
+
+  onRowDoubleClick(row: ReporteAsistenciaRow): void {
+    if (!row?.asignacion_id) return;
+
+    const dialogRef = this.dialog.open(ReporteAsistenciaColorDialogComponent, {
+      width: '420px',
+      maxWidth: '95vw',
+      data: {
+        selectedColor: row.row_color || this.colorPalette[0].value,
+        palette: this.colorPalette
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((selectedColor?: string) => {
+      if (!selectedColor || !row.asignacion_id) return;
+
+      const payload = {
+        row_color: selectedColor
+      };
+
+      this.reporteSvc.updateReporteAsistencia(row.asignacion_id, payload).subscribe({
+        next: (res) => {
+          row.row_color = res.row_color || selectedColor;
+        },
+        error: (err) => console.error('Error al actualizar color de fila:', err)
+      });
+    });
+  }
+
+  getRowColor(row: ReporteAsistenciaRow): string {
+    return row.row_color || '';
   }
 
   descargarExcel(): void {

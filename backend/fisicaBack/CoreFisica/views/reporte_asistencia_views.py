@@ -145,6 +145,7 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
             'estado': (override.estado or 'TURNO') if override else 'TURNO',
             'descripcion': (override.descripcion or '') if override else '',
             'modificado_por': modificado_por_nombre,
+            'row_color': (override.row_color or '') if override else '',
             'modificado_en': modificado_en_iso,
         })
 
@@ -164,6 +165,7 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
             'estado': '',
             'descripcion': '',
             'modificado_por': '',
+            'row_color': '',
             'modificado_en': None,
         })
 
@@ -195,7 +197,7 @@ def insertar_reporte_asistencia(request, asignacion_id):
     override.horario = asignacion.horario
     override.puesto_tipo = getattr(asignacion.puesto, 'tipo', None) if asignacion.puesto else None
 
-    for field in ['codigo', 'estado', 'descripcion']:
+    for field in ['codigo', 'estado', 'descripcion', 'row_color']:
         if field in request.data:
             val = request.data.get(field) or None
             setattr(override, field, val)
@@ -227,6 +229,7 @@ def insertar_reporte_asistencia(request, asignacion_id):
         'reemplazo_id': override.reemplazo_id,
         'reemplazo': reemplazo_nombre,
         'modificado_por': modificado_por_nombre,
+        'row_color': override.row_color or '',
         'modificado_en': override.modificado_en.isoformat() if override.modificado_en else None,
     }, status=status.HTTP_200_OK)
 

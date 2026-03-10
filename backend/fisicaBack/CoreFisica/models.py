@@ -440,6 +440,7 @@ class ReporteAsistencia(models.Model):
         blank=True,
         related_name='reportes_asistencia_modificados'
     )
+    row_color = models.CharField(max_length=7, blank=True, null=True)
     modificado_en = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

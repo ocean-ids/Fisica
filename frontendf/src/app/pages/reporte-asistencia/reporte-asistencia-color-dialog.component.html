@@ -1,0 +1,20 @@
+<h2 mat-dialog-title>Seleccionar color de fila</h2>
+
+<mat-dialog-content>
+  <div class="palette-grid">
+    <button
+      type="button"
+      class="palette-color"
+      *ngFor="let c of data.palette"
+      [title]="c.name"
+      [style.backgroundColor]="c.value"
+      [class.selected]="selectedColor === c.value"
+      (click)="selectColor(c.value)">
+    </button>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="cancel()">Cancelar</button>
+  <button mat-flat-button color="primary" type="button" (click)="accept()">Aceptar</button>
+</mat-dialog-actions>

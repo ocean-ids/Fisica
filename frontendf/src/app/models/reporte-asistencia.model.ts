@@ -10,6 +10,7 @@ export interface ReporteAsistenciaRow {
   estado?: string;
   descripcion?: string | null;
   modificado_por?: string;
+  row_color?: string | null;
   modificado_en?: string | null;
 }
 
@@ -18,4 +19,5 @@ export interface UpdateReporteAsistenciaPayload {
   estado?: string | null;
   reemplazo_id?: number | null;
   descripcion?: string | null;
+  row_color?: string | null;
 }
