@@ -8,7 +8,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from ..models import Asignacion, Persona, ReporteAsistencia
 import openpyxl
-from openpyxl.styles import Alignment, Border, Side
+from openpyxl.styles import Alignment, Border, Side, Font
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
@@ -245,8 +245,8 @@ def exportar_reporte_asistencia_excel(request):
     ws.title = 'Reporte Asistencia'
 
     headers = [
-        'Código', 'Cliente', 'Puesto', 'Horario',
-        'Nombre y Apellidos', 'Reemplazo', 'Estado', 'Descripción',
+        'CÓDIGO', 'CLIENTE', 'PUESTO', 'HORARIO',
+        'NOMBRE Y APELLIDOS', 'REEMPLAZO', 'ESTADO', 'DESCRIPCIÓN',
     ]
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -255,6 +255,7 @@ def exportar_reporte_asistencia_excel(request):
         cell = ws.cell(row=1, column=col_idx)
         cell.value = header
         cell.border = border
+        cell.font = Font(bold=True)
 
     for row_idx, item in enumerate(data, start=2):
         row_vals = [
@@ -273,6 +274,22 @@ def exportar_reporte_asistencia_excel(request):
             cell.border = border
             if col_idx in (1, 4, 7):
                 cell.alignment = Alignment(horizontal='center')
+            elif col_idx == 8:
+                cell.alignment = Alignment(wrap_text=True, vertical='top')
+        ws.row_dimensions[row_idx].height = 32
+
+    column_widths = {
+        1: 14,  # Codigo
+        2: 28,  # Cliente
+        3: 24,  # Puesto
+        4: 18,  # Horario
+        5: 40,  # Nombre y Apellidos
+        6: 40,  # Reemplazo
+        7: 16,  # Estado
+        8: 45,  # Descripcion
+    }
+    for col_idx, width in column_widths.items():
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.xlsx"'
