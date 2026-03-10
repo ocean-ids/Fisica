@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
+import datetime
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -50,18 +51,48 @@ def _resolver_reemplazo_desde_request(request):
 
 
 def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
+    fecha_obj = None
+    if fecha:
+        try:
+            fecha_obj = datetime.date.fromisoformat(str(fecha))
+        except ValueError:
+            fecha_obj = None
+
+    reporte_qs = ReporteAsistencia.objects.select_related('asignacion', 'modificado_por', 'reemplazo')
+    if fecha_obj:
+        # Filtra los reportes del dia seleccionado por fecha de modificacion/creacion.
+        reporte_qs = reporte_qs.filter(
+            Q(modificado_en__date=fecha_obj) |
+            Q(modificado_en__isnull=True, created_at__date=fecha_obj)
+        )
+
     overrides = {
         r.asignacion_id: r
-        for r in ReporteAsistencia.objects.select_related('asignacion', 'modificado_por', 'reemplazo')
+        for r in reporte_qs
     }
 
     asig_qs = Asignacion.objects.select_related(
         'cliente', 'instalacion', 'puesto', 'horario', 'persona'
     ).filter(persona__is_active=True)
 
-    if fecha:
-        
-        asig_qs = asig_qs.filter(Q(fecha=fecha) | Q(fecha__isnull=True))
+    if fecha_obj:
+        # Limitar por el periodo de la fecha filtrada.
+        asig_qs = asig_qs.filter(anio=fecha_obj.year, mes=fecha_obj.month)
+
+        # Regla de visibilidad diaria:
+        # - Para hoy: incluir asignaciones mensuales (fecha nula), fecha exacta y las que tienen reporte hoy.
+        # - Para otros dias: solo fecha exacta o reporte de ese dia (evita arrastre historico de fecha nula).
+        if fecha_obj == timezone.localdate():
+            asig_qs = asig_qs.filter(
+                Q(fecha=fecha_obj) |
+                Q(fecha__isnull=True) |
+                Q(id__in=reporte_qs.values('asignacion_id'))
+            )
+        else:
+            asig_qs = asig_qs.filter(
+                Q(fecha=fecha_obj) |
+                Q(id__in=reporte_qs.values('asignacion_id'))
+            )
     if cliente_id:
         asig_qs = asig_qs.filter(cliente_id=cliente_id)
 
