@@ -144,6 +144,12 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         @Output() weekStartChange: EventEmitter<string> = new EventEmitter<string>();
 
   saveRow(row: any){
+    const asignacionId = row.asignacion || row.asignacion_id;
+    if (!asignacionId) {
+      // Evita crear filas semanales huerfanas sin asignacion padre.
+      return;
+    }
+
     const payload: any = {
     puesto: row.puesto || (row.puesto_detalle && row.puesto_detalle.id),
     week_start: this.weekStart,
@@ -155,9 +161,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     sat: row.sat || '',
     sun: row.sun || ''
   };
-  if (row.asignacion || row.asignacion_id) {
-    payload.asignacion_id = row.asignacion || row.asignacion_id;
-  }
+  payload.asignacion_id = asignacionId;
   this.asignacionCalendarioService.crearAsignacionCalendario(payload)
     .subscribe({
       next: () => {},

@@ -288,8 +288,11 @@ def crear_o_actualizar_asignacion_semanal(request):
     data = request.data
     puesto_id = data.get('puesto')
     week_start = data.get('week_start')
+    asignacion_id = data.get('asignacion_id')
     if not puesto_id or not week_start:
         return Response({'error': 'Faltan campos puesto o week_start'}, status=status.HTTP_400_BAD_REQUEST)
+    if not asignacion_id:
+        return Response({'error': 'asignacion_id es requerido para guardar calendario semanal'}, status=status.HTTP_400_BAD_REQUEST)
     try:
         ws = datetime.fromisoformat(week_start).date()
     except Exception:
@@ -297,14 +300,12 @@ def crear_o_actualizar_asignacion_semanal(request):
 
     try:
         with transaction.atomic():
-            asignacion_id = data.get('asignacion_id')
             # preparar defaults solo con los días que vienen en el payload
             defaults = {}
             for d in ['mon','tue','wed','thu','fri','sat','sun']:
                 if d in data:
                     defaults[d] = data.get(d) or ''
-            if asignacion_id:
-                defaults['asignacion_id'] = asignacion_id
+            defaults['asignacion_id'] = asignacion_id
 
             obj, created = AsignacionSemanal.objects.get_or_create(puesto_id=puesto_id, week_start=ws, defaults=defaults)
 
@@ -313,7 +314,7 @@ def crear_o_actualizar_asignacion_semanal(request):
                 for d in ['mon','tue','wed','thu','fri','sat','sun']:
                     if d in data:
                         setattr(obj, d, data.get(d) or '')
-                if asignacion_id and getattr(obj, 'asignacion_id', None) is None:
+                if getattr(obj, 'asignacion_id', None) != int(asignacion_id):
                     obj.asignacion_id = asignacion_id
                 obj.save()
 

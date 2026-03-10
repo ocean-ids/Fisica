@@ -381,7 +381,7 @@ class AsignacionSemanal(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = (('puesto', 'week_start'), ('asignacion', 'week_start'))
+        unique_together = (('puesto', 'week_start'),)
         indexes = [models.Index(fields=['week_start']),]
 
     def __str__(self):
