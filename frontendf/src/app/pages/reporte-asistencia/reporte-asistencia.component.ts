@@ -26,7 +26,7 @@ export class ReporteAsistenciaComponent implements OnInit {
     { name: 'Verde', value: '#b3ffb3' },
     { name: 'Azul', value: '#b3d9ff' },
     { name: 'Naranja', value: '#ffd9b3' },
-    { name: 'Morado', value: '#e6b3ff' },
+    { name: 'Verde Lima', value: '#2ff968' },
     { name: 'Gris', value: '#d9d9d9' },
     { name: 'Celeste', value: '#b3e6ff' },
     { name: 'Rosa', value: '#ffb3e6' },
