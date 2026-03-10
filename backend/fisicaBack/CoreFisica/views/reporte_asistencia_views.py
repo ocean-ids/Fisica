@@ -80,9 +80,10 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
         asig_qs = asig_qs.filter(anio=fecha_obj.year, mes=fecha_obj.month)
 
         # Regla de visibilidad diaria:
-        # - Para hoy: incluir asignaciones mensuales (fecha nula), fecha exacta y las que tienen reporte hoy.
-        # - Para otros dias: solo fecha exacta o reporte de ese dia (evita arrastre historico de fecha nula).
-        if fecha_obj == timezone.localdate():
+        # - Desde hoy hacia adelante: incluir asignaciones mensuales (fecha nula),
+        #   fecha exacta y las que tienen reporte del dia filtrado.
+        # - Fechas pasadas: solo fecha exacta o reporte de ese dia (evita arrastre historico de fecha nula).
+        if fecha_obj >= timezone.localdate():
             asig_qs = asig_qs.filter(
                 Q(fecha=fecha_obj) |
                 Q(fecha__isnull=True) |
