@@ -12,9 +12,28 @@ from openpyxl.styles import Alignment, Border, Side, Font
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
+from reportlab.pdfbase import pdfmetrics
 
 
 TIPOS_REEMPLAZO_PERMITIDOS = set(ReporteAsistencia.TIPOS_REEMPLAZO)
+
+
+def _fit_text_to_width(text, max_width, font_name='Helvetica', font_size=7):
+    s = str(text) if text is not None else ''
+    if not s:
+        return ''
+    if pdfmetrics.stringWidth(s, font_name, font_size) <= max_width:
+        return s
+
+    ellipsis = '...'
+    ellipsis_w = pdfmetrics.stringWidth(ellipsis, font_name, font_size)
+    allowed = max_width - ellipsis_w
+    if allowed <= 0:
+        return ''
+
+    while s and pdfmetrics.stringWidth(s, font_name, font_size) > allowed:
+        s = s[:-1]
+    return s + ellipsis
 
 
 def _resolver_reemplazo_desde_request(request):
@@ -246,7 +265,7 @@ def exportar_reporte_asistencia_excel(request):
 
     headers = [
         'CÓDIGO', 'CLIENTE', 'PUESTO', 'HORARIO',
-        'NOMBRE Y APELLIDOS', 'REEMPLAZO', 'ESTADO', 'DESCRIPCIÓN',
+        'NOMBRE Y APELLIDOS', 'ESTADO', 'REEMPLAZO', 'DESCRIPCIÓN',
     ]
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -264,8 +283,8 @@ def exportar_reporte_asistencia_excel(request):
             item.get('puesto', ''),
             item.get('horario', ''),
             item.get('nombre_apellidos', ''),
-            item.get('reemplazo', ''),
             item.get('estado', ''),
+            item.get('reemplazo', ''),
             item.get('descripcion', ''),
         ]
         for col_idx, value in enumerate(row_vals, start=1):
@@ -278,15 +297,16 @@ def exportar_reporte_asistencia_excel(request):
                 cell.alignment = Alignment(wrap_text=True, vertical='top')
         ws.row_dimensions[row_idx].height = 32
 
+    # Anchos en proporcion similar al PDF: [0.8, 1.3, 1.3, 1.2, 1.8, 1.6, 0.8, 2.2]
     column_widths = {
-        1: 14,  # Codigo
-        2: 28,  # Cliente
-        3: 24,  # Puesto
-        4: 18,  # Horario
+        1: 11,  # Codigo
+        2: 18,  # Cliente
+        3: 23,  # Puesto
+        4: 12,  # Horario
         5: 40,  # Nombre y Apellidos
-        6: 40,  # Reemplazo
-        7: 16,  # Estado
-        8: 45,  # Descripcion
+        6: 12,  # Estado
+        7: 40,  # Reemplazo
+        8: 32,  # Descripcion
     }
     for col_idx, width in column_widths.items():
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
@@ -314,10 +334,10 @@ def exportar_reporte_asistencia_pdf(request):
     y = height - y_margin
 
     headers = [
-        'Código', 'Cliente', 'Puesto', 'Horario',
-        'Nombre y Apellidos', 'Reemplazo', 'Estado', 'Descripción',
+        'CÓDIGO', 'CLIENTE', 'PUESTO', 'HORARIO',
+        'NOMBRE Y APELLIDOS', 'REEMPLAZO', 'ESTADO', 'DESCRIPCIÓN',
     ]
-    col_widths = [0.8, 1.3, 1.3, 1.2, 1.8, 1.6, 0.8, 2.2]
+    col_widths = [0.8, 1.3, 1.3, 0.75, 1.8, 1.6, 0.8, 2.2]
     col_widths = [w * inch for w in col_widths]
 
     p.setFont('Helvetica-Bold', 12)
@@ -365,6 +385,7 @@ def exportar_reporte_asistencia_pdf(request):
         x = x_margin
         for i, value in enumerate(row_vals):
             text = str(value) if value is not None else ''
+            text = _fit_text_to_width(text, col_widths[i] - 4, 'Helvetica', 7)
             p.drawString(x, y, text)
             x += col_widths[i]
 
