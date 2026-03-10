@@ -58,13 +58,23 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
         except ValueError:
             fecha_obj = None
 
+    hoy = timezone.localdate()
+    fin_anio_actual = datetime.date(hoy.year, 12, 31)
+
     reporte_qs = ReporteAsistencia.objects.select_related('asignacion', 'modificado_por', 'reemplazo')
     if fecha_obj:
-        # Filtra los reportes del dia seleccionado por fecha de modificacion/creacion.
-        reporte_qs = reporte_qs.filter(
-            Q(modificado_en__date=fecha_obj) |
-            Q(modificado_en__isnull=True, created_at__date=fecha_obj)
-        )
+        if fecha_obj >= hoy:
+            # Desde la fecha filtrada hasta fin de anio actual.
+            reporte_qs = reporte_qs.filter(
+                Q(modificado_en__date__gte=fecha_obj, modificado_en__date__lte=fin_anio_actual) |
+                Q(modificado_en__isnull=True, created_at__date__gte=fecha_obj, created_at__date__lte=fin_anio_actual)
+            )
+        else:
+            # Para fechas pasadas, mantener filtro diario exacto.
+            reporte_qs = reporte_qs.filter(
+                Q(modificado_en__date=fecha_obj) |
+                Q(modificado_en__isnull=True, created_at__date=fecha_obj)
+            )
 
     overrides = {
         r.asignacion_id: r
@@ -76,20 +86,17 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
     ).filter(persona__is_active=True)
 
     if fecha_obj:
-        # Limitar por el periodo de la fecha filtrada.
-        asig_qs = asig_qs.filter(anio=fecha_obj.year, mes=fecha_obj.month)
-
-        # Regla de visibilidad diaria:
-        # - Desde hoy hacia adelante: incluir asignaciones mensuales (fecha nula),
-        #   fecha exacta y las que tienen reporte del dia filtrado.
-        # - Fechas pasadas: solo fecha exacta o reporte de ese dia (evita arrastre historico de fecha nula).
-        if fecha_obj >= timezone.localdate():
+        # Reporte por rango hasta fin de anio actual cuando la fecha es hoy/futura.
+        if fecha_obj >= hoy:
+            # Mantener visibilidad de asignaciones vigentes durante todo el anio actual.
+            asig_qs = asig_qs.filter(anio=hoy.year)
             asig_qs = asig_qs.filter(
-                Q(fecha=fecha_obj) |
+                Q(fecha__gte=fecha_obj, fecha__lte=fin_anio_actual) |
                 Q(fecha__isnull=True) |
                 Q(id__in=reporte_qs.values('asignacion_id'))
             )
         else:
+            asig_qs = asig_qs.filter(anio=fecha_obj.year, mes=fecha_obj.month)
             asig_qs = asig_qs.filter(
                 Q(fecha=fecha_obj) |
                 Q(id__in=reporte_qs.values('asignacion_id'))
@@ -97,16 +104,12 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
     if cliente_id:
         asig_qs = asig_qs.filter(cliente_id=cliente_id)
 
-    
-    asig_map = {}
-    for a in asig_qs.order_by('id'):
-        asig_map.setdefault(a.persona_id, a)
-
     data = []
-    personas = Persona.objects.filter(is_active=True).order_by('apellidos', 'nombres')
-    for p in personas:
-        asig = asig_map.get(p.id)
-        override = overrides.get(asig.id) if asig else None
+    personas_con_asignacion = set()
+    for asig in asig_qs.order_by('mes', 'fecha', 'id'):
+        p = asig.persona
+        personas_con_asignacion.add(p.id)
+        override = overrides.get(asig.id)
 
         cliente_nombre = getattr(asig.cliente, 'nombre_comercial', '') if asig else ''
         
@@ -131,18 +134,37 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
             modificado_en_iso = override.modificado_en.isoformat() if override.modificado_en else None
 
         data.append({
-            'asignacion_id': asig.id if asig else None,
-            'codigo': override.codigo if (asig and override and override.codigo) else '',
+            'asignacion_id': asig.id,
+            'codigo': override.codigo if (override and override.codigo) else '',
             'cliente': cliente_nombre,
             'puesto': puesto_nombre,
             'horario': horario_str,
             'nombre_apellidos': nombre_apellidos,
             'reemplazo_id': reemplazo_id,
             'reemplazo': reemplazo_nombre,
-            'estado': (override.estado or 'TURNO') if (asig and override) else ('TURNO' if asig else ''),
+            'estado': (override.estado or 'TURNO') if override else 'TURNO',
             'descripcion': (override.descripcion or '') if override else '',
             'modificado_por': modificado_por_nombre,
             'modificado_en': modificado_en_iso,
+        })
+
+    # Asegura que tambien se muestren personas activas sin asignacion.
+    for p in Persona.objects.filter(is_active=True).order_by('apellidos', 'nombres'):
+        if p.id in personas_con_asignacion:
+            continue
+        data.append({
+            'asignacion_id': None,
+            'codigo': '',
+            'cliente': '',
+            'puesto': '',
+            'horario': '',
+            'nombre_apellidos': f"{p.nombres} {p.apellidos}".strip(),
+            'reemplazo_id': None,
+            'reemplazo': '',
+            'estado': '',
+            'descripcion': '',
+            'modificado_por': '',
+            'modificado_en': None,
         })
 
     return data
