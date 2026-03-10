@@ -8,11 +8,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from ..models import Asignacion, Persona, ReporteAsistencia
 import openpyxl
-from openpyxl.styles import Alignment, Border, Side, Font
+from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
+from reportlab.lib import colors
 
 
 TIPOS_REEMPLAZO_PERMITIDOS = set(ReporteAsistencia.TIPOS_REEMPLAZO)
@@ -34,6 +35,21 @@ def _fit_text_to_width(text, max_width, font_name='Helvetica', font_size=7):
     while s and pdfmetrics.stringWidth(s, font_name, font_size) > allowed:
         s = s[:-1]
     return s + ellipsis
+
+
+def _normalize_hex_color(color_value):
+    c = str(color_value or '').strip()
+    if not c:
+        return None
+    if c.startswith('#'):
+        c = c[1:]
+    if len(c) != 6:
+        return None
+    try:
+        int(c, 16)
+    except ValueError:
+        return None
+    return c.upper()
 
 
 def _resolver_reemplazo_desde_request(request):
@@ -278,6 +294,8 @@ def exportar_reporte_asistencia_excel(request):
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
     for row_idx, item in enumerate(data, start=2):
+        row_hex = _normalize_hex_color(item.get('row_color'))
+        row_fill = PatternFill(start_color=row_hex, end_color=row_hex, fill_type='solid') if row_hex else None
         row_vals = [
             item.get('codigo', ''),
             item.get('cliente', ''),
@@ -292,6 +310,8 @@ def exportar_reporte_asistencia_excel(request):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.value = value
             cell.border = border
+            if row_fill:
+                cell.fill = row_fill
             if col_idx == 8:
                 cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             else:
@@ -338,7 +358,9 @@ def exportar_reporte_asistencia_pdf(request):
         'CÓDIGO', 'CLIENTE', 'PUESTO', 'HORARIO',
         'NOMBRE Y APELLIDOS', 'ESTADO', 'REEMPLAZO', 'DESCRIPCIÓN',
     ]
-    col_widths = [0.8, 1.3, 1.3, 0.75, 1.9, 0.8, 1.9, 1.1]
+    # Ajuste fino para que el ancho total de columnas no desborde la pagina
+    # (ancho util aprox. 10in con margenes de 0.5in a cada lado en landscape).
+    col_widths = [0.8, 1.25, 1.2, 0.65, 1.95, 0.9, 1.9, 1.05]
     col_widths = [w * inch for w in col_widths]
 
     p.setFont('Helvetica-Bold', 12)
@@ -373,6 +395,16 @@ def exportar_reporte_asistencia_pdf(request):
                 x += col_widths[i]
             y -= 0.25 * inch
             p.setFont('Helvetica', 7)
+
+        row_hex = _normalize_hex_color(item.get('row_color'))
+        if row_hex:
+            x_bg = x_margin
+            p.saveState()
+            p.setFillColor(colors.HexColor(f"#{row_hex}"))
+            for w in col_widths:
+                p.rect(x_bg, y - 0.06 * inch, w, 0.18 * inch, stroke=0, fill=1)
+                x_bg += w
+            p.restoreState()
 
         row_vals = [
             item.get('codigo', ''),
