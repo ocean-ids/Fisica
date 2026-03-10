@@ -388,9 +388,9 @@ export class AsignacionesComponent implements OnInit {
   }
 
   private cargarInstalaciones(clienteId: number, preselectInstalacionId?: number, preselectPuestoId?: number): void {
-    this.instalacionService.getInstalaciones().subscribe({
+    this.instalacionService.getInstalaciones({ cliente_id: clienteId }).subscribe({
       next: data => {
-        this.instalaciones = data.filter(i => i.cliente_id === clienteId);
+        this.instalaciones = data || [];
         if (preselectInstalacionId) {
           this.instalacionSeleccionada = preselectInstalacionId;
           this.asignacionActual.instalacion = preselectInstalacionId;

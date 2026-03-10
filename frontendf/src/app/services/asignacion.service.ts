@@ -12,8 +12,8 @@ export class AsignacionService {
 
   constructor(private apiService: ApiService){}
 
-  obtenerAsignaciones(mes: number, anio: number): Observable<Asignacion[]> {
-  return this.apiService.get<any[]>(`/asignaciones/${mes}/${anio}/`).pipe(
+  obtenerAsignaciones(mes: number, anio: number, params?: any): Observable<Asignacion[]> {
+  return this.apiService.get<any[]>(`/asignaciones/${mes}/${anio}/`, params).pipe(
     map(asignaciones => asignaciones.map(asig => ({
       ...asig,
       clienteCodigo: asig.clienteCodigo || (asig.instalacion_detalle ? asig.instalacion_detalle.codigo : '')

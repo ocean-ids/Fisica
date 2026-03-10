@@ -12,6 +12,9 @@ import datetime
 
 @api_view(['GET'])
 def obtener_asignaciones(request, mes=None, anio=None):
+    instalacion_id = request.GET.get('instalacion_id')
+    cliente_id = request.GET.get('cliente_id')
+
     if mes and anio:
         month_start = datetime.date(int(anio), int(mes), 1)
         if int(mes) == 12:
@@ -29,6 +32,11 @@ def obtener_asignaciones(request, mes=None, anio=None):
         asignaciones = Asignacion.objects.filter(
             estado='ACTIVO'
         ).exclude(persona__tipo='SACAFRANCO').select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario')
+
+    if cliente_id:
+        asignaciones = asignaciones.filter(cliente_id=cliente_id)
+    if instalacion_id:
+        asignaciones = asignaciones.filter(instalacion_id=instalacion_id)
     
     serializer = AsignacionSerializer(asignaciones, many=True)
     return Response(serializer.data)

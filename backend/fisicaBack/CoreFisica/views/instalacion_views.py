@@ -118,6 +118,7 @@ def set_instalacion_zona(instalacion: Instalacion, zona_token):
 def obtener_instalaciones(request):
     q = (request.GET.get('q') or '').strip()
     cliente_id = request.GET.get('cliente_id')
+    cliente = (request.GET.get('cliente') or '').strip()
     provincia_id = request.GET.get('provincia_id')
     canton_id = request.GET.get('canton_id')
     zona_token = request.GET.get('zona_id') or request.GET.get('zona_titulo')
@@ -126,6 +127,11 @@ def obtener_instalaciones(request):
 
     if cliente_id:
         qs = qs.filter(cliente_id=cliente_id)
+    elif cliente:
+        qs = qs.filter(
+            Q(cliente__nombre_comercial__icontains=cliente) |
+            Q(cliente__razon_social__icontains=cliente)
+        )
 
     if provincia_id:
         qs = qs.filter(canton__provincia_id=provincia_id)
@@ -147,6 +153,8 @@ def obtener_instalaciones(request):
         qs = qs.filter(
             Q(nombre__icontains=q) |
             Q(codigo__icontains=q) |
+            Q(cliente__nombre_comercial__icontains=q) |
+            Q(cliente__razon_social__icontains=q) |
             Q(canton__nombre__icontains=q) |
             Q(canton__provincia__nombre__icontains=q) |
             Q(direccion__icontains=q) |

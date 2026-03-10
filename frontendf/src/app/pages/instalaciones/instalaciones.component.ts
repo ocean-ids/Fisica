@@ -24,7 +24,6 @@ export class InstalacionesComponent implements OnInit {
   clientes: Cliente[] = [];
 
   filtroTexto = '';
-  filtroClienteId = '';
 
   constructor(
     private instalacionService: InstalacionService,
@@ -40,7 +39,6 @@ export class InstalacionesComponent implements OnInit {
   cargarInstalaciones(): void {
     const params: any = {};
     if (this.filtroTexto.trim()) params.q = this.filtroTexto.trim();
-    if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
 
     this.instalacionService.getInstalaciones(params).subscribe({
       next: (data) => {
@@ -52,7 +50,6 @@ export class InstalacionesComponent implements OnInit {
 
   limpiarFiltros(): void {
     this.filtroTexto = '';
-    this.filtroClienteId = '';
     this.cargarInstalaciones();
   }
 
