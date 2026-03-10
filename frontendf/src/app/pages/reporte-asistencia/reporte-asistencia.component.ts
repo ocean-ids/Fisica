@@ -30,7 +30,17 @@ export class ReporteAsistenciaComponent implements OnInit {
     { name: 'Gris', value: '#d9d9d9' },
     { name: 'Celeste', value: '#b3e6ff' },
     { name: 'Rosa', value: '#ffb3e6' },
-    { name: 'Beige', value: '#f5f5dc' }
+    { name: 'Beige', value: '#f5f5dc' },
+    { name: 'Lima', value: '#d9ffb3' },
+    { name: 'Turquesa', value: '#b3fff0' },
+    { name: 'Lavanda', value: '#e6b3ff' },
+    { name: 'Mostaza', value: '#ffdb58' },
+    { name: 'Coral', value: '#ff7f50' },
+    { name: 'Cian', value: '#00ffff' },
+    { name: 'Crema', value: '#fffdd0' },
+    { name: 'Caqui', value: '#f0e68c' },
+    { name: 'Salmón', value: '#fa8072' },
+    { name: 'Blanco', value: '#ffffff' },
   ];
 
   constructor(
