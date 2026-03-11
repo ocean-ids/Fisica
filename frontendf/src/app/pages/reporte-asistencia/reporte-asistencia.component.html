@@ -1,15 +1,9 @@
-<h3 class="text-center">Reporte de Asistencia</h3>
 <div class="container-fluid px-3">
+    <h3 class="text-center">Reporte de Asistencia</h3>
     <div class="d-flex  gap-2 align-items-center justify-content-between mb-3">
-        <input
-            type="date"
-            lang="es"
-            class="form-control"
-            style="max-width:200px"
-            [value]="filtroFecha"
-            (change)="onFechaChange($event)"
-            placeholder="dd/mm/aaaa"
-        >
+        <button type="button" class=" btn btn-outline-primary" (click)="abrirModalNuevaPersona()">
+            <i class="bi bi-plus-circle"></i> Nueva Persona
+        </button>
 
         <mat-button-toggle-group name="turnoFiltro"
         [(ngModel)]="filtroTurno"
@@ -33,6 +27,15 @@
     </div>
 
     <div *ngIf="loading" class="text-muted">Cargando...</div>
+    <input
+            type="date"
+            lang="es"
+            class="form-control"
+            style="max-width:200px"
+            [value]="filtroFecha"
+            (change)="onFechaChange($event)"
+            placeholder="dd/mm/aaaa"
+        >
     <div class="table-responsive" *ngIf="!loading">
         <table class="table table-bordered table-hover">
             <thead class="table-light text-center">

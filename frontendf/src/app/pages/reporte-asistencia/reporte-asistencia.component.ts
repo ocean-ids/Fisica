@@ -8,6 +8,8 @@ import { ReporteAsistenciaRow } from '../../models';
 import { ReporteAsistenciaColorDialogComponent } from './reporte-asistencia-color-dialog.component';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { PersonaService } from '../../services/persona.service';
+import { PersonaFormComponent } from '../personas/persona-form/persona-form.component';
 
 @Component({
   selector: 'app-reporte-asistencia',
@@ -48,7 +50,8 @@ export class ReporteAsistenciaComponent implements OnInit {
 
   constructor(
     private reporteSvc: ReporteAsistenciaService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private personaService: PersonaService
   ) {}
 
   ngOnInit(): void {
@@ -95,6 +98,24 @@ export class ReporteAsistenciaComponent implements OnInit {
 
   getRowColor(row: ReporteAsistenciaRow): string {
     return row.row_color || '';
+  }
+
+
+  abrirModalNuevaPersona(): void {
+      const dialogRef = this.dialog.open(PersonaFormComponent, {
+        width: '600px',
+        data: {}
+      });
+
+      dialogRef.afterClosed().subscribe(result => {
+        if (!result) return;
+        this.personaService.createPersona(result).subscribe({
+          next: () => {
+            this.cargarReporte();
+          },
+          error: (err) => console.error('Error al crear persona:', err)
+        });
+      });
   }
 
   descargarExcel(): void {
