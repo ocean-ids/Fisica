@@ -14,12 +14,13 @@ def listar_asignacion_semanal(request):
     cliente_id = request.GET.get('cliente')
     auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
 
-    qs = AsignacionSemanal.objects.select_related('puesto').all()
+    qs = AsignacionSemanal.objects.select_related('puesto', 'asignacion__persona').all()
     if week_start:
         try:
             ws = datetime.fromisoformat(week_start).date()
             # Antes de listar, opcionalmente crear filas semanales para los puestos
             # que tengan asignaciones activas o recurrentes que apliquen a esta semana.
+            active_puesto_ids = set()
             if auto_create:
                 try:
                     from ..models import Asignacion, Puesto
@@ -28,6 +29,7 @@ def listar_asignacion_semanal(request):
                         Q(mes=ws.month, anio=ws.year) |
                         (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
                     ).select_related('puesto', 'patronAsignacion')
+                    active_puesto_ids = set(asigns.values_list('puesto_id', flat=True))
 
                     weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
 
@@ -98,11 +100,14 @@ def listar_asignacion_semanal(request):
                             weekday_keys = ['mon','tue','wed','thu','fri','sat','sun']
                             key = weekday_keys[day_date.weekday()]
 
-                            # verificar si la asignación aplica ese día: si tiene dias específicos del puesto
-                            if dias_nums:
+                            # Si hay patrón, el ciclo se aplica de forma continua por día.
+                            if seq:
+                                applies_by_puesto = True
+                            # Sin patrón: respetar días/horarios del puesto.
+                            elif dias_nums:
                                 applies_by_puesto = (day_date.isoweekday() in dias_nums)
                             else:
-                                applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+                                applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm)
 
                             value = ''
                             # si hay patrón y la asignación está activa ese día, calcular token según ciclo continuo
@@ -229,7 +234,22 @@ def listar_asignacion_semanal(request):
                 except Exception as e:
                     print(f"⚠️ Error asegurando AsignacionSemanal para week_start {week_start}: {e}")
 
+            if not auto_create:
+                try:
+                    from ..models import Asignacion
+                    active_asigns = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').filter(
+                        Q(mes=ws.month, anio=ws.year) |
+                        (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
+                    )
+                    active_puesto_ids = set(active_asigns.values_list('puesto_id', flat=True))
+                except Exception:
+                    active_puesto_ids = set()
+
             qs = qs.filter(week_start=ws)
+            if active_puesto_ids:
+                qs = qs.filter(puesto_id__in=active_puesto_ids)
+            else:
+                qs = qs.none()
         except Exception:
             return Response({'error': 'week_start inválida, formato YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
 

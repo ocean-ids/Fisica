@@ -158,11 +158,14 @@ def asignar_servicio(request):
                         except Exception:
                             seq = None
 
-                        # Preferir coincidencia por número de día si existen horarios registrados
-                        if dias_nums:
+                        # Si hay patrón, el ciclo se aplica de forma continua por día.
+                        if seq:
+                            applies_by_puesto = True
+                        # Sin patrón: respetar días/horarios del puesto.
+                        elif dias_nums:
                             applies_by_puesto = (day_date.isoweekday() in dias_nums)
                         else:
-                            applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+                            applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm)
 
                         value = ''
                         if seq:
@@ -392,11 +395,14 @@ def asignar_servicio(request):
                                         except Exception:
                                             seq = None
 
-                                        # Preferir coincidencia por número de día si existen horarios registrados
-                                        if dias_nums:
+                                        # Si hay patrón, el ciclo se aplica de forma continua por día.
+                                        if seq:
+                                            applies_by_puesto = True
+                                        # Sin patrón: respetar días/horarios del puesto.
+                                        elif dias_nums:
                                             applies_by_puesto = (day_date.isoweekday() in dias_nums)
                                         else:
-                                            applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
+                                            applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm)
 
                                         value = ''
                                         if seq:
