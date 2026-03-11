@@ -85,7 +85,7 @@ def _resolver_reemplazo_desde_request(request):
 
 
 
-def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
+def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
     fecha_obj = None
     if fecha:
         try:
@@ -138,6 +138,8 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
             )
     if cliente_id:
         asig_qs = asig_qs.filter(cliente_id=cliente_id)
+    if turno in ['Diurno', 'Nocturno']:
+        asig_qs = asig_qs.filter(puesto__horarios__turno=turno).distinct()
 
     data = []
     personas_con_asignacion = set()
@@ -211,7 +213,8 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
 def obtener_reporte_asistencia(request):
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
-    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id)
+    turno = request.GET.get('turno')
+    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno)
     return JsonResponse(data, safe=False, status=status.HTTP_200_OK)
 
 @api_view(['PUT', 'PATCH'])
@@ -273,7 +276,8 @@ def insertar_reporte_asistencia(request, asignacion_id):
 def exportar_reporte_asistencia_excel(request):
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
-    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id)
+    turno = request.GET.get('turno')
+    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -342,7 +346,8 @@ def exportar_reporte_asistencia_excel(request):
 def exportar_reporte_asistencia_pdf(request):
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
-    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id)
+    turno = request.GET.get('turno')
+    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno)
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.pdf"'

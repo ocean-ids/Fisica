@@ -258,6 +258,9 @@ def listar_asignacion_semanal(request):
 
     qs = qs.order_by('puesto_id')
 
+    if turno in ['Diurno', 'Nocturno']:
+        qs = qs.filter(puesto__horarios__turno=turno).distinct()
+
     serializer = AsignacionSemanalSerializer(qs, many=True)
     return Response(serializer.data)
 

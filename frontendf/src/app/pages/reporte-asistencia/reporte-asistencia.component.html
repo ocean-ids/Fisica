@@ -1,6 +1,6 @@
 <h3 class="text-center">Reporte de Asistencia</h3>
 <div class="container-fluid px-3">
-    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <div class="d-flex  gap-2 align-items-center justify-content-between mb-3">
         <input
             type="date"
             lang="es"
@@ -10,7 +10,17 @@
             (change)="onFechaChange($event)"
             placeholder="dd/mm/aaaa"
         >
-        <div class="d-flex gap-4 ms-auto">
+
+        <mat-button-toggle-group name="turnoFiltro"
+        [(ngModel)]="filtroTurno"
+        (change)="cargarReporte()"
+        aria-label="Filtro de turno">
+        <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
+        <mat-button-toggle value="" (click)="limpiarFiltros()">Todos</mat-button-toggle>
+        <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
+        </mat-button-toggle-group>
+
+        <div class="d-flex gap-2">
             <button type="button" class="btn btn-outline-primary btn-sm" (click)="descargarExcel()" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
                 <img src="assets/images/excel-icon.png" alt="Excel" width="38" height="38" style="vertical-align: middle;" />
                 <span style="font-size: 13px; margin-top: 2px; text-align: center; color: #198754;">Descargar Excel</span>

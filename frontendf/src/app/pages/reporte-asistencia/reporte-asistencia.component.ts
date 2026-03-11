@@ -6,11 +6,13 @@ import { ReporteAsistenciaService } from '../../services/reporte-asistencia.serv
 import { ReporteAsistenciaEditDialogComponent } from './reporte-asistencia-edit-dialog.component';
 import { ReporteAsistenciaRow } from '../../models';
 import { ReporteAsistenciaColorDialogComponent } from './reporte-asistencia-color-dialog.component';
+import { FormsModule } from '@angular/forms';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 
 @Component({
   selector: 'app-reporte-asistencia',
   standalone: true,
-  imports: [CommonModule, MatButtonModule],
+  imports: [CommonModule, MatButtonModule, FormsModule, MatButtonToggleModule],
   templateUrl: './reporte-asistencia.component.html',
   styleUrl: './reporte-asistencia.component.css'
 })
@@ -20,6 +22,7 @@ export class ReporteAsistenciaComponent implements OnInit {
   filtroFecha = '';
   filtroClienteId = '';
   filtroFechaDisplay = '';
+  filtroTurno = '';
   readonly colorPalette: {name: string, value: string}[] = [
     { name: 'Amarillo', value: '#fff8b3' },
     { name: 'Rojo', value: '#ffb3b3' },
@@ -98,6 +101,7 @@ export class ReporteAsistenciaComponent implements OnInit {
     const params: any = {};
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
+    if (this.filtroTurno) params. turno = this.filtroTurno;
     this.reporteSvc.exportarExcel(params).subscribe({
       next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.xlsx`),
       error: (err) => console.error("Error al descargar el excel", err)
@@ -108,11 +112,14 @@ export class ReporteAsistenciaComponent implements OnInit {
     const params: any = {};
     if(this.filtroFecha) params.fecha = this.filtroFecha;
     if(this.filtroClienteId) params.cliente_id = this.filtroClienteId;
+    if(this.filtroTurno) params.turno = this.filtroTurno;
     this.reporteSvc.exportarPdf(params).subscribe({
       next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.pdf`),
       error: (err) => console.error("Error al descargar el pdf", err)
     })
   }
+
+
 
   private descargarArchivo(blob: Blob, nombre: string): void {
     const url = window.URL.createObjectURL(blob);
@@ -127,12 +134,13 @@ export class ReporteAsistenciaComponent implements OnInit {
     const params: any = {};
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
+    if (this.filtroTurno) params.turno = this.filtroTurno;
     this.loading = true;
     this.reporteSvc.getReporteAsistencia(params).subscribe({
       next: data=> this.reporte = data || [],
       error: err => console.error('Error al cargar reporte de asistencia:', err),
       complete: () => this.loading = false
-    })
+    });
   }
 
   abrirModalEdicion(row: ReporteAsistenciaRow): void {
@@ -159,6 +167,7 @@ export class ReporteAsistenciaComponent implements OnInit {
   limpiarFiltros(): void {
     this.setHoy();
     this.filtroClienteId = '';
+    this.filtroTurno = '';
     this.cargarReporte();
   }
 
@@ -168,7 +177,7 @@ export class ReporteAsistenciaComponent implements OnInit {
     this.filtroFechaDisplay = iso ? iso.split('-').reverse().join('/') : '';
     this.cargarReporte();
   }
-
+  
 
   estadoClass(estado?: string): string {
     return estado === 'ADICIONAL' ? 'badge bg-danger' : 'badge bg-success';
