@@ -558,7 +558,11 @@ def asignar_sacafranco(request):
                 month_cursor += 1
 
             for ws in weeks:
-                semanal_obj, _ = AsignacionSemanal.objects.get_or_create(puesto=puesto, week_start=ws)
+                semanal_obj, _ = AsignacionSemanal.objects.get_or_create(
+                    asignacion_id=asignacion.id,
+                    week_start=ws,
+                    defaults={'puesto': puesto}
+                )
                 try:
                     cur_val = getattr(semanal_obj, day, '') or ''
                 except Exception:
@@ -577,7 +581,11 @@ def asignar_sacafranco(request):
         except Exception:
             logger.exception('Error propagando sacafranco a semanas futuras')
 
-        semanal, created = AsignacionSemanal.objects.get_or_create(puesto=puesto, week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start, defaults={'asignacion': asignacion})
+        semanal, created = AsignacionSemanal.objects.get_or_create(
+            asignacion_id=asignacion.id,
+            week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start,
+            defaults={'asignacion': asignacion, 'puesto': puesto}
+        )
         
         current_val = None
         try:

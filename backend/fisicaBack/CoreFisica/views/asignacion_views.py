@@ -252,9 +252,9 @@ def asignar_servicio(request):
 
                     try:
                         pid = puesto_obj.id if puesto_obj and hasattr(puesto_obj, 'id') else getattr(asignacion, 'puesto_id', None)
-                        # update_or_create garantiza que la fila del puesto/semana siempre quede ligada a la asignación actual
+                        # update_or_create garantiza fila 1:1 por asignacion/semana
                         obj, created = AsignacionSemanal.objects.update_or_create(
-                            puesto_id=pid,
+                            asignacion_id=asignacion.id,
                             week_start=current,
                             defaults={**defaults, 'asignacion': asignacion, 'puesto_id': pid}
                         )
@@ -488,7 +488,7 @@ def asignar_servicio(request):
                                     try:
                                         pid = puesto_obj.id if puesto_obj and hasattr(puesto_obj, 'id') else getattr(asignacion, 'puesto_id', None)
                                         obj, created = AsignacionSemanal.objects.update_or_create(
-                                            puesto_id=pid,
+                                            asignacion_id=asignacion.id,
                                             week_start=current,
                                             defaults={**defaults, 'asignacion': asignacion, 'puesto_id': pid}
                                         )

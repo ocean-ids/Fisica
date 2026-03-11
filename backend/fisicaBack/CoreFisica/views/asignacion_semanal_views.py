@@ -12,6 +12,7 @@ def listar_asignacion_semanal(request):
     """Listar asignaciones semanales. Filtrar por week_start (YYYY-MM-DD) y opcionalmente por cliente."""
     week_start = request.GET.get('week_start')
     cliente_id = request.GET.get('cliente')
+    turno = request.GET.get('turno')
     auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
 
     qs = AsignacionSemanal.objects.select_related('puesto', 'asignacion__persona').all()
@@ -20,7 +21,7 @@ def listar_asignacion_semanal(request):
             ws = datetime.fromisoformat(week_start).date()
             # Antes de listar, opcionalmente crear filas semanales para los puestos
             # que tengan asignaciones activas o recurrentes que apliquen a esta semana.
-            active_puesto_ids = set()
+            active_asign_ids = set()
             if auto_create:
                 try:
                     from ..models import Asignacion, Puesto
@@ -29,7 +30,7 @@ def listar_asignacion_semanal(request):
                         Q(mes=ws.month, anio=ws.year) |
                         (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
                     ).select_related('puesto', 'patronAsignacion')
-                    active_puesto_ids = set(asigns.values_list('puesto_id', flat=True))
+                    active_asign_ids = set(asigns.values_list('id', flat=True))
 
                     weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
 
@@ -202,9 +203,9 @@ def listar_asignacion_semanal(request):
                             try:
                                 print(f"DEBUG: asegurando AsignacionSemanal para asignacion={getattr(asign,'id',None)} puesto={pid} week_start={ws} defaults={defaults}")
                                 obj, created = AsignacionSemanal.objects.get_or_create(
-                                    puesto_id=pid,
+                                    asignacion_id=asign.id,
                                     week_start=ws,
-                                    defaults={**defaults, 'asignacion': asign}
+                                    defaults={**defaults, 'asignacion': asign, 'puesto_id': pid}
                                 )
                                 if created:
                                     print(f"DEBUG: creada AsignacionSemanal id={obj.id} for puesto={pid} week_start={ws} asignacion={getattr(asign,'id',None)}")
@@ -241,13 +242,13 @@ def listar_asignacion_semanal(request):
                         Q(mes=ws.month, anio=ws.year) |
                         (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
                     )
-                    active_puesto_ids = set(active_asigns.values_list('puesto_id', flat=True))
+                    active_asign_ids = set(active_asigns.values_list('id', flat=True))
                 except Exception:
-                    active_puesto_ids = set()
+                    active_asign_ids = set()
 
             qs = qs.filter(week_start=ws)
-            if active_puesto_ids:
-                qs = qs.filter(puesto_id__in=active_puesto_ids)
+            if active_asign_ids:
+                qs = qs.filter(asignacion_id__in=active_asign_ids)
             else:
                 qs = qs.none()
         except Exception:
@@ -256,7 +257,7 @@ def listar_asignacion_semanal(request):
     if cliente_id:
         qs = qs.filter(puesto__instalacion__cliente_id=cliente_id)
 
-    qs = qs.order_by('puesto_id')
+    qs = qs.order_by('asignacion_id')
 
     if turno in ['Diurno', 'Nocturno']:
         qs = qs.filter(puesto__horarios__turno=turno).distinct()
@@ -321,7 +322,7 @@ def crear_o_actualizar_asignacion_semanal(request):
                     defaults[d] = data.get(d) or ''
             defaults['asignacion_id'] = asignacion_id
 
-            obj, created = AsignacionSemanal.objects.get_or_create(puesto_id=puesto_id, week_start=ws, defaults=defaults)
+            obj, created = AsignacionSemanal.objects.get_or_create(asignacion_id=asignacion_id, week_start=ws, defaults={**defaults, 'puesto_id': puesto_id})
 
             # Si no se creó (existía), actualizar campos proporcionados y ligar asignacion si se indicó
             if not created:
@@ -361,8 +362,10 @@ def copiar_semana(request):
     updated = 0
     with transaction.atomic():
         for row in qs:
+            if not getattr(row, 'asignacion_id', None):
+                continue
             obj, was_created = AsignacionSemanal.objects.update_or_create(
-                puesto=row.puesto,
+                asignacion_id=row.asignacion_id,
                 week_start=tw,
                 defaults={
                     'mon': row.mon,
@@ -372,7 +375,7 @@ def copiar_semana(request):
                     'fri': row.fri,
                     'sat': row.sat,
                     'sun': row.sun,
-                    'asignacion': getattr(row, 'asignacion', None),
+                    'puesto_id': getattr(row, 'puesto_id', None),
                 }
             )
             if was_created:
