@@ -12,7 +12,7 @@
 }
 
 .sidebar-wrapper {
-  width: 250px;
+  width: 240px;
   transition: width 0.3s ease;
   overflow: hidden;
 }
@@ -23,7 +23,7 @@
 
 .toggle-btn {
   position: absolute;
-  left: 250px;
+  left: 235px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1000;
