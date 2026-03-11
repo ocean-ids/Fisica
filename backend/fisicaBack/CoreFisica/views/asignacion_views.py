@@ -700,7 +700,7 @@ def exportar_asignaciones_excel(request):
 
     # Columnas izquierdas (datos de asignación)
     # Se eliminó 'Dirección Instalación' según solicitud
-    left_headers = ['Horario', 'Código', 'Cliente', 'Nombre Puesto', 'Resumen', 'Cédula', 'Persona', 'Tipo']
+    left_headers = ['HORARIO', 'CÓDIGO', 'CLIENTE', 'NOMBRE PUESTO', 'RESUMEN', 'CÉDULA', 'PERSONA', 'TIPO']
     left_cols = len(left_headers)
 
     # Columnas de fecha comienzan después de las columnas izquierdas

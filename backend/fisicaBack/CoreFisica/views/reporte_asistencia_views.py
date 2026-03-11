@@ -184,7 +184,7 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None):
             'modificado_en': modificado_en_iso,
         })
 
-    # Asegura que tambien se muestren personas activas sin asignacion.
+    
     for p in Persona.objects.filter(is_active=True).order_by('apellidos', 'nombres'):
         if p.id in personas_con_asignacion:
             continue
@@ -318,7 +318,7 @@ def exportar_reporte_asistencia_excel(request):
                 cell.alignment = Alignment(horizontal='center', vertical='center')
         ws.row_dimensions[row_idx].height = 32
 
-    # Anchos en proporcion similar al PDF: [0.8, 1.3, 1.3, 1.2, 1.8, 1.6, 0.8, 2.2]
+    
     column_widths = {
         1: 11,  # Codigo
         2: 18,  # Cliente
@@ -358,8 +358,7 @@ def exportar_reporte_asistencia_pdf(request):
         'CÓDIGO', 'CLIENTE', 'PUESTO', 'HORARIO',
         'NOMBRE Y APELLIDOS', 'ESTADO', 'REEMPLAZO', 'DESCRIPCIÓN',
     ]
-    # Ajuste fino para que el ancho total de columnas no desborde la pagina
-    # (ancho util aprox. 10in con margenes de 0.5in a cada lado en landscape).
+    
     col_widths = [0.8, 1.25, 1.2, 0.65, 1.95, 0.9, 1.9, 1.05]
     col_widths = [w * inch for w in col_widths]
 
