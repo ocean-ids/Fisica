@@ -79,8 +79,6 @@ def listar_asignacion_semanal(request):
                                         dias_nums = list(horarios_qs.values_list('dia', flat=True))
                         except Exception:
                             dias_nums = []
-                        # DEBUG: forzar aplicación del patrón ignorando dias/horarios del puesto
-                        test_force_patron = True
                         turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
                         default_code = 'N' if turno.startswith('n') else 'D'
 
@@ -105,13 +103,6 @@ def listar_asignacion_semanal(request):
                                 applies_by_puesto = (day_date.isoweekday() in dias_nums)
                             else:
                                 applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
-
-                            # DEBUG override: forzar aplicación si hay secuencia
-                            try:
-                                if seq and test_force_patron:
-                                    applies_by_puesto = True
-                            except Exception:
-                                pass
 
                             value = ''
                             # si hay patrón y la asignación está activa ese día, calcular token según ciclo continuo

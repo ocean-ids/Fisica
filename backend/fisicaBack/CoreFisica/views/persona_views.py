@@ -372,6 +372,7 @@ class SacafrancoListView(APIView):
         week_start = request.query_params.get('week_start')
         day = request.query_params.get('day')
         puesto_id = request.query_params.get('puesto_id')
+        week_start_date = None
 
         def normalize_day(tok):
             t = str(tok or '').strip().lower()
@@ -394,16 +395,22 @@ class SacafrancoListView(APIView):
                 return Response({'error': 'Día inválido'}, status=400)
             day = day_norm
 
+        if week_start:
+            try:
+                week_start_date = datetime.date.fromisoformat(str(week_start))
+            except Exception:
+                return Response({'error': 'week_start inválida, formato YYYY-MM-DD'}, status=400)
+
         qs = Persona.objects.filter(tipo='SACAFRANCO', is_active=True).order_by('nombres', 'apellidos')
         results = []
         for p in qs:
             occupied = False
-            if week_start and day:
-                if AsignacionSemanal.objects.filter(asignacion__persona=p, week_start=week_start, **{f"{day}__istartswith": 'F'}).exists():
+            if week_start_date and day:
+                if AsignacionSemanal.objects.filter(asignacion__persona=p, week_start=week_start_date, **{f"{day}__istartswith": 'F'}).exists():
                     occupied = True
             assigned_for_puesto = None
-            if puesto_id and week_start and day:
-                assigned = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start, asignacion__persona=p, **{f"{day}__istartswith": 'F'}).first()
+            if puesto_id and week_start_date and day:
+                assigned = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start_date, asignacion__persona=p, **{f"{day}__istartswith": 'F'}).first()
                 if assigned:
                     assigned_for_puesto = p.id
 
@@ -412,7 +419,7 @@ class SacafrancoListView(APIView):
                 'nombres': p.nombres,
                 'apellidos': p.apellidos,
                 'cedula': p.cedula,
-                'status': 'asignado' if occupied else 'available',
+                'status': 'asignado' if (assigned_for_puesto or occupied) else 'available',
                 'assigned_for_puesto': assigned_for_puesto,
             })
 
@@ -472,15 +479,6 @@ def asignar_sacafranco(request):
     except Exception:
         week_start_date = datetime.date.today()
 
-    # No modificar semanas anteriores al inicio de la semana actual (semana corre de domingo a sábado)
-    try:
-        today = datetime.date.today()
-        start_current_week = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
-        if isinstance(week_start_date, datetime.date) and week_start_date < start_current_week:
-            return JsonResponse({'status': 'preserved_past', 'detail': 'Semana pasada, no se modifica'}, status=200)
-    except Exception:
-        pass
-
     mes_ref = week_start_date.month
     anio_ref = week_start_date.year
 
@@ -508,7 +506,7 @@ def asignar_sacafranco(request):
                 if not asignacion:
                     return JsonResponse({'error': 'Conflicto de asignación existente'}, status=400)
         else:
-            # Reusar la asignación del mes/año y actualizar si cambió puesto/cliente/instalación/horario
+            # Reusar la asignación del mes/año y sincronizar contexto del puesto actual.
             changed = False
             if asignacion.puesto_id != puesto.id:
                 asignacion.puesto = puesto
@@ -545,15 +543,8 @@ def asignar_sacafranco(request):
             except Exception:
                 week_start_date = week_start
 
-            today = datetime.date.today()
-            start_current_week = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
-            # Si la semana está antes de la semana actual, no tocamos
-            if isinstance(week_start_date, datetime.date) and week_start_date < start_current_week:
-                return JsonResponse({'status': 'preserved_past', 'detail': 'Semana pasada, no se modifica'}, status=200)
-
-            # empezamos a propagar desde la semana seleccionada si es >= inicio semana actual,
-            # en caso contrario desde el inicio de la semana actual
-            prop_start = week_start_date if (isinstance(week_start_date, datetime.date) and week_start_date >= start_current_week) else start_current_week
+            # empezamos a propagar desde la semana seleccionada
+            prop_start = week_start_date if isinstance(week_start_date, datetime.date) else datetime.date.today()
             # asegurar filas semanales alineadas con el front (semanas por mes: día 1 y saltos de 7)
             weeks = []
             month_cursor = prop_start.month
@@ -639,39 +630,57 @@ def desasignar_sacafranco(request):
     except Puesto.DoesNotExist:
         return JsonResponse({'error': 'Puesto no encontrado'}, status=404)
 
-    try:
-        asignacion = Asignacion.objects.filter(persona=persona, puesto=puesto).first()
-        if not asignacion:
-            return JsonResponse({'error': 'No existe asignación para esa persona en el puesto'}, status=404)
+    # Normalizar día a las claves del modelo (mon..sun)
+    def normalize_day(tok):
+        t = str(tok or '').strip().lower()
+        mapping = {
+            'l': 'mon', 'lu': 'mon', 'lun': 'mon', 'lunes': 'mon',
+            'm': 'tue', 'ma': 'tue', 'mar': 'tue', 'martes': 'tue',
+            'mi': 'wed', 'mie': 'wed', 'mié': 'wed', 'mier': 'wed', 'miercoles': 'wed', 'miércoles': 'wed',
+            'j': 'thu', 'ju': 'thu', 'jue': 'thu', 'jueves': 'thu',
+            'v': 'fri', 'vi': 'fri', 'vie': 'fri', 'viernes': 'fri',
+            's': 'sat', 'sa': 'sat', 'sab': 'sat', 'sabado': 'sat', 'sábado': 'sat',
+            'd': 'sun', 'do': 'sun', 'dom': 'sun', 'domingo': 'sun'
+        }
+        if t in ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']:
+            return t
+        return mapping.get(t, '')
 
-        
+    day_norm = normalize_day(day)
+    if not day_norm:
+        return JsonResponse({'error': 'Día inválido'}, status=400)
+    day = day_norm
+
+    try:
         try:
             if isinstance(week_start, str):
                 week_start_date = datetime.date.fromisoformat(week_start)
             else:
-                week_start_date = week_start
+                week_start_date = week_start if isinstance(week_start, datetime.date) else datetime.date.today()
         except Exception:
-            week_start_date = week_start
+            week_start_date = datetime.date.today()
 
-        today = datetime.date.today()
-        # comenzamos a afectar desde la semana seleccionada solo si es futura; si no, desde hoy
-        prop_start = week_start_date if (isinstance(week_start_date, datetime.date) and week_start_date > today) else today
+        mes_ref = week_start_date.month
+        anio_ref = week_start_date.year
+        asignacion = Asignacion.objects.filter(persona=persona, mes=mes_ref, anio=anio_ref).first()
+        if not asignacion:
+            return JsonResponse({'error': 'No existe asignación para esa persona en el mes/año de la semana'}, status=404)
+
+        prop_start = week_start_date if isinstance(week_start_date, datetime.date) else datetime.date.today()
         try:
-            year_for_end = week_start_date.year if isinstance(week_start_date, datetime.date) else today.year
+            year_for_end = week_start_date.year if isinstance(week_start_date, datetime.date) else datetime.date.today().year
             prop_end = datetime.date(year_for_end, 12, 31)
         except Exception:
+            today = datetime.date.today()
             prop_end = datetime.date(today.year, 12, 31)
 
-        semanal = AsignacionSemanal.objects.filter(puesto=puesto, week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start, asignacion=asignacion).first()
+        semanal = AsignacionSemanal.objects.filter(
+            puesto=puesto,
+            week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start,
+            asignacion_id=asignacion.id
+        ).first()
         if not semanal:
             return JsonResponse({'error': 'No hay programación semanal para ese puesto/semana'}, status=404)
-
-        # Si la semana seleccionada es pasada (antes de prop_start), no la tocamos
-        try:
-            if isinstance(semanal.week_start, datetime.date) and semanal.week_start < prop_start:
-                return JsonResponse({'status': 'preserved_past', 'semanal_id': semanal.id, 'value': getattr(semanal, day, '')})
-        except Exception:
-            pass
 
         if not hasattr(semanal, day):
             return JsonResponse({'error': 'Día inválido'}, status=400)

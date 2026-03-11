@@ -22,7 +22,7 @@
         <button mat-button (click)="close()">Cerrar</button>
         <ng-container *ngIf="data?.manage">
             <button mat-raised-button color="primary" [disabled]="!selected || loading" (click)="asignar()">Asignar</button>
-            <button mat-stroked-button color="warn" [disabled]="!selected || loading || selected.assigned_for_puesto !== selected.id" (click)="desasignar()">Quitar</button>
+            <button mat-stroked-button color="warn" [disabled]="!selected || loading || (+selected.assigned_for_puesto !== +selected.id)" (click)="desasignar()">Quitar</button>
         </ng-container>
     <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
 </mat-dialog-actions>

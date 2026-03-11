@@ -130,8 +130,6 @@ def asignar_servicio(request):
                                 dias_nums = list(horarios_qs.values_list('dia', flat=True))
                 except Exception:
                     dias_nums = []
-                # DEBUG: forzar aplicación del patrón ignorando dias/horarios del puesto
-                test_force_patron = True
                 turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
                 default_code = 'N' if turno.startswith('n') else 'D'
 
@@ -165,13 +163,6 @@ def asignar_servicio(request):
                             applies_by_puesto = (day_date.isoweekday() in dias_nums)
                         else:
                             applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm) or (not dias_norm and bool(seq))
-
-                        # DEBUG override: si hay secuencia y la bandera de prueba está activa, forzamos aplicar el patron
-                        try:
-                            if seq and test_force_patron:
-                                applies_by_puesto = True
-                        except Exception:
-                            pass
 
                         value = ''
                         if seq:
@@ -375,9 +366,6 @@ def asignar_servicio(request):
                                             dias_nums = list(horarios_qs.values_list('dia', flat=True))
                                 except Exception:
                                     dias_nums = []
-
-                                # DEBUG: forzar aplicación del patrón ignorando dias/horarios del puesto
-                                test_force_patron = True
 
                                 weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
                                 while current <= last_day:
@@ -601,8 +589,12 @@ def eliminar_asignacion(request, id):
                             qs_clean = qs_clean.filter(week_start__gte=window_start)
                         if window_end:
                             qs_clean = qs_clean.filter(week_start__lte=window_end)
-                        # filas sin asignación o ligadas a esta asignación
-                        qs_clean = qs_clean.filter(Q(asignacion__isnull=True) | Q(asignacion_id=id))
+                        # filas sin asignación, ligadas a esta asignación, o relinkeadas a SACAFRANCO
+                        qs_clean = qs_clean.filter(
+                            Q(asignacion__isnull=True) |
+                            Q(asignacion_id=id) |
+                            Q(asignacion__persona__tipo='SACAFRANCO')
+                        )
                         for row in qs_clean:
                             dirty = False
                             for d in ['mon','tue','wed','thu','fri','sat','sun']:
@@ -631,7 +623,11 @@ def eliminar_asignacion(request, id):
                             _Q(thu__istartswith='F') | _Q(fri__istartswith='F') | _Q(sat__istartswith='F') |
                             _Q(sun__istartswith='F')
                         )
-                        qs_f = qs_f.filter(f_filter).filter(_Q(asignacion__isnull=True) | _Q(asignacion_id=id))
+                        qs_f = qs_f.filter(f_filter).filter(
+                            _Q(asignacion__isnull=True) |
+                            _Q(asignacion_id=id) |
+                            _Q(asignacion__persona__tipo='SACAFRANCO')
+                        )
                         for row in qs_f:
                             try:
                                 for d in ['mon','tue','wed','thu','fri','sat','sun']:

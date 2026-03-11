@@ -30,7 +30,11 @@ export class PatronSacafrancosModalComponent {
     this.weekStart = data?.weekStart;
     this.day = data?.day;
     // preselect the person assigned to this puesto (if any)
-    try { this.selected = this.lista.find((p:any) => p.assigned_for_puesto === p.id) || null; } catch(e) { this.selected = null; }
+    try {
+      this.selected = this.lista.find((p: any) => Number(p.assigned_for_puesto) === Number(p.id)) || null;
+    } catch (e) {
+      this.selected = null;
+    }
   }
 
   close(): void {
