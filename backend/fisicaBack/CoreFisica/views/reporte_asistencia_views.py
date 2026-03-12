@@ -204,9 +204,15 @@ def _draw_pdf_header(p, width, height, x_margin, y_margin, ctx):
         except Exception:
             pass
 
-    p.setFont('Helvetica-Bold', 15)
+    title_text = str(ctx['titulo'] or '')
+    title_font = 15
+    max_title_w = title_w - 0.20 * inch
+    while title_font > 9 and pdfmetrics.stringWidth(title_text, 'Helvetica-Bold', title_font) > max_title_w:
+        title_font -= 1
+
+    p.setFont('Helvetica-Bold', title_font)
     title_y = top - (top_h / 2) + 0.1 * inch
-    p.drawCentredString(x_title + (title_w / 2), title_y, ctx['titulo'])
+    p.drawCentredString(x_title + (title_w / 2), title_y, title_text)
 
     p.setFont('Helvetica-Bold', 10)
     p.drawString(x_meta + 8, top - 0.28 * inch, 'Versión:')
