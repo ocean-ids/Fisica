@@ -4,27 +4,32 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { ReporteAsistenciaService } from '../../services/reporte-asistencia.service';
 import { ReporteAsistenciaEditDialogComponent } from './reporte-asistencia-edit-dialog.component';
-import { ReporteAsistenciaRow } from '../../models';
+import { ReporteAsistenciaRow, ResumenAsistencia } from '../../models';
 import { ReporteAsistenciaColorDialogComponent } from './reporte-asistencia-color-dialog.component';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { PersonaService } from '../../services/persona.service';
 import { PersonaFormComponent } from '../personas/persona-form/persona-form.component';
+import { MAT_BOTTOM_SHEET_DATA, MatBottomSheet, MatBottomSheetModule, MatBottomSheetRef } from '@angular/material/bottom-sheet';
+import { ReporteEstadoComponent } from './reporte-estado/reporte-estado.component';
 
 @Component({
   selector: 'app-reporte-asistencia',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, FormsModule, MatButtonToggleModule],
+  imports: [CommonModule, MatButtonModule, FormsModule, MatButtonToggleModule, MatBottomSheetModule],
   templateUrl: './reporte-asistencia.component.html',
   styleUrl: './reporte-asistencia.component.css'
 })
 export class ReporteAsistenciaComponent implements OnInit {
   reporte: ReporteAsistenciaRow[] = [];
+  resumen: ResumenAsistencia = { total: 0, asistencias: 0, faltas: 0 };
   loading = false;
   filtroFecha = '';
   filtroClienteId = '';
   filtroFechaDisplay = '';
   filtroTurno = '';
+
+
   readonly colorPalette: {name: string, value: string}[] = [
     { name: 'Amarillo', value: '#fff8b3' },
     { name: 'Rojo', value: '#ffb3b3' },
@@ -51,7 +56,9 @@ export class ReporteAsistenciaComponent implements OnInit {
   constructor(
     private reporteSvc: ReporteAsistenciaService,
     private dialog: MatDialog,
-    private personaService: PersonaService
+    private personaService: PersonaService,
+    private bottomSheet: MatBottomSheet
+    
   ) {}
 
   ngOnInit(): void {
@@ -100,7 +107,6 @@ export class ReporteAsistenciaComponent implements OnInit {
     return row.row_color || '';
   }
 
-
   abrirModalNuevaPersona(): void {
       const dialogRef = this.dialog.open(PersonaFormComponent, {
         width: '600px',
@@ -116,6 +122,25 @@ export class ReporteAsistenciaComponent implements OnInit {
           error: (err) => console.error('Error al crear persona:', err)
         });
       });
+  }
+
+  openBottomSheet(): void {
+    this.bottomSheet.open(ReporteEstadoComponent, {
+      data: this.buildResumenAsistencia()
+    });
+  }
+
+  private hasReemplazo(row: ReporteAsistenciaRow): boolean {
+    if (row.reemplazo_id) return true;
+    const nombre = (row.reemplazo || '').trim();
+    return !!nombre && nombre !== '-';
+  }
+
+  private buildResumenAsistencia(): ResumenAsistencia {
+    const filas = this.reporte.filter(r => !! r.asignacion_id);
+    const faltas = filas.filter(r => this.hasReemplazo(r)).length;
+    const total = filas.length;
+    return { total, asistencias: total - faltas, faltas };
   }
 
   descargarExcel(): void {
@@ -139,8 +164,6 @@ export class ReporteAsistenciaComponent implements OnInit {
       error: (err) => console.error("Error al descargar el pdf", err)
     })
   }
-
-
 
   private descargarArchivo(blob: Blob, nombre: string): void {
     const url = window.URL.createObjectURL(blob);

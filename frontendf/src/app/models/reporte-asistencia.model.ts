@@ -21,3 +21,9 @@ export interface UpdateReporteAsistenciaPayload {
   descripcion?: string | null;
   row_color?: string | null;
 }
+
+export interface ResumenAsistencia {
+  total: number;
+  asistencias: number;
+  faltas: number;
+}
