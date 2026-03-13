@@ -1,6 +1,8 @@
-/* .login-page {
-  background-color: #0F1F44;
-} */
+.login-page{
+  background:
+    linear-gradient(rgba(15,31,68,0.20), rgba(15,31,68,0.20)),
+    url('/assets/images/fondo.png') center/cover no-repeat;
+}
 
 .login-card {
   max-width: 420px;
