@@ -10,6 +10,9 @@ import openpyxl
 import datetime
 from pathlib import Path
 from openpyxl.drawing.image import Image as XLImage
+from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
+from openpyxl.drawing.xdr import XDRPositiveSize2D
+from openpyxl.utils.units import pixels_to_EMU
 
 
 def _find_asignaciones_logo_path():
@@ -774,9 +777,37 @@ def exportar_asignaciones_excel(request):
     if logo_path:
         try:
             img = XLImage(str(logo_path))
-            img.width = 80
-            img.height = 80
-            img.anchor = 'A1'
+
+            # Escalado proporcional para evitar deformación
+            max_w = 80
+            max_h = 80
+            orig_w = max(float(img.width), 1.0)
+            orig_h = max(float(img.height), 1.0)
+            scale = min(max_w / orig_w, max_h / orig_h)
+            final_w = int(orig_w * scale)
+            final_h = int(orig_h * scale)
+            img.width = final_w
+            img.height = final_h
+
+            # Centrar en recuadro A1:A3
+            box_w_px = 126
+            box_h_px = 110
+            x_offset_px = int((box_w_px - final_w) / 2)
+            y_offset_px = int((box_h_px - final_h) / 2)
+            y_offset_px += 16
+
+            img.anchor = OneCellAnchor(
+                _from=AnchorMarker(
+                    col=0,
+                    row=0,
+                    colOff=pixels_to_EMU(max(x_offset_px, 0)),
+                    rowOff=pixels_to_EMU(max(y_offset_px, 0)),
+                ),
+                ext=XDRPositiveSize2D(
+                    cx=pixels_to_EMU(final_w),
+                    cy=pixels_to_EMU(final_h),
+                ),
+            )
             ws.add_image(img)
         except Exception:
             pass
