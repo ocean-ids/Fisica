@@ -284,6 +284,20 @@ def _normalize_hex_color(color_value):
     return c.upper()
 
 
+def _build_resumen_asistencia(data):
+    evaluables = [item for item in data if item.get('asignacion_id')]
+
+    faltos = 0
+    for item in evaluables:
+        reemplazo_id = item.get('reemplazo_id')
+        reemplazo_txt = str(item.get('reemplazo') or '').strip()
+        if (reemplazo_id is not None) or (reemplazo_txt not in ['', '-']):
+            faltos += 1
+
+    asistencias = max(len(evaluables) - faltos, 0)
+    return asistencias, faltos
+
+
 def _resolver_reemplazo_desde_request(request):
     if 'reemplazo_id' not in request.data:
         return 'no-enviado', None
@@ -511,6 +525,7 @@ def exportar_reporte_asistencia_excel(request):
     turno = request.GET.get('turno')
     data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno)
     header_ctx = _build_header_context(request, fecha, turno)
+    asistencias, faltos = _build_resumen_asistencia(data)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -574,6 +589,27 @@ def exportar_reporte_asistencia_excel(request):
     for col_idx, width in column_widths.items():
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
+    resumen_row = data_start_row + len(data) + 2
+
+    ws.merge_cells(start_row=resumen_row, start_column=1, end_row=resumen_row, end_column=4)
+    ws.merge_cells(start_row=resumen_row, start_column=5, end_row=resumen_row, end_column=8)
+
+    left_cell = ws.cell(row=resumen_row, column=1)
+    left_cell.value = f"{asistencias}\nASISTENCIAS"
+    left_cell.font = Font(bold=True, color='9C0006', size=12)
+    left_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left_cell.fill = PatternFill(start_color='E6B8BE', end_color='E6B8BE', fill_type='solid')
+
+    right_cell = ws.cell(row=resumen_row, column=5)
+    right_cell.value = f"{faltos}\nFALTOS"
+    right_cell.font = Font(bold=True, color='000000', size=12)
+    right_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    for col_idx in range(1, 9):
+        ws.cell(row=resumen_row, column=col_idx).border = border
+
+    ws.row_dimensions[resumen_row].height = 38
+
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.xlsx"'
     wb.save(response)
@@ -587,6 +623,7 @@ def exportar_reporte_asistencia_pdf(request):
     turno = request.GET.get('turno')
     data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno)
     header_ctx = _build_header_context(request, fecha, turno)
+    asistencias, faltos = _build_resumen_asistencia(data)
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.pdf"'
@@ -647,6 +684,36 @@ def exportar_reporte_asistencia_pdf(request):
             x += col_widths[i]
 
         y -= 0.2 * inch
+
+    if y < y_margin + 0.8 * inch:
+        p.showPage()
+        width, height = landscape(letter)
+        y = _draw_pdf_header(p, width, height, x_margin, y_margin, header_ctx)
+
+    box_h = 0.55 * inch
+    box_gap = 1.2 * inch
+    box_w = ((width - (2 * x_margin)) - box_gap) / 2
+
+    x1 = x_margin
+    x2 = x1 + box_w + box_gap
+    y_bottom = y - box_h
+
+    p.setStrokeColor(colors.black)
+
+    p.setFillColor(colors.HexColor('#E6B8BE'))
+    p.rect(x1, y_bottom, box_w, box_h, stroke=1, fill=1)
+
+    p.setFillColor(colors.white)
+    p.rect(x2, y_bottom, box_w, box_h, stroke=1, fill=1)
+
+    p.setFont('Helvetica-Bold', 11)
+    p.setFillColor(colors.HexColor('#9C0006'))
+    p.drawCentredString(x1 + (box_w / 2), y_bottom + 0.34 * inch, str(asistencias))
+    p.drawCentredString(x1 + (box_w / 2), y_bottom + 0.12 * inch, 'ASISTENCIAS')
+
+    p.setFillColor(colors.black)
+    p.drawCentredString(x2 + (box_w / 2), y_bottom + 0.34 * inch, str(faltos))
+    p.drawCentredString(x2 + (box_w / 2), y_bottom + 0.12 * inch, 'FALTOS')
 
     p.showPage()
     p.save()
