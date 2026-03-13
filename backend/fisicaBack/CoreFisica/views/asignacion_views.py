@@ -8,6 +8,29 @@ from django.db import transaction
 from ..serializers import AsignacionSerializer
 import openpyxl
 import datetime
+from pathlib import Path
+from openpyxl.drawing.image import Image as XLImage
+
+
+def _find_asignaciones_logo_path():
+    this_file = Path(__file__).resolve()
+    root_candidates = [
+        this_file.parents[4],
+        this_file.parents[3],
+        Path.cwd(),
+    ]
+    relative_candidates = [
+        Path('frontendf/public/logodescargable.jpg'),
+        Path('frontendf/public/favicon.png'),
+        Path('frontendf/src/assets/images/logo.png'),
+    ]
+
+    for root in root_candidates:
+        for rel in relative_candidates:
+            candidate = root / rel
+            if candidate.exists():
+                return candidate
+    return None
 
 
 @api_view(['GET'])
@@ -709,11 +732,65 @@ def exportar_asignaciones_excel(request):
     date_start_col = left_cols + 1
     num_days = len(dates)
 
+    # Encabezado superior (formato institucional)
+    thin = Side(border_style='thin', color='000000')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    ws.merge_cells('A1:A3')
+    ws.merge_cells('B1:E2')
+    ws.merge_cells('B3:E3')
+    ws.merge_cells('G1:H1')
+    ws.merge_cells('G2:H2')
+    ws.merge_cells('G3:H3')
+
+    ws['B1'] = 'REPORTE DE HORARIOS DE PERSONAL'
+    ws['B3'] = 'SEGURIDAD FÍSICA'
+    ws['F1'] = 'Código:'
+    ws['F2'] = 'Versión:'
+    ws['F3'] = 'Fecha:'
+    ws['G1'] = 'FOR-SF-001'
+    ws['G2'] = '02'
+    ws['G3'] = datetime.date.today().strftime('%d/%m/%Y')
+
+    ws['B1'].font = Font(bold=True, size=18)
+    ws['B3'].font = Font(bold=True, size=14)
+    ws['F1'].font = ws['F2'].font = ws['F3'].font = Font(bold=True, size=11)
+    ws['G1'].font = ws['G2'].font = ws['G3'].font = Font(bold=True, size=11)
+
+    for row in range(1, 4):
+        for col in range(1, 9):
+            c = ws.cell(row=row, column=col)
+            c.border = border
+            c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    ws['F1'].alignment = ws['F2'].alignment = ws['F3'].alignment = Alignment(horizontal='left', vertical='center')
+    ws['G1'].alignment = ws['G2'].alignment = ws['G3'].alignment = Alignment(horizontal='left', vertical='center')
+
+    ws.row_dimensions[1].height = 42
+    ws.row_dimensions[2].height = 34
+    ws.row_dimensions[3].height = 34
+
+    logo_path = _find_asignaciones_logo_path()
+    if logo_path:
+        try:
+            img = XLImage(str(logo_path))
+            img.width = 80
+            img.height = 80
+            img.anchor = 'A1'
+            ws.add_image(img)
+        except Exception:
+            pass
+
+    month_row = 5
+    dow_row = 6
+    header_row = 7
+    data_start_row = 8
+
     # Row 1: nombre del mes (merge sobre las columnas de días)
     month_name = first_day.strftime('%B').upper()
     if num_days > 0:
-        ws.merge_cells(start_row=1, start_column=date_start_col, end_row=1, end_column=date_start_col + num_days - 1)
-        cell = ws.cell(row=1, column=date_start_col)
+        ws.merge_cells(start_row=month_row, start_column=date_start_col, end_row=month_row, end_column=date_start_col + num_days - 1)
+        cell = ws.cell(row=month_row, column=date_start_col)
         cell.value = f"{month_name} {year}"
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -721,27 +798,23 @@ def exportar_asignaciones_excel(request):
     # Row 2: día de la semana (abreviado)
     dow_names = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
     for i, d in enumerate(dates):
-        c = ws.cell(row=2, column=date_start_col + i)
+        c = ws.cell(row=dow_row, column=date_start_col + i)
         c.value = dow_names[d.weekday()]
         c.alignment = Alignment(horizontal='center')
 
     # Row 3: número de día. También aquí colocamos los encabezados izquierdos
     for idx, h in enumerate(left_headers, start=1):
-        ch = ws.cell(row=3, column=idx)
+        ch = ws.cell(row=header_row, column=idx)
         ch.value = h
         ch.font = Font(bold=True)
         ch.alignment = Alignment(horizontal='left')
     for i, d in enumerate(dates):
-        c = ws.cell(row=3, column=date_start_col + i)
+        c = ws.cell(row=header_row, column=date_start_col + i)
         c.value = d.day
         c.alignment = Alignment(horizontal='center')
 
-    # Estilos comunes
-    thin = Side(border_style='thin', color='000000')
-    border = Border(left=thin, right=thin, top=thin, bottom=thin)
-
     # Freeze panes (congelar columnas de datos y filas superiores)
-    ws.freeze_panes = ws.cell(row=4, column=date_start_col)
+    ws.freeze_panes = ws.cell(row=data_start_row, column=date_start_col)
 
     # Rellenar filas: una fila por Asignacion activa para el mes solicitado
     # Aplicar la misma lógica que en obtener_asignaciones: incluir recurrentes que aplican al mes
@@ -755,7 +828,7 @@ def exportar_asignaciones_excel(request):
         Q(mes=month, anio=year) |
         (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
     ).select_related('horario', 'cliente', 'puesto', 'persona', 'instalacion').prefetch_related('puesto__horarios')
-    start_row = 4
+    start_row = data_start_row
     # Precachear AsignacionSemanal por puesto y week_start para eficiencia
     semanal_cache = {}
 
