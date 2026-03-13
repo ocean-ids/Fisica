@@ -6,10 +6,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
-import { ReporteAsistenciaService } from '../../services/reporte-asistencia.service';
-import { ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../../models';
-import { PersonaService } from '../../services/persona.service';
-import { Persona } from '../../models';
+import { ReporteAsistenciaService } from '../../../services/reporte-asistencia.service';
+import { ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../../../models';
+import { PersonaService } from '../../../services/persona.service';
+import { Persona } from '../../../models';
 
 
 @Component({
