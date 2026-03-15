@@ -195,7 +195,25 @@ export class AsignacionesComponent implements OnInit {
       const dayMap: any = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'};
       const diasNums = Array.from(new Set(puesto.horarios.map((h:any)=>h.dia))).sort((a:any,b:any)=>a-b);
       if (!diasNums.length) return '-';
-      return diasNums.map((d:any)=> dayMap[d] || '').filter((x:any)=>x).join(', ');
+
+      const weekdayRange = [1, 2, 3, 4, 5];
+      const hasWeekdaysStrict = weekdayRange.every(d => diasNums.includes(d));
+      const hasWeekdaySpan = diasNums.includes(1) && diasNums.includes(5);
+      const useWeekdays = hasWeekdaysStrict || hasWeekdaySpan;
+      const remaining = useWeekdays
+        ? diasNums.filter((d:any) => !weekdayRange.includes(d))
+        : diasNums;
+
+      const parts: string[] = [];
+      if (useWeekdays) parts.push('Lunes - Viernes');
+
+      const extras = remaining
+        .map((d:any) => dayMap[d] || '')
+        .filter((x:any) => x);
+
+      if (extras.length) parts.push(extras.join(' / '));
+
+      return parts.length ? parts.join(' / ') : '-';
     } catch (e) {
       return '-';
     }
