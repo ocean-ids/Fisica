@@ -3,10 +3,6 @@
 
   <span class="spacer"></span>
 
-  @if (username) {
-    <span class="username">{{ username }}</span>
-  }
-
   <button
     type="button"
     class="theme-toggle-btn"
@@ -15,9 +11,15 @@
     [attr.aria-label]="isLightMode ? 'Activar modo nocturno' : 'Activar modo claro'">
     <i [class]="isLightMode ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill'"></i>
   </button>
+  
+  @if (username) {
+    <span class="username">{{ username }}</span>
+  }
+
 
   <!-- Botón con menú -->
   <button
+    class="user-menu-btn"
     mat-icon-button
     [matMenuTriggerFor]="userMenu"
     aria-label="Menú de usuario">

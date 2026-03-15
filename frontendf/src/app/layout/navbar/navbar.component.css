@@ -26,3 +26,12 @@ mat-toolbar {
 .theme-toggle-btn i {
   font-size: 1.1rem;
 }
+
+.user-menu-btn {
+  color: var(--text-primary);
+}
+
+:host-context(body.theme-dark) .user-menu-btn,
+:host-context(body.theme-dark) .user-menu-btn mat-icon {
+  color: #ffffff !important;
+}
