@@ -98,6 +98,25 @@ body.theme-dark .form-control::placeholder {
   color: #9ca3af;
 }
 
+/* Input date en oscuro */
+body.theme-dark input[type="date"] {
+  color-scheme: dark;
+}
+
+body.theme-dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2);
+  opacity: 1;
+}
+
+body.theme-dark .form-control[type="date"] {
+  color-scheme: dark;
+}
+
+body.theme-dark .form-control[type="date"]::-webkit-calendar-picker-indicator {
+  filter: brightness(0) invert(1) !important;
+  opacity: 1;
+}
+
 /* Botones outline usados en listados */
 body.theme-dark .btn-outline-secondary {
   color: #cbd5e1;
@@ -107,6 +126,32 @@ body.theme-dark .btn-outline-secondary {
 body.theme-dark .btn-outline-secondary:hover {
   background-color: #334155;
   color: #f8fafc;
+}
+
+/* Toggle de turnos (Angular Material) */
+body.theme-dark .mat-button-toggle-group {
+  border-color: #64748b !important;
+}
+
+body.theme-dark .mat-button-toggle {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+}
+
+body.theme-dark .mat-button-toggle .mat-button-toggle-label-content,
+body.theme-dark .mat-button-toggle .mat-button-toggle-button {
+  color: #ffffff !important;
+}
+
+body.theme-dark .mat-button-toggle-checked {
+  background-color: #334155 !important;
+}
+
+body.theme-dark .mat-button-toggle-disabled,
+body.theme-dark .mat-button-toggle-disabled .mat-button-toggle-label-content,
+body.theme-dark .mat-button-toggle-disabled .mat-button-toggle-button {
+  color: #cbd5e1 !important;
+  opacity: 1 !important;
 }
 
 /* Angular Material (MDC) */
@@ -127,6 +172,24 @@ body.theme-dark .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected .m
 body.theme-dark .mat-mdc-select-panel .mat-mdc-option:hover .mdc-list-item__primary-text,
 body.theme-dark .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--disabled .mdc-list-item__primary-text {
   color: #ffffff !important;
+}
+
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option {
+  background-color: #1f2937 !important;
+}
+
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option:hover,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option.mat-mdc-option-active {
+  background-color: #273449 !important;
+}
+
+body.theme-dark .mat-mdc-select-panel .mat-pseudo-checkbox,
+body.theme-dark .mat-mdc-select-panel .mat-pseudo-checkbox::after,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option .mat-pseudo-checkbox-checked,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option .mat-pseudo-checkbox-indeterminate {
+  color: #ffffff !important;
+  border-color: #ffffff !important;
 }
 
 /* Dialogos en modo oscuro */
