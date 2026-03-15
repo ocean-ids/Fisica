@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 @Component({
@@ -7,6 +7,13 @@ import { RouterOutlet } from '@angular/router';
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   title = 'frontendf';
+
+  ngOnInit(): void {
+    const storedTheme = localStorage.getItem('themeMode');
+    const themeMode = storedTheme === 'dark' ? 'dark' : 'light';
+    document.body.classList.remove('theme-light', 'theme-dark');
+    document.body.classList.add(`theme-${themeMode}`);
+  }
 }

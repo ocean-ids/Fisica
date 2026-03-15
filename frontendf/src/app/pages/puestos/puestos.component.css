@@ -1,0 +1,31 @@
+:host-context(body.theme-dark) .mat-mdc-form-field {
+	--mdc-filled-text-field-container-color: #1f2937;
+	--mdc-outlined-text-field-container-color: #1f2937;
+	--mdc-outlined-text-field-label-text-color: #ffffff;
+	--mdc-outlined-text-field-hover-label-text-color: #ffffff;
+	--mdc-outlined-text-field-focus-label-text-color: #ffffff;
+	--mdc-outlined-text-field-input-text-color: #ffffff;
+	--mdc-outlined-text-field-caret-color: #93c5fd;
+	--mdc-outlined-text-field-outline-color: #6b7280;
+	--mdc-outlined-text-field-hover-outline-color: #9ca3af;
+	--mdc-outlined-text-field-focus-outline-color: #93c5fd;
+}
+
+:host-context(body.theme-dark) .mat-mdc-select-arrow,
+:host-context(body.theme-dark) .mat-mdc-select-value-text,
+:host-context(body.theme-dark) .mat-mdc-form-field-icon-suffix,
+:host-context(body.theme-dark) .mat-mdc-form-field .mat-mdc-floating-label {
+	color: #ffffff !important;
+}
+
+:host-context(body.theme-dark) .mat-mdc-text-field-wrapper {
+	background-color: #1f2937;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-select-panel {
+	background-color: #1f2937 !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-option .mdc-list-item__primary-text {
+	color: #ffffff !important;
+}

@@ -14,7 +14,8 @@ import { MatMenuModule } from '@angular/material/menu';
   styleUrl: './navbar.component.css'
 })
 export class NavbarComponent implements OnInit {
-   @Input() username?: string;
+  @Input() username?: string;
+  themeMode: 'light' | 'dark' = 'light';
 
   constructor(
     private authService: AuthService,
@@ -27,6 +28,25 @@ export class NavbarComponent implements OnInit {
     if (user) {
       this.username = user.username;
     }
+
+    const storedTheme = localStorage.getItem('themeMode');
+    this.themeMode = storedTheme === 'dark' ? 'dark' : 'light';
+    this.applyThemeClass();
+  }
+
+  toggleTheme(): void {
+    this.themeMode = this.themeMode === 'light' ? 'dark' : 'light';
+    localStorage.setItem('themeMode', this.themeMode);
+    this.applyThemeClass();
+  }
+
+  get isLightMode(): boolean {
+    return this.themeMode === 'light';
+  }
+
+  private applyThemeClass(): void {
+    document.body.classList.remove('theme-light', 'theme-dark');
+    document.body.classList.add(`theme-${this.themeMode}`);
   }
 
   logout(): void{

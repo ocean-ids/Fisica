@@ -27,10 +27,11 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 1000;
-  background-color: white;
-  border: 1px solid #e0e0e0;
+  background-color: var(--panel-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   border-radius: 0 4px 4px 0;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  box-shadow: var(--elevation-1);
   transition: left 0.3s ease;
 }
 
@@ -42,5 +43,6 @@
   flex: 1;
   padding: 20px;
   overflow-y: auto;
-  background-color: #f5f5f5;
+  background-color: var(--app-bg);
+  color: var(--text-primary);
 }

@@ -1,4 +1,4 @@
-<mat-toolbar color="primary">
+<mat-toolbar>
   <span class="fw-bold">SEGURIDAD FÍSICA</span>
 
   <span class="spacer"></span>
@@ -6,6 +6,15 @@
   @if (username) {
     <span class="username">{{ username }}</span>
   }
+
+  <button
+    type="button"
+    class="theme-toggle-btn"
+    mat-icon-button
+    (click)="toggleTheme()"
+    [attr.aria-label]="isLightMode ? 'Activar modo nocturno' : 'Activar modo claro'">
+    <i [class]="isLightMode ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill'"></i>
+  </button>
 
   <!-- Botón con menú -->
   <button
