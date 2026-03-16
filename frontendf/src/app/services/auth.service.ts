@@ -2,17 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, tap } from 'rxjs';
-
-interface LoginResponse {
-  message: string;
-  access: string;
-  refresh: string;
-  user: {
-    id: number;
-    username: string;
-    email: string;
-  };
-}
+import type { LoginResponse } from '../models/login.models';
 
 @Injectable({
   providedIn: 'root'
@@ -23,6 +13,8 @@ export class AuthService {
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
   private tokenCheckId: any = null;
 
+
+  
   constructor(private http: HttpClient, private router: Router) {
     this.startTokenWatcher();
   }
@@ -36,6 +28,8 @@ export class AuthService {
         localStorage.setItem('access_token', response.access);
         localStorage.setItem('refresh_token', response.refresh);
         localStorage.setItem('user', JSON.stringify(response.user));
+        localStorage.setItem('groups', JSON.stringify(response.user.groups ?? []));
+        localStorage.setItem('permissions', JSON.stringify(response.user.permissions ?? []));
         this.isAuthenticatedSubject.next(true);
       })
     );
@@ -71,6 +65,8 @@ export class AuthService {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
+    localStorage.removeItem('groups');
+    localStorage.removeItem('permissions');
     this.isAuthenticatedSubject.next(false);
   }
 
@@ -142,6 +138,21 @@ export class AuthService {
   getUserFromStorage(): any {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
+  }
+
+  hasPermission(permission: string): boolean {
+    const user = this.getUserFromStorage();
+    if (!user) return false;
+
+    const groups: string[] = JSON.parse(localStorage.getItem('groups') ?? '[]');
+    if (groups.includes('ADMIN')) return true;
+
+    const permissions: string[] = JSON.parse(localStorage.getItem('permissions') ?? '[]');
+    return permissions.includes(permission);
+  }
+
+  getGroups(): string[] {
+    return JSON.parse(localStorage.getItem('groups') ?? '[]');
   }
 
   solicitarResetPassword(email: string): Observable<any> {
