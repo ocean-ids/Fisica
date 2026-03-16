@@ -151,9 +151,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Para producción con Gmail
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = 'smtp.office365.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'bjcabello55@gmail.com'
-EMAIL_HOST_PASSWORD = 'mxqp zzna zqpu vplm'  
-DEFAULT_FROM_EMAIL = 'bjcabello55@gmail.com'
+EMAIL_USE_SSL = False
+
+EMAIL_HOST_USER = 'bcabello@oceansecurity.net'
+
+
+EMAIL_HOST_PASSWORD = 'vcqpxrtypdnyprqp'
+DEFAULT_FROM_EMAIL =  'bcabello@oceansecurity.net'
