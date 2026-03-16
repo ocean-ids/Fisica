@@ -23,6 +23,7 @@ ENV/
 # Variables de entorno
 .env
 .env.local
+.env.*
 
 # IDEs
 .vscode/
