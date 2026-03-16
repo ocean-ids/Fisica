@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_puesto(request):
+    if not request.user.has_perm('CoreFisica.add_puesto'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     data = json.loads(request.body)
     instalacion_id = data.get('instalacion_id')
     zona_id = data.get('zona_id') or data.get('zona')
@@ -82,6 +85,8 @@ def crear_puesto(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos(request):
+    if not request.user.has_perm('CoreFisica.view_puesto'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     puestos_qs = Puesto.objects.all()
     resultado = []
     for p in puestos_qs:
@@ -103,6 +108,9 @@ def obtener_puestos(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_instalacion(request, instalacion_id):
+    if not request.user.has_perm('CoreFisica.view_puesto'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     puestos_qs = Puesto.objects.filter(instalacion_id=instalacion_id)
     resultado = []
     for p in puestos_qs:
@@ -124,6 +132,10 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_puestos_por_cliente(request, cliente_id):
+    if not request.user.has_perm('CoreFisica.view_puesto'):
+        return JsonResponse({'error': 'No autorizado'}, status=403
+        )
+
     puestos_qs = Puesto.objects.filter(instalacion__cliente_id=cliente_id).select_related('instalacion', 'zona')
     resultado = []
     for p in puestos_qs:
@@ -148,6 +160,9 @@ def obtener_puestos_por_cliente(request, cliente_id):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def actualizar_puesto(request, id):
+    if not request.user.has_perm('CoreFisica.change_puesto'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     try:
         data = json.loads(request.body)
         print('Payload recibido:', data)  
@@ -225,11 +240,14 @@ def actualizar_puesto(request, id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_puesto(request, id):
-        try:
-            puesto = Puesto.objects.get(id=id)
-            puesto.delete()
-            return JsonResponse({'message': 'Puesto Eliminado Correctamente'}, status=200)
-        except Puesto.DoesNotExist:
-            return JsonResponse({'error': 'Puesto no encontrado'}, status=404)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+    if not request.user.has_perm('CoreFisica.delete_puesto'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    
+    try:
+        puesto = Puesto.objects.get(id=id)
+        puesto.delete()
+        return JsonResponse({'message': 'Puesto Eliminado Correctamente'}, status=200)
+    except Puesto.DoesNotExist:
+        return JsonResponse({'error': 'Puesto no encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)

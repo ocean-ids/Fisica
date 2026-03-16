@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import HttpResponse
+from django.http import JsonResponse
 from rest_framework import status
 from ..models import Asignacion, AsignacionSemanal, Puesto
 from django.db.models import Q, Max
@@ -38,6 +39,9 @@ def _find_asignaciones_logo_path():
 
 @api_view(['GET'])
 def obtener_asignaciones(request, mes=None, anio=None):
+    if not request.user.has_perm('CoreFisica.view_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     instalacion_id = request.GET.get('instalacion_id')
     cliente_id = request.GET.get('cliente_id')
 
@@ -70,6 +74,9 @@ def obtener_asignaciones(request, mes=None, anio=None):
 
 @api_view(['POST'])
 def asignar_servicio(request):
+    if not request.user.has_perm('CoreFisica.add_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     print(f"📥 Datos recibidos: {request.data}")
     serializer = AsignacionSerializer(data=request.data)
     if serializer.is_valid():
@@ -540,6 +547,9 @@ def asignar_servicio(request):
 
 @api_view(['PUT'])
 def editar_servicio(request, id):
+    if not request.user.has_perm('CoreFisica.change_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     try:
         asignacion = Asignacion.objects.get(id=id)
     except Asignacion.DoesNotExist:
@@ -553,6 +563,9 @@ def editar_servicio(request, id):
 
 @api_view(['POST'])
 def guardar_orden_asignacion(request):
+    if not request.user.has_perm('CoreFisica.change_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+        
     ordenes = request.data.get('ordenes', [])
 
     for item in ordenes:
@@ -566,6 +579,10 @@ def guardar_orden_asignacion(request):
 
 @api_view(['DELETE'])
 def eliminar_asignacion(request, id):
+    
+    if not request.user.has_perm('CoreFisica.delete_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     try:
         asignar = Asignacion.objects.get(id=id)
         # Guardar datos antes de eliminar para poder limpiar calendario y patron si corresponde
@@ -703,6 +720,10 @@ def eliminar_asignacion(request, id):
 def exportar_asignaciones_excel(request):
     import calendar
     from openpyxl.styles import Font, Alignment, Border, Side
+
+    if not request.user.has_perm('CoreFisica.view_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Asignaciones y Calendario"

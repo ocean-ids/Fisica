@@ -1,6 +1,8 @@
 from ..models import AsignacionSemanal
 from django.db.models import Q
-from rest_framework.decorators import api_view
+from django.http import JsonResponse
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from ..serializers import AsignacionSemanalSerializer
@@ -8,8 +10,13 @@ from django.db import transaction
 from datetime import datetime, date, timedelta
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def listar_asignacion_semanal(request):
     """Listar asignaciones semanales. Filtrar por week_start (YYYY-MM-DD) y opcionalmente por cliente."""
+    if not request.user.has_perm('CoreFisica.view_asignacionsemanal'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+
     week_start = request.GET.get('week_start')
     cliente_id = request.GET.get('cliente')
     turno = request.GET.get('turno')
@@ -266,11 +273,14 @@ def listar_asignacion_semanal(request):
     return Response(serializer.data)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def semanas_del_mes(request):
     """
     obtener parametros: mes 1-12, año(yyyy)
     Retorna: { weeks: ['YYYY-MM-DD', ...] }
     """
+    if not request.user.has_perm('CoreFisica.view_asignacionsemanal'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
 
     mes = request.GET.get('mes')
     anio = request.GET.get('anio')
@@ -298,8 +308,11 @@ def semanas_del_mes(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def crear_o_actualizar_asignacion_semanal(request):
     """Crea o actualiza una fila semanal (unicidad por puesto+week_start)."""
+    if not request.user.has_perm('CoreFisica.change_asignacionsemanal'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     data = request.data
     puesto_id = data.get('puesto')
     week_start = data.get('week_start')
@@ -340,8 +353,12 @@ def crear_o_actualizar_asignacion_semanal(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def copiar_semana(request):
     """Copiar semana: payload {from_week, to_week, cliente (opcional)}"""
+    if not request.user.has_perm('CoreFisica.change_asignacionsemanal'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     payload = request.data
     from_week = payload.get('from_week')
     to_week = payload.get('to_week')

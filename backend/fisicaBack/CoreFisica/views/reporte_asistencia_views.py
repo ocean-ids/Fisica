@@ -457,6 +457,9 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_reporte_asistencia(request):
+    if not request.user.has_perm('CoreFisica.view_reporteasistencia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
     turno = request.GET.get('turno')
@@ -466,6 +469,9 @@ def obtener_reporte_asistencia(request):
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def insertar_reporte_asistencia(request, asignacion_id):
+    if not request.user.has_perm('CoreFisica.change_reporteasistencia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     override, _ = ReporteAsistencia.objects.get_or_create(asignacion_id=asignacion_id)
 
     asignacion = Asignacion.objects.select_related(
@@ -520,6 +526,9 @@ def insertar_reporte_asistencia(request, asignacion_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def exportar_reporte_asistencia_excel(request):
+    if not request.user.has_perm('CoreFisica.view_reporteasistencia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
     turno = request.GET.get('turno')
@@ -618,6 +627,9 @@ def exportar_reporte_asistencia_excel(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def exportar_reporte_asistencia_pdf(request):
+    if not request.user.has_perm('CoreFisica.view_reporteasistencia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
     turno = request.GET.get('turno')

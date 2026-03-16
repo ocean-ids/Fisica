@@ -7,6 +7,9 @@ from ..models import Horario
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_horarios(request):
+    if not request.user.has_perm('CoreFisica.view_horario'):
+            return JsonResponse({'error': 'No autorizado'}, status=403)
+
     data = []
     for h in Horario.objects.all():
         data.append({
@@ -19,6 +22,8 @@ def obtener_horarios(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_horario(request):
+    if not request.user.has_perm('CoreFisica.add_horario'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         data = json.loads(request.body)
         print(f"📥 Datos recibidos para crear horario: {data}")
@@ -47,6 +52,8 @@ def crear_horario(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def actualizar_horario(request, id):
+    if not request.user.has_perm('CoreFisica.change_horario'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         horario = Horario.objects.get(id=id)
         data = json.loads(request.body)
@@ -72,6 +79,8 @@ def actualizar_horario(request, id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_horario(request, id):
+    if not request.user.has_perm('CoreFisica.delete_horario'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         horario = Horario.objects.get(id=id)
         horario.delete()

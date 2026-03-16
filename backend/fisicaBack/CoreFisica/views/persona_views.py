@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_persona(request):
+    if not request.user.has_perm('CoreFisica.add_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     data = request.data
 
     cedula = (data.get('cedula') or '').strip()
@@ -42,6 +45,9 @@ def crear_persona(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_personas(request):
+    if not request.user.has_perm('CoreFisica.view_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     try:
         q = (request.GET.get('q') or '').strip()
         tipo = (request.GET.get('tipo') or '').strip()
@@ -68,6 +74,9 @@ def obtener_personas(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def actualizar_persona(request, id):
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     data = request.data
 
     try:
@@ -100,6 +109,9 @@ def actualizar_persona(request, id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_persona(request, id):
+    if not request.user.has_perm('CoreFisica.delete_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     try:
         persona = Persona.objects.get(id=id)
         persona.delete()
@@ -114,6 +126,8 @@ def eliminar_persona(request, id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def disable_persona(request, id):
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         persona = Persona.objects.get(id=id)
     except Persona.DoesNotExist:
@@ -136,6 +150,9 @@ def disable_persona(request, id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def enable_persona(request, id):
+    if not  request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    
     try:
         persona = Persona.objects.get(id=id)
     except Persona.DoesNotExist:
@@ -161,6 +178,9 @@ def importar_personas(request):
     Importa personas desde CSV o XLSX.
     Requiere columnas: CEDULA, APELLIDOS, NOMBRES. Opcionales: TIPO, IS_ACTIVE.
     """
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     upload = request.FILES.get('file')
     if not upload:
         return JsonResponse({'error': 'Falta el archivo (campo file)'}, status=400)
@@ -369,6 +389,9 @@ class SacafrancoListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        if not request.user.has_perm('CoreFisica.view_persona'):
+            return JsonResponse({'error': 'No autorizado'}, status=403)
+
         week_start = request.query_params.get('week_start')
         day = request.query_params.get('day')
         puesto_id = request.query_params.get('puesto_id')
@@ -429,6 +452,9 @@ class SacafrancoListView(APIView):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def asignar_sacafranco(request):
+    if not request.user.has_perm('CoreFisica.change_asignacionsemanal'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     data = request.data
     persona_id = data.get('persona_id')
     puesto_id = data.get('puesto_id')
@@ -619,6 +645,9 @@ def asignar_sacafranco(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def desasignar_sacafranco(request):
+    if not request.user.has_perm('CoreFisica.change_asignacionsemanal'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     data = request.data
     persona_id = data.get('persona_id')
     puesto_id = data.get('puesto_id')
