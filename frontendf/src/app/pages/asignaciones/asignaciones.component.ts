@@ -248,6 +248,7 @@ export class AsignacionesComponent implements OnInit {
   anio: number = new Date().getFullYear();
   dia: string | null = null; 
   monthValue: string = '';
+  filtroTexto: string = '';
 
   clientes: Cliente[] = [];
   personas: Persona[] = [];
@@ -293,9 +294,14 @@ export class AsignacionesComponent implements OnInit {
     this.anio = Number(parts[0]);
     this.mes = Number(parts[1]);
     this.dia = null;
+    this.filtroTexto = '';
     this.cargarAsignaciones();
     // sincronizar lista de semanas para el mes elegido
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
+  }
+
+  onFiltroChange(): void {
+    this.cargarAsignaciones();
   }
 
   private formatDateLocal(d: Date): string {
@@ -338,7 +344,11 @@ export class AsignacionesComponent implements OnInit {
   }
 
   cargarAsignaciones(): void {
-    this.asignacionService.obtenerAsignaciones(this.mes, this.anio).subscribe({
+    const params: any = {};
+    if (this.filtroTexto && this.filtroTexto.trim()) {
+      params.q = this.filtroTexto.trim();
+    }
+    this.asignacionService.obtenerAsignaciones(this.mes, this.anio, params).subscribe({
       next: data => {
         this.asignaciones = data || [];
       },

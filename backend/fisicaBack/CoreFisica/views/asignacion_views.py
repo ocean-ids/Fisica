@@ -45,6 +45,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
 
     instalacion_id = request.GET.get('instalacion_id')
     cliente_id = request.GET.get('cliente_id')
+    q = (request.GET.get('q') or '').strip()
 
     if mes and anio:
         month_start = datetime.date(int(anio), int(mes), 1)
@@ -68,6 +69,15 @@ def obtener_asignaciones(request, mes=None, anio=None):
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
     if instalacion_id:
         asignaciones = asignaciones.filter(instalacion_id=instalacion_id)
+    if q:
+        asignaciones = asignaciones.filter(
+            Q(cliente__nombre_comercial__icontains=q) |
+            Q(cliente__razon_social__icontains=q) |
+            Q(persona__cedula__icontains=q) |
+            Q(persona__nombres__icontains=q) |
+            Q(persona__apellidos__icontains=q) |
+            Q(puesto__nombre__icontains=q)
+        )
     
     serializer = AsignacionSerializer(asignaciones, many=True)
     return Response(serializer.data)

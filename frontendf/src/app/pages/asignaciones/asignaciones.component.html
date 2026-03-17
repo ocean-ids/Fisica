@@ -11,9 +11,19 @@
     </div>
   </div>
   
-  <div class="d-flex justify-content-between mt-4">
+  <div class="d-flex justify-content-between mt-4 mb-2">
     <div class="d-flex justify-content-start" >
       <input type="month" class="form-control mx-auto" [(ngModel)]="monthValue" (change)="onMonthChange()" />
+    </div>
+    <div class="d-flex justify-content-center" style="flex: 1; padding: 0 12px;">
+      <input
+        type="text"
+        class="form-control"
+        style="max-width: 420px;"
+        placeholder="Filtrar por cliente, cédula, persona o puesto"
+        [(ngModel)]="filtroTexto"
+        (input)="onFiltroChange()"
+      />
     </div>
     <div class="d-flex justify-content-end">
       <button (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
