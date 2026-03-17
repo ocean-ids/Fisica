@@ -74,6 +74,7 @@ export class ReporteAsistenciaComponent implements OnInit {
 
   ngOnInit(): void {
     this.setHoy();
+    this.filtroTurno = 'Diurno';
     this.cargarReporte();
   }
 
