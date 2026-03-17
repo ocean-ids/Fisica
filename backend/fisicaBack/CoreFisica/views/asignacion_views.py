@@ -58,11 +58,11 @@ def obtener_asignaciones(request, mes=None, anio=None):
         ).exclude(persona__tipo='SACAFRANCO').filter(
             Q(mes=mes, anio=anio) |
             (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
-        ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario')
+        ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').order_by('id')
     else:
         asignaciones = Asignacion.objects.filter(
             estado='ACTIVO'
-        ).exclude(persona__tipo='SACAFRANCO').select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario')
+        ).exclude(persona__tipo='SACAFRANCO').select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').order_by('id')
 
     if cliente_id:
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
