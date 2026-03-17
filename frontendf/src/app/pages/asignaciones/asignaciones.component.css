@@ -44,3 +44,32 @@ table tbody td{
 
 /* Reduce table font size for more compact rows */
 .table { font-size: 13px; }
+
+.asig-table-col {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.asig-table-card {
+  width: max-content;
+}
+
+.asig-table-responsive {
+  width: max-content;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.table-fit {
+  width: max-content;
+}
+
+.table-fit th,
+.table-fit td {
+  white-space: nowrap;
+}
+
+.asig-row {
+  flex-wrap: nowrap;
+  align-items: stretch;
+}

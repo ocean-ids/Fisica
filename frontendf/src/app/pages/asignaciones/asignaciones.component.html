@@ -50,11 +50,11 @@
     </div>
   </div>
 
-  <div class="row">
-    <div class="col-lg-8">
-      <div class="card">
-        <div class="card-body table-responsive">
-          <table class="table table-hover table-bordered">
+  <div class="row asig-row">
+    <div class="col-lg-auto asig-table-col">
+      <div class="card asig-table-card">
+        <div class="card-body table-responsive asig-table-responsive">
+          <table class="table table-hover table-bordered table-fit">
             <thead class="table-light text-center" style="height: 100px;">
               <tr class="text-center align-middle m-0" style="height: 60px">
                 <th *ngIf="!columnaOculta('horario')" [attr.rowspan]="headerRowspan()">Horario</th>
@@ -125,7 +125,7 @@
       </div>
     </div>
     
-    <div class="col-lg-4">
+    <div class="col">
        
       <div class="card">
         <div class="card-body p-0">
