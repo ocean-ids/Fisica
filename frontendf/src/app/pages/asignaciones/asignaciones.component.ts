@@ -23,6 +23,7 @@ import {  MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { PatronFormComponent } from '../patrones/patron-form/patron-form.component';
 import { PatronSacafrancosModalComponent } from '../patrones/patron-sacafrancos-modal/patron-sacafrancos-modal.component';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 
 @Component({
   selector: 'app-asignaciones',
@@ -37,6 +38,7 @@ import { MatButtonModule } from '@angular/material/button';
     MatCardModule,
     MatMenuModule,
     MatButtonModule,
+    MatButtonToggleModule,
     AsignacionCalendarioComponent,
     
   ],
@@ -249,6 +251,7 @@ export class AsignacionesComponent implements OnInit {
   dia: string | null = null; 
   monthValue: string = '';
   filtroTexto: string = '';
+  columnasOcultas: string[] = [];
 
   clientes: Cliente[] = [];
   personas: Persona[] = [];
@@ -305,6 +308,22 @@ export class AsignacionesComponent implements OnInit {
     if (this.calendarios && this.calendarios.length) {
       this.calendarios.forEach(c => c.loadWeek());
     }
+  }
+
+  hideMultipleSelectionIndicator(): boolean {
+    return true;
+  }
+
+  columnaOculta(key: string): boolean {
+    return this.columnasOcultas.includes(key);
+  }
+
+  mostrarPuesto(): boolean {
+    return !this.columnaOculta('puesto');
+  }
+
+  headerRowspan(): number {
+    return this.mostrarPuesto() ? 2 : 1;
   }
 
   private formatDateLocal(d: Date): string {

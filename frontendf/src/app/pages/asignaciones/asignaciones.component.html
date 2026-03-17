@@ -1,6 +1,24 @@
 <div class="container-fluid px-3">
   <div class="d-flex justify-content-between align-items-center" >
     <h2>Gestión de Asignaciones</h2>
+
+    <section class="mb-3">
+      <mat-button-toggle-group
+        name="columnas"
+        aria-label="Columnas"
+        [hideMultipleSelectionIndicator]="hideMultipleSelectionIndicator()"
+        multiple
+        [(ngModel)]="columnasOcultas"
+        [ngModelOptions]="{standalone:true}"
+      >
+        <mat-button-toggle value="horario">Horario</mat-button-toggle>
+        <mat-button-toggle value="codigo">Codigo</mat-button-toggle>
+        <mat-button-toggle value="cliente">Cliente</mat-button-toggle>
+        <mat-button-toggle value="puesto">Puesto</mat-button-toggle>
+        <mat-button-toggle value="cedula">Cedula</mat-button-toggle>
+        <mat-button-toggle value="persona">Persona</mat-button-toggle>
+      </mat-button-toggle-group>
+    </section>
     <div class="d-flex gap-2">
       <button class="btn btn-outline-secondary me-2" (click)="abrirNuevoPatron()" disabled>
       <i class="bi bi-bricks"></i> Nuevo Patrón
@@ -19,7 +37,7 @@
       <input
         type="text"
         class="form-control"
-        style="max-width: 420px;"
+        style="max-width: 700px;"
         placeholder="Filtrar por cliente, cédula, persona o puesto"
         [(ngModel)]="filtroTexto"
         (input)="onFiltroChange()"
@@ -31,7 +49,7 @@
       </button>
     </div>
   </div>
-  
+
   <div class="row">
     <div class="col-lg-8">
       <div class="card">
@@ -39,15 +57,15 @@
           <table class="table table-hover table-bordered">
             <thead class="table-light text-center" style="height: 100px;">
               <tr class="text-center align-middle m-0" style="height: 60px">
-                <th rowspan="2">Horario</th>
-                <th rowspan="2" style="width: 50px;">Código</th>
-                <th style="width: 200px; height: 30px;"rowspan="2">Cliente</th>
-                <th style="width: 50px;" colspan="2">Puesto</th>
-                <th rowspan="2">Cédula</th>
-                <th rowspan="2">Persona</th>
-                <th rowspan="2">Acción</th>
+                <th *ngIf="!columnaOculta('horario')" [attr.rowspan]="headerRowspan()">Horario</th>
+                <th *ngIf="!columnaOculta('codigo')" [attr.rowspan]="headerRowspan()" style="width: 50px;">Codigo</th>
+                <th *ngIf="!columnaOculta('cliente')" [attr.rowspan]="headerRowspan()" style="width: 200px; height: 30px;">Cliente</th>
+                <th *ngIf="mostrarPuesto()" style="width: 50px;" [attr.colspan]="2">Puesto</th>
+                <th *ngIf="!columnaOculta('cedula')" [attr.rowspan]="headerRowspan()">Cedula</th>
+                <th *ngIf="!columnaOculta('persona')" [attr.rowspan]="headerRowspan()">Persona</th>
+                <th [attr.rowspan]="headerRowspan()">Accion</th>
               </tr>
-              <tr>
+              <tr *ngIf="mostrarPuesto()">
                 <th>Nombre</th>
                 <th>Resumen</th>
               </tr>
@@ -55,11 +73,11 @@
             <tbody>
               <ng-container *ngFor="let asig of asignaciones">
                 <tr class="text-center align-middle shared-row" *ngIf="asig.persona_detalle?.is_active !== false" style="height: 70px;">
-                <td>{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
-                <td>{{ asig.instalacion_detalle?.codigo }}</td>
-                <td style="max-width: 200px;">{{ asig.cliente_detalle?.nombre_comercial }}</td>
-                <td>{{ asig.puesto_detalle?.nombre }}</td>
-                <td>
+                <td *ngIf="!columnaOculta('horario')">{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
+                <td *ngIf="!columnaOculta('codigo')">{{ asig.instalacion_detalle?.codigo }}</td>
+                <td *ngIf="!columnaOculta('cliente')" style="max-width: 200px;">{{ asig.cliente_detalle?.nombre_comercial }}</td>
+                <td *ngIf="mostrarPuesto()">{{ asig.puesto_detalle?.nombre }}</td>
+                <td *ngIf="mostrarPuesto()">
                   <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
                     {{ getResumenPuestoCompacto(asig.puesto_detalle) }}
                   </span>
@@ -73,8 +91,8 @@
                     </div>
                   </mat-menu>
                 </td>
-                <td>{{ asig.persona_detalle?.cedula }}</td>
-                <td class="persona-cell" style="min-width: 200px;">
+                <td *ngIf="!columnaOculta('cedula')">{{ asig.persona_detalle?.cedula }}</td>
+                <td *ngIf="!columnaOculta('persona')" class="persona-cell" style="min-width: 200px;">
                     <div>
                       {{ asig.persona_detalle?.apellidos }}
                      </div>
