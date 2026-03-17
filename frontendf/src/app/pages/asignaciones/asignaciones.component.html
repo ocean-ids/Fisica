@@ -15,11 +15,6 @@
     <div class="card-body">
       <div class="row">
         <div class="col-md-3"></div>
-        <div class="col-md-6 d-flex justify-content-center align-items-end">
-          <div style="width: 320px;">
-            <input type="month" class="form-control mx-auto" [(ngModel)]="monthValue" (change)="onMonthChange()" />
-          </div>
-        </div>
         <div class="col-md-3 d-flex align-items-end justify-content-end">
           <button (click)="descargarReporteExcel()" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
             <img src="assets/images/excel-icon.png" alt="Excel" width="38" height="38" style="vertical-align: middle;" />
@@ -29,7 +24,12 @@
       </div>
     </div>
   </div>
-  <div class="row mt-4">
+  <div class="col-md-6 d-flex justify-content-start align-items-end">
+    <div style="width: 220px;">
+      <input type="month" class="form-control mx-auto" [(ngModel)]="monthValue" (change)="onMonthChange()" />
+    </div>
+  </div>
+  <div class="row">
     <div class="col-lg-8">
       <div class="card">
         <div class="card-body table-responsive">
@@ -124,11 +124,7 @@
     </div>
   </div>
 </div>
-
-
-  
-
-  <div class="modal fade show" *ngIf="mostrarModal" style="display:block">
+<div class="modal fade show" *ngIf="mostrarModal" style="display:block">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
@@ -136,77 +132,77 @@
         <button class="btn-close" (click)="cerrarModal()"></button>
       </div>
 
-      <div class="modal-body row">
-        <div class="col-md-6 mb-3">
-          <mat-form-field class="w-100">
-            <mat-label>Cliente</mat-label>
-            <mat-select [(ngModel)]="clienteSeleccionado" (selectionChange)="onClientChange()" [ngModelOptions]="{standalone:true}">
-              <mat-option [value]="null">Seleccione</mat-option>
-              <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
+    <div class="modal-body row">
+      <div class="col-md-6 mb-3">
+        <mat-form-field class="w-100">
+          <mat-label>Cliente</mat-label>
+          <mat-select [(ngModel)]="clienteSeleccionado" (selectionChange)="onClientChange()" [ngModelOptions]="{standalone:true}">
+            <mat-option [value]="null">Seleccione</mat-option>
+            <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
 
-        <div class="col-md-6 mb-3">
-          <mat-form-field class="w-100">
-            <mat-label>Instalación</mat-label>
-            <mat-select [(ngModel)]="instalacionSeleccionada" (selectionChange)="onInstalacionChange()" [ngModelOptions]="{standalone:true}">
-              <mat-option [value]="null">Seleccione</mat-option>
-              <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.nombre || '-' }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
+      <div class="col-md-6 mb-3">
+        <mat-form-field class="w-100">
+          <mat-label>Instalación</mat-label>
+          <mat-select [(ngModel)]="instalacionSeleccionada" (selectionChange)="onInstalacionChange()" [ngModelOptions]="{standalone:true}">
+            <mat-option [value]="null">Seleccione</mat-option>
+            <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.nombre || '-' }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
 
-        <div class="col-md-6 mb-3">
-          <mat-form-field class="w-100">
-            <mat-label>Puesto</mat-label>
-            <mat-select [(ngModel)]="asignacionActual.puesto" [ngModelOptions]="{standalone:true}">
-              <mat-option [value]="0">Seleccione</mat-option>
-              <mat-option *ngFor="let p of puestos" [value]="p.id">{{ p.nombre }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
+      <div class="col-md-6 mb-3">
+        <mat-form-field class="w-100">
+          <mat-label>Puesto</mat-label>
+          <mat-select [(ngModel)]="asignacionActual.puesto" [ngModelOptions]="{standalone:true}">
+            <mat-option [value]="0">Seleccione</mat-option>
+            <mat-option *ngFor="let p of puestos" [value]="p.id">{{ p.nombre }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
 
-        <div class="col-md-6 mb-3">
-              <mat-form-field class="w-100">
+      <div class="col-md-6 mb-3">
+          <mat-form-field class="w-100">
             <mat-label>Persona</mat-label>
-            <mat-select [(ngModel)]="asignacionActual.persona" [ngModelOptions]="{standalone:true}">
+              <mat-select [(ngModel)]="asignacionActual.persona" [ngModelOptions]="{standalone:true}">
               <mat-option [value]="0">Seleccione</mat-option>
-              <ng-container *ngFor="let per of personas">
-                <mat-option *ngIf="per.is_active !== false" [value]="per.id">{{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})</mat-option>
-              </ng-container>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <mat-form-field class="w-100">
-            <mat-label>Horario</mat-label>
-            <mat-select [(ngModel)]="asignacionActual.horario" [ngModelOptions]="{standalone:true}">
-              <mat-option [value]="0">Seleccione</mat-option>
-              <mat-option *ngFor="let h of horarios" [value]="h.id">
-                {{ h.hora_ingreso | slice:0:5 }} - {{ h.hora_salida | slice:0:5 }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <mat-form-field class="w-100">
-            <mat-label>Patrón</mat-label>
-            <mat-select [(ngModel)]="asignacionActual.patronAsignacion" [ngModelOptions]="{standalone:true}">
-              <mat-option [value]="0">-- Ninguno --</mat-option>
-              <mat-option *ngFor="let p of patrones" [value]="p.id">{{ p.codigo }} — {{ (p.secuencia || []).join('-') }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
+            <ng-container *ngFor="let per of personas">
+              <mat-option *ngIf="per.is_active !== false" [value]="per.id">{{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})</mat-option>
+            </ng-container>
+          </mat-select>
+        </mat-form-field>
       </div>
-      <div class="modal-footer">
-        <button mat-button mat-dialog-close (click)="cerrarModal()">Cancelar</button>
-        <button mat-raised-button color="primary" (click)="guardarAsignacion()">
-          {{ textoBotonAsignacion }}
-        </button>
+
+      <div class="col-md-6 mb-3">
+        <mat-form-field class="w-100">
+          <mat-label>Horario</mat-label>
+          <mat-select [(ngModel)]="asignacionActual.horario" [ngModelOptions]="{standalone:true}">
+            <mat-option [value]="0">Seleccione</mat-option>
+            <mat-option *ngFor="let h of horarios" [value]="h.id">
+              {{ h.hora_ingreso | slice:0:5 }} - {{ h.hora_salida | slice:0:5 }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
       </div>
+
+      <div class="col-md-6 mb-3">
+        <mat-form-field class="w-100">
+          <mat-label>Patrón</mat-label>
+          <mat-select [(ngModel)]="asignacionActual.patronAsignacion" [ngModelOptions]="{standalone:true}">
+            <mat-option [value]="0">-- Ninguno --</mat-option>
+            <mat-option *ngFor="let p of patrones" [value]="p.id">{{ p.codigo }} — {{ (p.secuencia || []).join('-') }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button mat-button mat-dialog-close (click)="cerrarModal()">Cancelar</button>
+      <button mat-raised-button color="primary" (click)="guardarAsignacion()">
+        {{ textoBotonAsignacion }}
+      </button>
     </div>
   </div>
 </div>
+
