@@ -474,7 +474,9 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
     if cliente_id:
         asig_qs = asig_qs.filter(cliente_id=cliente_id)
     if turno in ['Diurno', 'Nocturno']:
-        asig_qs = asig_qs.filter(puesto__horarios__turno=turno).distinct()
+        asig_qs = asig_qs.filter(
+            Q(puesto__horarios__turno=turno) | Q(puesto__horarios__turno='Ambos')
+        ).distinct()
 
     data = []
     personas_con_asignacion = set()
