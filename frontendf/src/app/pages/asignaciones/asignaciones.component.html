@@ -1,5 +1,5 @@
 <div class="container-fluid px-3">
-  <div class="d-flex justify-content-between align-items-center mb-4" >
+  <div class="d-flex justify-content-between align-items-center" >
     <h2>Gestión de Asignaciones</h2>
     <div class="d-flex gap-2">
       <button class="btn btn-outline-secondary me-2" (click)="abrirNuevoPatron()" disabled>
@@ -11,24 +11,25 @@
     </div>
   </div>
 
-  <div class="card mb-4">
+  <!--<div class="card mb-4">
     <div class="card-body">
       <div class="row">
         <div class="col-md-3"></div>
-        <div class="col-md-3 d-flex align-items-end justify-content-end">
-          <button (click)="descargarReporteExcel()" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
-            <img src="assets/images/excel-icon.png" alt="Excel" width="38" height="38" style="vertical-align: middle;" />
-            <span style="font-size: 13px; margin-top: 2px; text-align: center; color: #198754;">Descargar Excel</span>
-          </button>
-        </div>
+        
       </div>
     </div>
-  </div>
-  <div class="col-md-6 d-flex justify-content-start align-items-end">
-    <div style="width: 220px;">
+  </div>-->
+  <div class="d-flex justify-content-between mt-4">
+    <div class="d-flex justify-content-start" >
       <input type="month" class="form-control mx-auto" [(ngModel)]="monthValue" (change)="onMonthChange()" />
     </div>
+    <div class="d-flex justify-content-end">
+          <button (click)="descargarReporteExcel()" placeholder="Descargar Excel" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
+            <img src="assets/images/excel-icon.png" alt="Excel" width="38" height="38" style="vertical-align: middle;" />
+          </button>
+        </div>
   </div>
+  
   <div class="row">
     <div class="col-lg-8">
       <div class="card">
@@ -103,7 +104,9 @@
         </div>
       </div>
     </div>
+    
     <div class="col-lg-4">
+       
       <div class="card">
         <div class="card-body p-0">
           <div class="vertical-scroll-calendars">

@@ -58,12 +58,13 @@ input {
 .actions-col .btn { white-space: normal; max-width: 100%; }
 
 /* Encabezado con dos líneas centradas */
-.header-day { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+.header-day { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; height: 100%; }
 .header-day .short { font-weight:700; }
 .header-day .dayNum { font-size:.95rem; color:#222; }
 
 /* Controlar altura y espaciado sin forzar overflow */
-.header-row { min-height: 64px; }
+.table thead { height: 100px; }
+.header-row { height: 100px; }
 .table tbody tr.data-row td { min-height: 110px; }
 
 /* Reduce table font size for more compact rows */
