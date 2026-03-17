@@ -59,41 +59,51 @@
                 </tr>
             </thead>
             <tbody>
-                <tr *ngFor="let r of reporte" class="text-center align-middle" (dblclick)="onRowDoubleClick(r)">
-                    <td [style.backgroundColor]="getRowColor(r)">
-                        <ng-container *ngIf="r.asignacion_id; else noCodigo">{{ r.codigo || '-' }}</ng-container>
-                        <ng-template #noCodigo>-</ng-template>
-                    </td>
-                    <td [style.backgroundColor]="getRowColor(r)">{{ r.cliente || '-' }}</td>
-                    <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto || '-' }}</td>
-                    <td [style.backgroundColor]="getRowColor(r)">{{ r.horario || '-' }}</td>
-                    <td [style.backgroundColor]="getRowColor(r)">{{ r.nombre_apellidos || '-' }}</td>
-                    <td [style.backgroundColor]="getRowColor(r)">
-                        <ng-container *ngIf="r.asignacion_id; else noEstado">
-                            <span [class]="estadoClass(r.estado)">{{ r.estado || '-' }}</span>
-                        </ng-container>
-                        <ng-template #noEstado><span [class]="estadoClass(r.estado)">{{ r.estado }}</span></ng-template>
-                    </td>
-                    <td [style.backgroundColor]="getRowColor(r)">{{ r.reemplazo || '-' }}</td>
-                    <td [style.backgroundColor]="getRowColor(r)">
-                        <ng-container *ngIf="r.asignacion_id; else noDescripcion">{{ r.descripcion || '-' }}</ng-container>
-                        <ng-template #noDescripcion>-</ng-template>
-                    </td>
-                    <td class="text-start" style="font-size: 0.85rem;" [style.backgroundColor]="getRowColor(r)">
-                        <div><strong>{{ r.modificado_por || '-' }}</strong></div>
-                        <div class="text-muted">{{ r.modificado_en ? (r.modificado_en | date:'shortTime') : '-' }}</div>
-                    </td>
-                    <td (dblclick)="$event.stopPropagation()">
-                        <button
-                            mat-stroked-button
-                            type="button"
-                            color="primary"
-                            [disabled]="!r.asignacion_id"
-                            (click)="abrirModalEdicion(r)">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                    </td>
-                </tr>
+                <ng-container *ngFor="let zona of reporteAgrupado">
+                    <tr class="zona-row">
+                        <td class="text-center" colspan="10">{{ zona.zona }}</td>
+                    </tr>
+                    <ng-container *ngFor="let prov of zona.provincias">
+                        <tr class="provincia-row">
+                            <td colspan="10">{{ prov.provincia }}</td>
+                        </tr>
+                        <tr *ngFor="let r of prov.rows" class="text-center align-middle" (dblclick)="onRowDoubleClick(r)">
+                            <td [style.backgroundColor]="getRowColor(r)">
+                                <ng-container *ngIf="r.asignacion_id; else noCodigo">{{ r.codigo || '-' }}</ng-container>
+                                <ng-template #noCodigo>-</ng-template>
+                            </td>
+                            <td [style.backgroundColor]="getRowColor(r)">{{ r.cliente || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">{{ r.horario || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">{{ r.nombre_apellidos || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">
+                                <ng-container *ngIf="r.asignacion_id; else noEstado">
+                                    <span [class]="estadoClass(r.estado)">{{ r.estado || '-' }}</span>
+                                </ng-container>
+                                <ng-template #noEstado><span [class]="estadoClass(r.estado)">{{ r.estado }}</span></ng-template>
+                            </td>
+                            <td [style.backgroundColor]="getRowColor(r)">{{ r.reemplazo || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">
+                                <ng-container *ngIf="r.asignacion_id; else noDescripcion">{{ r.descripcion || '-' }}</ng-container>
+                                <ng-template #noDescripcion>-</ng-template>
+                            </td>
+                            <td class="text-start" style="font-size: 0.85rem;" [style.backgroundColor]="getRowColor(r)">
+                                <div><strong>{{ r.modificado_por || '-' }}</strong></div>
+                                <div class="text-muted">{{ r.modificado_en ? (r.modificado_en | date:'shortTime') : '-' }}</div>
+                            </td>
+                            <td (dblclick)="$event.stopPropagation()">
+                                <button
+                                    mat-stroked-button
+                                    type="button"
+                                    color="primary"
+                                    [disabled]="!r.asignacion_id"
+                                    (click)="abrirModalEdicion(r)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </ng-container>
+                </ng-container>
                 <tr *ngIf="reporte.length === 0">
                     <td colspan="10" class="text-center text-muted">Sin datos</td>
                 </tr>

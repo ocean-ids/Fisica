@@ -1,2 +1,11 @@
+.zona-row td {
+	font-weight: 700;
+	text-align: left;
+}
+
+.provincia-row td {
+	font-weight: 600;
+	text-align: left;
+}
 
 

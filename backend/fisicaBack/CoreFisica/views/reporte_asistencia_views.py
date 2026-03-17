@@ -284,18 +284,106 @@ def _normalize_hex_color(color_value):
     return c.upper()
 
 
+def _is_falto(item):
+    reemplazo_id = item.get('reemplazo_id')
+    reemplazo_txt = str(item.get('reemplazo') or '').strip()
+    return (reemplazo_id is not None) or (reemplazo_txt not in ['', '-'])
+
+
+def _zona_sort_key(zona_titulo):
+    z = str(zona_titulo or '').strip().lower()
+    if z == 'zona 1':
+        return (0, z)
+    if z == 'zona 2':
+        return (1, z)
+    if z == 'zona 3':
+        return (2, z)
+    return (99, z)
+
+
+def _normalize_zona_label(zona_titulo):
+    z = str(zona_titulo or '').strip().lower()
+    if z == 'zona 1':
+        return 'Zona 1'
+    if z == 'zona 2':
+        return 'Zona 2'
+    if z == 'zona 3':
+        return 'Zona 3'
+    return str(zona_titulo or '').strip()
+
+
 def _build_resumen_asistencia(data):
     evaluables = [item for item in data if item.get('asignacion_id')]
-
-    faltos = 0
-    for item in evaluables:
-        reemplazo_id = item.get('reemplazo_id')
-        reemplazo_txt = str(item.get('reemplazo') or '').strip()
-        if (reemplazo_id is not None) or (reemplazo_txt not in ['', '-']):
-            faltos += 1
-
+    faltos = sum(1 for item in evaluables if _is_falto(item))
     asistencias = max(len(evaluables) - faltos, 0)
     return asistencias, faltos
+
+
+def _build_resumen_asistencia_por_zona(data):
+    evaluables = [item for item in data if item.get('asignacion_id')]
+    zonas = {}
+    for item in evaluables:
+        zona = _normalize_zona_label((item.get('zona_titulo') or 'SIN ZONA').strip())
+        entry = zonas.setdefault(zona, {'total': 0, 'faltas': 0})
+        entry['total'] += 1
+        if _is_falto(item):
+            entry['faltas'] += 1
+
+    resumen = []
+    for zona in sorted(zonas.keys(), key=_zona_sort_key):
+        total = zonas[zona]['total']
+        faltas = zonas[zona]['faltas']
+        resumen.append({
+            'zona': zona,
+            'total': total,
+            'asistencias': max(total - faltas, 0),
+            'faltas': faltas,
+        })
+    return resumen
+
+
+def _group_reporte_por_zona_y_provincia(data):
+    zonas = {}
+    for item in data:
+        if item.get('asignacion_id'):
+            zona = _normalize_zona_label((item.get('zona_titulo') or 'SIN ZONA').strip())
+            provincia = (item.get('provincia') or 'SIN PROVINCIA').strip()
+        else:
+            zona = 'SIN ASIGNACION'
+            provincia = 'SIN ASIGNACION'
+        zonas.setdefault(zona, {}).setdefault(provincia, []).append(item)
+
+    grouped = []
+    for zona in sorted(zonas.keys(), key=_zona_sort_key):
+        provincias = []
+        for prov in sorted(zonas[zona].keys(), key=lambda v: str(v).lower()):
+            provincias.append({
+                'provincia': prov,
+                'rows': zonas[zona][prov],
+            })
+        grouped.append({'zona': zona, 'provincias': provincias})
+    return grouped
+
+
+def _write_excel_resumen(ws, row_idx, asistencias, faltos, border):
+    ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=4)
+    ws.merge_cells(start_row=row_idx, start_column=5, end_row=row_idx, end_column=8)
+
+    left_cell = ws.cell(row=row_idx, column=1)
+    left_cell.value = f"{asistencias}\nASISTENCIAS"
+    left_cell.font = Font(bold=True, color='9C0006', size=12)
+    left_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left_cell.fill = PatternFill(start_color='E6B8BE', end_color='E6B8BE', fill_type='solid')
+
+    right_cell = ws.cell(row=row_idx, column=5)
+    right_cell.value = f"{faltos}\nFALTOS"
+    right_cell.font = Font(bold=True, color='000000', size=12)
+    right_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    for col_idx in range(1, 9):
+        ws.cell(row=row_idx, column=col_idx).border = border
+    ws.row_dimensions[row_idx].height = 38
+    return row_idx
 
 
 def _resolver_reemplazo_desde_request(request):
@@ -363,8 +451,9 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
     }
 
     asig_qs = Asignacion.objects.select_related(
-        'cliente', 'instalacion', 'puesto', 'horario', 'persona'
-    ).filter(persona__is_active=True)
+        'cliente', 'instalacion', 'instalacion__canton', 'instalacion__canton__provincia',
+        'puesto', 'horario', 'persona'
+    ).prefetch_related('instalacion__zonas').filter(persona__is_active=True)
 
     if fecha_obj:
         # Reporte por rango hasta fin de anio actual cuando la fecha es hoy/futura.
@@ -395,7 +484,7 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
         override = overrides.get(asig.id)
 
         cliente_nombre = getattr(asig.cliente, 'nombre_comercial', '') if asig else ''
-        
+
         puesto_nombre = getattr(asig.puesto, 'nombre', '') if asig else ''
         if not puesto_nombre and asig:
             puesto_nombre = getattr(asig.puesto, 'tipo', '')
@@ -403,6 +492,14 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
         if asig and asig.horario:
             horario_str = f"{asig.horario.hora_ingreso.strftime('%H:%M')} - {asig.horario.hora_salida.strftime('%H:%M')}"
         nombre_apellidos = f"{p.nombres} {p.apellidos}".strip()
+        zona_titulo = ''
+        provincia_nombre = ''
+        if asig and asig.instalacion:
+            zona_obj = asig.instalacion.zonas.order_by('id').first()
+            if zona_obj:
+                zona_titulo = zona_obj.titulo
+        if asig and asig.instalacion and asig.instalacion.canton and asig.instalacion.canton.provincia:
+            provincia_nombre = asig.instalacion.canton.provincia.nombre
         reemplazo_nombre = ''
         reemplazo_id = None
         if override and override.reemplazo:
@@ -430,6 +527,8 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
             'modificado_por': modificado_por_nombre,
             'row_color': (override.row_color or '') if override else '',
             'modificado_en': modificado_en_iso,
+            'zona_titulo': zona_titulo,
+            'provincia': provincia_nombre,
         })
 
     
@@ -450,6 +549,8 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
             'modificado_por': '',
             'row_color': '',
             'modificado_en': None,
+            'zona_titulo': '',
+            'provincia': '',
         })
 
     return data
@@ -535,6 +636,7 @@ def exportar_reporte_asistencia_excel(request):
     data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno)
     header_ctx = _build_header_context(request, fecha, turno)
     asistencias, faltos = _build_resumen_asistencia(data)
+    grouped = _group_reporte_por_zona_y_provincia(data)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -559,30 +661,62 @@ def exportar_reporte_asistencia_excel(request):
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    for row_idx, item in enumerate(data, start=data_start_row):
-        row_hex = _normalize_hex_color(item.get('row_color'))
-        row_fill = PatternFill(start_color=row_hex, end_color=row_hex, fill_type='solid') if row_hex else None
-        row_vals = [
-            item.get('codigo', ''),
-            item.get('cliente', ''),
-            item.get('puesto', ''),
-            item.get('horario', ''),
-            item.get('nombre_apellidos', ''),
-            item.get('estado', ''),
-            item.get('reemplazo', ''),
-            item.get('descripcion', ''),
-        ]
-        for col_idx, value in enumerate(row_vals, start=1):
-            cell = ws.cell(row=row_idx, column=col_idx)
-            cell.value = value
-            cell.border = border
-            if row_fill:
-                cell.fill = row_fill
-            if col_idx == 8:
-                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-            else:
-                cell.alignment = Alignment(horizontal='center', vertical='center')
-        ws.row_dimensions[row_idx].height = 32
+    current_row = data_start_row
+    for zona_group in grouped:
+        # Fila de zona
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=8)
+        zona_cell = ws.cell(row=current_row, column=1)
+        zona_cell.value = _normalize_zona_label(zona_group['zona'])
+        zona_cell.font = Font(bold=True, size=11)
+        zona_cell.alignment = Alignment(horizontal='left', vertical='center')
+        for col_idx in range(1, 9):
+            ws.cell(row=current_row, column=col_idx).border = border
+        ws.row_dimensions[current_row].height = 24
+        current_row += 1
+
+        zona_items = []
+        for prov_group in zona_group['provincias']:
+            # Fila de provincia
+            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=8)
+            prov_cell = ws.cell(row=current_row, column=1)
+            prov_cell.value = str(prov_group['provincia']).upper()
+            prov_cell.font = Font(bold=True, size=10)
+            prov_cell.alignment = Alignment(horizontal='left', vertical='center')
+            for col_idx in range(1, 9):
+                ws.cell(row=current_row, column=col_idx).border = border
+            ws.row_dimensions[current_row].height = 22
+            current_row += 1
+
+            for item in prov_group['rows']:
+                zona_items.append(item)
+                row_hex = _normalize_hex_color(item.get('row_color'))
+                row_fill = PatternFill(start_color=row_hex, end_color=row_hex, fill_type='solid') if row_hex else None
+                row_vals = [
+                    item.get('codigo', ''),
+                    item.get('cliente', ''),
+                    item.get('puesto', ''),
+                    item.get('horario', ''),
+                    item.get('nombre_apellidos', ''),
+                    item.get('estado', ''),
+                    item.get('reemplazo', ''),
+                    item.get('descripcion', ''),
+                ]
+                for col_idx, value in enumerate(row_vals, start=1):
+                    cell = ws.cell(row=current_row, column=col_idx)
+                    cell.value = value
+                    cell.border = border
+                    if row_fill:
+                        cell.fill = row_fill
+                    if col_idx == 8:
+                        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                    else:
+                        cell.alignment = Alignment(horizontal='center', vertical='center')
+                ws.row_dimensions[current_row].height = 32
+                current_row += 1
+
+        zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
+        _write_excel_resumen(ws, current_row, zona_asistencias, zona_faltos, border)
+        current_row += 2
 
     
     column_widths = {
@@ -598,26 +732,7 @@ def exportar_reporte_asistencia_excel(request):
     for col_idx, width in column_widths.items():
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
-    resumen_row = data_start_row + len(data) + 2
-
-    ws.merge_cells(start_row=resumen_row, start_column=1, end_row=resumen_row, end_column=4)
-    ws.merge_cells(start_row=resumen_row, start_column=5, end_row=resumen_row, end_column=8)
-
-    left_cell = ws.cell(row=resumen_row, column=1)
-    left_cell.value = f"{asistencias}\nASISTENCIAS"
-    left_cell.font = Font(bold=True, color='9C0006', size=12)
-    left_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    left_cell.fill = PatternFill(start_color='E6B8BE', end_color='E6B8BE', fill_type='solid')
-
-    right_cell = ws.cell(row=resumen_row, column=5)
-    right_cell.value = f"{faltos}\nFALTOS"
-    right_cell.font = Font(bold=True, color='000000', size=12)
-    right_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-
-    for col_idx in range(1, 9):
-        ws.cell(row=resumen_row, column=col_idx).border = border
-
-    ws.row_dimensions[resumen_row].height = 38
+    _write_excel_resumen(ws, current_row, asistencias, faltos, border)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.xlsx"'
@@ -636,6 +751,7 @@ def exportar_reporte_asistencia_pdf(request):
     data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno)
     header_ctx = _build_header_context(request, fecha, turno)
     asistencias, faltos = _build_resumen_asistencia(data)
+    grouped = _group_reporte_por_zona_y_provincia(data)
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.pdf"'
@@ -654,78 +770,101 @@ def exportar_reporte_asistencia_pdf(request):
     col_widths = [0.8, 1.25, 1.2, 0.65, 1.95, 0.9, 1.9, 1.05]
     col_widths = [w * inch for w in col_widths]
 
+    def ensure_space(y_cursor, needed_height):
+        if y_cursor < y_margin + needed_height:
+            p.showPage()
+            page_width, page_height = landscape(letter)
+            new_y = _draw_pdf_header(p, page_width, page_height, x_margin, y_margin, header_ctx)
+            new_y = _draw_pdf_table_headers(p, x_margin, new_y, headers, col_widths)
+            p.setFont('Helvetica', 6)
+            return new_y
+        return y_cursor
+
+    def draw_group_row(y_cursor, text, font_size=7):
+        y_cursor = ensure_space(y_cursor, 0.3 * inch)
+        p.setFont('Helvetica-Bold', font_size)
+        p.setFillColor(colors.black)
+        p.drawString(x_margin + 6, y_cursor, text)
+        p.setFont('Helvetica', 6)
+        return y_cursor - 0.2 * inch
+
+    def draw_resumen(y_cursor, asistencias_val, faltos_val):
+        y_cursor = ensure_space(y_cursor, 0.9 * inch)
+        box_h = 0.55 * inch
+        box_gap = 1.2 * inch
+        box_w = ((width - (2 * x_margin)) - box_gap) / 2
+
+        x1 = x_margin
+        x2 = x1 + box_w + box_gap
+        y_bottom = y_cursor - box_h
+
+        p.setStrokeColor(colors.black)
+
+        p.setFillColor(colors.HexColor('#E6B8BE'))
+        p.rect(x1, y_bottom, box_w, box_h, stroke=1, fill=1)
+
+        p.setFillColor(colors.white)
+        p.rect(x2, y_bottom, box_w, box_h, stroke=1, fill=1)
+
+        p.setFont('Helvetica-Bold', 11)
+        p.setFillColor(colors.HexColor('#9C0006'))
+        p.drawCentredString(x1 + (box_w / 2), y_bottom + 0.34 * inch, str(asistencias_val))
+        p.drawCentredString(x1 + (box_w / 2), y_bottom + 0.12 * inch, 'ASISTENCIAS')
+
+        p.setFillColor(colors.black)
+        p.drawCentredString(x2 + (box_w / 2), y_bottom + 0.34 * inch, str(faltos_val))
+        p.drawCentredString(x2 + (box_w / 2), y_bottom + 0.12 * inch, 'FALTOS')
+
+        return y_bottom - 0.3 * inch
+
     y = _draw_pdf_header(p, width, height, x_margin, y_margin, header_ctx)
     y = _draw_pdf_table_headers(p, x_margin, y, headers, col_widths)
     p.setFont('Helvetica', 6)
 
-    for item in data:
-        if y < y_margin + 0.5 * inch:
-            p.showPage()
-            width, height = landscape(letter)
-            y = _draw_pdf_header(p, width, height, x_margin, y_margin, header_ctx)
-            y = _draw_pdf_table_headers(p, x_margin, y, headers, col_widths)
-            p.setFont('Helvetica', 6)
+    for zona_group in grouped:
+        y = draw_group_row(y, _normalize_zona_label(zona_group['zona']), colors.HexColor('#FFF2CC'), 8)
+        zona_items = []
+        for prov_group in zona_group['provincias']:
+            y = draw_group_row(y, str(prov_group['provincia']).upper(), colors.HexColor('#E2EFDA'), 7)
+            for item in prov_group['rows']:
+                zona_items.append(item)
+                y = ensure_space(y, 0.3 * inch)
 
-        row_hex = _normalize_hex_color(item.get('row_color'))
-        if row_hex:
-            x_bg = x_margin
-            p.saveState()
-            p.setFillColor(colors.HexColor(f"#{row_hex}"))
-            for w in col_widths:
-                p.rect(x_bg, y - 0.06 * inch, w, 0.18 * inch, stroke=0, fill=1)
-                x_bg += w
-            p.restoreState()
+                row_hex = _normalize_hex_color(item.get('row_color'))
+                if row_hex:
+                    x_bg = x_margin
+                    p.saveState()
+                    p.setFillColor(colors.HexColor(f"#{row_hex}"))
+                    for w in col_widths:
+                        p.rect(x_bg, y - 0.06 * inch, w, 0.18 * inch, stroke=0, fill=1)
+                        x_bg += w
+                    p.restoreState()
 
-        row_vals = [
-            item.get('codigo', ''),
-            item.get('cliente', ''),
-            item.get('puesto', ''),
-            item.get('horario', ''),
-            item.get('nombre_apellidos', ''),
-            item.get('estado', ''),
-            item.get('reemplazo', ''),
-            (item.get('descripcion', '') or '')[:120],
-        ]
+                row_vals = [
+                    item.get('codigo', ''),
+                    item.get('cliente', ''),
+                    item.get('puesto', ''),
+                    item.get('horario', ''),
+                    item.get('nombre_apellidos', ''),
+                    item.get('estado', ''),
+                    item.get('reemplazo', ''),
+                    (item.get('descripcion', '') or '')[:120],
+                ]
 
-        x = x_margin
-        for i, value in enumerate(row_vals):
-            text = str(value) if value is not None else ''
-            text = _fit_text_to_width(text, col_widths[i] - 4, 'Helvetica', 6)
-            txt_w = pdfmetrics.stringWidth(text, 'Helvetica', 6)
-            p.drawString(x + max((col_widths[i] - txt_w) / 2, 0), y, text)
-            x += col_widths[i]
+                x = x_margin
+                for i, value in enumerate(row_vals):
+                    text = str(value) if value is not None else ''
+                    text = _fit_text_to_width(text, col_widths[i] - 4, 'Helvetica', 6)
+                    txt_w = pdfmetrics.stringWidth(text, 'Helvetica', 6)
+                    p.drawString(x + max((col_widths[i] - txt_w) / 2, 0), y, text)
+                    x += col_widths[i]
 
-        y -= 0.2 * inch
+                y -= 0.2 * inch
 
-    if y < y_margin + 0.8 * inch:
-        p.showPage()
-        width, height = landscape(letter)
-        y = _draw_pdf_header(p, width, height, x_margin, y_margin, header_ctx)
+        zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
+        y = draw_resumen(y, zona_asistencias, zona_faltos)
 
-    box_h = 0.55 * inch
-    box_gap = 1.2 * inch
-    box_w = ((width - (2 * x_margin)) - box_gap) / 2
-
-    x1 = x_margin
-    x2 = x1 + box_w + box_gap
-    y_bottom = y - box_h
-
-    p.setStrokeColor(colors.black)
-
-    p.setFillColor(colors.HexColor('#E6B8BE'))
-    p.rect(x1, y_bottom, box_w, box_h, stroke=1, fill=1)
-
-    p.setFillColor(colors.white)
-    p.rect(x2, y_bottom, box_w, box_h, stroke=1, fill=1)
-
-    p.setFont('Helvetica-Bold', 11)
-    p.setFillColor(colors.HexColor('#9C0006'))
-    p.drawCentredString(x1 + (box_w / 2), y_bottom + 0.34 * inch, str(asistencias))
-    p.drawCentredString(x1 + (box_w / 2), y_bottom + 0.12 * inch, 'ASISTENCIAS')
-
-    p.setFillColor(colors.black)
-    p.drawCentredString(x2 + (box_w / 2), y_bottom + 0.34 * inch, str(faltos))
-    p.drawCentredString(x2 + (box_w / 2), y_bottom + 0.12 * inch, 'FALTOS')
+    y = draw_resumen(y, asistencias, faltos)
 
     p.showPage()
     p.save()

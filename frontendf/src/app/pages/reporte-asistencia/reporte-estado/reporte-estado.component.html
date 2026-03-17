@@ -3,4 +3,9 @@
       <div>Total: {{ data.total }}</div>
       <div>Asistencias: {{ data.asistencias }}</div>
       <div>Faltas: {{ data.faltas }}</div>
+      <div class="mt-3" *ngIf="data.por_zona?.length">
+        <div *ngFor="let zona of data.por_zona">
+          <strong>{{ zona.zona }}:</strong> Asistencias {{ zona.asistencias }}, Faltas {{ zona.faltas }}
+        </div>
+      </div>
     </div>

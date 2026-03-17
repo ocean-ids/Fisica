@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { ReporteAsistenciaService } from '../../services/reporte-asistencia.service';
 import { ReporteAsistenciaEditDialogComponent } from './dialogs/reporte-asistencia-edit-dialog.component';
-import { ReporteAsistenciaRow, ResumenAsistencia } from '../../models';
+import { ReporteAsistenciaRow, ResumenAsistencia, ResumenAsistenciaZona } from '../../models';
 import { ReporteAsistenciaColorDialogComponent } from './dialogs/reporte-asistencia-color-dialog.component';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -12,6 +12,16 @@ import { PersonaService } from '../../services/persona.service';
 import { PersonaFormComponent } from '../personas/persona-form/persona-form.component';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheet, MatBottomSheetModule, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { ReporteEstadoComponent } from './reporte-estado/reporte-estado.component';
+
+interface ReporteAsistenciaGrupoProvincia {
+  provincia: string;
+  rows: ReporteAsistenciaRow[];
+}
+
+interface ReporteAsistenciaGrupoZona {
+  zona: string;
+  provincias: ReporteAsistenciaGrupoProvincia[];
+}
 
 @Component({
   selector: 'app-reporte-asistencia',
@@ -22,6 +32,7 @@ import { ReporteEstadoComponent } from './reporte-estado/reporte-estado.componen
 })
 export class ReporteAsistenciaComponent implements OnInit {
   reporte: ReporteAsistenciaRow[] = [];
+  reporteAgrupado: ReporteAsistenciaGrupoZona[] = [];
   resumen: ResumenAsistencia = { total: 0, asistencias: 0, faltas: 0 };
   loading = false;
   filtroFecha = '';
@@ -64,6 +75,41 @@ export class ReporteAsistenciaComponent implements OnInit {
   ngOnInit(): void {
     this.setHoy();
     this.cargarReporte();
+  }
+
+  private getZonaOrden(zona: string): number {
+    const z = (zona || '').trim().toLowerCase();
+    if (z === 'zona 1') return 0;
+    if (z === 'zona 2') return 1;
+    if (z === 'zona 3') return 2;
+    return 99;
+  }
+
+  private buildReporteAgrupado(): ReporteAsistenciaGrupoZona[] {
+    const zonas: Record<string, Record<string, ReporteAsistenciaRow[]>> = {};
+    for (const row of this.reporte) {
+      let zona = (row.zona_titulo || '').trim() || 'SIN ZONA';
+      let provincia = (row.provincia || '').trim() || 'SIN PROVINCIA';
+      if (!row.asignacion_id) {
+        zona = 'SIN ASIGNACION';
+        provincia = 'SIN ASIGNACION';
+      }
+      if (!zonas[zona]) zonas[zona] = {};
+      if (!zonas[zona][provincia]) zonas[zona][provincia] = [];
+      zonas[zona][provincia].push(row);
+    }
+
+    return Object.keys(zonas)
+      .sort((a, b) => {
+        const diff = this.getZonaOrden(a) - this.getZonaOrden(b);
+        return diff !== 0 ? diff : a.localeCompare(b);
+      })
+      .map((zona) => {
+        const provincias = Object.keys(zonas[zona])
+          .sort((a, b) => a.localeCompare(b))
+          .map((provincia) => ({ provincia, rows: zonas[zona][provincia] }));
+        return { zona, provincias };
+      });
   }
 
   private setHoy(): void {
@@ -140,7 +186,30 @@ export class ReporteAsistenciaComponent implements OnInit {
     const filas = this.reporte.filter(r => !! r.asignacion_id);
     const faltas = filas.filter(r => this.hasReemplazo(r)).length;
     const total = filas.length;
-    return { total, asistencias: total - faltas, faltas };
+    const por_zona = this.buildResumenPorZona(filas);
+    return { total, asistencias: total - faltas, faltas, por_zona };
+  }
+
+  private buildResumenPorZona(filas: ReporteAsistenciaRow[]): ResumenAsistenciaZona[] {
+    const zonas: Record<string, { total: number; faltas: number }> = {};
+    for (const row of filas) {
+      const zona = (row.zona_titulo || '').trim() || 'SIN ZONA';
+      if (!zonas[zona]) zonas[zona] = { total: 0, faltas: 0 };
+      zonas[zona].total += 1;
+      if (this.hasReemplazo(row)) zonas[zona].faltas += 1;
+    }
+
+    return Object.keys(zonas)
+      .sort((a, b) => {
+        const diff = this.getZonaOrden(a) - this.getZonaOrden(b);
+        return diff !== 0 ? diff : a.localeCompare(b);
+      })
+      .map((zona) => ({
+        zona,
+        total: zonas[zona].total,
+        faltas: zonas[zona].faltas,
+        asistencias: Math.max(zonas[zona].total - zonas[zona].faltas, 0),
+      }));
   }
 
   descargarExcel(): void {
@@ -181,7 +250,11 @@ export class ReporteAsistenciaComponent implements OnInit {
     if (this.filtroTurno) params.turno = this.filtroTurno;
     this.loading = true;
     this.reporteSvc.getReporteAsistencia(params).subscribe({
-      next: data=> this.reporte = data || [],
+      next: data=> {
+        this.reporte = data || [];
+        this.reporteAgrupado = this.buildReporteAgrupado();
+        this.resumen = this.buildResumenAsistencia();
+      },
       error: err => console.error('Error al cargar reporte de asistencia:', err),
       complete: () => this.loading = false
     });

@@ -12,6 +12,8 @@ export interface ReporteAsistenciaRow {
   modificado_por?: string;
   row_color?: string | null;
   modificado_en?: string | null;
+  zona_titulo?: string;
+  provincia?: string;
 }
 
 export interface UpdateReporteAsistenciaPayload {
@@ -23,6 +25,14 @@ export interface UpdateReporteAsistenciaPayload {
 }
 
 export interface ResumenAsistencia {
+  total: number;
+  asistencias: number;
+  faltas: number;
+  por_zona?: ResumenAsistenciaZona[];
+}
+
+export interface ResumenAsistenciaZona {
+  zona: string;
   total: number;
   asistencias: number;
   faltas: number;
