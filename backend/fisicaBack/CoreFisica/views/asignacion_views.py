@@ -1,4 +1,5 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.http import HttpResponse
 from django.http import JsonResponse
@@ -717,6 +718,8 @@ def eliminar_asignacion(request, id):
         return Response({'error': 'Asignacion no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def exportar_asignaciones_excel(request):
     import calendar
     from openpyxl.styles import Font, Alignment, Border, Side

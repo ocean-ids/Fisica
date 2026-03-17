@@ -824,10 +824,10 @@ def exportar_reporte_asistencia_pdf(request):
     p.setFont('Helvetica', 6)
 
     for zona_group in grouped:
-        y = draw_group_row(y, _normalize_zona_label(zona_group['zona']), colors.HexColor('#FFF2CC'), 8)
+        y = draw_group_row(y, _normalize_zona_label(zona_group['zona']), 8)
         zona_items = []
         for prov_group in zona_group['provincias']:
-            y = draw_group_row(y, str(prov_group['provincia']).upper(), colors.HexColor('#E2EFDA'), 7)
+            y = draw_group_row(y, str(prov_group['provincia']).upper(), 7)
             for item in prov_group['rows']:
                 zona_items.append(item)
                 y = ensure_space(y, 0.3 * inch)
