@@ -16,9 +16,13 @@ import { PatronAsignacionService } from '../../services/patron-asignacion.servic
 })
 export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   @Input() weekStart: string = '';
+  @Input() filterText: string = '';
   @Output() sacafrancoClick: EventEmitter<any> = new EventEmitter<any>();
     ngOnChanges(changes: SimpleChanges): void {
       if (changes['weekStart'] && !changes['weekStart'].firstChange) {
+        this.loadWeek();
+      }
+      if (changes['filterText'] && !changes['filterText'].firstChange) {
         this.loadWeek();
       }
     }
@@ -69,7 +73,11 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   
     this.computeWeekDays();
     this.loading = true;
-    this.asignacionCalendarioService.obtenerAsignacionesCalendario({week_start: this.weekStart, auto_create: true})
+    const params: any = { week_start: this.weekStart, auto_create: true };
+    if (this.filterText && this.filterText.trim()) {
+      params.q = this.filterText.trim();
+    }
+    this.asignacionCalendarioService.obtenerAsignacionesCalendario(params)
       .subscribe({
         next: (res: any) => {
         if (Array.isArray(res)) {

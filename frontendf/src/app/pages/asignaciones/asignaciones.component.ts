@@ -302,6 +302,9 @@ export class AsignacionesComponent implements OnInit {
 
   onFiltroChange(): void {
     this.cargarAsignaciones();
+    if (this.calendarios && this.calendarios.length) {
+      this.calendarios.forEach(c => c.loadWeek());
+    }
   }
 
   private formatDateLocal(d: Date): string {

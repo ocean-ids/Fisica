@@ -70,7 +70,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
     if instalacion_id:
         asignaciones = asignaciones.filter(instalacion_id=instalacion_id)
     if q:
-        asignaciones = asignaciones.filter(
+        filtros = (
             Q(cliente__nombre_comercial__icontains=q) |
             Q(cliente__razon_social__icontains=q) |
             Q(persona__cedula__icontains=q) |
@@ -78,6 +78,9 @@ def obtener_asignaciones(request, mes=None, anio=None):
             Q(persona__apellidos__icontains=q) |
             Q(puesto__nombre__icontains=q)
         )
+        if q.isdigit():
+            filtros = filtros | Q(semanales__id=int(q))
+        asignaciones = asignaciones.filter(filtros).distinct()
     
     serializer = AsignacionSerializer(asignaciones, many=True)
     return Response(serializer.data)

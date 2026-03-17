@@ -20,6 +20,7 @@ def listar_asignacion_semanal(request):
     week_start = request.GET.get('week_start')
     cliente_id = request.GET.get('cliente')
     turno = request.GET.get('turno')
+    q = (request.GET.get('q') or '').strip()
     auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
 
     qs = AsignacionSemanal.objects.select_related('puesto', 'asignacion__persona').all()
@@ -263,6 +264,19 @@ def listar_asignacion_semanal(request):
 
     if cliente_id:
         qs = qs.filter(puesto__instalacion__cliente_id=cliente_id)
+
+    if q:
+        filtros = (
+            Q(asignacion__cliente__nombre_comercial__icontains=q) |
+            Q(asignacion__cliente__razon_social__icontains=q) |
+            Q(asignacion__persona__cedula__icontains=q) |
+            Q(asignacion__persona__nombres__icontains=q) |
+            Q(asignacion__persona__apellidos__icontains=q) |
+            Q(puesto__nombre__icontains=q)
+        )
+        if q.isdigit():
+            filtros = filtros | Q(id=int(q)) | Q(asignacion_id=int(q))
+        qs = qs.filter(filtros).distinct()
 
     qs = qs.order_by('asignacion_id')
 
