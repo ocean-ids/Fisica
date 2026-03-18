@@ -42,7 +42,9 @@ export class ClienteFormComponent implements OnInit {
         Validators.minLength(10),
         Validators.maxLength(13)
       ]],
-      size: [this.cliente?.size || 'PEQUEÑO', Validators.required]
+      size: [this.cliente?.size || 'PEQUENO', Validators.required],
+      fecha_ingreso: [this.cliente?.fecha_ingreso || null],
+      fecha_retiro: [this.cliente?.fecha_retiro || null]
     });
   }
 

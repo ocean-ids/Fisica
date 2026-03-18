@@ -34,6 +34,8 @@ class Cliente(models.Model):
         db_index=True,
         verbose_name='Tamaño del Cliente',
     )
+    fecha_ingreso = models.DateField(null=True, blank=True, db_index=True)
+    fecha_retiro = models.DateField(null=True, blank=True, db_index=True)
     
 
     class Meta:

@@ -4,7 +4,7 @@ from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Person
 
 @admin.register(Cliente)
 class ClienteAdmin(admin.ModelAdmin):
-	list_display = ('nombre_comercial', 'razon_social', 'ruc')
+	list_display = ('nombre_comercial', 'razon_social', 'ruc', 'fecha_ingreso', 'fecha_retiro')
 	search_fields = ('nombre_comercial', 'razon_social', 'ruc')
 
 @admin.register(Canton)
@@ -22,8 +22,6 @@ class ZonaAdmin(admin.ModelAdmin):
 	list_display = ('titulo', 'instalacion')
 	search_fields = ('titulo', 'instalacion__nombre', 'instalacion__canton__nombre')
 	list_filter = ('instalacion',)
-
-
 
 @admin.register(Instalacion)
 class InstalacionAdmin(admin.ModelAdmin):

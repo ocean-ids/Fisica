@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from django.db.models import Q
+from django.utils.dateparse import parse_date
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import json
@@ -27,7 +28,7 @@ def obtener_clientes(request):
     if size:
         qs = qs.filter(size=size)
 
-    qs = qs.values('id', 'razon_social', 'nombre_comercial', 'ruc', 'size')
+    qs = qs.values('id', 'razon_social', 'nombre_comercial', 'ruc', 'size', 'fecha_ingreso', 'fecha_retiro').order_by('nombre_comercial')
     try:
         count = qs.count()
     except Exception:
@@ -50,7 +51,9 @@ def obtener_cliente_id(request, id):
             "ruc": cliente.ruc,
             "razon_social": cliente.razon_social,
             "nombre_comercial": cliente.nombre_comercial,
-            "size": cliente.size
+            "size": cliente.size,
+            "fecha_ingreso": cliente.fecha_ingreso.isoformat() if cliente.fecha_ingreso else None,
+            "fecha_retiro": cliente.fecha_retiro.isoformat() if cliente.fecha_retiro else None,
         }
         return JsonResponse(data)
     except Cliente.DoesNotExist:
@@ -66,6 +69,8 @@ def crear_cliente(request):
             nombre_comercial = data.get('nombre_comercial')
             ruc = data.get('ruc')
             size = data.get('size', 'MEDIANO')
+            fecha_ingreso = parse_date(data.get('fecha_ingreso')) if data.get('fecha_ingreso') else None
+            fecha_retiro = parse_date(data.get('fecha_retiro')) if data.get('fecha_retiro') else None
             
             if not razon_social or not nombre_comercial:
                 return JsonResponse({'error': 'Faltan campos obligatorios'}, status=400)
@@ -77,7 +82,9 @@ def crear_cliente(request):
                 razon_social=razon_social,
                 nombre_comercial=nombre_comercial,
                 ruc=ruc,
-                size=size
+                size=size,
+                fecha_ingreso=fecha_ingreso,
+                fecha_retiro=fecha_retiro
             )
 
             return JsonResponse({'message': 'Cliente creado correctamente', 'id': cliente.id}, status=201)
@@ -106,6 +113,12 @@ def actualizar_cliente(request, id):
 
         if size not in ALLOWED_SIZES:
             return JsonResponse({'error': 'Tamaño no válido. Use PEQUENO, MEDIANO o GRANDE.'}, status=400)
+
+        if 'fecha_ingreso' in data:
+            cliente.fecha_ingreso = parse_date(data.get('fecha_ingreso')) if data.get('fecha_ingreso') else None
+
+        if 'fecha_retiro' in data:
+            cliente.fecha_retiro = parse_date(data.get('fecha_retiro')) if data.get('fecha_retiro') else None
 
         cliente.size = size
 

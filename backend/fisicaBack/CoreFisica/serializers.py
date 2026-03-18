@@ -59,7 +59,9 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'nombre_comercial': obj.cliente.nombre_comercial,
             'razon_social': obj.cliente.razon_social,
             'ruc': getattr(obj.cliente, 'ruc', '') or '',
-            'size': getattr(obj.cliente, 'size', None)
+            'size': getattr(obj.cliente, 'size', None),
+            'fecha_ingreso': obj.cliente.fecha_ingreso.isoformat() if obj.cliente.fecha_ingreso else None,
+            'fecha_retiro': obj.cliente.fecha_retiro.isoformat() if obj.cliente.fecha_retiro else None,
         }
 
     def get_instalacion_detalle(self, obj):
