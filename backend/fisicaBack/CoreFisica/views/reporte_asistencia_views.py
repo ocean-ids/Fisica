@@ -506,7 +506,11 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
         reemplazo_id = None
         if override and override.reemplazo:
             reemplazo_id = override.reemplazo.id
-            reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
+            tiene_asignaciones = Asignacion.objects.filter(persona_id=reemplazo_id).exists()
+            if not tiene_asignaciones:
+                reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
+            else:
+                reemplazo_id = None
         modificado_por_nombre = ''
         modificado_en_iso = None
         if override:
