@@ -361,12 +361,8 @@ def importar_personas(request):
             for fila in filas_limpias:
                 persona = existentes.get(fila['cedula'])
                 if persona:
-                    persona.nombres = fila['nombres']
-                    persona.apellidos = fila['apellidos']
-                    persona.tipo = fila['tipo']
-                    persona.is_active = fila['is_active']
-                    persona.save(update_fields=['nombres', 'apellidos', 'tipo', 'is_active'])
-                    resumen['actualizadas'] += 1
+                    # No modificar registros existentes
+                    continue
                 else:
                     Persona.objects.create(
                         nombres=fila['nombres'],
