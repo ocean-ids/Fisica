@@ -1,6 +1,5 @@
 <div>
-  <div class="table-responsive">
-    <table class="table table-sm table-bordered">
+  <table class="table table-sm table-bordered">
       <thead class="table-light" style="height: 103px;">
         <tr class="text-center align-middle header-row">
           <th *ngFor="let d of weekDays" title="{{d.name}}">
@@ -45,7 +44,6 @@
           <td [attr.colspan]="(weekDays.length || 7)" class="text-center text-muted" style="height:30px">No hay asignaciones semanales para esta semana.</td>
         </tr>
       </tbody>
-    </table>
-  </div>
+  </table>
 </div>
  
