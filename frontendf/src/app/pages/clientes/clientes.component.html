@@ -36,8 +36,8 @@
           <thead class="table-light">
             <tr>
               <th>RUC</th>
-              <th>Fecha de Ingreso</th>
-              <th>Fecha de Retiro</th>
+              <th>Fecha Ingreso</th>
+              <th>Fecha Retiro</th>
               <th>Razón Social</th>
               <th>Nombre Comercial</th>
               <th>Clasificación</th>
@@ -46,7 +46,7 @@
           </thead>
           <tbody>
             <tr class="text-center " *ngFor="let c of clientesFiltrados">
-              <!--<td>{{ c.ruc || '-' }}</td>-->
+              <td>{{ c.ruc || '-' }}</td>
               <td>{{ c.fecha_ingreso ? (c.fecha_ingreso | date: 'dd/MM/yyyy') : '-' }}</td>
               <td>{{ c.fecha_retiro ? (c.fecha_retiro | date: 'dd/MM/yyyy') : '-' }}</td>
               <td>{{ c.razon_social }}</td>
