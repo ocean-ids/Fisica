@@ -24,6 +24,7 @@ import { PatronFormComponent } from '../patrones/patron-form/patron-form.compone
 import { PatronSacafrancosModalComponent } from '../patrones/patron-sacafrancos-modal/patron-sacafrancos-modal.component';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form/asignacion-form.component';
 
 @Component({
   selector: 'app-asignaciones',
@@ -263,7 +264,6 @@ export class AsignacionesComponent implements OnInit {
   clienteSeleccionado: number | null = null;
   instalacionSeleccionada: number | null = null;
 
-  mostrarModal: boolean = false;
   asignacionActual: Asignacion = this.nuevaAsignacion();
   modoEdicion: boolean = false;
   crearCalendarioAutom = true; 
@@ -475,11 +475,31 @@ export class AsignacionesComponent implements OnInit {
     if (this.clientes.length === 0 || this.personas.length === 0 || this.horarios.length === 0) {
       this.cargarCatalogos();
     }
-   
-    if (this.instalacionSeleccionada) {
-      this.onInstalacionChange();
-    }
-    this.mostrarModal = true;
+    const ref = this.dialog.open(AsignacionFormComponent, {
+      width: '720px',
+      data: {
+        asignacion: { ...this.asignacionActual },
+        modoEdicion: false,
+        textoBoton: this.textoBotonAsignacion,
+        clientes: this.clientes,
+        personas: this.personas,
+        horarios: this.horarios,
+        patrones: this.patrones,
+        clienteSeleccionado: this.clienteSeleccionado,
+        instalacionSeleccionada: this.instalacionSeleccionada
+      }
+    });
+
+    ref.afterClosed().subscribe((result: AsignacionFormResult | undefined) => {
+      if (result?.action !== 'save') return;
+      if (!result.asignacion) return;
+      this.asignacionActual = result.asignacion;
+      this.clienteSeleccionado = result.clienteSeleccionado ?? null;
+      this.instalacionSeleccionada = result.instalacionSeleccionada ?? null;
+      this.modoEdicion = false;
+      this.textoBotonAsignacion = 'Guardar';
+      this.guardarAsignacion();
+    });
   }
 
   openSacafrancosModal(weekStart: string, day: string, puestoId?: number, manage: boolean = false){
@@ -534,16 +554,31 @@ export class AsignacionesComponent implements OnInit {
       this.cargarCatalogos();
     }
 
-    this.mostrarModal = true;
-  }
+    const ref = this.dialog.open(AsignacionFormComponent, {
+      width: '720px',
+      data: {
+        asignacion: { ...this.asignacionActual },
+        modoEdicion: true,
+        textoBoton: this.textoBotonAsignacion,
+        clientes: this.clientes,
+        personas: this.personas,
+        horarios: this.horarios,
+        patrones: this.patrones,
+        clienteSeleccionado: this.clienteSeleccionado,
+        instalacionSeleccionada: this.instalacionSeleccionada
+      }
+    });
 
-  cerrarModal(): void {
-    this.mostrarModal = false;
-    this.asignacionActual = this.nuevaAsignacion();
-    this.clienteSeleccionado = null;
-    this.instalacionSeleccionada = null;
-    this.instalaciones = [];
-    this.puestos = [];
+    ref.afterClosed().subscribe((result: AsignacionFormResult | undefined) => {
+      if (result?.action !== 'save') return;
+      if (!result.asignacion) return;
+      this.asignacionActual = result.asignacion;
+      this.clienteSeleccionado = result.clienteSeleccionado ?? null;
+      this.instalacionSeleccionada = result.instalacionSeleccionada ?? null;
+      this.modoEdicion = true;
+      this.textoBotonAsignacion = 'Actualizar';
+      this.guardarAsignacion();
+    });
   }
 
   guardarAsignacion(): void {
@@ -601,7 +636,7 @@ export class AsignacionesComponent implements OnInit {
         next: () => {
           Swal.fire({ icon: 'success', title: 'Asignación actualizada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
-          this.cerrarModal();
+          this.resetAsignacionState();
           if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
         },
         error: err => {
@@ -616,7 +651,7 @@ export class AsignacionesComponent implements OnInit {
         next: () => {
           Swal.fire({ icon: 'success', title: 'Asignación creada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
-          this.cerrarModal();
+          this.resetAsignacionState();
           if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
         },
         error: err => {
@@ -685,5 +720,13 @@ export class AsignacionesComponent implements OnInit {
 
   cambiarMesAnio(): void {
     this.cargarAsignaciones();
+  }
+
+  private resetAsignacionState(): void {
+    this.asignacionActual = this.nuevaAsignacion();
+    this.clienteSeleccionado = null;
+    this.instalacionSeleccionada = null;
+    this.instalaciones = [];
+    this.puestos = [];
   }
 }
