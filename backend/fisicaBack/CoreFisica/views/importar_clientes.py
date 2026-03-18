@@ -185,11 +185,6 @@ def importar_clientes(request):
                 )
             if created:
                 created_clientes += 1
-            else:
-                if clasif and cliente.size != clasif:
-                    cliente.size = clasif
-                    cliente.save(update_fields=['size'])
-                    updated_clientes += 1
 
             # Instalación por cliente + nombre, resolviendo provincia/cantón
             canton_obj = get_or_create_canton_token(ciudad, provincia)
@@ -200,11 +195,6 @@ def importar_clientes(request):
             )
             if inst_created:
                 created_inst += 1
-            else:
-                if canton_obj and instalacion.canton_id != getattr(canton_obj, 'id', None):
-                    instalacion.canton = canton_obj
-                    instalacion.save(update_fields=['canton'])
-                    updated_inst += 1
 
             # Puesto por instalación + nombre
             if puesto_nombre:
@@ -218,14 +208,6 @@ def importar_clientes(request):
                 )
                 if puesto_created:
                     created_puestos += 1
-                else:
-                    changed = False
-                    if puesto_tipo and puesto.tipo != puesto_tipo:
-                        puesto.tipo = puesto_tipo
-                        changed = True
-                    if changed:
-                        puesto.save(update_fields=['tipo'])
-                        updated_puestos += 1
 
     summary = {
         'clientes_creados': created_clientes,
