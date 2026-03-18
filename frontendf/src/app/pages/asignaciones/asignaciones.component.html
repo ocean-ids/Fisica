@@ -30,7 +30,7 @@
     </div>
   </div>
   
-  <div class="d-flex justify-content-between mt-4 mb-2">
+  <div class="d-flex justify-content-between mt-4">
     <div class="d-flex justify-content-start" >
       <input type="month" class="form-control mx-auto" [(ngModel)]="monthValue" (change)="onMonthChange()" />
     </div>
@@ -55,7 +55,7 @@
     <div class="col-lg-auto">
       <div class="card asig-table-card">
         <div class="card-body table-responsive ">
-          <table class="table table-hover table-bordered mb-5">
+          <table class="table table-hover table-bordered mb-2">
             <thead class="table-light text-center" style="height: 100px;">
               <tr class="text-center align-middle m-0" style="height: 60px">
                 <th *ngIf="!columnaOculta('horario')" [attr.rowspan]="headerRowspan()">Horario</th>

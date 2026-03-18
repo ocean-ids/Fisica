@@ -2,7 +2,7 @@
 
 <mat-dialog-content>
   <form [formGroup]="clienteForm">
-    <!--<mat-form-field appearance="outline" class="full-width">
+    ><mat-form-field appearance="outline" class="full-width">
       <mat-label>RUC</mat-label>
       <input type="text" matInput formControlName="ruc" placeholder="RUC (10 o 13 dígitos)">
       <mat-error *ngIf="clienteForm.get('ruc')?.hasError('minlength')">
@@ -11,8 +11,8 @@
       <mat-error *ngIf="clienteForm.get('ruc')?.hasError('maxlength')">
         El RUC no puede tener más de 13 caracteres.
       </mat-error>
-    </mat-form-field>-->
-    
+    </mat-form-field>
+
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Fecha de Ingreso</mat-label>
       <input matInput type="date" formControlName="fecha_ingreso">
