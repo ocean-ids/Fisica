@@ -712,8 +712,6 @@ def exportar_reporte_asistencia_excel(request):
     for col_idx, width in column_widths.items():
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
-    _write_excel_resumen(ws, current_row, asistencias, faltos, border)
-
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.xlsx"'
     wb.save(response)
@@ -843,8 +841,6 @@ def exportar_reporte_asistencia_pdf(request):
 
         zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
         y = draw_resumen(y, zona_asistencias, zona_faltos)
-
-    y = draw_resumen(y, asistencias, faltos)
 
     p.showPage()
     p.save()
