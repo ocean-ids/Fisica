@@ -89,12 +89,11 @@ export class ReporteAsistenciaComponent implements OnInit {
   private buildReporteAgrupado(): ReporteAsistenciaGrupoZona[] {
     const zonas: Record<string, Record<string, ReporteAsistenciaRow[]>> = {};
     for (const row of this.reporte) {
+      if (!row.asignacion_id) {
+        continue;
+      }
       let zona = (row.zona_titulo || '').trim() || 'SIN ZONA';
       let provincia = (row.provincia || '').trim() || 'SIN PROVINCIA';
-      if (!row.asignacion_id) {
-        zona = 'SIN ASIGNACION';
-        provincia = 'SIN ASIGNACION';
-      }
       if (!zonas[zona]) zonas[zona] = {};
       if (!zonas[zona][provincia]) zonas[zona][provincia] = [];
       zonas[zona][provincia].push(row);

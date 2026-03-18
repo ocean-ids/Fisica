@@ -533,28 +533,6 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
             'provincia': provincia_nombre,
         })
 
-    
-    for p in Persona.objects.filter(is_active=True).order_by('apellidos', 'nombres'):
-        if p.id in personas_con_asignacion:
-            continue
-        data.append({
-            'asignacion_id': None,
-            'codigo': '',
-            'cliente': '',
-            'puesto': '',
-            'horario': '',
-            'nombre_apellidos': f"{p.nombres} {p.apellidos}".strip(),
-            'reemplazo_id': None,
-            'reemplazo': '',
-            'estado': '',
-            'descripcion': '',
-            'modificado_por': '',
-            'row_color': '',
-            'modificado_en': None,
-            'zona_titulo': '',
-            'provincia': '',
-        })
-
     return data
 
 @api_view(['GET'])
