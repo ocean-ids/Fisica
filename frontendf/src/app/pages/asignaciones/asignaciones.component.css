@@ -73,3 +73,15 @@ table tbody td{
   flex-wrap: nowrap;
   align-items: stretch;
 }
+
+@media (max-width: 1400px) {
+  .asig-row {
+    flex-wrap: wrap;
+  }
+
+  .asig-table-col,
+  .asig-row > .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
