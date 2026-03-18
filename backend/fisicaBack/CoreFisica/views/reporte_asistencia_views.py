@@ -506,11 +506,7 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
         reemplazo_id = None
         if override and override.reemplazo:
             reemplazo_id = override.reemplazo.id
-            tiene_asignaciones = Asignacion.objects.filter(persona_id=reemplazo_id).exists()
-            if not tiene_asignaciones:
-                reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
-            else:
-                reemplazo_id = None
+            reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
         modificado_por_nombre = ''
         modificado_en_iso = None
         if override:
@@ -536,7 +532,6 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
             'zona_titulo': zona_titulo,
             'provincia': provincia_nombre,
         })
-
     return data
 
 @api_view(['GET'])
@@ -627,7 +622,7 @@ def exportar_reporte_asistencia_excel(request):
     ws.title = 'Reporte Asistencia'
 
     headers = [
-        'CÓDIGO', 'CLIENTE', 'PUESTO', 'HORARIO',
+        'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
         'NOMBRE Y APELLIDOS', 'ESTADO', 'REEMPLAZO', 'DESCRIPCIÓN',
     ]
     thin = Side(border_style='thin', color='000000')
@@ -716,6 +711,8 @@ def exportar_reporte_asistencia_excel(request):
     for col_idx, width in column_widths.items():
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
+    _write_excel_resumen(ws, current_row, asistencias, faltos, border)
+
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.xlsx"'
     wb.save(response)
@@ -745,7 +742,7 @@ def exportar_reporte_asistencia_pdf(request):
     y_margin = 0.5 * inch
 
     headers = [
-        'CÓDIGO', 'CLIENTE', 'PUESTO', 'HORARIO',
+        'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
         'NOMBRE Y APELLIDOS', 'ESTADO', 'REEMPLAZO', 'DESCRIPCIÓN',
     ]
     
@@ -845,6 +842,8 @@ def exportar_reporte_asistencia_pdf(request):
 
         zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
         y = draw_resumen(y, zona_asistencias, zona_faltos)
+
+    y = draw_resumen(y, asistencias, faltos)
 
     p.showPage()
     p.save()

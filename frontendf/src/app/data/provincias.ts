@@ -49,7 +49,7 @@ export const PROVINCIAS: Province[] = [
   { id: 'Guayas', nombre: 'Guayas', region: 'Costa', ciudades: [
     { id: 'guayaquil', nombre: 'Guayaquil' }, { id: 'duran', nombre: 'Durán' }, { id: 'daule', nombre: 'Daule' },
     { id: 'samborondon', nombre: 'Samborondón' }, { id: 'milagro', nombre: 'Milagro' }, { id: 'nobol', nombre: 'Nobol' },
-    { id: 'el-triunfo', nombre: 'El Triunfo' }, { id: 'balzar', nombre: 'Bálzar' }
+    { id: 'el-triunfo', nombre: 'El Triunfo' }, { id: 'balzar', nombre: 'Bálzar' }, { id: 'posorja', nombre: 'Posorja' }
   ] },
   { id: 'el-oro', nombre: 'El Oro', region: 'Costa', ciudades: [
     { id: 'machala', nombre: 'Machala' }, { id: 'pasaje', nombre: 'Pasaje' }, { id: 'santa-rosa', nombre: 'Santa Rosa' }
