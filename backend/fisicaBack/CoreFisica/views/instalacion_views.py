@@ -146,7 +146,7 @@ def obtener_instalaciones(request):
         except Exception:
             qs = qs.filter(zonas__titulo__iexact=str(zona_token).strip())
 
-    qs = qs.distinct()
+    qs = qs.distinct().order_by('cliente__nombre_comercial', 'nombre', 'id')
 
 
     if q:
