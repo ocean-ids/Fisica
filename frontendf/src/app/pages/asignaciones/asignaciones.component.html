@@ -21,9 +21,9 @@
       </mat-button-toggle-group>
     </section>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary me-2" (click)="abrirNuevoPatron()" disabled>
+      <!--<button class="btn btn-outline-secondary me-2" (click)="abrirNuevoPatron()" disabled>
       <i class="bi bi-bricks"></i> Nuevo Patrón
-    </button>
+      </button>-->
     <button class="btn btn-outline-primary" (click)="abrirModalNuevo()">
       <i class="bi bi-clipboard-check"></i> Nueva Asignación
     </button>
@@ -75,7 +75,7 @@
               <ng-container *ngFor="let asig of asignaciones">
                 <tr class="text-center align-middle shared-row" *ngIf="asig.persona_detalle?.is_active !== false" style="height: 70px;">
                 <td *ngIf="!columnaOculta('horario')">{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
-                <td *ngIf="!columnaOculta('codigo')">{{ asig.cliente_detalle?.codigo || asig.clienteCodigo || '-' }}</td>
+                <td *ngIf="!columnaOculta('codigo')">{{ getCodigoClienteAsignacion(asig) }}</td>
                 <td *ngIf="!columnaOculta('cliente')" style="max-width: 200px;">{{ asig.cliente_detalle?.nombre_comercial }}</td>
                 <td *ngIf="mostrarPuesto()">{{ asig.puesto_detalle?.nombre }}</td>
                 <td *ngIf="mostrarPuesto()">

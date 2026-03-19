@@ -192,6 +192,13 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
+  getCodigoClienteAsignacion(asig: any): string {
+    if (!asig) return '-';
+    const clienteId = asig.cliente;
+    const cliente = this.clientes.find(c => c.id === clienteId);
+    return cliente?.codigo || asig.cliente_detalle?.codigo || asig.clienteCodigo || '-';
+  }
+
   getDiasPuesto(puesto: any): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
