@@ -22,13 +22,14 @@ def obtener_clientes(request):
         qs = qs.filter(
             Q(ruc__icontains=q) |
             Q(razon_social__icontains=q) |
-            Q(nombre_comercial__icontains=q)
+            Q(nombre_comercial__icontains=q) |
+            Q(codigo__icontains=q)
         )
 
     if size:
         qs = qs.filter(size=size)
 
-    qs = qs.values('id', 'razon_social', 'nombre_comercial', 'ruc', 'size', 'fecha_ingreso', 'fecha_retiro').order_by('nombre_comercial')
+    qs = qs.values('id', 'codigo', 'razon_social', 'nombre_comercial', 'ruc', 'size', 'fecha_ingreso', 'fecha_retiro').order_by('nombre_comercial')
     try:
         count = qs.count()
     except Exception:
@@ -48,6 +49,7 @@ def obtener_cliente_id(request, id):
         cliente = Cliente.objects.get(pk=id)
         data = {
             "id": cliente.id,
+            "codigo": getattr(cliente, 'codigo', None),
             "ruc": cliente.ruc,
             "razon_social": cliente.razon_social,
             "nombre_comercial": cliente.nombre_comercial,
@@ -68,6 +70,7 @@ def crear_cliente(request):
             razon_social = data.get('razon_social')
             nombre_comercial = data.get('nombre_comercial')
             ruc = data.get('ruc')
+            codigo = data.get('codigo')
             size = data.get('size', 'MEDIANO')
             fecha_ingreso = parse_date(data.get('fecha_ingreso')) if data.get('fecha_ingreso') else None
             fecha_retiro = parse_date(data.get('fecha_retiro')) if data.get('fecha_retiro') else None
@@ -79,6 +82,7 @@ def crear_cliente(request):
                 return JsonResponse({'error': 'Tamaño no válido. Use PEQUENO, MEDIANO o GRANDE.'}, status=400)
 
             cliente = Cliente.objects.create(
+                codigo=codigo,
                 razon_social=razon_social,
                 nombre_comercial=nombre_comercial,
                 ruc=ruc,
@@ -109,6 +113,8 @@ def actualizar_cliente(request, id):
         cliente.razon_social = data.get('razon_social', cliente.razon_social)
         cliente.nombre_comercial = data.get('nombre_comercial', cliente.nombre_comercial)
         cliente.ruc = data.get('ruc', cliente.ruc)
+        if 'codigo' in data:
+            cliente.codigo = data.get('codigo')
         size = data.get('size', cliente.size)
 
         if size not in ALLOWED_SIZES:

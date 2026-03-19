@@ -56,6 +56,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
     def get_cliente_detalle(self, obj):
         return {
             'id': obj.cliente.id,
+            'codigo': getattr(obj.cliente, 'codigo', '') or '',
             'nombre_comercial': obj.cliente.nombre_comercial,
             'razon_social': obj.cliente.razon_social,
             'ruc': getattr(obj.cliente, 'ruc', '') or '',
@@ -68,7 +69,6 @@ class AsignacionSerializer(serializers.ModelSerializer):
         inst = obj.instalacion
         return {
             'id': inst.id,
-            'codigo': getattr(inst, 'codigo', '') or '',
             'canton_id': inst.canton_id,
             'canton_nombre': getattr(inst.canton, 'nombre', ''),
             'provincia_nombre': getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
@@ -126,7 +126,7 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
 class InstalacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instalacion
-        fields = ['id', 'cliente', 'canton', 'codigo', 'nombre', 'direccion']
+        fields = ['id', 'cliente', 'canton', 'nombre', 'direccion']
         read_only_fields = ['id']
         
 

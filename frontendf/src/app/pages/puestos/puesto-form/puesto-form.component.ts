@@ -108,7 +108,7 @@ export class PuestoFormComponent implements OnInit {
       const payload: any = {
         ...formValue,
         horarios: horariosPayload,
-        instalacion_nombre: selectedInstalacion?.nombre || selectedInstalacion?.codigo || null
+        instalacion_nombre: selectedInstalacion?.nombre || null
       };
       console.log('Payload enviado:', JSON.stringify(payload, null, 2)); // Log detailed payload for debugging
       this.dialogRef.close(payload);

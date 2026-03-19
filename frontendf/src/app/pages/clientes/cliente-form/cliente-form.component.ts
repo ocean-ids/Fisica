@@ -35,6 +35,7 @@ export class ClienteFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.clienteForm = this.fb.group({
+      codigo: [this.cliente?.codigo || ''],
       razon_social: [this.cliente?.razon_social || '', Validators.required],
       nombre_comercial: [this.cliente?.nombre_comercial || '', Validators.required],
       ruc: [this.cliente?.ruc || '', [

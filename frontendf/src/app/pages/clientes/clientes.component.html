@@ -35,6 +35,7 @@
         <table class="table table-hover table-bordered text-center align-middle">
           <thead class="table-light">
             <tr class="text-center align-middle m-0">
+              <th>Código</th>
               <th>RUC</th>
               <th>Fecha Inicio</th>
               <th>Fecha Retiro</th>
@@ -46,6 +47,7 @@
           </thead>
           <tbody>
             <tr class="text-center " *ngFor="let c of clientesFiltrados">
+              <td>{{ c.codigo || '-' }}</td>
               <td>{{ c.ruc || '-' }}</td>
               <td>{{ c.fecha_ingreso ? (c.fecha_ingreso | date: 'dd/MM/yyyy') : '-' }}</td>
               <td>{{ c.fecha_retiro ? (c.fecha_retiro | date: 'dd/MM/yyyy') : '-' }}</td>

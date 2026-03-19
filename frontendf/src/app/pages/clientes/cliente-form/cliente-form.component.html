@@ -2,7 +2,12 @@
 
 <mat-dialog-content>
   <form [formGroup]="clienteForm">
-    ><mat-form-field appearance="outline" class="full-width">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Código</mat-label>
+      <input type="text" matInput formControlName="codigo" placeholder="Código del cliente">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
       <mat-label>RUC</mat-label>
       <input type="text" matInput formControlName="ruc" placeholder="RUC (10 o 13 dígitos)">
       <mat-error *ngIf="clienteForm.get('ruc')?.hasError('minlength')">

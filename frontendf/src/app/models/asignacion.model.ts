@@ -13,7 +13,7 @@ export interface Asignacion{
     estado: string;
     persona_detalle?: Persona | null;
     cliente_detalle?: any; 
-    clienteCodigo: string;       
+    clienteCodigo?: string;       
     instalacion_detalle?: any;       
     puesto_detalle?: any;            
     horario_detalle?: any; 
