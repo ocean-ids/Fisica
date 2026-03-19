@@ -1,9 +1,13 @@
+from datetime import date, datetime
+
 from django.http import JsonResponse
 from django.db import transaction
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from openpyxl import load_workbook
+from openpyxl.utils.datetime import from_excel
+
 from ..models import Cliente, Instalacion, Puesto, Provincia, Canton
 
 
@@ -20,6 +24,16 @@ HEADER_MAP = {
     'INSTALACIÓN': 'instalacion',
     'PROVINCIA': 'provincia',
     'CIUDAD': 'ciudad',
+
+    'FECHA DE INGRESO': 'fecha_ingreso',
+    'FECHA INGRESO': 'fecha_ingreso',
+    'FECHA_INGRESO': 'fecha_ingreso',
+    'FECHA DE INICIO': 'fecha_ingreso',
+    'FECHA INICIO': 'fecha_ingreso',
+    'FECHA_INICIO': 'fecha_ingreso',
+    'FECHA DE INCIO': 'fecha_ingreso',
+    'FECHA INCIO': 'fecha_ingreso',
+    'FECHA_INCIO': 'fecha_ingreso',
     
     'NOMBRE DE PUESTO': 'puesto_nombre',
     'PUESTO NOMBRE': 'puesto_nombre',
@@ -100,6 +114,30 @@ def norm_header_key(val: str) -> str:
     return key
 
 
+def parse_excel_date(val):
+    if not val:
+        return None
+    if isinstance(val, date) and not isinstance(val, datetime):
+        return val
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, (int, float)):
+        try:
+            return from_excel(val).date()
+        except Exception:
+            return None
+    if isinstance(val, str):
+        raw = val.strip()
+        if not raw:
+            return None
+        for fmt in ('%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y', '%m/%d/%Y'):
+            try:
+                return datetime.strptime(raw, fmt).date()
+            except ValueError:
+                continue
+    return None
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
@@ -149,6 +187,10 @@ def importar_clientes(request):
                 idx = header_idx.get(key)
                 return norm(row[idx]) if idx is not None and idx < len(row) else ''
 
+            def col_raw(key):
+                idx = header_idx.get(key)
+                return row[idx] if idx is not None and idx < len(row) else None
+
             ruc = col('ruc')
             razon_social = col('razon_social')
             nombre_comercial = col('nombre_comercial') or razon_social
@@ -156,6 +198,7 @@ def importar_clientes(request):
             inst_nombre = col('instalacion') or 'SIN NOMBRE'
             provincia = col('provincia')
             ciudad = col('ciudad')
+            fecha_ingreso = parse_excel_date(col_raw('fecha_ingreso'))
             
             puesto_nombre = col('puesto_nombre') or col('puesto')
             puesto_tipo = col('puesto_tipo') or None
@@ -172,6 +215,7 @@ def importar_clientes(request):
                         'razon_social': razon_social or nombre_comercial,
                         'nombre_comercial': nombre_comercial,
                         'size': clasif or 'MEDIANO',
+                        'fecha_ingreso': fecha_ingreso,
                     },
                 )
             else:
@@ -181,10 +225,19 @@ def importar_clientes(request):
                         'razon_social': razon_social or nombre_comercial,
                         'ruc': None,
                         'size': clasif or 'MEDIANO',
+                        'fecha_ingreso': fecha_ingreso,
                     },
                 )
             if created:
                 created_clientes += 1
+            else:
+                updated = False
+                if fecha_ingreso and cliente.fecha_ingreso != fecha_ingreso:
+                    cliente.fecha_ingreso = fecha_ingreso
+                    updated = True
+                if updated:
+                    cliente.save(update_fields=['fecha_ingreso'])
+                    updated_clientes += 1
 
             # Instalación por cliente + nombre, resolviendo provincia/cantón
             canton_obj = get_or_create_canton_token(ciudad, provincia)
