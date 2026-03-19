@@ -35,6 +35,12 @@ export class PatronFormComponent {
     const input = event.target as HTMLInputElement;
     input.value = input.value.replace(/\D/g, '').slice(0, 3);
     this.patronForm.get('codigo')?.setValue(input.value, { emitEvent: false});
+
+    if (input.value.length === 3) {
+      const [d1, d2, d3] = input.value.split('').map(n => Number(n));
+      const seq = `${'D'.repeat(d1 || 0)}${'N'.repeat(d2 || 0)}${'F'.repeat(d3 || 0)}`;
+      this.patronForm.get('secuencia')?.setValue(seq, { emitEvent: false });
+    }
   }
 
   onSecuenciaInput(event: Event): void {
