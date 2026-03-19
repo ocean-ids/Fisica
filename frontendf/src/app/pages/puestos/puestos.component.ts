@@ -173,7 +173,7 @@ export class PuestosComponent implements OnInit {
         const start = dayMap[min] || '';
         const end = dayMap[max] || '';
         if (!start || !end) continue;
-        parts.push(min === max ? start : `${start} - ${end}`);
+        parts.push(min === max ? start : `${start} a ${end}`);
       }
 
       return parts.length ? parts.join(' / ') : '-';
