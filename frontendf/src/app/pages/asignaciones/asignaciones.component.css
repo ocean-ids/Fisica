@@ -1,10 +1,10 @@
 /* Scroll horizontal para los calendarios semanales */
 .vertical-scroll-calendars {
   display: flex;
-  gap: 16px;
+  gap: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 12px;
+  padding: 0;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
 }
@@ -19,8 +19,8 @@
   flex: 0 0 100%;
   min-width: 100%;
   max-width: 100%;
-  border-right: 1px solid #e9ecef;
-  padding-right: 8px;
+  border-right: 0;
+  padding-right: 0;
 }
 
 /* Ajuste: si el contenido es más angosto, que no rompa la tarjeta */
