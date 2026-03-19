@@ -16,11 +16,16 @@
 
 /* Cada semana es una tarjeta con ancho fijo para evitar que el calendario se vaya hacia abajo */
 .vertical-scroll-calendars > .week-card {
-  flex: 0 0 100%;
-  min-width: 100%;
-  max-width: 100%;
+  flex: 0 0 auto;
+  min-width: 620px;
+  max-width: 620px;
   border-right: 0;
   padding-right: 0;
+}
+
+/* Ensure the calendar column can show the horizontal scrollbar */
+.asig-row > .col {
+  min-width: 0;
 }
 
 /* Ajuste: si el contenido es más angosto, que no rompa la tarjeta */
