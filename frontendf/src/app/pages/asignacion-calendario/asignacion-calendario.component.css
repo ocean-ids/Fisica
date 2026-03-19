@@ -75,6 +75,10 @@ input {
 .header-day .short { font-weight:700; }
 .header-day .dayNum { font-size:.95rem; color:#222; }
 
+:host-context(body.theme-dark) .header-day .dayNum {
+  color: #ffffff;
+}
+
 /* Controlar altura y espaciado sin forzar overflow */
 .table thead { height: 100px; }
 .header-row { height: 100px; }
