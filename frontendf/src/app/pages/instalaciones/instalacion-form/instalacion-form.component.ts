@@ -50,6 +50,7 @@ export class InstalacionFormComponent implements OnInit {
     
     this.zonaOptions = this.zonaTitles.map(t => ({ id: t, titulo: t, label: t }));
     this.instalacionForm = this.fb.group({
+      codigo: [instalacion.codigo || ''],
       nombre: [instalacion.nombre || ''],
       cliente_id: [instalacion.cliente_id || '', Validators.required],
       provincia_id: [instalacion.provincia_id || '', Validators.required],

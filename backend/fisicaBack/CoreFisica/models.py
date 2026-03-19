@@ -76,6 +76,7 @@ class Zona(models.Model):
 class Instalacion(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='instalaciones')
     canton = models.ForeignKey(Canton, on_delete=models.PROTECT, related_name='instalaciones', null=True, blank=True)
+    codigo = models.CharField(max_length=20, blank=True, null=True, db_index=True)
     nombre = models.CharField(max_length=150, blank=True, null=True)
     direccion = models.CharField(max_length=200, blank=True, null=True)
 

@@ -152,6 +152,7 @@ def obtener_instalaciones(request):
     if q:
         qs = qs.filter(
             Q(nombre__icontains=q) |
+            Q(codigo__icontains=q) |
             Q(cliente__nombre_comercial__icontains=q) |
             Q(cliente__razon_social__icontains=q) |
             Q(canton__nombre__icontains=q) |
@@ -164,6 +165,7 @@ def obtener_instalaciones(request):
     for inst in qs:
         instalaciones.append({
             'id': inst.id,
+            'codigo': inst.codigo or '',
             'nombre': inst.nombre or '',
             'cliente_id': inst.cliente_id,
             'cliente_nombre': getattr(inst.cliente, 'nombre_comercial', ''),
@@ -194,8 +196,6 @@ def crear_instalacion(request):
     # soportar `cliente_id` desde frontend
     if 'cliente_id' in data and 'cliente' not in data:
         data['cliente'] = data.pop('cliente_id')
-
-    data.pop('codigo', None)
 
     # Intentar resolver/crear provincia y cantón desde tokens (id o nombre)
     provincia_token = data.get('provincia_id') or data.get('provincia')
@@ -234,8 +234,6 @@ def actualizar_instalacion(request, id):
         # soportar `cliente_id` desde frontend
         if 'cliente_id' in data and 'cliente' not in data:
             data['cliente'] = data.pop('cliente_id')
-
-        data.pop('codigo', None)
 
         # Intentar resolver/crear provincia y cantón desde tokens (id o nombre)
         provincia_token = data.get('provincia_id') or data.get('provincia')

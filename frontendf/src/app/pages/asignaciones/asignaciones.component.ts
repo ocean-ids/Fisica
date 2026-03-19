@@ -192,11 +192,9 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
-  getCodigoClienteAsignacion(asig: any): string {
+  getCodigoInstalacionAsignacion(asig: any): string {
     if (!asig) return '-';
-    const clienteId = asig.cliente;
-    const cliente = this.clientes.find(c => c.id === clienteId);
-    return cliente?.codigo || asig.cliente_detalle?.codigo || asig.clienteCodigo || '-';
+    return asig.instalacion_detalle?.codigo || asig.instalacionCodigo || '-';
   }
 
   getDiasPuesto(puesto: any): string {
@@ -424,7 +422,6 @@ export class AsignacionesComponent implements OnInit {
       mes: this.mes,
       anio: this.anio,
       estado: 'ACTIVO',
-      clienteCodigo: '',
       recurring: true
       ,patronAsignacion: 0
     };

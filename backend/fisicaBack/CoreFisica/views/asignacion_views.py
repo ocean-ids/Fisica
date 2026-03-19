@@ -964,7 +964,7 @@ def exportar_asignaciones_excel(request):
             horario_txt = f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}"
         except Exception:
             horario_txt = ''
-        inst_codigo = getattr(getattr(asignacion, 'cliente', None), 'codigo', '') or ''
+        inst_codigo = getattr(getattr(asignacion, 'instalacion', None), 'codigo', '') or ''
         puesto_obj = getattr(asignacion, 'puesto', None)
         # Forzamos a usar la lógica compacta (coincide con la vista). Si falla, caemos al campo almacenado.
         resumen_val = build_resumen(puesto_obj) or getattr(puesto_obj, 'resumen', '')

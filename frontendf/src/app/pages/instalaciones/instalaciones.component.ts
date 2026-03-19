@@ -81,6 +81,7 @@ export class InstalacionesComponent implements OnInit {
 
   crearInstalacion(data: any): void {
     const payload: any = {
+      codigo: data.codigo || '',
       nombre: data.nombre || '',
       cliente: data.cliente_id,
       direccion: data.direccion || '',
@@ -103,6 +104,7 @@ export class InstalacionesComponent implements OnInit {
 
   actualizarInstalacion(id: number, data: any): void {
     const payload: any = {
+      codigo: data.codigo || '',
       nombre: data.nombre || '',
       cliente: data.cliente_id,
       direccion: data.direccion || '',
@@ -148,10 +150,5 @@ export class InstalacionesComponent implements OnInit {
   getNombreCliente(clienteId: number): string {
     const cliente = this.clientes.find(c => c.id === clienteId);
     return cliente ? cliente.nombre_comercial : 'N/A';
-  }
-
-  getCodigoCliente(clienteId: number): string {
-    const cliente = this.clientes.find(c => c.id === clienteId);
-    return cliente?.codigo || '-';
   }
 }

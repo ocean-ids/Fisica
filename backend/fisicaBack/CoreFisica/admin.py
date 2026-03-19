@@ -25,8 +25,8 @@ class ZonaAdmin(admin.ModelAdmin):
 
 @admin.register(Instalacion)
 class InstalacionAdmin(admin.ModelAdmin):
-	list_display = ('nombre', 'cliente')
-	search_fields = ('nombre', 'cliente__nombre_comercial', 'canton__provincia__nombre', 'canton__nombre')
+	list_display = ('codigo', 'nombre', 'cliente')
+	search_fields = ('codigo', 'nombre', 'cliente__nombre_comercial', 'canton__provincia__nombre', 'canton__nombre')
 
 class PuestoHorarioInline(admin.TabularInline):
 	model = PuestoHorario
