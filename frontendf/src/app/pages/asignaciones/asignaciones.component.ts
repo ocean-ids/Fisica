@@ -196,25 +196,33 @@ export class AsignacionesComponent implements OnInit {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
       const dayMap: any = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'};
-      const diasNums = Array.from(new Set(puesto.horarios.map((h:any)=>h.dia))).sort((a:any,b:any)=>a-b);
-      if (!diasNums.length) return '-';
+      const horarios = puesto.horarios && Array.isArray(puesto.horarios)
+        ? puesto.horarios
+        : [];
+      if (!horarios.length) return '-';
 
-      const weekdayRange = [1, 2, 3, 4, 5];
-      const hasWeekdaysStrict = weekdayRange.every(d => diasNums.includes(d));
-      const hasWeekdaySpan = diasNums.includes(1) && diasNums.includes(5);
-      const useWeekdays = hasWeekdaysStrict || hasWeekdaySpan;
-      const remaining = useWeekdays
-        ? diasNums.filter((d:any) => !weekdayRange.includes(d))
-        : diasNums;
+      const groupOrder: string[] = [];
+      const groups = new Map<string, Set<number>>();
+      for (const h of horarios) {
+        const key = `${h.horas ?? ''}-${h.turno ?? ''}`;
+        if (!groups.has(key)) {
+          groups.set(key, new Set<number>());
+          groupOrder.push(key);
+        }
+        if (h.dia) groups.get(key)!.add(h.dia);
+      }
 
       const parts: string[] = [];
-      if (useWeekdays) parts.push('Lunes - Viernes');
-
-      const extras = remaining
-        .map((d:any) => dayMap[d] || '')
-        .filter((x:any) => x);
-
-      if (extras.length) parts.push(extras.join(' / '));
+      for (const key of groupOrder) {
+        const dias = Array.from(groups.get(key) || []).sort((a: any, b: any) => a - b);
+        if (!dias.length) continue;
+        const min = dias[0];
+        const max = dias[dias.length - 1];
+        const start = dayMap[min] || '';
+        const end = dayMap[max] || '';
+        if (!start || !end) continue;
+        parts.push(min === max ? start : `${start} - ${end}`);
+      }
 
       return parts.length ? parts.join(' / ') : '-';
     } catch (e) {

@@ -148,24 +148,33 @@ export class PuestosComponent implements OnInit {
         6: 'Sábado',
         7: 'Domingo'
       };
-      const diasNums: number[] = puesto.horarios && Array.isArray(puesto.horarios)
-        ? Array.from(new Set(puesto.horarios.map(h => h.dia))) as number[]
+      const horarios = puesto.horarios && Array.isArray(puesto.horarios)
+        ? puesto.horarios
         : [];
-      if (!diasNums.length) return '-';
+      if (!horarios.length) return '-';
 
-      const sorted = diasNums.sort((a, b) => a - b);
-      const weekdayRange = [1, 2, 3, 4, 5];
-      const hasWeekdaysStrict = weekdayRange.every(d => sorted.includes(d));
-      const hasWeekdaySpan = sorted.includes(1) && sorted.includes(5);
-      const useWeekdays = hasWeekdaysStrict || hasWeekdaySpan;
-      const remaining = useWeekdays ? sorted.filter(d => !weekdayRange.includes(d)) : sorted;
+      const groupOrder: string[] = [];
+      const groups = new Map<string, Set<number>>();
+      for (const h of horarios) {
+        const key = `${h.horas ?? ''}-${h.turno ?? ''}`;
+        if (!groups.has(key)) {
+          groups.set(key, new Set<number>());
+          groupOrder.push(key);
+        }
+        if (h.dia) groups.get(key)!.add(h.dia);
+      }
 
       const parts: string[] = [];
-      if (useWeekdays) parts.push('Lunes - Viernes');
-      const extras = remaining
-        .map(n => dayMap[n] || '')
-        .filter(Boolean);
-      if (extras.length) parts.push(extras.join(' / '));
+      for (const key of groupOrder) {
+        const dias = Array.from(groups.get(key) || []).sort((a, b) => a - b);
+        if (!dias.length) continue;
+        const min = dias[0];
+        const max = dias[dias.length - 1];
+        const start = dayMap[min] || '';
+        const end = dayMap[max] || '';
+        if (!start || !end) continue;
+        parts.push(min === max ? start : `${start} - ${end}`);
+      }
 
       return parts.length ? parts.join(' / ') : '-';
     } catch (e) {
