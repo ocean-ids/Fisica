@@ -431,6 +431,8 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
     fin_anio_actual = datetime.date(hoy.year, 12, 31)
 
     reporte_qs = ReporteAsistencia.objects.select_related('asignacion', 'modificado_por', 'reemplazo')
+    # Solo considerar overrides de asignaciones activas
+    reporte_qs = reporte_qs.filter(asignacion__estado='ACTIVO')
     if fecha_obj:
         if fecha_obj >= hoy:
             # Desde la fecha filtrada hasta fin de anio actual.
@@ -453,7 +455,7 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
     asig_qs = Asignacion.objects.select_related(
         'cliente', 'instalacion', 'instalacion__canton', 'instalacion__canton__provincia',
         'puesto', 'horario', 'persona'
-    ).prefetch_related('instalacion__zonas').filter(persona__is_active=True)
+    ).prefetch_related('instalacion__zonas').filter(persona__is_active=True, estado='ACTIVO')
 
     if fecha_obj:
         # Reporte por rango hasta fin de anio actual cuando la fecha es hoy/futura.

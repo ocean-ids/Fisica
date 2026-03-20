@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django.http import JsonResponse
 from rest_framework import status
-from ..models import Asignacion, AsignacionSemanal, Puesto
+from ..models import Asignacion, AsignacionSemanal, Puesto, ReporteAsistencia
 from django.db.models import Q, Max
 from django.db import transaction
 from ..serializers import AsignacionSerializer
@@ -106,6 +106,12 @@ def asignar_servicio(request):
         # Crear filas de AsignacionSemanal para el puesto en las semanas del mes/año de la asignación
         # Forzamos creación de calendario siempre (evita depender del flag del front y cubre el mes actual)
         create_calendar = True
+
+        # Asegurar un registro base en ReporteAsistencia para la asignación
+        try:
+            ReporteAsistencia.objects.get_or_create(asignacion=asignacion)
+        except Exception:
+            pass
 
         if create_calendar:
             try:
