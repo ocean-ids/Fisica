@@ -1,0 +1,36 @@
+# Environment and secrets
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+build/
+dist/
+venv/
+.venv/
+
+# Django
+*.log
+/staticfiles
+/media
+
+# Node/Angular
+node_modules/
+dist/
+.angular/
+coverage/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
