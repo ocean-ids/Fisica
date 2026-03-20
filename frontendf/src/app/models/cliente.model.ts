@@ -1,6 +1,5 @@
 export interface Cliente {
   id?: number;
-  codigo?: string;
   ruc?: string;
   razon_social: string;
   nombre_comercial: string;

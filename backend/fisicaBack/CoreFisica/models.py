@@ -22,7 +22,6 @@ class Cliente(models.Model):
     )
     razon_social = models.CharField(max_length=100)
     nombre_comercial = models.CharField(max_length=100)
-    codigo = models.CharField(max_length=20, blank=True, null=True, db_index=True)
     SIZE_CHOICES = [
         ('PEQUENO', 'Pequeño'),
         ('MEDIANO', 'Mediano'),

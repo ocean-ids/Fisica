@@ -56,7 +56,6 @@ class AsignacionSerializer(serializers.ModelSerializer):
     def get_cliente_detalle(self, obj):
         return {
             'id': obj.cliente.id,
-            'codigo': getattr(obj.cliente, 'codigo', '') or '',
             'nombre_comercial': obj.cliente.nombre_comercial,
             'razon_social': obj.cliente.razon_social,
             'ruc': getattr(obj.cliente, 'ruc', '') or '',
