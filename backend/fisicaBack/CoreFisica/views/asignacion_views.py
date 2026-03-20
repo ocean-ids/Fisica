@@ -109,7 +109,14 @@ def asignar_servicio(request):
 
         # Asegurar un registro base en ReporteAsistencia para la asignación
         try:
-            ReporteAsistencia.objects.get_or_create(asignacion=asignacion)
+            reporte, _ = ReporteAsistencia.objects.get_or_create(asignacion=asignacion)
+            reporte.persona = asignacion.persona
+            reporte.cliente = asignacion.cliente
+            reporte.instalacion = asignacion.instalacion
+            reporte.puesto = asignacion.puesto
+            reporte.horario = asignacion.horario
+            reporte.puesto_tipo = getattr(asignacion.puesto, 'tipo', None) if asignacion.puesto else None
+            reporte.save()
         except Exception:
             pass
 
