@@ -110,3 +110,24 @@ input {
 td:hover .cell-inner .info-btn { opacity: 1; }
 /* slightly smaller icon */
 .cell-inner .info-btn .bi { font-size: 14px; }
+
+/* Mantener celeste fijo para las celdas con F (igual al hover del botón) */
+button.info-btn.btn-outline-info {
+  background-color: #d6ecff !important;
+  border-color: #9bd6ff !important;
+  color: #0b5ed7 !important;
+}
+
+button.info-btn.btn-outline-info:hover,
+button.info-btn.btn-outline-info:focus {
+  background-color: #d6ecff !important;
+  border-color: #9bd6ff !important;
+  color: #0b5ed7 !important;
+}
+
+button.info-btn .form-control,
+button.info-btn .form-control-sm {
+  background-color: #d6ecff !important;
+  border-color: #9bd6ff !important;
+  color: #0b5ed7 !important;
+}
