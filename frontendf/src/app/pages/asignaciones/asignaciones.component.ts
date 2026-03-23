@@ -25,6 +25,7 @@ import { PatronSacafrancosModalComponent } from '../patrones/patron-sacafrancos-
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form/asignacion-form.component';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-asignaciones',
@@ -40,6 +41,7 @@ import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form
     MatMenuModule,
     MatButtonModule,
     MatButtonToggleModule,
+    DragDropModule,
     AsignacionCalendarioComponent,
     
   ],
@@ -52,6 +54,7 @@ export class AsignacionesComponent implements OnInit {
   calendarios?: QueryList<AsignacionCalendarioComponent>;
 
   weeksForMonth: string[] = [];
+  calendarRowOrder: Array<number | string> = [];
 
   private monthStartToday(): string {
     const t = new Date();
@@ -386,9 +389,27 @@ export class AsignacionesComponent implements OnInit {
     this.asignacionService.obtenerAsignaciones(this.mes, this.anio, params).subscribe({
       next: data => {
         this.asignaciones = data || [];
+        this.updateCalendarOrder();
       },
       error: err => console.error('Error al cargar asignaciones', err)
     });
+  }
+
+  dropAsignaciones(event: CdkDragDrop<Asignacion[]>): void {
+    if (!event || event.previousIndex === event.currentIndex) return;
+    moveItemInArray(this.asignaciones, event.previousIndex, event.currentIndex);
+    this.asignaciones = [...this.asignaciones];
+    this.updateCalendarOrder();
+  }
+
+  trackByAsignacion(index: number, asig: Asignacion): number | string {
+    return asig?.id ?? asig?.puesto_detalle?.id ?? index;
+  }
+
+  private updateCalendarOrder(): void {
+    this.calendarRowOrder = (this.asignaciones || [])
+      .map(asig => asig?.id ?? asig?.puesto_detalle?.id ?? asig?.puesto)
+      .filter(v => v !== null && v !== undefined) as Array<number | string>;
   }
 
   

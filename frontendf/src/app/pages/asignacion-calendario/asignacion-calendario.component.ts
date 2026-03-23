@@ -17,6 +17,7 @@ import { PatronAsignacionService } from '../../services/patron-asignacion.servic
 export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   @Input() weekStart: string = '';
   @Input() filterText: string = '';
+  @Input() rowOrder: Array<number | string> = [];
   @Output() sacafrancoClick: EventEmitter<any> = new EventEmitter<any>();
     ngOnChanges(changes: SimpleChanges): void {
       if (changes['weekStart'] && !changes['weekStart'].firstChange) {
@@ -24,6 +25,9 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       }
       if (changes['filterText'] && !changes['filterText'].firstChange) {
         this.loadWeek();
+      }
+      if (changes['rowOrder'] && !changes['rowOrder'].firstChange) {
+        this.applyOrder();
       }
     }
   weeks: string[] = [];
@@ -88,6 +92,8 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
           this.rows = [];
         }
 
+        this.applyOrder();
+
         
         console.log('loadWeek result for', this.weekStart, 'res=', res);
         if((!this.rows || this.rows.length === 0)){
@@ -112,6 +118,29 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         },
         error: () => this.loading = false
       });
+  }
+
+  private getRowOrderKey(row: any): string {
+    const key = row?.asignacion || row?.asignacion_id || row?.puesto || '';
+    return String(key);
+  }
+
+  private applyOrder(): void {
+    if (!this.rowOrder || !this.rowOrder.length || !this.rows || !this.rows.length) return;
+    const orderMap = new Map<string, number>();
+    this.rowOrder.forEach((id, idx) => orderMap.set(String(id), idx));
+    this.rows = [...this.rows].sort((a, b) => {
+      const aKey = this.getRowOrderKey(a);
+      const bKey = this.getRowOrderKey(b);
+      const aIdx = orderMap.get(aKey);
+      const bIdx = orderMap.get(bKey);
+      const aHas = aIdx !== undefined;
+      const bHas = bIdx !== undefined;
+      if (aHas && bHas) return (aIdx as number) - (bIdx as number);
+      if (aHas) return -1;
+      if (bHas) return 1;
+      return 0;
+    });
   }
 
   loadWeeksForMonth(mes: number, anio: number){
