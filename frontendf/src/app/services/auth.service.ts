@@ -3,12 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, tap } from 'rxjs';
 import type { LoginResponse } from '../models/login.models';
+import { environment } from '@env/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8000/api';
+  private apiUrl = environment.apiUrl;
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasToken());
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
   private tokenCheckId: any = null;
@@ -144,8 +145,10 @@ export class AuthService {
     const user = this.getUserFromStorage();
     if (!user) return false;
 
+    if (user.is_superuser === true) return true;
+
     const groups: string[] = JSON.parse(localStorage.getItem('groups') ?? '[]');
-    if (groups.includes('ADMIN')) return true;
+    if (groups.some(g => (g ?? '').toUpperCase() === 'ADMIN')) return true;
 
     const permissions: string[] = JSON.parse(localStorage.getItem('permissions') ?? '[]');
     return permissions.includes(permission);

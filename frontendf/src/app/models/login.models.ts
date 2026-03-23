@@ -6,6 +6,7 @@ export interface LoginResponse {
     id: number;
     username: string;
     email: string;
+    is_superuser: boolean;
     groups: string[];
     permissions: string[];
   };

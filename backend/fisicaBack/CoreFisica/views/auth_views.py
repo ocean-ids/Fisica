@@ -41,6 +41,7 @@ def login_view(request):
                     "id": user.id,
                     "username": user.username,
                     "email": user.email,
+                    "is_superuser": user.is_superuser,
                     "groups": list(user.groups.values_list('name', flat=True)),
                     "permissions": sorted(list(user.get_all_permissions())),
                 }
@@ -91,6 +92,7 @@ def user_view(request):
         "id": user.id,
         "username": user.username,
         "email": user.email,
+        "is_superuser": user.is_superuser,
         "groups": list(user.groups.values_list('name', flat=True)),
         'permissions': sorted(list(user.get_all_permissions())),
     })
