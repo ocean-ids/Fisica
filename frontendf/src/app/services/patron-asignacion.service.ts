@@ -2,12 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { PatronAsignacion } from '../models/asignacion.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PatronAsignacionService {
-  private apiUrl = 'http://localhost:8000/api/patrones/';
+  private apiUrl = `${environment.apiUrl}/patrones/`;
 
   constructor(private http: HttpClient) {}
 
@@ -40,17 +41,17 @@ export class PatronAsignacionService {
     if (weekStart) params.set('week_start', weekStart);
     if (day) params.set('day', day);
     if (puestoId) params.set('puesto_id', String(puestoId));
-    const url = `http://localhost:8000/api/personas/sacafrancos/?${params.toString()}`;
+    const url = `${environment.apiUrl}/personas/sacafrancos/?${params.toString()}`;
     return this.http.get<any[]>(url, { headers: this.getHeaders() });
   }
 
   asignarSacafranco(payload: any) {
-    const url = `http://localhost:8000/api/personas/sacafrancos/assign/`;
+    const url = `${environment.apiUrl}/personas/sacafrancos/assign/`;
     return this.http.post<any>(url, payload, { headers: this.getHeaders() });
   }
 
   desasignarSacafranco(payload: any) {
-    const url = `http://localhost:8000/api/personas/sacafrancos/unassign/`;
+    const url = `${environment.apiUrl}/personas/sacafrancos/unassign/`;
     return this.http.post<any>(url, payload, { headers: this.getHeaders() });
   }
 }
