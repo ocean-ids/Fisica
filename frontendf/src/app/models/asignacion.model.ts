@@ -21,6 +21,7 @@ export interface Asignacion{
     start_date?: string | null;
     end_date?: string | null;
     patronAsignacion?: number;
+    agregar_sacafranco?: boolean;
     
 }
 

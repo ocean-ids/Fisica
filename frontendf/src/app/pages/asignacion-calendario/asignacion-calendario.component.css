@@ -8,7 +8,7 @@
 /* Small input styling to look like spreadsheet cells */
 table.table td input.form-control {
 	padding: 4px 6px;
-	height: 28px;
+  height: 70px;
 	text-align: center;
 }
 
@@ -131,3 +131,10 @@ button.info-btn .form-control-sm {
   border-color: #9bd6ff !important;
   color: #0b5ed7 !important;
 }
+
+.sacafranco-input {
+  background-color: #ffffff !important;
+  color: #6b7280 !important;
+  height: 35px !important;
+}
+

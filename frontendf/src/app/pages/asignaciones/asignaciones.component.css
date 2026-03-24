@@ -76,6 +76,7 @@ table tbody td{
   white-space: nowrap;
 }
 
+
 .asig-row {
   flex-wrap: nowrap;
   align-items: stretch;
@@ -92,4 +93,8 @@ table tbody td{
     flex: 0 0 100%;
     max-width: 100%;
   }
+}
+
+.bg-color {
+  background-color: #f8f9fa !important;
 }

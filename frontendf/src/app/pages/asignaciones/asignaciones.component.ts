@@ -342,6 +342,18 @@ export class AsignacionesComponent implements OnInit {
     return this.mostrarPuesto() ? 2 : 1;
   }
 
+  totalColumns(): number {
+    let count = 0;
+    if (!this.columnaOculta('horario')) count += 1;
+    if (!this.columnaOculta('codigo')) count += 1;
+    if (!this.columnaOculta('cliente')) count += 1;
+    if (this.mostrarPuesto()) count += 2;
+    if (!this.columnaOculta('cedula')) count += 1;
+    if (!this.columnaOculta('persona')) count += 1;
+    if (!this.columnaOculta('accion')) count += 1;
+    return count || 1;
+  }
+
   private formatDateLocal(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -443,8 +455,9 @@ export class AsignacionesComponent implements OnInit {
       mes: this.mes,
       anio: this.anio,
       estado: 'ACTIVO',
-      recurring: true
-      ,patronAsignacion: 0
+      recurring: true,
+      agregar_sacafranco: false,
+      patronAsignacion: 0
     };
   }
 

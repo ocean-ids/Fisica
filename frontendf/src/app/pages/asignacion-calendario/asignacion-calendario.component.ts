@@ -34,6 +34,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   currentWeekIndex: number = 0;
   weekDays: Array<{short:string, name:string, date:string, dayNum:number}> = [];
   rows: any[] = [];
+  displayRows: any[] = [];
   loading = false;
   @Input() allowCreateEmptyRows: boolean = false;
   
@@ -93,6 +94,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         }
 
         this.applyOrder();
+        this.buildDisplayRows();
 
         
         console.log('loadWeek result for', this.weekStart, 'res=', res);
@@ -111,6 +113,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
           } else {
             this.rows = [];
           }
+          this.buildDisplayRows();
         }
           this.loading = false;
           
@@ -141,6 +144,27 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       if (bHas) return 1;
       return 0;
     });
+    this.buildDisplayRows();
+  }
+
+  private buildDisplayRows(): void {
+    if (!this.rows || !this.rows.length) {
+      this.displayRows = [];
+      return;
+    }
+    const out: any[] = [];
+    this.rows.forEach(row => {
+      out.push(row);
+      if (row?.asignacion_sacafranco === true) {
+        out.push({
+          _sacafranco: true,
+          _parentAsignacionId: row?.asignacion || row?.asignacion_id || null,
+          _parentPuestoId: row?.puesto || row?.puesto_detalle?.id || null,
+          mon: '', tue: '', wed: '', thu: '', fri: '', sat: '', sun: ''
+        });
+      }
+    });
+    this.displayRows = out;
   }
 
   loadWeeksForMonth(mes: number, anio: number){

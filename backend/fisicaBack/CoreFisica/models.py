@@ -353,6 +353,8 @@ class Asignacion(models.Model):
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
 
+    agregar_sacafranco = models.BooleanField(default=False)
+
     estado = models.CharField(
         max_length=10,
         choices=ESTADO_CHOICES,

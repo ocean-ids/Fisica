@@ -1,5 +1,5 @@
 <div class="container-fluid">
-  <table class="table table-sm table-bordered">
+  <table class="table table-bordered table-sm">
       <thead class="table-light" style="height: 100px;">
         <tr class="text-center align-middle header-row">
           <th *ngFor="let d of weekDays" title="{{d.name}}">
@@ -10,36 +10,45 @@
           </th>
         </tr>
       </thead>
-      <tbody  *ngIf="rows && rows.length>0" >
-        <tr style="height: 70px;" *ngFor="let row of rows; let i = index" class="data-row p-0 m-0">
-          <ng-container *ngFor="let d of weekDays">
-            <td *ngIf="d.date; else emptyDay">
-              <ng-container *ngIf="((row[dayKeyFromDate(d.date)] || '').toString().toUpperCase().charAt(0) === 'F'); else normalInput">
-                <button class="info-btn btn btn-sm btn-outline-info"
-                        (click)="onInfoClick($event, row.puesto, dayKeyFromDate(d.date))"
-                        (mouseenter)="showPreview(row.puesto, dayKeyFromDate(d.date))"
-                        (mouseleave)="clearPreview(row.puesto, dayKeyFromDate(d.date))"
-                        [title]="getPreviewTitle(row.puesto, dayKeyFromDate(d.date))">
-                  <div class="cell-inner">
-                    <span class="form-control form-control-sm text-center" style="min-width:3rem;">
-                      {{ (row[dayKeyFromDate(d.date)] || '').toString().toUpperCase() }}
-                    </span>
-                      
-                  </div>
-                </button>
-              </ng-container>
-              <ng-template #normalInput>
-                      <input type="text" maxlength="4" class="form-control form-control-sm"
-                        [(ngModel)]="row[dayKeyFromDate(d.date)]"
-                        (change)="onCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
-                        [ngModelOptions]="{standalone:true}">
-              </ng-template>
-            </td>
-            <ng-template #emptyDay><td></td></ng-template>
+      <tbody *ngIf="displayRows && displayRows.length>0" >
+        <tr *ngFor="let row of displayRows; let i = index">
+          <ng-container *ngIf="row?._sacafranco; else normalRow">
+            <ng-container *ngFor="let d of weekDays">
+              <td *ngIf="d.date; else emptyDay" style="height: 45px;" >
+                <input type="text" maxlength="4" class="form-control form-control-sm sacafranco-input" value="">
+              </td>
+            </ng-container>
           </ng-container>
+          <ng-template #normalRow>
+            <ng-container *ngFor="let d of weekDays">
+              <td *ngIf="d.date; else emptyDay" style="max-height: 70px;">
+                <ng-container *ngIf="((row[dayKeyFromDate(d.date)] || '').toString().toUpperCase().charAt(0) === 'F'); else normalInput">
+                  <button class="info-btn btn btn-sm btn-outline-info"
+                          (click)="onInfoClick($event, row.puesto, dayKeyFromDate(d.date))"
+                          (mouseenter)="showPreview(row.puesto, dayKeyFromDate(d.date))"
+                          (mouseleave)="clearPreview(row.puesto, dayKeyFromDate(d.date))"
+                          [title]="getPreviewTitle(row.puesto, dayKeyFromDate(d.date))">
+                    <div class="cell-inner">
+                      <span class="form-control form-control-sm text-center" style="min-width:3rem;">
+                        {{ (row[dayKeyFromDate(d.date)] || '').toString().toUpperCase() }}
+                      </span>
+                        
+                    </div>
+                  </button>
+                </ng-container>
+                <ng-template #normalInput>
+                        <input type="text" maxlength="4" class="form-control form-control-sm"
+                          [(ngModel)]="row[dayKeyFromDate(d.date)]"
+                          (change)="onCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
+                          [ngModelOptions]="{standalone:true}">
+                </ng-template>
+              </td>
+            </ng-container>
+          </ng-template>
+          <ng-template #emptyDay><td></td></ng-template>
         </tr>
       </tbody>
-      <tbody *ngIf="!rows || rows.length===0" >
+      <tbody *ngIf="!displayRows || displayRows.length===0" >
         <tr>
           <td [attr.colspan]="(weekDays.length || 7)" class="text-center text-muted" style="height:30px">No hay asignaciones semanales para esta semana.</td>
         </tr>

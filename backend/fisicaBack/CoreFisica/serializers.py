@@ -104,6 +104,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
 
 class AsignacionSemanalSerializer(serializers.ModelSerializer):
     puesto_detalle = serializers.SerializerMethodField(read_only=True)
+    asignacion_sacafranco = serializers.BooleanField(source='asignacion.agregar_sacafranco', read_only=True)
 
     def get_puesto_detalle(self, obj):
         p = obj.puesto
@@ -121,7 +122,7 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AsignacionSemanal
-        fields = ['id', 'asignacion', 'puesto', 'week_start', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'created_at', 'updated_at', 'puesto_detalle']
+        fields = ['id', 'asignacion', 'puesto', 'week_start', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'created_at', 'updated_at', 'puesto_detalle', 'asignacion_sacafranco']
 
 class InstalacionSerializer(serializers.ModelSerializer):
     class Meta:

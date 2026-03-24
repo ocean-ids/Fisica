@@ -127,6 +127,9 @@
                     </div>
                   </td>
                 </tr>
+                <tr style="height: 45px;" class="align-middle" *ngIf="asig.agregar_sacafranco && asig.persona_detalle?.is_active !== false">
+                  <td  [attr.colspan]="totalColumns()" class="text-center align-middle bg-warning-subtle fw-bold text-success ">SACAFRANCO</td>
+                </tr>
               </ng-container>
             </tbody>
           </table>
