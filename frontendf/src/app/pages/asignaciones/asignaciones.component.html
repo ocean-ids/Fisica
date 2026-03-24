@@ -1,6 +1,14 @@
 <div class="container-fluid px-3 ">
+  <h2 class="mb-4">Gestión de Asignaciones</h2>
   <div class="d-flex justify-content-between align-items-center" >
-    <h2>Gestión de Asignaciones</h2>
+    <div class="d-flex align-items-start gap-2">
+      <!--<button class="btn btn-outline-secondary me-2" (click)="abrirNuevoPatron()" disabled>
+      <i class="bi bi-bricks"></i> Nuevo Patrón
+      </button>-->
+      <button class="btn btn-outline-primary" (click)="abrirModalNuevo()">
+        <i class="bi bi-clipboard-check"></i> Nueva Asignación
+      </button>
+    </div>
 
     <section class="d-flex align-items-center gap-3">
       <mat-button-toggle-group
@@ -20,14 +28,11 @@
         <mat-button-toggle value="accion">Accion</mat-button-toggle>
       </mat-button-toggle-group>
     </section>
-    <div class="d-flex gap-2">
-      <!--<button class="btn btn-outline-secondary me-2" (click)="abrirNuevoPatron()" disabled>
-      <i class="bi bi-bricks"></i> Nuevo Patrón
-      </button>-->
-    <button class="btn btn-outline-primary" (click)="abrirModalNuevo()">
-      <i class="bi bi-clipboard-check"></i> Nueva Asignación
-    </button>
+
+    <div class="d-flex align-items-end gap-2">
+      <button class="btn btn-outline-primary">Insertar</button>
     </div>
+    
   </div>
   
   <div class="d-flex justify-content-between mt-4 mb-1">
