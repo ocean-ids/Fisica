@@ -98,3 +98,13 @@ table tbody td{
 .bg-color {
   background-color: #f8f9fa !important;
 }
+
+.sacafranco-hover td {
+  box-shadow: inset 0 0 0 2px #198754;
+}
+
+/* Allow elementFromPoint to detect underlying rows during drag. */
+.cdk-drag-preview,
+.cdk-drag-placeholder {
+  pointer-events: none;
+}

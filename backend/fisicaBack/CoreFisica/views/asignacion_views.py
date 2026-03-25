@@ -4,10 +4,10 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django.http import JsonResponse
 from rest_framework import status
-from ..models import Asignacion, AsignacionSemanal, Puesto, ReporteAsistencia
+from ..models import Asignacion, AsignacionSemanal, Puesto, ReporteAsistencia, SacafrancoFila
 from django.db.models import Q, Max
 from django.db import transaction
-from ..serializers import AsignacionSerializer
+from ..serializers import AsignacionSerializer, SacafrancoFilaSerializer
 import openpyxl
 import datetime
 from pathlib import Path
@@ -938,6 +938,45 @@ def eliminar_asignacion(request, id):
         return Response({'mensaje': 'Asignación eliminada correctamente'}, status=status.HTTP_204_NO_CONTENT)
     except Asignacion.DoesNotExist:
         return Response({'error': 'Asignacion no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET', 'POST'])
+def sacafranco_filas(request):
+    if request.method == 'GET':
+        if not request.user.has_perm('CoreFisica.view_asignacion'):
+            return JsonResponse({'error': 'No autorizado'}, status=403)
+        mes = request.GET.get('mes')
+        anio = request.GET.get('anio')
+        qs = SacafrancoFila.objects.all()
+        if mes and anio:
+            qs = qs.filter(mes=mes, anio=anio)
+        qs = qs.order_by('orden', 'id')
+        serializer = SacafrancoFilaSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    if not request.user.has_perm('CoreFisica.add_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    serializer = SacafrancoFilaSerializer(data=request.data)
+    if serializer.is_valid():
+        fila = serializer.save()
+        if request.data.get('orden') is None:
+            max_orden = SacafrancoFila.objects.filter(mes=fila.mes, anio=fila.anio).aggregate(Max('orden')).get('orden__max')
+            fila.orden = (max_orden or 0) + 1
+            fila.save()
+        return Response(SacafrancoFilaSerializer(fila).data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+def eliminar_sacafranco_fila(request, id):
+    if not request.user.has_perm('CoreFisica.delete_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        fila = SacafrancoFila.objects.get(id=id)
+    except SacafrancoFila.DoesNotExist:
+        return Response({'error': 'Fila no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    fila.delete()
+    return Response({'mensaje': 'Fila sacafranco eliminada'})
 
 
 @api_view(['GET'])

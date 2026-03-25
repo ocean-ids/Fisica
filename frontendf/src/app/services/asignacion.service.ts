@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
-import { Asignacion } from '../models/asignacion.model';
+import { Asignacion, SacafrancoFila } from '../models/asignacion.model';
 import {map} from 'rxjs/operators';
 
 @Injectable({
@@ -35,6 +35,18 @@ export class AsignacionService {
 
   guardarOrden(ordenes: {id: number, orden: number}[]): Observable<any>{
     return this.apiService.post<any>(`/guardar-orden-asignacion/`, {ordenes});
+  }
+
+  obtenerSacafrancoFilas(mes: number, anio: number): Observable<SacafrancoFila[]> {
+    return this.apiService.get<SacafrancoFila[]>(`/sacafranco-filas/`, { mes, anio });
+  }
+
+  crearSacafrancoFila(payload: SacafrancoFila): Observable<SacafrancoFila> {
+    return this.apiService.post<SacafrancoFila>(`/sacafranco-filas/`, payload);
+  }
+
+  eliminarSacafrancoFila(id: number): Observable<any> {
+    return this.apiService.delete<any>(`/sacafranco-filas/${id}/`);
   }
   
 }

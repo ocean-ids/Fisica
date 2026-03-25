@@ -326,6 +326,20 @@ class Horario(models.Model):
         return f"{self.hora_ingreso} - {self.hora_salida}"
 
 
+class SacafrancoFila(models.Model):
+    mes = models.PositiveSmallIntegerField(default=current_month)
+    anio = models.PositiveSmallIntegerField(default=current_year)
+    orden = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['mes', 'anio'])]
+
+    def __str__(self):
+        return f"Sacafranco ({self.mes}/{self.anio})"
+
+
 class Asignacion(models.Model):
     ESTADO_CHOICES = [
         ('ACTIVO', 'ACTIVO'),
@@ -351,6 +365,14 @@ class Asignacion(models.Model):
         null=True,
         blank=True,
         related_name='sacafranco_miembros'
+    )
+
+    sacafranco_fila = models.ForeignKey(
+        SacafrancoFila,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='asignaciones'
     )
 
     fecha = models.DateField(null=True, blank=True)

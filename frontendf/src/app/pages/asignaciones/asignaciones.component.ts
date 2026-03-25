@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, ViewChildren, QueryList, AfterViewInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Cliente, Persona, Instalacion, Puesto, Horario, Asignacion } from '../../models';
-import { PatronAsignacion } from '../../models/asignacion.model';
+import { PatronAsignacion, SacafrancoFila } from '../../models/asignacion.model';
 import { ClienteService } from '../../services/cliente.service';
 import { InstalacionService } from '../../services/instalacion.service';
 import { PuestoService } from '../../services/puesto.service';
@@ -55,10 +55,15 @@ export class AsignacionesComponent implements OnInit {
 
   weeksForMonth: string[] = [];
   calendarRowOrder: Array<number | string> = [];
-  displayRows: Array<{ type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } | { type: 'sacafranco'; parent: Asignacion }> = [];
+  displayRows: Array<
+    { type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } |
+    { type: 'sacafranco'; id: number; fila: SacafrancoFila }
+  > = [];
   displayAssignmentRows: Asignacion[] = [];
-  hoverSacafrancoParentId: number | null = null;
+  sacafrancoRows: SacafrancoFila[] = [];
+  hoverSacafrancoFilaId: number | null = null;
   draggingAsignacionId: number | null = null;
+  private lastDragPoint: { x: number; y: number } | null = null;
 
   private monthStartToday(): string {
     const t = new Date();
@@ -410,6 +415,31 @@ export class AsignacionesComponent implements OnInit {
       },
       error: err => console.error('Error al cargar asignaciones', err)
     });
+
+    this.asignacionService.obtenerSacafrancoFilas(this.mes, this.anio).subscribe({
+      next: data => {
+        this.sacafrancoRows = data || [];
+        this.buildDisplayRows();
+        this.updateCalendarOrder();
+      },
+      error: err => console.error('Error al cargar filas sacafranco', err)
+    });
+  }
+
+  crearSacafrancoFila(): void {
+    const payload: SacafrancoFila = {
+      mes: this.mes,
+      anio: this.anio,
+      orden: (this.sacafrancoRows || []).length
+    };
+    this.asignacionService.crearSacafrancoFila(payload).subscribe({
+      next: fila => {
+        this.sacafrancoRows = [...(this.sacafrancoRows || []), fila].filter(f => f && f.id);
+        this.buildDisplayRows();
+        this.updateCalendarOrder();
+      },
+      error: err => console.error('Error al crear fila sacafranco', err)
+    });
   }
 
   dropAsignaciones(event: CdkDragDrop<Asignacion[]>): void {
@@ -419,11 +449,24 @@ export class AsignacionesComponent implements OnInit {
     if (!dragged) return;
     const draggedId = dragged.id ?? null;
 
-    if (draggedId && this.hoverSacafrancoParentId && this.hoverSacafrancoParentId !== draggedId) {
-      if (!this.hasSacafrancoChildren(draggedId)) {
-        this.setSacafrancoGroup(dragged, this.hoverSacafrancoParentId);
-      }
+    if (draggedId && this.hoverSacafrancoFilaId) {
+      this.setSacafrancoGroup(dragged, this.hoverSacafrancoFilaId);
+      this.hoverSacafrancoFilaId = null;
+      this.lastDragPoint = null;
       return;
+    }
+
+    if (draggedId && this.lastDragPoint) {
+      const el = document.elementFromPoint(this.lastDragPoint.x, this.lastDragPoint.y) as HTMLElement | null;
+      const row = el ? (el.closest('tr[data-sacafranco-id]') as HTMLElement | null) : null;
+      const raw = row ? row.getAttribute('data-sacafranco-id') : null;
+      const filaId = raw ? Number(raw) : null;
+      if (filaId) {
+        this.setSacafrancoGroup(dragged, filaId);
+        this.hoverSacafrancoFilaId = null;
+        this.lastDragPoint = null;
+        return;
+      }
     }
 
     if (event.previousIndex === event.currentIndex) return;
@@ -434,6 +477,8 @@ export class AsignacionesComponent implements OnInit {
     this.buildDisplayRows();
     this.updateCalendarOrder();
     this.persistOrder();
+    this.hoverSacafrancoFilaId = null;
+    this.lastDragPoint = null;
   }
 
   trackByAsignacion(index: number, asig: Asignacion): number | string {
@@ -441,50 +486,61 @@ export class AsignacionesComponent implements OnInit {
   }
 
   private updateCalendarOrder(): void {
-    const source = this.displayAssignmentRows && this.displayAssignmentRows.length
-      ? this.displayAssignmentRows
-      : (this.asignaciones || []);
-    this.calendarRowOrder = source
-      .map(asig => asig?.id ?? asig?.puesto_detalle?.id ?? asig?.puesto)
-      .filter(v => v !== null && v !== undefined) as Array<number | string>;
+    if (this.displayRows && this.displayRows.length) {
+      this.calendarRowOrder = this.displayRows
+        .map(row => {
+          if ((row as any).type === 'sacafranco') {
+            return `sacafranco-${(row as any).id}`;
+          }
+          return (row as any).asig?.id ?? (row as any).asig?.puesto_detalle?.id ?? (row as any).asig?.puesto;
+        })
+        .filter(v => v !== null && v !== undefined) as Array<number | string>;
+      return;
+    }
+    this.calendarRowOrder = [];
   }
 
   private buildDisplayRows(): void {
-    const all = this.asignaciones || [];
-    const idSet = new Set<number>();
-    all.forEach(a => {
-      if (a?.id) idSet.add(a.id);
-    });
-    const childrenByParent = new Map<number, Asignacion[]>();
-    const parentOrder: Asignacion[] = [];
+    const asignaciones = this.asignaciones || [];
+    const sacRows = this.sacafrancoRows || [];
 
-    all.forEach(a => {
-      const parentId = a?.sacafranco_grupo ?? null;
-      if (parentId && idSet.has(parentId)) {
-        if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
-        childrenByParent.get(parentId)!.push(a);
+    const grouped = new Map<number, Asignacion[]>();
+    const ungrouped: Asignacion[] = [];
+    asignaciones.forEach(a => {
+      const groupId = a?.sacafranco_fila ?? null;
+      if (groupId) {
+        if (!grouped.has(groupId)) grouped.set(groupId, []);
+        grouped.get(groupId)!.push(a);
       } else {
-        parentOrder.push(a);
+        ungrouped.push(a);
       }
     });
 
-    const rows: Array<{ type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } | { type: 'sacafranco'; parent: Asignacion }> = [];
+    const rows: Array<
+      { type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } |
+      { type: 'sacafranco'; id: number; fila: SacafrancoFila }
+    > = [];
     const displayAssignments: Asignacion[] = [];
 
-    parentOrder.forEach(parent => {
-      rows.push({ type: 'asignacion', asig: parent, isGroupedChild: false });
-      displayAssignments.push(parent);
-
-      if (parent.agregar_sacafranco) {
-        rows.push({ type: 'sacafranco', parent });
-      }
-
-      const children = childrenByParent.get(parent.id || -1) || [];
-      children.forEach(child => {
-        rows.push({ type: 'asignacion', asig: child, isGroupedChild: true });
-        displayAssignments.push(child);
+    ungrouped
+      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+      .forEach(a => {
+        rows.push({ type: 'asignacion', asig: a, isGroupedChild: false });
+        displayAssignments.push(a);
       });
-    });
+
+    sacRows
+      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+      .forEach(fila => {
+        const children = grouped.get(fila.id as number) || [];
+        children
+          .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+          .forEach(child => {
+            rows.push({ type: 'asignacion', asig: child, isGroupedChild: true });
+            displayAssignments.push(child);
+          });
+        rows.push({ type: 'sacafranco', id: fila.id as number, fila });
+      });
 
     this.displayRows = rows;
     this.displayAssignmentRows = displayAssignments;
@@ -496,75 +552,60 @@ export class AsignacionesComponent implements OnInit {
 
   onDragEnded(): void {
     this.draggingAsignacionId = null;
-    this.hoverSacafrancoParentId = null;
+    // Delay clearing hover to allow drop event to consume it.
+    setTimeout(() => {
+      this.hoverSacafrancoFilaId = null;
+      this.lastDragPoint = null;
+    }, 0);
   }
 
   onDragMoved(event: CdkDragMove): void {
     const point = event?.pointerPosition;
     if (!point) return;
+    this.lastDragPoint = { x: point.x, y: point.y };
     const el = document.elementFromPoint(point.x, point.y) as HTMLElement | null;
     if (!el) return;
-    const row = el.closest('tr[data-sacafranco-parent]') as HTMLElement | null;
+    const row = el.closest('tr[data-sacafranco-id]') as HTMLElement | null;
     if (!row) {
-      this.hoverSacafrancoParentId = null;
+      this.hoverSacafrancoFilaId = null;
       return;
     }
-    const raw = row.getAttribute('data-sacafranco-parent');
-    const parentId = raw ? Number(raw) : null;
-    if (parentId && this.draggingAsignacionId !== null) {
-      this.hoverSacafrancoParentId = parentId;
+    const raw = row.getAttribute('data-sacafranco-id');
+    const filaId = raw ? Number(raw) : null;
+    if (filaId && this.draggingAsignacionId !== null) {
+      this.hoverSacafrancoFilaId = filaId;
     }
   }
 
-  onSacafrancoHover(parentId?: number): void {
-    if (!parentId) return;
+  onSacafrancoHover(filaId?: number): void {
+    if (!filaId) return;
     if (this.draggingAsignacionId !== null) {
-      this.hoverSacafrancoParentId = parentId;
+      this.hoverSacafrancoFilaId = filaId;
     }
   }
 
-  onSacafrancoLeave(parentId?: number): void {
-    if (!parentId) return;
-    if (this.hoverSacafrancoParentId === parentId) {
-      this.hoverSacafrancoParentId = null;
+  onSacafrancoLeave(filaId?: number): void {
+    if (!filaId) return;
+    if (this.hoverSacafrancoFilaId === filaId) {
+      this.hoverSacafrancoFilaId = null;
     }
   }
 
-  private hasSacafrancoChildren(parentId: number): boolean {
-    return (this.asignaciones || []).some(a => a?.sacafranco_grupo === parentId);
-  }
-
-  private setSacafrancoGroup(asig: Asignacion, parentId: number | null): void {
+  private setSacafrancoGroup(asig: Asignacion, filaId: number | null): void {
     if (!asig || !asig.id) return;
-    if ((asig.sacafranco_grupo ?? null) === (parentId ?? null)) return;
+    if ((asig.sacafranco_fila ?? null) === (filaId ?? null)) return;
     this.asignacionService.actualizarAsignacion(
       asig.id,
-      { sacafranco_grupo: parentId } as Partial<Asignacion>
+      { sacafranco_fila: filaId } as Partial<Asignacion>
     ).subscribe({
       next: () => {
-        asig.sacafranco_grupo = parentId;
-        if (parentId) {
-          this.moveGroupedAboveChildren(asig, parentId);
-        }
+        asig.sacafranco_fila = filaId;
         this.buildDisplayRows();
         this.updateCalendarOrder();
         this.persistOrder();
       },
-      error: err => console.error('Error al actualizar sacafranco_grupo', err)
+      error: err => console.error('Error al actualizar sacafranco_fila', err)
     });
-  }
-
-  private moveGroupedAboveChildren(asig: Asignacion, parentId: number): void {
-    if (!this.asignaciones || !this.asignaciones.length) return;
-    const list = [...this.asignaciones];
-    const fromIdx = list.findIndex(a => a?.id === asig.id);
-    const parentIdx = list.findIndex(a => a?.id === parentId);
-    if (fromIdx === -1 || parentIdx === -1) return;
-
-    const [item] = list.splice(fromIdx, 1);
-    const insertIdx = parentIdx + 1;
-    list.splice(insertIdx, 0, item);
-    this.asignaciones = list;
   }
 
   private persistOrder(): void {
@@ -582,12 +623,12 @@ export class AsignacionesComponent implements OnInit {
   }
 
   desagruparAsignacion(asig: Asignacion): void {
-    if (!asig?.id || !asig.sacafranco_grupo) return;
+    if (!asig?.id || !asig.sacafranco_fila) return;
     this.setSacafrancoGroup(asig, null);
   }
 
   trackByDisplayRow(index: number, row: any): string | number {
-    if (row?.type === 'sacafranco') return `sacafranco-${row.parent?.id ?? index}`;
+    if (row?.type === 'sacafranco') return `sacafranco-${row.id ?? index}`;
     return row?.asig?.id ?? index;
   }
 
@@ -625,6 +666,7 @@ export class AsignacionesComponent implements OnInit {
       recurring: true,
       agregar_sacafranco: false,
       sacafranco_grupo: null,
+      sacafranco_fila: null,
       orden: 0,
       patronAsignacion: 0
     };

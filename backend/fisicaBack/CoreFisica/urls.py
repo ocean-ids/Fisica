@@ -11,7 +11,7 @@ from .views.instalacion_views import obtener_instalaciones, crear_instalacion, a
 from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona, disable_persona, enable_persona, importar_personas, SacafrancoListView, asignar_sacafranco, desasignar_sacafranco
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
-from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion, exportar_asignaciones_excel
+from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, eliminar_asignacion, exportar_asignaciones_excel, sacafranco_filas, eliminar_sacafranco_fila
 from .views.asignacion_semanal_views import listar_asignacion_semanal, semanas_del_mes, crear_o_actualizar_asignacion_semanal, copiar_semana
 from .views.patron_asignacion_views import PatronAsignacionListCreateView, PatronAsignacionRetrieveUpdateDestroyView
 from .views.reporte_asistencia_views import obtener_reporte_asistencia, insertar_reporte_asistencia, exportar_reporte_asistencia_excel, exportar_reporte_asistencia_pdf
@@ -62,6 +62,8 @@ urlpatterns = [
     path('asignaciones/', obtener_asignaciones),
     path('guardar-orden-asignacion/', guardar_orden_asignacion),
     path('eliminar-asignacion/<int:id>/', eliminar_asignacion),
+    path('sacafranco-filas/', sacafranco_filas),
+    path('sacafranco-filas/<int:id>/', eliminar_sacafranco_fila),
     path('reporte-asignaciones/', exportar_asignaciones_excel, name='reporte_asignaciones'),
     path('asignacion-semanal/', listar_asignacion_semanal),
     path('asignacion-semanal/guardar/', crear_o_actualizar_asignacion_semanal),

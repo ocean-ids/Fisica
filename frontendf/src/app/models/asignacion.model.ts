@@ -23,8 +23,16 @@ export interface Asignacion{
     patronAsignacion?: number;
     agregar_sacafranco?: boolean;
     sacafranco_grupo?: number | null;
+    sacafranco_fila?: number | null;
     orden?: number;
     
+}
+
+export interface SacafrancoFila {
+    id?: number;
+    mes: number;
+    anio: number;
+    orden?: number;
 }
 
 export interface PatronAsignacion{

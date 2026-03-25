@@ -8,6 +8,9 @@
       <button class="btn btn-outline-primary" (click)="abrirModalNuevo()">
         <i class="bi bi-clipboard-check"></i> Nueva Asignación
       </button>
+      <button class="btn btn-outline-success" (click)="crearSacafrancoFila()">
+        <i class="bi bi-plus-square"></i> Nuevo Sacafranco
+      </button>
     </div>
 
     <section class="d-flex align-items-center gap-3">
@@ -147,12 +150,13 @@
                   </td>
                 </tr>
                 <tr
-                  *ngIf="row.type === 'sacafranco' && row.parent.persona_detalle?.is_active !== false"
+                  *ngIf="row.type === 'sacafranco'"
                   style="height: 45px;"
                   class="align-middle"
-                  [attr.data-sacafranco-parent]="row.parent.id"
-                  (mouseenter)="onSacafrancoHover(row.parent.id)"
-                  (mouseleave)="onSacafrancoLeave(row.parent.id)">
+                  [class.sacafranco-hover]="hoverSacafrancoFilaId === row.id"
+                  [attr.data-sacafranco-id]="row.id"
+                  (mouseenter)="onSacafrancoHover(row.id)"
+                  (mouseleave)="onSacafrancoLeave(row.id)">
                   <td
                     [attr.colspan]="totalColumns()"
                     class="text-center align-middle bg-warning-subtle fw-bold text-success">
@@ -176,6 +180,7 @@
                   <app-asignacion-calendario
                     [weekStart]="ws"
                     [filterText]="filtroTexto"
+                    [sacafrancoRows]="sacafrancoRows"
                     [rowOrder]="calendarRowOrder"
                     (sacafrancoClick)="openSacafrancosModal($event.weekStart, $event.day, $event.puestoId, $event.manage)"></app-asignacion-calendario>
                   <!--<div class="text-center"><strong>Semana: {{ ws }}</strong></div>-->

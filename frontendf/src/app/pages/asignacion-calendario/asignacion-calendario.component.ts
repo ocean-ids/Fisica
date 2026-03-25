@@ -1,5 +1,6 @@
 import { Component, OnInit, Output, EventEmitter, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { AsignacionSemanal } from '../../models/asignacion-calendario';
+import { SacafrancoFila } from '../../models/asignacion.model';
 import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
 import { PuestoService } from '../../services/puesto.service';
 import { AsignacionService } from '../../services/asignacion.service';
@@ -18,6 +19,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   @Input() weekStart: string = '';
   @Input() filterText: string = '';
   @Input() rowOrder: Array<number | string> = [];
+  @Input() sacafrancoRows: SacafrancoFila[] = [];
   @Output() sacafrancoClick: EventEmitter<any> = new EventEmitter<any>();
     ngOnChanges(changes: SimpleChanges): void {
       if (changes['weekStart'] && !changes['weekStart'].firstChange) {
@@ -28,6 +30,9 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       }
       if (changes['rowOrder'] && !changes['rowOrder'].firstChange) {
         this.applyOrder();
+      }
+      if (changes['sacafrancoRows'] && !changes['sacafrancoRows'].firstChange) {
+        this.buildDisplayRows();
       }
     }
   weeks: string[] = [];
@@ -94,7 +99,6 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         }
 
         this.applyOrder();
-        this.buildDisplayRows();
 
         
         console.log('loadWeek result for', this.weekStart, 'res=', res);
@@ -124,47 +128,59 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   }
 
   private getRowOrderKey(row: any): string {
+    if (row?._sacafranco) {
+      return `sacafranco-${row?._sacafrancoId ?? ''}`;
+    }
     const key = row?.asignacion || row?.asignacion_id || row?.puesto || '';
     return String(key);
   }
 
   private applyOrder(): void {
-    if (!this.rowOrder || !this.rowOrder.length || !this.rows || !this.rows.length) return;
-    const orderMap = new Map<string, number>();
-    this.rowOrder.forEach((id, idx) => orderMap.set(String(id), idx));
-    this.rows = [...this.rows].sort((a, b) => {
-      const aKey = this.getRowOrderKey(a);
-      const bKey = this.getRowOrderKey(b);
-      const aIdx = orderMap.get(aKey);
-      const bIdx = orderMap.get(bKey);
-      const aHas = aIdx !== undefined;
-      const bHas = bIdx !== undefined;
-      if (aHas && bHas) return (aIdx as number) - (bIdx as number);
-      if (aHas) return -1;
-      if (bHas) return 1;
-      return 0;
-    });
     this.buildDisplayRows();
   }
 
   private buildDisplayRows(): void {
-    if (!this.rows || !this.rows.length) {
+    const sacafrancoRows = this.buildSacafrancoRows();
+    const combined = [...(this.rows || []), ...sacafrancoRows];
+    if (!combined.length) {
       this.displayRows = [];
       return;
     }
-    const out: any[] = [];
-    this.rows.forEach(row => {
-      out.push(row);
-      if (row?.asignacion_sacafranco === true) {
-        out.push({
-          _sacafranco: true,
-          _parentAsignacionId: row?.asignacion || row?.asignacion_id || null,
-          _parentPuestoId: row?.puesto || row?.puesto_detalle?.id || null,
-          mon: '', tue: '', wed: '', thu: '', fri: '', sat: '', sun: ''
-        });
-      }
-    });
-    this.displayRows = out;
+
+    if (this.rowOrder && this.rowOrder.length) {
+      const orderMap = new Map<string, number>();
+      this.rowOrder.forEach((id, idx) => orderMap.set(String(id), idx));
+      combined.sort((a, b) => {
+        const aKey = this.getRowOrderKey(a);
+        const bKey = this.getRowOrderKey(b);
+        const aIdx = orderMap.get(aKey);
+        const bIdx = orderMap.get(bKey);
+        const aHas = aIdx !== undefined;
+        const bHas = bIdx !== undefined;
+        if (aHas && bHas) return (aIdx as number) - (bIdx as number);
+        if (aHas) return -1;
+        if (bHas) return 1;
+        return 0;
+      });
+    }
+
+    this.displayRows = combined;
+  }
+
+  private buildSacafrancoRows(): any[] {
+    if (!this.sacafrancoRows || !this.sacafrancoRows.length || !this.weekStart) return [];
+    const parts = this.weekStart.split('-').map(Number);
+    if (parts.length !== 3) return [];
+    const month = parts[1];
+    const year = parts[0];
+    return (this.sacafrancoRows || [])
+      .filter(r => r.mes === month && r.anio === year)
+      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+      .map(r => ({
+        _sacafranco: true,
+        _sacafrancoId: r.id,
+        mon: '', tue: '', wed: '', thu: '', fri: '', sat: '', sun: ''
+      }));
   }
 
   loadWeeksForMonth(mes: number, anio: number){
