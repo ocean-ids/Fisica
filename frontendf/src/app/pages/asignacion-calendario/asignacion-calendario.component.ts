@@ -344,7 +344,6 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     const parts = this.weekStart.split('-').map(Number);
     if (parts.length !== 3) return;
     const base = new Date(parts[0], parts[1]-1, parts[2]);
-    const month = base.getMonth();
     const shortOrder = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
     const fullOrder = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 
@@ -352,16 +351,12 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       const d = new Date(base);
       d.setDate(base.getDate() + i);
       const dow = d.getDay();
-      if (d.getMonth() === month){
-        this.weekDays.push({
-          short: shortOrder[dow],
-          name: fullOrder[dow],
-          date: this.formatDateLocal(d),
-          dayNum: d.getDate()
-        });
-      } else {
-        this.weekDays.push({ short:'', name:'', date:'', dayNum:0 });
-      }
+      this.weekDays.push({
+        short: shortOrder[dow],
+        name: fullOrder[dow],
+        date: this.formatDateLocal(d),
+        dayNum: d.getDate()
+      });
     }
   }
 
@@ -413,7 +408,8 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       const tokens = this.parseSequence(seq, isSacafranco);
       if (!tokens.length) return;
 
-      const rangeMap = this.buildRangeMap(startDate, endDate, tokens);
+      const anchor = this.parseWeekStart(this.weekStart);
+      const rangeMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
       this.applyRangeToBackend(row, rangeMap, isSacafranco);
       this.applyRangeToCurrentWeek(row, rangeMap);
     });
@@ -430,12 +426,17 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     return parts.length ? parts : [raw];
   }
 
-  private buildRangeMap(startDate: Date, endDate: Date, tokens: string[]): Record<string, Record<string, string>> {
+  private buildRangeMap(startDate: Date, endDate: Date, tokens: string[], anchorWeekStart?: Date | null): Record<string, Record<string, string>> {
     const map: Record<string, Record<string, string>> = {};
     let idx = 0;
     const d = new Date(startDate);
+    const anchorStart = anchorWeekStart ? new Date(anchorWeekStart) : null;
+    const anchorEnd = anchorStart ? new Date(anchorStart) : null;
+    if (anchorEnd) anchorEnd.setDate(anchorEnd.getDate() + 6);
     while (d <= endDate) {
-      const weekStart = this.getWeekStartForDate(d);
+      const weekStart = (anchorStart && anchorEnd && d >= anchorStart && d <= anchorEnd)
+        ? anchorStart
+        : this.getWeekStartForDate(d);
       const weekKey = this.formatDateLocal(weekStart);
       const dayKey = this.dayKeyFromDate(this.formatDateLocal(d));
       if (!map[weekKey]) map[weekKey] = {};
@@ -444,6 +445,13 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       d.setDate(d.getDate() + 1);
     }
     return map;
+  }
+
+  private parseWeekStart(weekStartStr: string): Date | null {
+    if (!weekStartStr) return null;
+    const parts = weekStartStr.split('-').map(Number);
+    if (parts.length !== 3) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
   }
 
   private getWeekStartForDate(d: Date): Date {
