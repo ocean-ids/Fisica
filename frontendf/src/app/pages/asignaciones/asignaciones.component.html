@@ -8,9 +8,6 @@
       <button class="btn btn-outline-primary" (click)="abrirModalNuevo()">
         <i class="bi bi-clipboard-check"></i> Nueva Asignación
       </button>
-      <button class="btn btn-outline-success" (click)="crearSacafrancoFila()">
-        <i class="bi bi-plus-square"></i> Nuevo Sacafranco
-      </button>
     </div>
 
     <section class="d-flex align-items-center gap-3">
@@ -32,9 +29,9 @@
       </mat-button-toggle-group>
     </section>
 
-    <div class="d-flex align-items-end gap-2">
-      <button class="btn btn-outline-primary">Insertar</button>
-    </div>
+    <button class="btn btn-outline-success" (click)="crearSacafrancoFila()">
+        <i class="bi bi-plus-square"></i> Fila Sacafranco
+    </button>
     
   </div>
   
@@ -133,13 +130,13 @@
                       <span class="text-muted" title="Arrastrar" style="cursor: grab;">
                         <i class="bi bi-grip-vertical"></i>
                       </span>
-                      <button
+                      <!--<button
                         *ngIf="row.isGroupedChild"
                         class="btn btn-sm btn-outline-secondary"
                         title="Desagrupar"
                         (click)="desagruparAsignacion(row.asig)">
                         <i class="bi bi-link-45deg"></i>
-                      </button>
+                      </button>-->
                       <button class="btn btn-sm btn-outline-primary " (click)="abrirModalEditar(row.asig)">
                         <i class="bi bi-pencil"></i>
                       </button>
