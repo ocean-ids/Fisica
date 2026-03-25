@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.db import transaction
 from django.core.validators import RegexValidator
 from .utils import parse_input
-from .models import Asignacion, AsignacionSemanal, Instalacion, Puesto, PuestoHorario, PatronAsignacion, SacafrancoFila
+from .models import Asignacion, AsignacionSemanal, Instalacion, Puesto, PuestoHorario, PatronAsignacion, SacafrancoFila, SacafrancoFilaSemanal
 
 
 class PatronAsignacionSerializer(serializers.ModelSerializer):
@@ -129,6 +129,12 @@ class SacafrancoFilaSerializer(serializers.ModelSerializer):
     class Meta:
         model = SacafrancoFila
         fields = ['id', 'mes', 'anio', 'orden', 'created_at', 'updated_at']
+
+
+class SacafrancoFilaSemanalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SacafrancoFilaSemanal
+        fields = ['id', 'sacafranco_fila', 'week_start', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'created_at', 'updated_at']
 
 class InstalacionSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 import { Injectable } from '@angular/core';
-import { AsignacionSemanal } from '../models/asignacion-calendario';
+import { AsignacionSemanal, SacafrancoFilaSemanal } from '../models/asignacion-calendario';
 
 @Injectable({
   providedIn: 'root'
@@ -19,6 +19,14 @@ export class AsignacionCalendarioService {
 
   crearAsignacionCalendario(asignacion: AsignacionSemanal): Observable<any>{
     return this.apiService.post<any>('/asignacion-semanal/guardar/', asignacion);
+  }
+
+  obtenerSacafrancoFilaSemanal(params?: any): Observable<SacafrancoFilaSemanal[]>{
+    return this.apiService.get<SacafrancoFilaSemanal[]>('/sacafranco-fila-semanal/', params);
+  }
+
+  crearSacafrancoFilaSemanal(payload: SacafrancoFilaSemanal): Observable<any>{
+    return this.apiService.post<any>('/sacafranco-fila-semanal/guardar/', payload);
   }
 
 }

@@ -424,6 +424,33 @@ class AsignacionSemanal(models.Model):
         return f"{self.puesto} - {self.week_start}"
 
 
+class SacafrancoFilaSemanal(models.Model):
+    sacafranco_fila = models.ForeignKey(
+        SacafrancoFila,
+        on_delete=models.CASCADE,
+        related_name='semanales'
+    )
+    week_start = models.DateField()
+
+    mon = models.CharField(max_length=16, blank=True)
+    tue = models.CharField(max_length=16, blank=True)
+    wed = models.CharField(max_length=16, blank=True)
+    thu = models.CharField(max_length=16, blank=True)
+    fri = models.CharField(max_length=16, blank=True)
+    sat = models.CharField(max_length=16, blank=True)
+    sun = models.CharField(max_length=16, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (('sacafranco_fila', 'week_start'),)
+        indexes = [models.Index(fields=['week_start']), models.Index(fields=['sacafranco_fila', 'week_start'])]
+
+    def __str__(self):
+        return f"SacafrancoFila {self.sacafranco_fila_id} - {self.week_start}"
+
+
 class ReporteAsistencia(models.Model):
     ESTADO_CHOICES = [
         ('TURNO', 'Turno'),

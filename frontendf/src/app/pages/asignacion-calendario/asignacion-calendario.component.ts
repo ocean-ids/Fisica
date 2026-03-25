@@ -1,5 +1,5 @@
 import { Component, OnInit, Output, EventEmitter, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { AsignacionSemanal } from '../../models/asignacion-calendario';
+import { AsignacionSemanal, SacafrancoFilaSemanal } from '../../models/asignacion-calendario';
 import { SacafrancoFila } from '../../models/asignacion.model';
 import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
 import { PuestoService } from '../../services/puesto.service';
@@ -7,11 +7,15 @@ import { AsignacionService } from '../../services/asignacion.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { PatronAsignacionService } from '../../services/patron-asignacion.service';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
+import { AsignacionCalendarioRangeModalComponent, AsignacionRangeModalResult } from './asignacion-calendario-range-modal.component';
+
 
 @Component({
   selector: 'app-asignacion-calendario',
   standalone: true,
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule, MatDialogModule, MatButtonModule],
   templateUrl: './asignacion-calendario.component.html',
   styleUrl: './asignacion-calendario.component.css'
 })
@@ -42,6 +46,8 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   displayRows: any[] = [];
   loading = false;
   @Input() allowCreateEmptyRows: boolean = false;
+
+  sacafrancoWeekRows: SacafrancoFilaSemanal[] = [];
   
 
  
@@ -51,7 +57,8 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     private asignacionCalendarioService: AsignacionCalendarioService,
     private puestoService: PuestoService,
     private asignacionService: AsignacionService,
-    private patronAsignacionService: PatronAsignacionService
+    private patronAsignacionService: PatronAsignacionService,
+    private dialog: MatDialog
   ){}
 
   ngOnInit(): void {
@@ -99,6 +106,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         }
 
         this.applyOrder();
+        this.loadSacafrancoWeek();
 
         
         console.log('loadWeek result for', this.weekStart, 'res=', res);
@@ -124,6 +132,25 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
           try { this.weekStartChange.emit(this.weekStart); } catch(e){}
         },
         error: () => this.loading = false
+      });
+  }
+
+  private loadSacafrancoWeek(): void {
+    if (!this.weekStart) {
+      this.sacafrancoWeekRows = [];
+      this.buildDisplayRows();
+      return;
+    }
+    this.asignacionCalendarioService.obtenerSacafrancoFilaSemanal({ week_start: this.weekStart })
+      .subscribe({
+        next: data => {
+          this.sacafrancoWeekRows = data || [];
+          this.buildDisplayRows();
+        },
+        error: () => {
+          this.sacafrancoWeekRows = [];
+          this.buildDisplayRows();
+        }
       });
   }
 
@@ -173,14 +200,27 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     if (parts.length !== 3) return [];
     const month = parts[1];
     const year = parts[0];
+    const weekMap = new Map<number, SacafrancoFilaSemanal>();
+    (this.sacafrancoWeekRows || []).forEach(r => {
+      if (r?.sacafranco_fila) weekMap.set(r.sacafranco_fila, r);
+    });
     return (this.sacafrancoRows || [])
       .filter(r => r.mes === month && r.anio === year)
       .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
-      .map(r => ({
-        _sacafranco: true,
-        _sacafrancoId: r.id,
-        mon: '', tue: '', wed: '', thu: '', fri: '', sat: '', sun: ''
-      }));
+      .map(r => {
+        const week = weekMap.get(r.id as number);
+        return {
+          _sacafranco: true,
+          _sacafrancoId: r.id,
+          mon: week?.mon || '',
+          tue: week?.tue || '',
+          wed: week?.wed || '',
+          thu: week?.thu || '',
+          fri: week?.fri || '',
+          sat: week?.sat || '',
+          sun: week?.sun || ''
+        };
+      });
   }
 
   loadWeeksForMonth(mes: number, anio: number){
@@ -251,6 +291,26 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     const v = value ? String(value).toUpperCase().slice(0,4) : '';
     row[day] = v;
     this.saveRow(row);
+  }
+
+  onSacafrancoCellChange(row: any, day: string, value: any){
+    const v = value ? String(value).toUpperCase().slice(0,16) : '';
+    row[day] = v;
+    this.saveSacafrancoRow(row, [day]);
+  }
+
+  private saveSacafrancoRow(row: any, days: string[]): void {
+    const filaId = row?._sacafrancoId;
+    if (!filaId) return;
+    const payload: any = {
+      sacafranco_fila: filaId,
+      week_start: this.weekStart
+    };
+    days.forEach(d => {
+      payload[d] = row[d] || '';
+    });
+    this.asignacionCalendarioService.crearSacafrancoFilaSemanal(payload)
+      .subscribe({ next: () => {}, error: () => {} });
   }
 
   getCellClass(value: string){
@@ -324,6 +384,119 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       this._clickTimer = null;
     }
     this.sacafrancoClick.emit({ weekStart: this.weekStart, day: day, puestoId: puestoId, manage: true });
+  }
+
+  openRangeModal(row: any, dayKey: string, isSacafranco: boolean): void {
+    const clickedDate = this.getDateForDayKey(this.weekStart, dayKey);
+    if (!clickedDate) return;
+    const startDefault = this.formatDateLocal(clickedDate);
+    const endDefault = this.formatDateLocal(clickedDate);
+    const ref = this.dialog.open(AsignacionCalendarioRangeModalComponent, {
+      width: '420px',
+      data: {
+        start: startDefault,
+        end: endDefault,
+        seq: '',
+        isSacafranco
+      }
+    });
+
+    ref.afterClosed().subscribe((result?: AsignacionRangeModalResult) => {
+      if (!result) return;
+      const { start, end, seq } = result;
+      if (!start || !end || !seq) return;
+
+      const startDate = new Date(start + 'T00:00:00');
+      const endDate = new Date(end + 'T00:00:00');
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
+
+      const tokens = this.parseSequence(seq, isSacafranco);
+      if (!tokens.length) return;
+
+      const rangeMap = this.buildRangeMap(startDate, endDate, tokens);
+      this.applyRangeToBackend(row, rangeMap, isSacafranco);
+      this.applyRangeToCurrentWeek(row, rangeMap);
+    });
+  }
+
+  private parseSequence(seq: string, isSacafranco: boolean): string[] {
+    const raw = (seq || '').trim().toUpperCase();
+    if (!raw) return [];
+    if (!isSacafranco) {
+      const letters = raw.match(/[FDN]/g) || [];
+      return letters;
+    }
+    const parts = raw.split(/[\s,]+/).filter(Boolean);
+    return parts.length ? parts : [raw];
+  }
+
+  private buildRangeMap(startDate: Date, endDate: Date, tokens: string[]): Record<string, Record<string, string>> {
+    const map: Record<string, Record<string, string>> = {};
+    let idx = 0;
+    const d = new Date(startDate);
+    while (d <= endDate) {
+      const weekStart = this.getWeekStartForDate(d);
+      const weekKey = this.formatDateLocal(weekStart);
+      const dayKey = this.dayKeyFromDate(this.formatDateLocal(d));
+      if (!map[weekKey]) map[weekKey] = {};
+      map[weekKey][dayKey] = tokens[idx % tokens.length];
+      idx += 1;
+      d.setDate(d.getDate() + 1);
+    }
+    return map;
+  }
+
+  private getWeekStartForDate(d: Date): Date {
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const day = d.getDate();
+    const startDay = 1 + Math.floor((day - 1) / 7) * 7;
+    return new Date(y, m, startDay);
+  }
+
+  private getDateForDayKey(weekStartStr: string, dayKey: string): Date | null {
+    if (!weekStartStr || !dayKey) return null;
+    const parts = weekStartStr.split('-').map(Number);
+    if (parts.length !== 3) return null;
+    const base = new Date(parts[0], parts[1] - 1, parts[2]);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      if (this.dayKeyFromDate(this.formatDateLocal(d)) === dayKey) return d;
+    }
+    return null;
+  }
+
+  private applyRangeToBackend(row: any, rangeMap: Record<string, Record<string, string>>, isSacafranco: boolean): void {
+    const keys = Object.keys(rangeMap);
+    keys.forEach(weekStart => {
+      const days = rangeMap[weekStart] || {};
+      if (!Object.keys(days).length) return;
+      if (isSacafranco) {
+        const filaId = row?._sacafrancoId;
+        if (!filaId) return;
+        const payload: any = { sacafranco_fila: filaId, week_start: weekStart };
+        Object.keys(days).forEach(k => payload[k] = days[k]);
+        this.asignacionCalendarioService.crearSacafrancoFilaSemanal(payload).subscribe({ next: () => {}, error: () => {} });
+      } else {
+        const asignacionId = row?.asignacion || row?.asignacion_id;
+        if (!asignacionId) return;
+        const payload: any = {
+          asignacion_id: asignacionId,
+          puesto: row.puesto || (row.puesto_detalle && row.puesto_detalle.id),
+          week_start: weekStart
+        };
+        Object.keys(days).forEach(k => payload[k] = days[k]);
+        this.asignacionCalendarioService.crearAsignacionCalendario(payload).subscribe({ next: () => {}, error: () => {} });
+      }
+    });
+  }
+
+  private applyRangeToCurrentWeek(row: any, rangeMap: Record<string, Record<string, string>>): void {
+    const weekDays = rangeMap[this.weekStart] || {};
+    Object.keys(weekDays).forEach(k => {
+      row[k] = weekDays[k];
+    });
   }
 
   showPreview(puestoId: any, day: string) {

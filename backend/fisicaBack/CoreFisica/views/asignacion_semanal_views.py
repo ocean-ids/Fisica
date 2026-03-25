@@ -1,11 +1,11 @@
-from ..models import AsignacionSemanal
+from ..models import AsignacionSemanal, SacafrancoFilaSemanal
 from django.db.models import Q
 from django.http import JsonResponse
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
-from ..serializers import AsignacionSemanalSerializer
+from ..serializers import AsignacionSemanalSerializer, SacafrancoFilaSemanalSerializer
 from django.db import transaction
 from datetime import datetime, date, timedelta
 
@@ -361,6 +361,64 @@ def crear_o_actualizar_asignacion_semanal(request):
                 obj.save()
 
             serializer = AsignacionSemanalSerializer(obj)
+            return Response({'created': created, 'result': serializer.data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def listar_sacafranco_fila_semanal(request):
+    if not request.user.has_perm('CoreFisica.view_asignacionsemanal'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    week_start = request.GET.get('week_start')
+    if not week_start:
+        return Response({'error': 'week_start es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        ws = datetime.fromisoformat(week_start).date()
+    except Exception:
+        return Response({'error': 'week_start inválida, formato YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+
+    qs = SacafrancoFilaSemanal.objects.select_related('sacafranco_fila').filter(week_start=ws)
+    serializer = SacafrancoFilaSemanalSerializer(qs, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def crear_o_actualizar_sacafranco_fila_semanal(request):
+    if not request.user.has_perm('CoreFisica.change_asignacionsemanal'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    data = request.data
+    sacafranco_fila_id = data.get('sacafranco_fila')
+    week_start = data.get('week_start')
+    if not sacafranco_fila_id or not week_start:
+        return Response({'error': 'Faltan campos sacafranco_fila o week_start'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        ws = datetime.fromisoformat(week_start).date()
+    except Exception:
+        return Response({'error': 'week_start inválida, formato YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        with transaction.atomic():
+            defaults = {}
+            for d in ['mon','tue','wed','thu','fri','sat','sun']:
+                if d in data:
+                    defaults[d] = data.get(d) or ''
+
+            obj, created = SacafrancoFilaSemanal.objects.get_or_create(
+                sacafranco_fila_id=sacafranco_fila_id,
+                week_start=ws,
+                defaults={**defaults, 'sacafranco_fila_id': sacafranco_fila_id}
+            )
+
+            if not created:
+                for d in ['mon','tue','wed','thu','fri','sat','sun']:
+                    if d in data:
+                        setattr(obj, d, data.get(d) or '')
+                obj.save()
+
+            serializer = SacafrancoFilaSemanalSerializer(obj)
             return Response({'created': created, 'result': serializer.data}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

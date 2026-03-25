@@ -15,7 +15,14 @@
           <ng-container *ngIf="row?._sacafranco; else normalRow">
             <ng-container *ngFor="let d of weekDays">
               <td *ngIf="d.date; else emptyDay" style="height: 45px;" >
-                <input type="text" maxlength="4" class="form-control form-control-sm sacafranco-input" value="">
+                <input
+                  type="text"
+                  maxlength="16"
+                  class="form-control form-control-sm sacafranco-input"
+                  [(ngModel)]="row[dayKeyFromDate(d.date)]"
+                  (change)="onSacafrancoCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
+                  (dblclick)="openRangeModal(row, dayKeyFromDate(d.date), true)"
+                  [ngModelOptions]="{standalone:true}">
               </td>
             </ng-container>
           </ng-container>
@@ -25,6 +32,7 @@
                 <ng-container *ngIf="((row[dayKeyFromDate(d.date)] || '').toString().toUpperCase().charAt(0) === 'F'); else normalInput">
                   <button class="info-btn btn btn-sm btn-outline-info"
                           (click)="onInfoClick($event, row.puesto, dayKeyFromDate(d.date))"
+                          (dblclick)="openRangeModal(row, dayKeyFromDate(d.date), false)"
                           (mouseenter)="showPreview(row.puesto, dayKeyFromDate(d.date))"
                           (mouseleave)="clearPreview(row.puesto, dayKeyFromDate(d.date))"
                           [title]="getPreviewTitle(row.puesto, dayKeyFromDate(d.date))">
@@ -40,6 +48,7 @@
                         <input type="text" maxlength="4" class="form-control form-control-sm"
                           [(ngModel)]="row[dayKeyFromDate(d.date)]"
                           (change)="onCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
+                          (dblclick)="openRangeModal(row, dayKeyFromDate(d.date), false)"
                           [ngModelOptions]="{standalone:true}">
                 </ng-template>
               </td>

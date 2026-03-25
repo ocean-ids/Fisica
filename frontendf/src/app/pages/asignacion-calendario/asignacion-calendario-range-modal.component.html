@@ -1,0 +1,28 @@
+<h2 mat-dialog-title>Aplicar secuencia</h2>
+
+<mat-dialog-content>
+  <div class="range-form">
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>Desde</mat-label>
+      <input matInput type="date" [(ngModel)]="start" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>Hasta</mat-label>
+      <input matInput type="date" [(ngModel)]="end" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>Secuencia</mat-label>
+      <input matInput type="text" [(ngModel)]="seq" placeholder="F D N o texto" />
+      <mat-hint *ngIf="!data.isSacafranco">Solo F, D, N</mat-hint>
+    </mat-form-field>
+
+    <div class="error" *ngIf="errorText">{{ errorText }}</div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="submit()">Aplicar</button>
+</mat-dialog-actions>

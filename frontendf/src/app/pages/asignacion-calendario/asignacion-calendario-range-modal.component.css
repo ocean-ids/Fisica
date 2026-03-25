@@ -1,0 +1,15 @@
+.range-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.field {
+  width: 100%;
+}
+
+.error {
+  color: #b42318;
+  font-size: 13px;
+}
