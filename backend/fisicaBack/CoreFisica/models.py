@@ -345,6 +345,14 @@ class Asignacion(models.Model):
         related_name='asignaciones'
     )
 
+    sacafranco_grupo = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sacafranco_miembros'
+    )
+
     fecha = models.DateField(null=True, blank=True)
     mes = models.PositiveSmallIntegerField(default=current_month)
     anio = models.PositiveSmallIntegerField(default=current_year)
@@ -354,6 +362,8 @@ class Asignacion(models.Model):
     end_date = models.DateField(null=True, blank=True)
 
     agregar_sacafranco = models.BooleanField(default=False)
+
+    orden = models.PositiveIntegerField(default=0)
 
     estado = models.CharField(
         max_length=10,

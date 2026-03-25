@@ -76,40 +76,52 @@
                 <th>Resumen</th>
               </tr>
             </thead>
-            <tbody cdkDropList [cdkDropListData]="asignaciones" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropAsignaciones($event)">
-              <ng-container *ngFor="let asig of asignaciones; trackBy: trackByAsignacion">
-                <tr cdkDrag cdkDragLockAxis="y" cdkDragBoundary=".asig-table-card .card-body" cdkDragPreviewContainer="parent" class="text-center align-middle shared-row" *ngIf="asig.persona_detalle?.is_active !== false" style="height: 70px;">
-                  <td *ngIf="!columnaOculta('horario')">{{ asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
-                  <td *ngIf="!columnaOculta('codigo')">{{ getCodigoInstalacionAsignacion(asig) }}</td>
-                  <td *ngIf="!columnaOculta('cliente')" style="max-width: 200px;">{{ asig.cliente_detalle?.nombre_comercial }}</td>
-                  <td *ngIf="mostrarPuesto()">{{ asig.puesto_detalle?.nombre }}</td>
+            <tbody cdkDropList [cdkDropListData]="displayAssignmentRows" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropAsignaciones($event)">
+              <ng-container *ngFor="let row of displayRows; trackBy: trackByDisplayRow">
+                <tr
+                  *ngIf="row.type === 'asignacion' && row.asig.persona_detalle?.is_active !== false"
+                  cdkDrag
+                  [cdkDragData]="row.asig"
+                  cdkDragLockAxis="y"
+                  cdkDragBoundary=".asig-table-card .card-body"
+                  cdkDragPreviewContainer="parent"
+                  (cdkDragStarted)="onDragStarted(row.asig)"
+                  (cdkDragMoved)="onDragMoved($event)"
+                  (cdkDragEnded)="onDragEnded()"
+                  class="text-center align-middle shared-row"
+                  [class.grouped-child]="row.isGroupedChild"
+                  style="height: 70px;">
+                  <td *ngIf="!columnaOculta('horario')">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
+                  <td *ngIf="!columnaOculta('codigo')">{{ getCodigoInstalacionAsignacion(row.asig) }}</td>
+                  <td *ngIf="!columnaOculta('cliente')" style="max-width: 200px;">{{ row.asig.cliente_detalle?.nombre_comercial }}</td>
+                  <td *ngIf="mostrarPuesto()">{{ row.asig.puesto_detalle?.nombre }}</td>
                   <td *ngIf="mostrarPuesto()">
                     <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
-                      {{ getResumenPuestoCompacto(asig.puesto_detalle) }}
+                      {{ getResumenPuestoCompacto(row.asig.puesto_detalle) }}
                     </span>
 
                     <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
                       <div class="tooltip-content">
-                        <div><strong>👮 Puesto:</strong> {{ asig.puesto_detalle?.cantidad_guardias }}</div>
-                        <div><strong>⏰ Horas:</strong> {{ getHorasPuesto(asig.puesto_detalle) }}</div>
-                        <div><strong>🌙 Turno:</strong> {{ getTurnosPuesto(asig.puesto_detalle) }}</div>
-                        <div><strong>📅 Días:</strong> {{ getDiasPuesto(asig.puesto_detalle) }}</div>
+                        <div><strong>👮 Puesto:</strong> {{ row.asig.puesto_detalle?.cantidad_guardias }}</div>
+                        <div><strong>⏰ Horas:</strong> {{ getHorasPuesto(row.asig.puesto_detalle) }}</div>
+                        <div><strong>🌙 Turno:</strong> {{ getTurnosPuesto(row.asig.puesto_detalle) }}</div>
+                        <div><strong>📅 Días:</strong> {{ getDiasPuesto(row.asig.puesto_detalle) }}</div>
                       </div>
                     </mat-menu>
                   </td>
-                  <td *ngIf="!columnaOculta('cedula')">{{ asig.persona_detalle?.cedula }}</td>
+                  <td *ngIf="!columnaOculta('cedula')">{{ row.asig.persona_detalle?.cedula }}</td>
                   <td *ngIf="!columnaOculta('persona')" class="persona-cell" style="min-width: 200px;">
                       <div>
-                        {{ asig.persona_detalle?.apellidos }}
+                        {{ row.asig.persona_detalle?.apellidos }}
                       </div>
 
                       <div>
-                        {{ asig.persona_detalle?.nombres }}
+                        {{ row.asig.persona_detalle?.nombres }}
                       </div>
                       <div>
                         <span class="badge"
-                          [ngClass]="asig.persona_detalle?.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
-                          {{ asig.persona_detalle?.tipo }}
+                          [ngClass]="row.asig.persona_detalle?.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
+                          {{ row.asig.persona_detalle?.tipo }}
                         </span>
                       </div>
                     </td>
@@ -118,17 +130,34 @@
                       <span class="text-muted" title="Arrastrar" style="cursor: grab;">
                         <i class="bi bi-grip-vertical"></i>
                       </span>
-                      <button class="btn btn-sm btn-outline-primary " (click)="abrirModalEditar(asig)">
+                      <button
+                        *ngIf="row.isGroupedChild"
+                        class="btn btn-sm btn-outline-secondary"
+                        title="Desagrupar"
+                        (click)="desagruparAsignacion(row.asig)">
+                        <i class="bi bi-link-45deg"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-primary " (click)="abrirModalEditar(row.asig)">
                         <i class="bi bi-pencil"></i>
                       </button>
-                      <button class="btn btn-sm btn-outline-danger" (click)="eliminarAsignacion(asig)">
+                      <button class="btn btn-sm btn-outline-danger" (click)="eliminarAsignacion(row.asig)">
                         <i class="bi bi-trash"></i>
                       </button>
                     </div>
                   </td>
                 </tr>
-                <tr style="height: 45px;" class="align-middle" *ngIf="asig.agregar_sacafranco && asig.persona_detalle?.is_active !== false">
-                  <td  [attr.colspan]="totalColumns()" class="text-center align-middle bg-warning-subtle fw-bold text-success ">SACAFRANCO</td>
+                <tr
+                  *ngIf="row.type === 'sacafranco' && row.parent.persona_detalle?.is_active !== false"
+                  style="height: 45px;"
+                  class="align-middle"
+                  [attr.data-sacafranco-parent]="row.parent.id"
+                  (mouseenter)="onSacafrancoHover(row.parent.id)"
+                  (mouseleave)="onSacafrancoLeave(row.parent.id)">
+                  <td
+                    [attr.colspan]="totalColumns()"
+                    class="text-center align-middle bg-warning-subtle fw-bold text-success">
+                    SACAFRANCO
+                  </td>
                 </tr>
               </ng-container>
             </tbody>

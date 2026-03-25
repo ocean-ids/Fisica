@@ -22,6 +22,8 @@ export interface Asignacion{
     end_date?: string | null;
     patronAsignacion?: number;
     agregar_sacafranco?: boolean;
+    sacafranco_grupo?: number | null;
+    orden?: number;
     
 }
 

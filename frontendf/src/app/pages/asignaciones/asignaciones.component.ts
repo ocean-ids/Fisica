@@ -25,7 +25,7 @@ import { PatronSacafrancosModalComponent } from '../patrones/patron-sacafrancos-
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form/asignacion-form.component';
-import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-asignaciones',
@@ -55,6 +55,11 @@ export class AsignacionesComponent implements OnInit {
 
   weeksForMonth: string[] = [];
   calendarRowOrder: Array<number | string> = [];
+  displayRows: Array<{ type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } | { type: 'sacafranco'; parent: Asignacion }> = [];
+  displayAssignmentRows: Asignacion[] = [];
+  hoverSacafrancoParentId: number | null = null;
+  draggingAsignacionId: number | null = null;
+  private lastHoverSacafrancoParentId: number | null = null;
 
   private monthStartToday(): string {
     const t = new Date();
@@ -401,6 +406,7 @@ export class AsignacionesComponent implements OnInit {
     this.asignacionService.obtenerAsignaciones(this.mes, this.anio, params).subscribe({
       next: data => {
         this.asignaciones = data || [];
+        this.buildDisplayRows();
         this.updateCalendarOrder();
       },
       error: err => console.error('Error al cargar asignaciones', err)
@@ -408,10 +414,34 @@ export class AsignacionesComponent implements OnInit {
   }
 
   dropAsignaciones(event: CdkDragDrop<Asignacion[]>): void {
-    if (!event || event.previousIndex === event.currentIndex) return;
-    moveItemInArray(this.asignaciones, event.previousIndex, event.currentIndex);
-    this.asignaciones = [...this.asignaciones];
+    if (!event) return;
+
+    const dragged = event.item?.data as Asignacion | undefined;
+    if (!dragged) return;
+    const draggedId = dragged.id ?? null;
+
+    if (draggedId && this.hoverSacafrancoParentId && this.hoverSacafrancoParentId !== draggedId) {
+      if (!this.hasSacafrancoChildren(draggedId)) {
+        this.setSacafrancoGroup(dragged, this.hoverSacafrancoParentId);
+        Swal.fire({
+          icon: 'success',
+          title: 'Agrupado',
+          text: 'Asignacion agrupada en sacafranco',
+          timer: 1200,
+          showConfirmButton: false
+        });
+      }
+      return;
+    }
+
+    if (event.previousIndex === event.currentIndex) return;
+    if (!this.displayAssignmentRows || !this.displayAssignmentRows.length) return;
+
+    moveItemInArray(this.displayAssignmentRows, event.previousIndex, event.currentIndex);
+    this.asignaciones = [...this.displayAssignmentRows];
+    this.buildDisplayRows();
     this.updateCalendarOrder();
+    this.persistOrder();
   }
 
   trackByAsignacion(index: number, asig: Asignacion): number | string {
@@ -419,9 +449,166 @@ export class AsignacionesComponent implements OnInit {
   }
 
   private updateCalendarOrder(): void {
-    this.calendarRowOrder = (this.asignaciones || [])
+    const source = this.displayAssignmentRows && this.displayAssignmentRows.length
+      ? this.displayAssignmentRows
+      : (this.asignaciones || []);
+    this.calendarRowOrder = source
       .map(asig => asig?.id ?? asig?.puesto_detalle?.id ?? asig?.puesto)
       .filter(v => v !== null && v !== undefined) as Array<number | string>;
+  }
+
+  private buildDisplayRows(): void {
+    const all = this.asignaciones || [];
+    const idSet = new Set<number>();
+    all.forEach(a => {
+      if (a?.id) idSet.add(a.id);
+    });
+    const childrenByParent = new Map<number, Asignacion[]>();
+    const parentOrder: Asignacion[] = [];
+
+    all.forEach(a => {
+      const parentId = a?.sacafranco_grupo ?? null;
+      if (parentId && idSet.has(parentId)) {
+        if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
+        childrenByParent.get(parentId)!.push(a);
+      } else {
+        parentOrder.push(a);
+      }
+    });
+
+    const rows: Array<{ type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } | { type: 'sacafranco'; parent: Asignacion }> = [];
+    const displayAssignments: Asignacion[] = [];
+
+    parentOrder.forEach(parent => {
+      rows.push({ type: 'asignacion', asig: parent, isGroupedChild: false });
+      displayAssignments.push(parent);
+
+      if (parent.agregar_sacafranco) {
+        rows.push({ type: 'sacafranco', parent });
+      }
+
+      const children = childrenByParent.get(parent.id || -1) || [];
+      children.forEach(child => {
+        rows.push({ type: 'asignacion', asig: child, isGroupedChild: true });
+        displayAssignments.push(child);
+      });
+    });
+
+    this.displayRows = rows;
+    this.displayAssignmentRows = displayAssignments;
+  }
+
+  onDragStarted(asig: Asignacion): void {
+    this.draggingAsignacionId = asig?.id ?? null;
+  }
+
+  onDragEnded(): void {
+    this.draggingAsignacionId = null;
+    this.hoverSacafrancoParentId = null;
+    this.lastHoverSacafrancoParentId = null;
+  }
+
+  onDragMoved(event: CdkDragMove): void {
+    const point = event?.pointerPosition;
+    if (!point) return;
+    const el = document.elementFromPoint(point.x, point.y) as HTMLElement | null;
+    if (!el) return;
+    const row = el.closest('tr[data-sacafranco-parent]') as HTMLElement | null;
+    if (!row) {
+      this.hoverSacafrancoParentId = null;
+      this.lastHoverSacafrancoParentId = null;
+      return;
+    }
+    const raw = row.getAttribute('data-sacafranco-parent');
+    const parentId = raw ? Number(raw) : null;
+    if (parentId && this.draggingAsignacionId !== null) {
+      this.hoverSacafrancoParentId = parentId;
+      if (this.lastHoverSacafrancoParentId !== parentId) {
+        this.lastHoverSacafrancoParentId = parentId;
+        Swal.fire({
+          icon: 'info',
+          title: 'SACAFRANCO',
+          text: 'Suelta aqui para agrupar',
+          timer: 1200,
+          showConfirmButton: false
+        });
+      }
+    }
+  }
+
+  onSacafrancoHover(parentId?: number): void {
+    if (!parentId) return;
+    if (this.draggingAsignacionId !== null) {
+      this.hoverSacafrancoParentId = parentId;
+    }
+  }
+
+  onSacafrancoLeave(parentId?: number): void {
+    if (!parentId) return;
+    if (this.hoverSacafrancoParentId === parentId) {
+      this.hoverSacafrancoParentId = null;
+    }
+  }
+
+  private hasSacafrancoChildren(parentId: number): boolean {
+    return (this.asignaciones || []).some(a => a?.sacafranco_grupo === parentId);
+  }
+
+  private setSacafrancoGroup(asig: Asignacion, parentId: number | null): void {
+    if (!asig || !asig.id) return;
+    if ((asig.sacafranco_grupo ?? null) === (parentId ?? null)) return;
+    this.asignacionService.actualizarAsignacion(
+      asig.id,
+      { sacafranco_grupo: parentId } as Partial<Asignacion>
+    ).subscribe({
+      next: () => {
+        asig.sacafranco_grupo = parentId;
+        if (parentId) {
+          this.moveGroupedAboveChildren(asig, parentId);
+        }
+        this.buildDisplayRows();
+        this.updateCalendarOrder();
+        this.persistOrder();
+      },
+      error: err => console.error('Error al actualizar sacafranco_grupo', err)
+    });
+  }
+
+  private moveGroupedAboveChildren(asig: Asignacion, parentId: number): void {
+    if (!this.asignaciones || !this.asignaciones.length) return;
+    const list = [...this.asignaciones];
+    const fromIdx = list.findIndex(a => a?.id === asig.id);
+    const parentIdx = list.findIndex(a => a?.id === parentId);
+    if (fromIdx === -1 || parentIdx === -1) return;
+
+    const [item] = list.splice(fromIdx, 1);
+    const insertIdx = parentIdx + 1;
+    list.splice(insertIdx, 0, item);
+    this.asignaciones = list;
+  }
+
+  private persistOrder(): void {
+    const source = this.displayAssignmentRows && this.displayAssignmentRows.length
+      ? this.displayAssignmentRows
+      : (this.asignaciones || []);
+    const ordenes = source
+      .filter(a => a?.id)
+      .map((a, idx) => ({ id: a.id as number, orden: idx }));
+    if (!ordenes.length) return;
+    this.asignacionService.guardarOrden(ordenes).subscribe({
+      next: () => {},
+      error: err => console.error('Error al guardar orden', err)
+    });
+  }
+
+  desagruparAsignacion(asig: Asignacion): void {
+    if (!asig?.id || !asig.sacafranco_grupo) return;
+    this.setSacafrancoGroup(asig, null);
+  }
+
+  trackByDisplayRow(index: number, row: any): string | number {
+    if (row?.type === 'sacafranco') return `sacafranco-${row.parent?.id ?? index}`;
+    return row?.asig?.id ?? index;
   }
 
   
@@ -457,6 +644,8 @@ export class AsignacionesComponent implements OnInit {
       estado: 'ACTIVO',
       recurring: true,
       agregar_sacafranco: false,
+      sacafranco_grupo: null,
+      orden: 0,
       patronAsignacion: 0
     };
   }

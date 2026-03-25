@@ -25,7 +25,7 @@ export class AsignacionService {
     return this.apiService.post<Asignacion>(`/asignar-servicio/`, asignacion);
   }
 
-  actualizarAsignacion(id: number, asignacion: Asignacion): Observable<Asignacion> {
+  actualizarAsignacion(id: number, asignacion: Partial<Asignacion>): Observable<Asignacion> {
     return this.apiService.put<Asignacion>(`/editar-servicio/${id}/`, asignacion);
   }
 
