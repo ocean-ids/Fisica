@@ -59,7 +59,6 @@ export class AsignacionesComponent implements OnInit {
   displayAssignmentRows: Asignacion[] = [];
   hoverSacafrancoParentId: number | null = null;
   draggingAsignacionId: number | null = null;
-  private lastHoverSacafrancoParentId: number | null = null;
 
   private monthStartToday(): string {
     const t = new Date();
@@ -423,13 +422,6 @@ export class AsignacionesComponent implements OnInit {
     if (draggedId && this.hoverSacafrancoParentId && this.hoverSacafrancoParentId !== draggedId) {
       if (!this.hasSacafrancoChildren(draggedId)) {
         this.setSacafrancoGroup(dragged, this.hoverSacafrancoParentId);
-        Swal.fire({
-          icon: 'success',
-          title: 'Agrupado',
-          text: 'Asignacion agrupada en sacafranco',
-          timer: 1200,
-          showConfirmButton: false
-        });
       }
       return;
     }
@@ -505,7 +497,6 @@ export class AsignacionesComponent implements OnInit {
   onDragEnded(): void {
     this.draggingAsignacionId = null;
     this.hoverSacafrancoParentId = null;
-    this.lastHoverSacafrancoParentId = null;
   }
 
   onDragMoved(event: CdkDragMove): void {
@@ -516,23 +507,12 @@ export class AsignacionesComponent implements OnInit {
     const row = el.closest('tr[data-sacafranco-parent]') as HTMLElement | null;
     if (!row) {
       this.hoverSacafrancoParentId = null;
-      this.lastHoverSacafrancoParentId = null;
       return;
     }
     const raw = row.getAttribute('data-sacafranco-parent');
     const parentId = raw ? Number(raw) : null;
     if (parentId && this.draggingAsignacionId !== null) {
       this.hoverSacafrancoParentId = parentId;
-      if (this.lastHoverSacafrancoParentId !== parentId) {
-        this.lastHoverSacafrancoParentId = parentId;
-        Swal.fire({
-          icon: 'info',
-          title: 'SACAFRANCO',
-          text: 'Suelta aqui para agrupar',
-          timer: 1200,
-          showConfirmButton: false
-        });
-      }
     }
   }
 
