@@ -645,14 +645,21 @@ export class AsignacionesComponent implements OnInit {
 
   abrirNuevoPatron(): void {
     const today = new Date();
-    const startDate = this.dia || `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const defaultStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const ref = this.dialog.open(PatronFormComponent, {
       width: '480px',
-      data: { patron: null, requireStartDate: true, startDate }
+      data: { patron: null, requireStartDate: true, startDate: this.asignacionActual.start_date || defaultStart }
     });
     ref.afterClosed().subscribe((result?: PatronFormResult) => {
-      if (!result?.saved) return;
-      this.patronService.obtenerPatrones().subscribe({ next: d => this.patrones = d || [] });
+      if (!result?.saved || !result.patron) return;
+      const exists = this.patrones.find(p => p.id === result.patron?.id);
+      if (!exists) {
+        this.patrones = [...this.patrones, result.patron];
+      }
+      this.asignacionActual.patronAsignacion = result.patron.id;
+      this.asignacionActual.start_date = result.startDate || this.asignacionActual.start_date || null;
+      this.asignacionActual.end_date = null;
+      this.asignacionActual.recurring = true;
     });
   }
 

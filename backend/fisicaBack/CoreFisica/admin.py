@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal
 
 
 @admin.register(Cliente)
@@ -32,7 +32,17 @@ class PuestoHorarioInline(admin.TabularInline):
 	model = PuestoHorario
 	extra = 1
 	fields = ('dia', 'horas', 'turno')
-	
+
+@admin.register(SacafrancoFila)
+class SacafrancoFilaAdmin(admin.ModelAdmin):
+	list_display = ('id', 'mes', 'anio', 'orden', 'created_at', 'updated_at')
+	search_fields = ()
+	list_filter = ('mes', 'anio')
+
+@admin.register(SacafrancoFilaSemanal)
+class SacafrancoFilaSemanalAdmin(admin.ModelAdmin):
+	list_display = ('sacafranco_fila', 'week_start', 'created_at', 'updated_at')
+	list_filter = ('week_start',)
 
 @admin.register(Puesto)
 class PuestoAdmin(admin.ModelAdmin):
