@@ -963,7 +963,12 @@ def sacafranco_filas(request):
         anio = request.GET.get('anio')
         qs = SacafrancoFila.objects.all()
         if mes and anio:
-            qs = qs.filter(mes=mes, anio=anio)
+            try:
+                mes_val = int(mes)
+                anio_val = int(anio)
+                qs = qs.filter(Q(anio__lt=anio_val) | Q(anio=anio_val, mes__lte=mes_val))
+            except (TypeError, ValueError):
+                pass
         qs = qs.order_by('orden', 'id')
         serializer = SacafrancoFilaSerializer(qs, many=True)
         return Response(serializer.data)

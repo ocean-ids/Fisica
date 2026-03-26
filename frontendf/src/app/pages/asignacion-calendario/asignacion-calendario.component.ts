@@ -200,12 +200,18 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     if (parts.length !== 3) return [];
     const month = parts[1];
     const year = parts[0];
+    const currentKey = (year * 12) + month;
     const weekMap = new Map<number, SacafrancoFilaSemanal>();
     (this.sacafrancoWeekRows || []).forEach(r => {
       if (r?.sacafranco_fila) weekMap.set(r.sacafranco_fila, r);
     });
     return (this.sacafrancoRows || [])
-      .filter(r => r.mes === month && r.anio === year)
+      .filter(r => {
+        const rowMonth = Number(r.mes) || 0;
+        const rowYear = Number(r.anio) || 0;
+        const rowKey = (rowYear * 12) + rowMonth;
+        return rowKey > 0 && rowKey <= currentKey;
+      })
       .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
       .map(r => {
         const week = weekMap.get(r.id as number);
