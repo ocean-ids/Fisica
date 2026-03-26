@@ -8,6 +8,18 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 
+export interface PatronFormData {
+  patron?: PatronAsignacion | null;
+  startDate?: string | null;
+  requireStartDate?: boolean;
+}
+
+export interface PatronFormResult {
+  saved: boolean;
+  patron?: PatronAsignacion;
+  startDate?: string | null;
+}
+
 @Component({
   selector: 'app-patron-form',
   standalone: true,
@@ -17,16 +29,25 @@ import { MatButtonModule } from '@angular/material/button';
 })
 export class PatronFormComponent {
   patronForm: FormGroup;
+  requireStartDate = false;
 
   constructor(
     private fb: FormBuilder,
-    private dialogRef: MatDialogRef<PatronFormComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: PatronAsignacion | null,
+    private dialogRef: MatDialogRef<PatronFormComponent, PatronFormResult>,
+    @Inject(MAT_DIALOG_DATA) public data: PatronAsignacion | PatronFormData | null,
     private patronService: PatronAsignacionService
   ) {
+    const rawData = data as PatronFormData | PatronAsignacion | null;
+    const patron = (rawData && (rawData as PatronAsignacion).codigo)
+      ? (rawData as PatronAsignacion)
+      : (rawData as PatronFormData)?.patron || null;
+    const startDate = (rawData as PatronFormData)?.startDate || '';
+    this.requireStartDate = !!(rawData as PatronFormData)?.requireStartDate;
+
     this.patronForm = this.fb.group({
-      codigo: [data?.codigo || '', [Validators.required, Validators.pattern(/^\d{3}$/), Validators.maxLength(3), Validators.minLength(3)]],
-      secuencia: [data?.secuencia?.join('-') || '', [Validators.required, Validators.pattern(/^(?:[DNF]{1,8}|[DNF](?:-[DNF]){0,7})$/)]]
+      codigo: [patron?.codigo || '', [Validators.required, Validators.pattern(/^\d{3}$/), Validators.maxLength(3), Validators.minLength(3)]],
+      secuencia: [patron?.secuencia?.join('-') || '', [Validators.required, Validators.pattern(/^(?:[DNF]+|[DNF](?:-[DNF])*)$/)]],
+      start_date: [startDate || '', this.requireStartDate ? [Validators.required] : []]
     });
   }
 
@@ -49,7 +70,6 @@ export class PatronFormComponent {
     raw = raw.replace(/^\-+/, '').replace(/\-+$/, '');
     const hadHyphen = raw.includes('-');
     let tokens = hadHyphen ? raw.split('-').map(t => t.trim()).filter(t => t.length > 0) : raw.split('').filter(t => t.length > 0);
-    if (tokens.length > 8) tokens = tokens.slice(0, 8);
     const val = hadHyphen ? tokens.join('-') : tokens.join('');
     input.value = val;
     this.patronForm.get('secuencia')?.setValue(val, { emitEvent: false });
@@ -65,15 +85,19 @@ export class PatronFormComponent {
           return raw.split('').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
         })()
       };
-      if (this.data && this.data.id) {
-        this.patronService.actualizarPatron(this.data.id, patron).subscribe(() => this.dialogRef.close(true));
+      if (patron.id) {
+        this.patronService.actualizarPatron(patron.id, patron).subscribe(() => {
+          this.dialogRef.close({ saved: true, patron, startDate: this.patronForm.value.start_date || null });
+        });
       } else {
-        this.patronService.crearPatron(patron).subscribe(() => this.dialogRef.close(true));
+        this.patronService.crearPatron(patron).subscribe(created => {
+          this.dialogRef.close({ saved: true, patron: created, startDate: this.patronForm.value.start_date || null });
+        });
       }
     }
   }
 
   onCancel(): void {
-    this.dialogRef.close();
+    this.dialogRef.close({ saved: false });
   }
 }

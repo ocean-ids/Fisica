@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,6 +10,8 @@ import { Asignacion, PatronAsignacion } from '../../../models/asignacion.model';
 import { Cliente, Persona, Instalacion, Puesto, Horario } from '../../../models';
 import { InstalacionService } from '../../../services/instalacion.service';
 import { PuestoService } from '../../../services/puesto.service';
+import { PatronAsignacionService } from '../../../services/patron-asignacion.service';
+import { PatronFormComponent, PatronFormResult } from '../../patrones/patron-form/patron-form.component';
 
 export interface AsignacionFormData {
   asignacion: Asignacion;
@@ -65,6 +67,8 @@ export class AsignacionFormComponent implements OnInit {
     private dialogRef: MatDialogRef<AsignacionFormComponent, AsignacionFormResult>,
     private instalacionService: InstalacionService,
     private puestoService: PuestoService,
+    private patronService: PatronAsignacionService,
+    private dialog: MatDialog,
     @Inject(MAT_DIALOG_DATA) public data: AsignacionFormData
   ) {
     this.asignacion = { ...data.asignacion };
@@ -144,6 +148,26 @@ export class AsignacionFormComponent implements OnInit {
 
   onCancel(): void {
     this.dialogRef.close({ action: 'cancel' });
+  }
+
+  abrirNuevoPatron(): void {
+    const today = new Date();
+    const defaultStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const ref = this.dialog.open(PatronFormComponent, {
+      width: '480px',
+      data: { patron: null, requireStartDate: true, startDate: this.asignacion.start_date || defaultStart }
+    });
+    ref.afterClosed().subscribe((result?: PatronFormResult) => {
+      if (!result?.saved || !result.patron) return;
+      const exists = this.patrones.find(p => p.id === result.patron?.id);
+      if (!exists) {
+        this.patrones = [...this.patrones, result.patron];
+      }
+      this.asignacion.patronAsignacion = result.patron.id;
+      this.asignacion.start_date = result.startDate || this.asignacion.start_date || null;
+      this.asignacion.end_date = null;
+      this.asignacion.recurring = true;
+    });
   }
 
   onSave(): void {

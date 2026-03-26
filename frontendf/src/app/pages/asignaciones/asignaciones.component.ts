@@ -20,7 +20,7 @@ import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
 import { PatronAsignacionService } from '../../services/patron-asignacion.service';
 import {  MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { PatronFormComponent } from '../patrones/patron-form/patron-form.component';
+import { PatronFormComponent, PatronFormResult } from '../patrones/patron-form/patron-form.component';
 import { PatronSacafrancosModalComponent } from '../patrones/patron-sacafrancos-modal/patron-sacafrancos-modal.component';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -644,14 +644,17 @@ export class AsignacionesComponent implements OnInit {
   }
 
   abrirNuevoPatron(): void {
-  const ref = this.dialog.open(PatronFormComponent, { width: '480px', data: null });
-  ref.afterClosed().subscribe((saved: boolean) => {
-    if (saved) {
-      
+    const today = new Date();
+    const startDate = this.dia || `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const ref = this.dialog.open(PatronFormComponent, {
+      width: '480px',
+      data: { patron: null, requireStartDate: true, startDate }
+    });
+    ref.afterClosed().subscribe((result?: PatronFormResult) => {
+      if (!result?.saved) return;
       this.patronService.obtenerPatrones().subscribe({ next: d => this.patrones = d || [] });
-    }
-  });
-}
+    });
+  }
 
   nuevaAsignacion(): Asignacion {
     return {

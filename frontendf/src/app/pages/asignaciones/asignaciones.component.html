@@ -2,11 +2,11 @@
   <h2 class="mb-4">Gestión de Asignaciones</h2>
   <div class="d-flex justify-content-between align-items-center" >
     <div class="d-flex align-items-start gap-2">
-      <!--<button class="btn btn-outline-secondary me-2" (click)="abrirNuevoPatron()" disabled>
-      <i class="bi bi-bricks"></i> Nuevo Patrón
-      </button>-->
       <button class="btn btn-outline-primary" (click)="abrirModalNuevo()">
         <i class="bi bi-clipboard-check"></i> Nueva Asignación
+      </button>
+      <button class="btn btn-outline-success" (click)="crearSacafrancoFila()">
+        <i class="bi bi-plus-square"></i> Fila Sacafranco
       </button>
     </div>
 
@@ -29,8 +29,8 @@
       </mat-button-toggle-group>
     </section>
 
-    <button class="btn btn-outline-success" (click)="crearSacafrancoFila()">
-        <i class="bi bi-plus-square"></i> Fila Sacafranco
+    <button class="btn btn-outline-secondary me-2" (click)="abrirNuevoPatron()" >
+      <i class="bi bi-bricks"></i> Nuevo Patrón
     </button>
     
   </div>
