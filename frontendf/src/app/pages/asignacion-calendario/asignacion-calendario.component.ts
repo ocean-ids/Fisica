@@ -344,6 +344,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     const parts = this.weekStart.split('-').map(Number);
     if (parts.length !== 3) return;
     const base = new Date(parts[0], parts[1]-1, parts[2]);
+    const baseMonth = base.getMonth();
     const shortOrder = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
     const fullOrder = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 
@@ -351,11 +352,12 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       const d = new Date(base);
       d.setDate(base.getDate() + i);
       const dow = d.getDay();
+      const inMonth = d.getMonth() === baseMonth;
       this.weekDays.push({
         short: shortOrder[dow],
         name: fullOrder[dow],
-        date: this.formatDateLocal(d),
-        dayNum: d.getDate()
+        date: inMonth ? this.formatDateLocal(d) : '',
+        dayNum: inMonth ? d.getDate() : 0
       });
     }
   }

@@ -281,7 +281,10 @@ def asignar_servicio(request):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
     print(f"📥 Datos recibidos: {request.data}")
-    serializer = AsignacionSerializer(data=request.data)
+    data = request.data.copy()
+    data['recurring'] = True
+    data['end_date'] = None
+    serializer = AsignacionSerializer(data=data)
     if serializer.is_valid():
         asignacion = serializer.save()
         # Si la asignación es recurrente y no tiene start_date, fijar start_date al primer día del mes de la asignación
@@ -772,7 +775,10 @@ def editar_servicio(request, id):
         return Response({'error': 'Asignación no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
     old_patron_id = getattr(asignacion, 'patronAsignacion_id', None)
-    serializer = AsignacionSerializer(asignacion, data=request.data, partial=True)
+    data = request.data.copy()
+    data['recurring'] = True
+    data['end_date'] = None
+    serializer = AsignacionSerializer(asignacion, data=data, partial=True)
     if serializer.is_valid():
         asignacion = serializer.save()
         patron_changed = 'patronAsignacion' in request.data and old_patron_id != getattr(asignacion, 'patronAsignacion_id', None)

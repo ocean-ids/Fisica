@@ -884,7 +884,9 @@ export class AsignacionesComponent implements OnInit {
     if (this.modoEdicion && this.asignacionActual.id) {
       const payload = { 
         ...this.asignacionActual,
-        patronAsignacion: this.asignacionActual.patronAsignacion || null
+        patronAsignacion: this.asignacionActual.patronAsignacion || null,
+        recurring: true,
+        end_date: null
       } as any;
       this.asignacionService.actualizarAsignacion(
         this.asignacionActual.id,
@@ -903,7 +905,13 @@ export class AsignacionesComponent implements OnInit {
       });
     } else {
       // Forzar creación de calendario semanal al crear la asignación
-      const payload = { ...this.asignacionActual, patronAsignacion: this.asignacionActual.patronAsignacion || null, create_calendar: true } as any;
+      const payload = { 
+        ...this.asignacionActual,
+        patronAsignacion: this.asignacionActual.patronAsignacion || null,
+        create_calendar: true,
+        recurring: true,
+        end_date: null
+      } as any;
       this.asignacionService.crearAsignacion(payload).subscribe({
         next: () => {
           Swal.fire({ icon: 'success', title: 'Asignación creada', timer: 1200, showConfirmButton: false });

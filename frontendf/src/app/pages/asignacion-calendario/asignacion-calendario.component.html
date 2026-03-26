@@ -3,7 +3,7 @@
       <thead class="table-light" style="height: 100px;">
         <tr class="text-center align-middle header-row">
           <th *ngFor="let d of weekDays" title="{{d.name}}">
-            <div class="header-day">
+            <div class="header-day" *ngIf="d.date">
               <span class="short">{{d.short || ''}}</span>
               <span class="dayNum">{{d.dayNum || ''}}</span>
             </div>
