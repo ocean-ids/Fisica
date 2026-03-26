@@ -20,11 +20,6 @@
       <mat-error *ngIf="patronForm.get('secuencia')?.hasError('required')">Secuencia requerida</mat-error>
       <mat-error *ngIf="patronForm.get('secuencia')?.hasError('pattern')">Use D, N o F (ej: D-N-F o DNF)</mat-error>
     </mat-form-field>
-    <mat-form-field *ngIf="requireStartDate" appearance="fill" class="full-width">
-      <mat-label>Fecha inicio</mat-label>
-      <input matInput type="date" formControlName="start_date" required>
-      <mat-error *ngIf="patronForm.get('start_date')?.hasError('required')">Fecha inicio requerida</mat-error>
-    </mat-form-field>
   </form>
 </mat-dialog-content>
 <mat-dialog-actions align="end" class="modal-actions">

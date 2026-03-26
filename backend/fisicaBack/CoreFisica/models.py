@@ -295,7 +295,6 @@ class PatronAsignacion(models.Model):
         validators=[RegexValidator(regex=r'^\d{3,4}$', message='Use 3 o 4 dígitos')],
     )
     secuencia = models.JSONField(help_text="Ciclo ordenado (D/N/F/-)")
-    start_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

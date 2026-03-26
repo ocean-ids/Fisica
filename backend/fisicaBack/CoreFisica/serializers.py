@@ -25,7 +25,7 @@ class PatronAsignacionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PatronAsignacion
-        fields = ['id', 'codigo', 'secuencia', 'start_date']
+        fields = ['id', 'codigo', 'secuencia']
 
 
 

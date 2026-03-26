@@ -65,7 +65,6 @@ export class AsignacionesComponent implements OnInit {
   draggingAsignacionId: number | null = null;
   private lastDragPoint: { x: number; y: number } | null = null;
   private pendingPatronId: number | null = null;
-  private pendingPatronStartDate: string | null = null;
 
   private monthStartToday(): string {
     const t = new Date();
@@ -646,11 +645,9 @@ export class AsignacionesComponent implements OnInit {
   }
 
   abrirNuevoPatron(): void {
-    const today = new Date();
-    const defaultStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const ref = this.dialog.open(PatronFormComponent, {
       width: '480px',
-      data: { patron: null, requireStartDate: true, startDate: this.asignacionActual.start_date || defaultStart }
+      data: { patron: null }
     });
     ref.afterClosed().subscribe((result?: PatronFormResult) => {
       if (!result?.saved || !result.patron) return;
@@ -659,9 +656,7 @@ export class AsignacionesComponent implements OnInit {
         this.patrones = [...this.patrones, result.patron];
       }
       this.pendingPatronId = result.patron.id || null;
-      this.pendingPatronStartDate = result.startDate || null;
       this.asignacionActual.patronAsignacion = result.patron.id;
-      this.asignacionActual.start_date = result.startDate || this.asignacionActual.start_date || null;
       this.asignacionActual.end_date = null;
       this.asignacionActual.recurring = true;
     });
@@ -678,7 +673,7 @@ export class AsignacionesComponent implements OnInit {
       anio: this.anio,
       estado: 'ACTIVO',
       recurring: true,
-      start_date: this.pendingPatronStartDate || null,
+      start_date: null,
       end_date: null,
       agregar_sacafranco: false,
       sacafranco_grupo: null,
@@ -881,9 +876,6 @@ export class AsignacionesComponent implements OnInit {
     this.asignacionActual.instalacion = this.instalacionSeleccionada;
     this.asignacionActual.mes = this.mes;
     this.asignacionActual.anio = this.anio;
-    if (this.asignacionActual.patronAsignacion && !this.asignacionActual.start_date && this.pendingPatronStartDate) {
-      this.asignacionActual.start_date = this.pendingPatronStartDate;
-    }
 
     const yaExiste = this.asignaciones.some(a =>
       a.persona === this.asignacionActual.persona &&
@@ -900,9 +892,7 @@ export class AsignacionesComponent implements OnInit {
     // No enviar fecha exacta: las asignaciones se guardan por mes y año
     // (this.asignacionActual as any).fecha = this.dia ? this.dia : null;
 
-    const patronStart = this.asignacionActual.patronAsignacion
-      ? (this.asignacionActual.start_date || this.pendingPatronStartDate || null)
-      : (this.asignacionActual.start_date || null);
+    const patronStart = this.asignacionActual.start_date || null;
 
     if (this.modoEdicion && this.asignacionActual.id) {
       const payload = { 

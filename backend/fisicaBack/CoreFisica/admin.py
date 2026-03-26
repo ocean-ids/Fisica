@@ -100,10 +100,10 @@ class AsignacionAdmin(admin.ModelAdmin):
 
 @admin.register(PatronAsignacion)
 class PatronAsignacionAdmin(admin.ModelAdmin):
-	list_display = ('codigo', 'secuencia', 'start_date')
+	list_display = ('codigo', 'secuencia')
 	list_display_links = ('codigo',)
 	search_fields = ('codigo',)
-	fields = ('codigo', 'secuencia', 'start_date')
+	fields = ('codigo', 'secuencia')
 
 @admin.register(AsignacionSemanal)
 class AsignacionSemanalAdmin(admin.ModelAdmin):

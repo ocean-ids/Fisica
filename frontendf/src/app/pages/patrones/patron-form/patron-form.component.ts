@@ -10,14 +10,11 @@ import { MatButtonModule } from '@angular/material/button';
 
 export interface PatronFormData {
   patron?: PatronAsignacion | null;
-  startDate?: string | null;
-  requireStartDate?: boolean;
 }
 
 export interface PatronFormResult {
   saved: boolean;
   patron?: PatronAsignacion;
-  startDate?: string | null;
 }
 
 @Component({
@@ -29,7 +26,6 @@ export interface PatronFormResult {
 })
 export class PatronFormComponent {
   patronForm: FormGroup;
-  requireStartDate = false;
 
   constructor(
     private fb: FormBuilder,
@@ -41,13 +37,10 @@ export class PatronFormComponent {
     const patron = (rawData && (rawData as PatronAsignacion).codigo)
       ? (rawData as PatronAsignacion)
       : (rawData as PatronFormData)?.patron || null;
-    const startDate = (rawData as PatronFormData)?.startDate || '';
-    this.requireStartDate = !!(rawData as PatronFormData)?.requireStartDate;
 
     this.patronForm = this.fb.group({
       codigo: [patron?.codigo || '', [Validators.required, Validators.pattern(/^\d{3}$/), Validators.maxLength(3), Validators.minLength(3)]],
-      secuencia: [patron?.secuencia?.join('-') || '', [Validators.required, Validators.pattern(/^(?:[DNF]+|[DNF](?:-[DNF])*)$/)]],
-      start_date: [startDate || '', this.requireStartDate ? [Validators.required] : []]
+      secuencia: [patron?.secuencia?.join('-') || '', [Validators.required, Validators.pattern(/^(?:[DNF]+|[DNF](?:-[DNF])*)$/)]]
     });
   }
 
@@ -83,16 +76,15 @@ export class PatronFormComponent {
           const raw = (this.patronForm.value.secuencia as string) || '';
           if (raw.includes('-')) return raw.split('-').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
           return raw.split('').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-        })(),
-        start_date: this.patronForm.value.start_date || null
+        })()
       };
       if (patron.id) {
         this.patronService.actualizarPatron(patron.id, patron).subscribe(() => {
-          this.dialogRef.close({ saved: true, patron, startDate: this.patronForm.value.start_date || null });
+          this.dialogRef.close({ saved: true, patron });
         });
       } else {
         this.patronService.crearPatron(patron).subscribe(created => {
-          this.dialogRef.close({ saved: true, patron: created, startDate: this.patronForm.value.start_date || null });
+          this.dialogRef.close({ saved: true, patron: created });
         });
       }
     }

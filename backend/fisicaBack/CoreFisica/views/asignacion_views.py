@@ -137,7 +137,7 @@ def _rebuild_asignacion_semanal(asignacion):
 
             value = ''
             if seq:
-                effective_start = asignacion.start_date or (patron.start_date if patron else None)
+                effective_start = asignacion.start_date
                 ref_date = None
                 if effective_start:
                     ref_date = effective_start
@@ -292,13 +292,8 @@ def asignar_servicio(request):
         asignacion = serializer.save()
         # Si la asignación es recurrente y no tiene start_date, fijar start_date al primer día del mes de la asignación
         try:
-            patron = getattr(asignacion, 'patronAsignacion', None)
-            patron_start = getattr(patron, 'start_date', None) if patron else None
             if getattr(asignacion, 'recurring', False) and not getattr(asignacion, 'start_date', None):
-                if patron_start:
-                    asignacion.start_date = patron_start
-                else:
-                    asignacion.start_date = datetime.date(int(asignacion.anio), int(asignacion.mes), 1)
+                asignacion.start_date = datetime.date(int(asignacion.anio), int(asignacion.mes), 1)
                 asignacion.save()
         except Exception:
             pass
@@ -428,7 +423,7 @@ def asignar_servicio(request):
 
                         value = ''
                         if seq:
-                            effective_start = asignacion.start_date or (patron.start_date if patron else None)
+                            effective_start = asignacion.start_date
                             # definir fecha referencia
                             ref_date = None
                             if effective_start:
