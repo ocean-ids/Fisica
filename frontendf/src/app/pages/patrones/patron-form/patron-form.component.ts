@@ -83,7 +83,8 @@ export class PatronFormComponent {
           const raw = (this.patronForm.value.secuencia as string) || '';
           if (raw.includes('-')) return raw.split('-').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
           return raw.split('').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-        })()
+        })(),
+        start_date: this.patronForm.value.start_date || null
       };
       if (patron.id) {
         this.patronService.actualizarPatron(patron.id, patron).subscribe(() => {

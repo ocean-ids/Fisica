@@ -64,6 +64,8 @@ export class AsignacionesComponent implements OnInit {
   hoverSacafrancoFilaId: number | null = null;
   draggingAsignacionId: number | null = null;
   private lastDragPoint: { x: number; y: number } | null = null;
+  private pendingPatronId: number | null = null;
+  private pendingPatronStartDate: string | null = null;
 
   private monthStartToday(): string {
     const t = new Date();
@@ -656,6 +658,8 @@ export class AsignacionesComponent implements OnInit {
       if (!exists) {
         this.patrones = [...this.patrones, result.patron];
       }
+      this.pendingPatronId = result.patron.id || null;
+      this.pendingPatronStartDate = result.startDate || null;
       this.asignacionActual.patronAsignacion = result.patron.id;
       this.asignacionActual.start_date = result.startDate || this.asignacionActual.start_date || null;
       this.asignacionActual.end_date = null;
@@ -674,11 +678,13 @@ export class AsignacionesComponent implements OnInit {
       anio: this.anio,
       estado: 'ACTIVO',
       recurring: true,
+      start_date: this.pendingPatronStartDate || null,
+      end_date: null,
       agregar_sacafranco: false,
       sacafranco_grupo: null,
       sacafranco_fila: null,
       orden: 0,
-      patronAsignacion: 0
+      patronAsignacion: this.pendingPatronId || 0
     };
   }
 
@@ -875,6 +881,9 @@ export class AsignacionesComponent implements OnInit {
     this.asignacionActual.instalacion = this.instalacionSeleccionada;
     this.asignacionActual.mes = this.mes;
     this.asignacionActual.anio = this.anio;
+    if (this.asignacionActual.patronAsignacion && !this.asignacionActual.start_date && this.pendingPatronStartDate) {
+      this.asignacionActual.start_date = this.pendingPatronStartDate;
+    }
 
     const yaExiste = this.asignaciones.some(a =>
       a.persona === this.asignacionActual.persona &&
@@ -891,10 +900,15 @@ export class AsignacionesComponent implements OnInit {
     // No enviar fecha exacta: las asignaciones se guardan por mes y año
     // (this.asignacionActual as any).fecha = this.dia ? this.dia : null;
 
+    const patronStart = this.asignacionActual.patronAsignacion
+      ? (this.asignacionActual.start_date || this.pendingPatronStartDate || null)
+      : (this.asignacionActual.start_date || null);
+
     if (this.modoEdicion && this.asignacionActual.id) {
       const payload = { 
         ...this.asignacionActual,
         patronAsignacion: this.asignacionActual.patronAsignacion || null,
+        start_date: patronStart,
         recurring: true,
         end_date: null
       } as any;
@@ -910,7 +924,8 @@ export class AsignacionesComponent implements OnInit {
         },
         error: err => {
           console.error(err);
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar la asignación' });
+          const detail = err?.error ? JSON.stringify(err.error) : 'No se pudo actualizar la asignación';
+          Swal.fire({ icon: 'error', title: 'Error', text: detail });
         }
       });
     } else {
@@ -918,6 +933,7 @@ export class AsignacionesComponent implements OnInit {
       const payload = { 
         ...this.asignacionActual,
         patronAsignacion: this.asignacionActual.patronAsignacion || null,
+        start_date: patronStart,
         create_calendar: true,
         recurring: true,
         end_date: null
@@ -931,7 +947,8 @@ export class AsignacionesComponent implements OnInit {
         },
         error: err => {
           console.error(err);
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo crear la asignación' });
+          const detail = err?.error ? JSON.stringify(err.error) : 'No se pudo crear la asignación';
+          Swal.fire({ icon: 'error', title: 'Error', text: detail });
         }
       });
     }

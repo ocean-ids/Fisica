@@ -39,4 +39,5 @@ export interface PatronAsignacion{
     id?: number;
     codigo: string;
     secuencia: string[];
+    start_date?: string | null;
 }

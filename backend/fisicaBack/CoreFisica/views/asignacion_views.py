@@ -137,9 +137,10 @@ def _rebuild_asignacion_semanal(asignacion):
 
             value = ''
             if seq:
+                effective_start = asignacion.start_date or (patron.start_date if patron else None)
                 ref_date = None
-                if asignacion.start_date:
-                    ref_date = asignacion.start_date
+                if effective_start:
+                    ref_date = effective_start
                 elif getattr(asignacion, 'fecha', None):
                     ref_date = asignacion.fecha
                 else:
@@ -150,7 +151,7 @@ def _rebuild_asignacion_semanal(asignacion):
 
                 active = True
                 if asignacion.recurring:
-                    if asignacion.start_date and day_date < asignacion.start_date:
+                    if effective_start and day_date < effective_start:
                         active = False
                     if asignacion.end_date and asignacion.end_date and day_date > asignacion.end_date:
                         active = False
@@ -280,6 +281,8 @@ def asignar_servicio(request):
     if not request.user.has_perm('CoreFisica.add_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
+    global datetime
+
     print(f"📥 Datos recibidos: {request.data}")
     data = request.data.copy()
     data['recurring'] = True
@@ -289,9 +292,13 @@ def asignar_servicio(request):
         asignacion = serializer.save()
         # Si la asignación es recurrente y no tiene start_date, fijar start_date al primer día del mes de la asignación
         try:
+            patron = getattr(asignacion, 'patronAsignacion', None)
+            patron_start = getattr(patron, 'start_date', None) if patron else None
             if getattr(asignacion, 'recurring', False) and not getattr(asignacion, 'start_date', None):
-                import datetime
-                asignacion.start_date = datetime.date(int(asignacion.anio), int(asignacion.mes), 1)
+                if patron_start:
+                    asignacion.start_date = patron_start
+                else:
+                    asignacion.start_date = datetime.date(int(asignacion.anio), int(asignacion.mes), 1)
                 asignacion.save()
         except Exception:
             pass
@@ -421,10 +428,11 @@ def asignar_servicio(request):
 
                         value = ''
                         if seq:
+                            effective_start = asignacion.start_date or (patron.start_date if patron else None)
                             # definir fecha referencia
                             ref_date = None
-                            if asignacion.start_date:
-                                ref_date = asignacion.start_date
+                            if effective_start:
+                                ref_date = effective_start
                             elif getattr(asignacion, 'fecha', None):
                                 ref_date = asignacion.fecha
                             else:
@@ -436,7 +444,7 @@ def asignar_servicio(request):
                             # determinar si la asignación aplica ese día
                             active = True
                             if asignacion.recurring:
-                                if asignacion.start_date and day_date < asignacion.start_date:
+                                if effective_start and day_date < effective_start:
                                     active = False
                                 if asignacion.end_date and asignacion.end_date and day_date > asignacion.end_date:
                                     active = False
