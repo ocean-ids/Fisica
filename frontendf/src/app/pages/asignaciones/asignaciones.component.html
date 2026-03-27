@@ -25,6 +25,7 @@
         <mat-button-toggle value="puesto">Puesto</mat-button-toggle>
         <mat-button-toggle value="cedula">Cedula</mat-button-toggle>
         <mat-button-toggle value="persona">Persona</mat-button-toggle>
+        <mat-button-toggle value="sacafranco">SF</mat-button-toggle>
         <mat-button-toggle value="accion">Accion</mat-button-toggle>
       </mat-button-toggle-group>
     </section>
@@ -136,7 +137,7 @@
                   </td>
                 </tr>
                 <tr
-                  *ngIf="row.type === 'sacafranco'"
+                  *ngIf="row.type === 'sacafranco' && !columnaOculta('sacafranco')"
                   cdkDrag
                   [cdkDragData]="row"
                   cdkDragLockAxis="y"
