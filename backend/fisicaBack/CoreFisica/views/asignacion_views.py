@@ -809,6 +809,23 @@ def guardar_orden_asignacion(request):
             continue
     return Response({'mensaje': 'Orden actualizado correctamente'})
 
+
+@api_view(['POST'])
+def guardar_orden_sacafranco(request):
+    if not request.user.has_perm('CoreFisica.change_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    ordenes = request.data.get('ordenes', [])
+
+    for item in ordenes:
+        try:
+            fila = SacafrancoFila.objects.get(id=item['id'])
+            fila.orden = item['orden']
+            fila.save(update_fields=['orden'])
+        except SacafrancoFila.DoesNotExist:
+            continue
+    return Response({'mensaje': 'Orden sacafranco actualizado correctamente'})
+
 @api_view(['DELETE'])
 def eliminar_asignacion(request, id):
     

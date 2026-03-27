@@ -76,12 +76,12 @@
                 <th>Resumen</th>
               </tr>
             </thead>
-            <tbody cdkDropList [cdkDropListData]="displayAssignmentRows" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropAsignaciones($event)">
+            <tbody cdkDropList [cdkDropListData]="displayRows" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropAsignaciones($event)">
               <ng-container *ngFor="let row of displayRows; trackBy: trackByDisplayRow">
                 <tr
                   *ngIf="row.type === 'asignacion' && row.asig.persona_detalle?.is_active !== false"
                   cdkDrag
-                  [cdkDragData]="row.asig"
+                  [cdkDragData]="row"
                   cdkDragLockAxis="y"
                   cdkDragBoundary=".asig-table-card .card-body"
                   cdkDragPreviewContainer="parent"
@@ -148,6 +148,11 @@
                 </tr>
                 <tr
                   *ngIf="row.type === 'sacafranco'"
+                  cdkDrag
+                  [cdkDragData]="row"
+                  cdkDragLockAxis="y"
+                  cdkDragBoundary=".asig-table-card .card-body"
+                  cdkDragPreviewContainer="parent"
                   style="height: 45px;"
                   class="align-middle"
                   [class.sacafranco-hover]="hoverSacafrancoFilaId === row.id"
@@ -157,6 +162,9 @@
                   <td
                     [attr.colspan]="totalColumns()"
                     class="text-center align-middle bg-warning-subtle fw-bold text-success">
+                    <span class="me-2" title="Arrastrar" style="cursor: grab;">
+                      <i class="bi bi-grip-vertical"></i>
+                    </span>
                     SACAFRANCO
                   </td>
                 </tr>

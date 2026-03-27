@@ -443,41 +443,58 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
-  dropAsignaciones(event: CdkDragDrop<Asignacion[]>): void {
+  dropAsignaciones(event: CdkDragDrop<any[]>): void {
     if (!event) return;
 
-    const dragged = event.item?.data as Asignacion | undefined;
-    if (!dragged) return;
-    const draggedId = dragged.id ?? null;
+    const draggedRow = event.item?.data as any;
+    if (!draggedRow) return;
+    const dragged = draggedRow.type === 'asignacion' ? draggedRow.asig as Asignacion : null;
+    const draggedId = dragged?.id ?? null;
 
-    if (draggedId && this.hoverSacafrancoFilaId) {
-      this.setSacafrancoGroup(dragged, this.hoverSacafrancoFilaId);
-      this.hoverSacafrancoFilaId = null;
-      this.lastDragPoint = null;
-      return;
-    }
-
-    if (draggedId && this.lastDragPoint) {
-      const el = document.elementFromPoint(this.lastDragPoint.x, this.lastDragPoint.y) as HTMLElement | null;
-      const row = el ? (el.closest('tr[data-sacafranco-id]') as HTMLElement | null) : null;
-      const raw = row ? row.getAttribute('data-sacafranco-id') : null;
-      const filaId = raw ? Number(raw) : null;
-      if (filaId) {
-        this.setSacafrancoGroup(dragged, filaId);
+    if (dragged && draggedId) {
+      if (this.hoverSacafrancoFilaId) {
+        this.setSacafrancoGroup(dragged, this.hoverSacafrancoFilaId);
         this.hoverSacafrancoFilaId = null;
         this.lastDragPoint = null;
         return;
       }
+
+      if (this.lastDragPoint) {
+        const el = document.elementFromPoint(this.lastDragPoint.x, this.lastDragPoint.y) as HTMLElement | null;
+        const row = el ? (el.closest('tr[data-sacafranco-id]') as HTMLElement | null) : null;
+        const raw = row ? row.getAttribute('data-sacafranco-id') : null;
+        const filaId = raw ? Number(raw) : null;
+        if (filaId) {
+          this.setSacafrancoGroup(dragged, filaId);
+          this.hoverSacafrancoFilaId = null;
+          this.lastDragPoint = null;
+          return;
+        }
+      }
     }
 
     if (event.previousIndex === event.currentIndex) return;
-    if (!this.displayAssignmentRows || !this.displayAssignmentRows.length) return;
+    if (!this.displayRows || !this.displayRows.length) return;
 
-    moveItemInArray(this.displayAssignmentRows, event.previousIndex, event.currentIndex);
+    moveItemInArray(this.displayRows, event.previousIndex, event.currentIndex);
+    this.displayAssignmentRows = (this.displayRows || [])
+      .filter(r => r?.type === 'asignacion')
+      .map(r => r.asig)
+      .filter(a => !!a);
     this.asignaciones = [...this.displayAssignmentRows];
-    this.buildDisplayRows();
+
+    this.sacafrancoRows = (this.displayRows || [])
+      .filter(r => r?.type === 'sacafranco')
+      .map(r => r.fila)
+      .filter(f => !!f);
+
+    this.sacafrancoRows.forEach((fila, idx) => {
+      fila.orden = idx;
+    });
+
     this.updateCalendarOrder();
     this.persistOrder();
+    this.persistSacafrancoOrder();
     this.hoverSacafrancoFilaId = null;
     this.lastDragPoint = null;
   }
@@ -620,6 +637,17 @@ export class AsignacionesComponent implements OnInit {
     this.asignacionService.guardarOrden(ordenes).subscribe({
       next: () => {},
       error: err => console.error('Error al guardar orden', err)
+    });
+  }
+
+  private persistSacafrancoOrder(): void {
+    const ordenes = (this.sacafrancoRows || [])
+      .filter(f => f?.id)
+      .map((f, idx) => ({ id: f.id as number, orden: idx }));
+    if (!ordenes.length) return;
+    this.asignacionService.guardarOrdenSacafranco(ordenes).subscribe({
+      next: () => {},
+      error: err => console.error('Error al guardar orden sacafranco', err)
     });
   }
 

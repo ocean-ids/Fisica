@@ -37,6 +37,10 @@ export class AsignacionService {
     return this.apiService.post<any>(`/guardar-orden-asignacion/`, {ordenes});
   }
 
+  guardarOrdenSacafranco(ordenes: {id: number, orden: number}[]): Observable<any>{
+    return this.apiService.post<any>(`/guardar-orden-sacafranco/`, {ordenes});
+  }
+
   obtenerSacafrancoFilas(mes: number, anio: number): Observable<SacafrancoFila[]> {
     return this.apiService.get<SacafrancoFila[]>(`/sacafranco-filas/`, { mes, anio });
   }
