@@ -1021,7 +1021,7 @@ def eliminar_sacafranco_fila(request, id):
 @permission_classes([IsAuthenticated])
 def exportar_asignaciones_excel(request):
     import calendar
-    from openpyxl.styles import Font, Alignment, Border, Side
+    from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
     if not request.user.has_perm('CoreFisica.view_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
@@ -1061,6 +1061,7 @@ def exportar_asignaciones_excel(request):
     # Encabezado superior (formato institucional)
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    celeste_fill = PatternFill(fill_type='solid', fgColor='B1C2CC')
 
     ws.merge_cells('A1:A3')
     ws.merge_cells('B1:E2')
@@ -1339,6 +1340,8 @@ def exportar_asignaciones_excel(request):
             cell.value = val
             cell.alignment = Alignment(horizontal='center')
             cell.border = border
+            if str(val).strip().upper() == 'F':
+                cell.fill = celeste_fill
 
         start_row += 1
 
@@ -1391,6 +1394,8 @@ def exportar_asignaciones_excel(request):
             cell.value = val
             cell.alignment = Alignment(horizontal='center')
             cell.border = border
+            if str(val).strip().upper() == 'F':
+                cell.fill = celeste_fill
 
         start_row += 1
 
