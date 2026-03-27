@@ -300,9 +300,40 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   }
 
   onSacafrancoCellChange(row: any, day: string, value: any){
-    const v = value ? String(value).toUpperCase().slice(0,16) : '';
-    row[day] = v;
-    this.saveSacafrancoRow(row, [day]);
+    const raw = value ? String(value).toUpperCase() : '';
+    const tokens = raw
+      .split(/[\s,;]+/)
+      .map(t => t.replace(/[^A-Z0-9]/g, '').slice(0, 5))
+      .filter(t => t.length > 0);
+
+    const weekKeys = this.weekDays
+      .filter(d => d.date)
+      .map(d => this.dayKeyFromDate(d.date))
+      .filter(k => k);
+
+    const startIdx = weekKeys.indexOf(day);
+    if (startIdx === -1) return;
+
+    const daysToSave: string[] = [];
+    if (tokens.length > 1) {
+      tokens.forEach((t, idx) => {
+        const key = weekKeys[startIdx + idx];
+        if (!key) return;
+        row[key] = t;
+        daysToSave.push(key);
+      });
+    } else {
+      const v = tokens.length ? tokens[0] : '';
+      for (let i = startIdx; i < weekKeys.length; i += 1) {
+        const key = weekKeys[i];
+        row[key] = v;
+        daysToSave.push(key);
+      }
+    }
+
+    if (daysToSave.length) {
+      this.saveSacafrancoRow(row, daysToSave);
+    }
   }
 
   private saveSacafrancoRow(row: any, days: string[]): void {

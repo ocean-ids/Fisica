@@ -17,7 +17,7 @@
               <td *ngIf="d.date; else emptyDay" style="height: 45px;" >
                 <input
                   type="text"
-                  maxlength="16"
+                  maxlength="5"
                   class="form-control form-control-sm sacafranco-input"
                   [(ngModel)]="row[dayKeyFromDate(d.date)]"
                   (change)="onSacafrancoCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
