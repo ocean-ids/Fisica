@@ -452,6 +452,13 @@ export class AsignacionesComponent implements OnInit {
     const draggedId = dragged?.id ?? null;
 
     if (dragged && draggedId) {
+      const targetRow = this.displayRows?.[event.currentIndex];
+      if (targetRow?.type === 'sacafranco' && targetRow.id) {
+        this.setSacafrancoGroup(dragged, targetRow.id as number);
+        this.hoverSacafrancoFilaId = null;
+        this.lastDragPoint = null;
+        return;
+      }
       if (this.hoverSacafrancoFilaId) {
         this.setSacafrancoGroup(dragged, this.hoverSacafrancoFilaId);
         this.hoverSacafrancoFilaId = null;
@@ -477,6 +484,25 @@ export class AsignacionesComponent implements OnInit {
     if (!this.displayRows || !this.displayRows.length) return;
 
     moveItemInArray(this.displayRows, event.previousIndex, event.currentIndex);
+
+    const orderableRows = (this.displayRows || []).filter(r =>
+      r?.type === 'sacafranco' || (r?.type === 'asignacion' && !r?.isGroupedChild)
+    );
+
+    const ordenAsignaciones: { id: number; orden: number }[] = [];
+    const ordenSacafranco: { id: number; orden: number }[] = [];
+
+    orderableRows.forEach((row, idx) => {
+      if (row.type === 'asignacion' && row.asig?.id) {
+        row.asig.orden = idx;
+        ordenAsignaciones.push({ id: row.asig.id, orden: idx });
+      }
+      if (row.type === 'sacafranco' && row.fila?.id) {
+        row.fila.orden = idx;
+        ordenSacafranco.push({ id: row.fila.id, orden: idx });
+      }
+    });
+
     this.displayAssignmentRows = (this.displayRows || [])
       .filter(r => r?.type === 'asignacion')
       .map(r => r.asig)
@@ -488,13 +514,9 @@ export class AsignacionesComponent implements OnInit {
       .map(r => r.fila)
       .filter(f => !!f);
 
-    this.sacafrancoRows.forEach((fila, idx) => {
-      fila.orden = idx;
-    });
-
     this.updateCalendarOrder();
-    this.persistOrder();
-    this.persistSacafrancoOrder();
+    this.persistOrder(ordenAsignaciones);
+    this.persistSacafrancoOrder(ordenSacafranco);
     this.hoverSacafrancoFilaId = null;
     this.lastDragPoint = null;
   }
@@ -540,16 +562,24 @@ export class AsignacionesComponent implements OnInit {
     > = [];
     const displayAssignments: Asignacion[] = [];
 
-    ungrouped
-      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
-      .forEach(a => {
-        rows.push({ type: 'asignacion', asig: a, isGroupedChild: false });
-        displayAssignments.push(a);
-      });
+    const orderables: Array<{ kind: 'asignacion'; asig: Asignacion } | { kind: 'sacafranco'; fila: SacafrancoFila }> = [
+      ...ungrouped.map(a => ({ kind: 'asignacion' as const, asig: a })),
+      ...sacRows.map(f => ({ kind: 'sacafranco' as const, fila: f }))
+    ];
 
-    sacRows
-      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
-      .forEach(fila => {
+    orderables
+      .sort((a, b) => {
+        const aOrd = a.kind === 'asignacion' ? (a.asig.orden ?? 0) : (a.fila.orden ?? 0);
+        const bOrd = b.kind === 'asignacion' ? (b.asig.orden ?? 0) : (b.fila.orden ?? 0);
+        return aOrd - bOrd;
+      })
+      .forEach(item => {
+        if (item.kind === 'asignacion') {
+          rows.push({ type: 'asignacion', asig: item.asig, isGroupedChild: false });
+          displayAssignments.push(item.asig);
+          return;
+        }
+        const fila = item.fila;
         const children = grouped.get(fila.id as number) || [];
         children
           .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
@@ -620,35 +650,51 @@ export class AsignacionesComponent implements OnInit {
         asig.sacafranco_fila = filaId;
         this.buildDisplayRows();
         this.updateCalendarOrder();
-        this.persistOrder();
+        const combined = this.computeCombinedOrders();
+        this.persistOrder(combined.ordenAsignaciones);
+        this.persistSacafrancoOrder(combined.ordenSacafranco);
       },
       error: err => console.error('Error al actualizar sacafranco_fila', err)
     });
   }
 
-  private persistOrder(): void {
-    const source = this.displayAssignmentRows && this.displayAssignmentRows.length
-      ? this.displayAssignmentRows
-      : (this.asignaciones || []);
-    const ordenes = source
-      .filter(a => a?.id)
-      .map((a, idx) => ({ id: a.id as number, orden: idx }));
-    if (!ordenes.length) return;
-    this.asignacionService.guardarOrden(ordenes).subscribe({
+  private persistOrder(ordenes?: { id: number; orden: number }[]): void {
+    const payload = (ordenes && ordenes.length)
+      ? ordenes
+      : this.computeCombinedOrders().ordenAsignaciones;
+    if (!payload.length) return;
+    this.asignacionService.guardarOrden(payload).subscribe({
       next: () => {},
       error: err => console.error('Error al guardar orden', err)
     });
   }
 
-  private persistSacafrancoOrder(): void {
-    const ordenes = (this.sacafrancoRows || [])
-      .filter(f => f?.id)
-      .map((f, idx) => ({ id: f.id as number, orden: idx }));
-    if (!ordenes.length) return;
-    this.asignacionService.guardarOrdenSacafranco(ordenes).subscribe({
+  private persistSacafrancoOrder(ordenes?: { id: number; orden: number }[]): void {
+    const payload = (ordenes && ordenes.length)
+      ? ordenes
+      : this.computeCombinedOrders().ordenSacafranco;
+    if (!payload.length) return;
+    this.asignacionService.guardarOrdenSacafranco(payload).subscribe({
       next: () => {},
       error: err => console.error('Error al guardar orden sacafranco', err)
     });
+  }
+
+  private computeCombinedOrders(): { ordenAsignaciones: { id: number; orden: number }[]; ordenSacafranco: { id: number; orden: number }[] } {
+    const ordenAsignaciones: { id: number; orden: number }[] = [];
+    const ordenSacafranco: { id: number; orden: number }[] = [];
+    const orderableRows = (this.displayRows || []).filter(r =>
+      r?.type === 'sacafranco' || (r?.type === 'asignacion' && !r?.isGroupedChild)
+    );
+    orderableRows.forEach((row, idx) => {
+      if (row.type === 'asignacion' && row.asig?.id) {
+        ordenAsignaciones.push({ id: row.asig.id, orden: idx });
+      }
+      if (row.type === 'sacafranco' && row.fila?.id) {
+        ordenSacafranco.push({ id: row.fila.id, orden: idx });
+      }
+    });
+    return { ordenAsignaciones, ordenSacafranco };
   }
 
   desagruparAsignacion(asig: Asignacion): void {

@@ -784,6 +784,19 @@ def editar_servicio(request, id):
     serializer = AsignacionSerializer(asignacion, data=data, partial=True)
     if serializer.is_valid():
         asignacion = serializer.save()
+        if 'sacafranco_fila' in request.data:
+            fila_raw = request.data.get('sacafranco_fila')
+            if fila_raw in [None, '', 0, '0']:
+                asignacion.sacafranco_fila = None
+            else:
+                try:
+                    fila_id = int(fila_raw)
+                except (TypeError, ValueError):
+                    return Response({'error': 'sacafranco_fila inválida'}, status=status.HTTP_400_BAD_REQUEST)
+                if not SacafrancoFila.objects.filter(id=fila_id).exists():
+                    return Response({'error': 'Fila sacafranco no encontrada'}, status=status.HTTP_400_BAD_REQUEST)
+                asignacion.sacafranco_fila_id = fila_id
+            asignacion.save(update_fields=['sacafranco_fila'])
         patron_changed = 'patronAsignacion' in request.data and old_patron_id != getattr(asignacion, 'patronAsignacion_id', None)
         if patron_changed:
             try:
