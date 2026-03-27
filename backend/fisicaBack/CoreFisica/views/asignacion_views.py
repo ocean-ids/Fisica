@@ -1019,8 +1019,15 @@ def eliminar_sacafranco_fila(request, id):
         fila = SacafrancoFila.objects.get(id=id)
     except SacafrancoFila.DoesNotExist:
         return Response({'error': 'Fila no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-    fila.delete()
-    return Response({'mensaje': 'Fila sacafranco eliminada'})
+    today = datetime.date.today()
+    if (fila.anio, fila.mes) < (today.year, today.month):
+        return Response({'error': 'No se puede eliminar filas de meses pasados'}, status=status.HTTP_400_BAD_REQUEST)
+
+    qs = SacafrancoFila.objects.filter(
+        Q(anio__gt=fila.anio) | Q(anio=fila.anio, mes__gte=fila.mes)
+    )
+    deleted_count, _ = qs.delete()
+    return Response({'mensaje': 'Fila sacafranco eliminada', 'eliminadas': deleted_count})
 
 
 @api_view(['GET'])

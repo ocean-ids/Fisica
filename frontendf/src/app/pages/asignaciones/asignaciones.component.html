@@ -160,15 +160,18 @@
                   (mouseenter)="onSacafrancoHover(row.id)"
                   (mouseleave)="onSacafrancoLeave(row.id)">
                   <td
-                    [attr.colspan]="totalColumns()"
+                    [attr.colspan]="columnaOculta('accion') ? totalColumns() : (totalColumns() - 1)"
                     class="text-center align-middle bg-warning-subtle fw-bold text-success">
                     <span class="me-2" title="Arrastrar" style="cursor: grab;">
                       <i class="bi bi-grip-vertical"></i>
                     </span>
                     SACAFRANCO
+                  </td>
+                  <td *ngIf="!columnaOculta('accion')" class="text-center align-middle bg-warning-subtle">
                     <button
-                      class="btn btn-sm btn-outline-danger ms-2"
-                      title="Eliminar fila sacafranco"
+                      class="btn btn-sm btn-outline-danger"
+                      [title]="canDeleteSacafrancoFila(row.fila) ? 'Eliminar fila sacafranco' : 'No se puede eliminar meses pasados'"
+                      [disabled]="!canDeleteSacafrancoFila(row.fila)"
                       (click)="eliminarSacafrancoFila(row.fila)">
                       <i class="bi bi-trash"></i>
                     </button>

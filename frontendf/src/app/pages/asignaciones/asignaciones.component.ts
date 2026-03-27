@@ -364,6 +364,13 @@ export class AsignacionesComponent implements OnInit {
     return count || 1;
   }
 
+  canDeleteSacafrancoFila(fila?: SacafrancoFila | null): boolean {
+    if (!fila) return false;
+    if (fila.anio < this.anio) return false;
+    if (fila.anio === this.anio && fila.mes < this.mes) return false;
+    return true;
+  }
+
   private formatDateLocal(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
