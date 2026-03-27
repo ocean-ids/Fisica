@@ -61,7 +61,6 @@ export class AsignacionesComponent implements OnInit {
   > = [];
   displayAssignmentRows: Asignacion[] = [];
   sacafrancoRows: SacafrancoFila[] = [];
-  hoverSacafrancoFilaId: number | null = null;
   draggingAsignacionId: number | null = null;
   private lastDragPoint: { x: number; y: number } | null = null;
   private pendingPatronId: number | null = null;
@@ -483,42 +482,13 @@ export class AsignacionesComponent implements OnInit {
     const dragged = draggedRow.type === 'asignacion' ? draggedRow.asig as Asignacion : null;
     const draggedId = dragged?.id ?? null;
 
-    if (dragged && draggedId) {
-      const targetRow = this.displayRows?.[event.currentIndex];
-      if (targetRow?.type === 'sacafranco' && targetRow.id) {
-        this.setSacafrancoGroup(dragged, targetRow.id as number);
-        this.hoverSacafrancoFilaId = null;
-        this.lastDragPoint = null;
-        return;
-      }
-      if (this.hoverSacafrancoFilaId) {
-        this.setSacafrancoGroup(dragged, this.hoverSacafrancoFilaId);
-        this.hoverSacafrancoFilaId = null;
-        this.lastDragPoint = null;
-        return;
-      }
-
-      if (this.lastDragPoint) {
-        const el = document.elementFromPoint(this.lastDragPoint.x, this.lastDragPoint.y) as HTMLElement | null;
-        const row = el ? (el.closest('tr[data-sacafranco-id]') as HTMLElement | null) : null;
-        const raw = row ? row.getAttribute('data-sacafranco-id') : null;
-        const filaId = raw ? Number(raw) : null;
-        if (filaId) {
-          this.setSacafrancoGroup(dragged, filaId);
-          this.hoverSacafrancoFilaId = null;
-          this.lastDragPoint = null;
-          return;
-        }
-      }
-    }
-
     if (event.previousIndex === event.currentIndex) return;
     if (!this.displayRows || !this.displayRows.length) return;
 
     moveItemInArray(this.displayRows, event.previousIndex, event.currentIndex);
 
     const orderableRows = (this.displayRows || []).filter(r =>
-      r?.type === 'sacafranco' || (r?.type === 'asignacion' && !r?.isGroupedChild)
+      r?.type === 'sacafranco' || r?.type === 'asignacion'
     );
 
     const ordenAsignaciones: { id: number; orden: number }[] = [];
@@ -549,7 +519,6 @@ export class AsignacionesComponent implements OnInit {
     this.updateCalendarOrder();
     this.persistOrder(ordenAsignaciones);
     this.persistSacafrancoOrder(ordenSacafranco);
-    this.hoverSacafrancoFilaId = null;
     this.lastDragPoint = null;
   }
 
@@ -576,18 +545,6 @@ export class AsignacionesComponent implements OnInit {
     const asignaciones = this.asignaciones || [];
     const sacRows = this.sacafrancoRows || [];
 
-    const grouped = new Map<number, Asignacion[]>();
-    const ungrouped: Asignacion[] = [];
-    asignaciones.forEach(a => {
-      const groupId = a?.sacafranco_fila ?? null;
-      if (groupId) {
-        if (!grouped.has(groupId)) grouped.set(groupId, []);
-        grouped.get(groupId)!.push(a);
-      } else {
-        ungrouped.push(a);
-      }
-    });
-
     const rows: Array<
       { type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } |
       { type: 'sacafranco'; id: number; fila: SacafrancoFila }
@@ -595,7 +552,7 @@ export class AsignacionesComponent implements OnInit {
     const displayAssignments: Asignacion[] = [];
 
     const orderables: Array<{ kind: 'asignacion'; asig: Asignacion } | { kind: 'sacafranco'; fila: SacafrancoFila }> = [
-      ...ungrouped.map(a => ({ kind: 'asignacion' as const, asig: a })),
+      ...asignaciones.map(a => ({ kind: 'asignacion' as const, asig: a })),
       ...sacRows.map(f => ({ kind: 'sacafranco' as const, fila: f }))
     ];
 
@@ -611,15 +568,7 @@ export class AsignacionesComponent implements OnInit {
           displayAssignments.push(item.asig);
           return;
         }
-        const fila = item.fila;
-        const children = grouped.get(fila.id as number) || [];
-        children
-          .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
-          .forEach(child => {
-            rows.push({ type: 'asignacion', asig: child, isGroupedChild: true });
-            displayAssignments.push(child);
-          });
-        rows.push({ type: 'sacafranco', id: fila.id as number, fila });
+        rows.push({ type: 'sacafranco', id: item.fila.id as number, fila: item.fila });
       });
 
     this.displayRows = rows;
@@ -632,9 +581,7 @@ export class AsignacionesComponent implements OnInit {
 
   onDragEnded(): void {
     this.draggingAsignacionId = null;
-    // Delay clearing hover to allow drop event to consume it.
     setTimeout(() => {
-      this.hoverSacafrancoFilaId = null;
       this.lastDragPoint = null;
     }, 0);
   }
@@ -643,51 +590,6 @@ export class AsignacionesComponent implements OnInit {
     const point = event?.pointerPosition;
     if (!point) return;
     this.lastDragPoint = { x: point.x, y: point.y };
-    const el = document.elementFromPoint(point.x, point.y) as HTMLElement | null;
-    if (!el) return;
-    const row = el.closest('tr[data-sacafranco-id]') as HTMLElement | null;
-    if (!row) {
-      this.hoverSacafrancoFilaId = null;
-      return;
-    }
-    const raw = row.getAttribute('data-sacafranco-id');
-    const filaId = raw ? Number(raw) : null;
-    if (filaId && this.draggingAsignacionId !== null) {
-      this.hoverSacafrancoFilaId = filaId;
-    }
-  }
-
-  onSacafrancoHover(filaId?: number): void {
-    if (!filaId) return;
-    if (this.draggingAsignacionId !== null) {
-      this.hoverSacafrancoFilaId = filaId;
-    }
-  }
-
-  onSacafrancoLeave(filaId?: number): void {
-    if (!filaId) return;
-    if (this.hoverSacafrancoFilaId === filaId) {
-      this.hoverSacafrancoFilaId = null;
-    }
-  }
-
-  private setSacafrancoGroup(asig: Asignacion, filaId: number | null): void {
-    if (!asig || !asig.id) return;
-    if ((asig.sacafranco_fila ?? null) === (filaId ?? null)) return;
-    this.asignacionService.actualizarAsignacion(
-      asig.id,
-      { sacafranco_fila: filaId } as Partial<Asignacion>
-    ).subscribe({
-      next: () => {
-        asig.sacafranco_fila = filaId;
-        this.buildDisplayRows();
-        this.updateCalendarOrder();
-        const combined = this.computeCombinedOrders();
-        this.persistOrder(combined.ordenAsignaciones);
-        this.persistSacafrancoOrder(combined.ordenSacafranco);
-      },
-      error: err => console.error('Error al actualizar sacafranco_fila', err)
-    });
   }
 
   private persistOrder(ordenes?: { id: number; orden: number }[]): void {
@@ -716,7 +618,7 @@ export class AsignacionesComponent implements OnInit {
     const ordenAsignaciones: { id: number; orden: number }[] = [];
     const ordenSacafranco: { id: number; orden: number }[] = [];
     const orderableRows = (this.displayRows || []).filter(r =>
-      r?.type === 'sacafranco' || (r?.type === 'asignacion' && !r?.isGroupedChild)
+      r?.type === 'sacafranco' || r?.type === 'asignacion'
     );
     orderableRows.forEach((row, idx) => {
       if (row.type === 'asignacion' && row.asig?.id) {
@@ -729,10 +631,6 @@ export class AsignacionesComponent implements OnInit {
     return { ordenAsignaciones, ordenSacafranco };
   }
 
-  desagruparAsignacion(asig: Asignacion): void {
-    if (!asig?.id || !asig.sacafranco_fila) return;
-    this.setSacafrancoGroup(asig, null);
-  }
 
   trackByDisplayRow(index: number, row: any): string | number {
     if (row?.type === 'sacafranco') return `sacafranco-${row.id ?? index}`;

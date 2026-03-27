@@ -89,7 +89,6 @@
                   (cdkDragMoved)="onDragMoved($event)"
                   (cdkDragEnded)="onDragEnded()"
                   class="text-center align-middle shared-row"
-                  [class.grouped-child]="row.isGroupedChild"
                   style="height: 70px;">
                   <td *ngIf="!columnaOculta('horario')">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                   <td *ngIf="!columnaOculta('codigo')">{{ getCodigoInstalacionAsignacion(row.asig) }}</td>
@@ -154,11 +153,7 @@
                   cdkDragBoundary=".asig-table-card .card-body"
                   cdkDragPreviewContainer="parent"
                   style="height: 45px;"
-                  class="align-middle"
-                  [class.sacafranco-hover]="hoverSacafrancoFilaId === row.id"
-                  [attr.data-sacafranco-id]="row.id"
-                  (mouseenter)="onSacafrancoHover(row.id)"
-                  (mouseleave)="onSacafrancoLeave(row.id)">
+                  class="align-middle">
                   <td
                     [attr.colspan]="columnaOculta('accion') ? totalColumns() : (totalColumns() - 1)"
                     class="text-center align-middle bg-warning-subtle fw-bold text-success">
