@@ -365,14 +365,6 @@ class Asignacion(models.Model):
         related_name='sacafranco_miembros'
     )
 
-    sacafranco_fila = models.ForeignKey(
-        SacafrancoFila,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='asignaciones'
-    )
-
     fecha = models.DateField(null=True, blank=True)
     mes = models.PositiveSmallIntegerField(default=current_month)
     anio = models.PositiveSmallIntegerField(default=current_year)

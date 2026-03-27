@@ -681,7 +681,6 @@ export class AsignacionesComponent implements OnInit {
       end_date: null,
       agregar_sacafranco: false,
       sacafranco_grupo: null,
-      sacafranco_fila: null,
       orden: 0,
       patronAsignacion: this.pendingPatronId || 0
     };
