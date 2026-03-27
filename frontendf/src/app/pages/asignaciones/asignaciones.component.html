@@ -126,9 +126,6 @@
                     </td>
                   <td *ngIf="!columnaOculta('accion')" class="p-0 align-middle">
                     <div class="d-flex gap-2 justify-content-center align-items-center">
-                      <span class="text-muted" title="Arrastrar" style="cursor: grab;">
-                        <i class="bi bi-grip-vertical"></i>
-                      </span>
                       <!--<button
                         *ngIf="row.isGroupedChild"
                         class="btn btn-sm btn-outline-secondary"
@@ -157,9 +154,6 @@
                   <td
                     [attr.colspan]="columnaOculta('accion') ? totalColumns() : (totalColumns() - 1)"
                     class="text-center align-middle bg-warning-subtle fw-bold text-success">
-                    <span class="me-2" title="Arrastrar" style="cursor: grab;">
-                      <i class="bi bi-grip-vertical"></i>
-                    </span>
                     SACAFRANCO
                   </td>
                   <td *ngIf="!columnaOculta('accion')" class="text-center align-middle bg-warning-subtle">
