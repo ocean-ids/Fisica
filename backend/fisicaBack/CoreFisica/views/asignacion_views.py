@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django.http import JsonResponse
 from rest_framework import status
-from ..models import Asignacion, AsignacionSemanal, Puesto, ReporteAsistencia, SacafrancoFila
+from ..models import Asignacion, AsignacionSemanal, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal
 from django.db.models import Q, Max
 from django.db import transaction
 from ..serializers import AsignacionSerializer, SacafrancoFilaSerializer
@@ -1326,6 +1326,58 @@ def exportar_asignaciones_excel(request):
                     except Exception:
                         semanal = None
                     semanal_cache[puesto_key] = semanal
+
+            val = ''
+            if semanal:
+                day_field = ['mon','tue','wed','thu','fri','sat','sun'][d.weekday()]
+                try:
+                    val = getattr(semanal, day_field, '') or ''
+                except Exception:
+                    val = ''
+
+            cell = ws.cell(row=row_idx, column=col)
+            cell.value = val
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = border
+
+        start_row += 1
+
+    sacafranco_rows = SacafrancoFila.objects.filter(
+        Q(anio__lt=year) | Q(anio=year, mes__lte=month)
+    ).order_by('orden', 'id')
+    sac_sem_cache = {}
+    for fila in sacafranco_rows:
+        row_idx = start_row
+        vals = [
+            '',
+            '',
+            '',
+            'SACAFRANCO',
+            '',
+            '',
+            '',
+            ''
+        ]
+        for ci, v in enumerate(vals, start=1):
+            cell = ws.cell(row=row_idx, column=ci)
+            cell.value = v
+            cell.border = border
+
+        for di, d in enumerate(dates):
+            col = date_start_col + di
+            week_index = (d.day - 1) // 7
+            week_start = first_day + datetime.timedelta(days=week_index * 7)
+            sac_key = (fila.id, week_start)
+            semanal = sac_sem_cache.get(sac_key)
+            if semanal is None:
+                try:
+                    semanal = SacafrancoFilaSemanal.objects.filter(
+                        sacafranco_fila_id=fila.id,
+                        week_start=week_start
+                    ).first()
+                except Exception:
+                    semanal = None
+                sac_sem_cache[sac_key] = semanal
 
             val = ''
             if semanal:
