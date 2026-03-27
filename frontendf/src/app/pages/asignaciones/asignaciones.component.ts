@@ -443,6 +443,31 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  eliminarSacafrancoFila(fila: SacafrancoFila | number | null | undefined): void {
+    const id = typeof fila === 'number' ? fila : fila?.id;
+    if (!id) return;
+    Swal.fire({
+      title: 'Eliminar fila sacafranco',
+      text: 'Esta accion no se puede deshacer. Deseas continuar?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Si, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      this.asignacionService.eliminarSacafrancoFila(id).subscribe({
+        next: () => {
+          this.sacafrancoRows = (this.sacafrancoRows || []).filter(f => f?.id !== id);
+          this.buildDisplayRows();
+          this.updateCalendarOrder();
+          this.persistSacafrancoOrder();
+          this.persistOrder();
+        },
+        error: err => console.error('Error al eliminar fila sacafranco', err)
+      });
+    });
+  }
+
   dropAsignaciones(event: CdkDragDrop<any[]>): void {
     if (!event) return;
 
@@ -1073,6 +1098,7 @@ export class AsignacionesComponent implements OnInit {
       });
     });
   }
+
 
   cambiarMesAnio(): void {
     this.cargarAsignaciones();
