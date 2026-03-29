@@ -29,6 +29,8 @@ import { Instalacion } from '../../../models';
 export class PuestoFormComponent implements OnInit {
   puestoForm!: FormGroup;
   instalaciones: Instalacion[] = [];
+  private readonly TURNO_24H_UI = '24H';
+  private readonly TURNO_24H_BACKEND = 'Ambos';
 
   constructor(
     private fb: FormBuilder,
@@ -53,7 +55,7 @@ export class PuestoFormComponent implements OnInit {
       
       const grouped: Record<string, { horas: string; turno: string; days: number[] }> = {};
       for (const h of initialHorarios) {
-        const turno = h.turno || 'Diurno';
+        const turno = this.toUiTurno(h.turno || 'Diurno');
         const horasStr = this.toTimeString(h.horas ?? '12:00');
         const key = `${horasStr}-${turno}`;
         if (!grouped[key]) {
@@ -100,7 +102,11 @@ export class PuestoFormComponent implements OnInit {
         const days: number[] = h.days || [];
         if (days.length) {
           for (const d of days) {
-            horariosPayload.push({ dia: d, horas: this.toNumberHours(h.horas, h.turno), turno: h.turno });
+            horariosPayload.push({
+              dia: d,
+              horas: this.toNumberHours(h.horas, h.turno),
+              turno: this.toBackendTurno(h.turno)
+            });
           }
         }
       }
@@ -110,7 +116,7 @@ export class PuestoFormComponent implements OnInit {
         horarios: horariosPayload,
         instalacion_nombre: selectedInstalacion?.nombre || null
       };
-      console.log('Payload enviado:', JSON.stringify(payload, null, 2)); // Log detailed payload for debugging
+      console.log('Payload enviado:', JSON.stringify(payload, null, 2)); 
       this.dialogRef.close(payload);
     }
   }
@@ -129,8 +135,8 @@ export class PuestoFormComponent implements OnInit {
     
     group.get('turno')?.valueChanges.subscribe((t: string | null) => {
       const turnoVal = t ?? undefined;
-      
-      if (turnoVal === 'Ambos') {
+
+      if (this.is24hTurn(turnoVal)) {
         group.get('horas')?.setValue('23:59', { emitEvent: false });
       }
       this.enforceHourLimit(group, turnoVal);
@@ -147,7 +153,7 @@ export class PuestoFormComponent implements OnInit {
     if (!horasCtrl) return;
     const raw = horasCtrl.value;
     const val = this.toNumberHours(raw, turno);
-    const max = (turno === 'Ambos') ? 24 : 12;
+    const max = this.is24hTurn(turno) ? 24 : 12;
     const clamped = Math.min(Math.max(val, 0), max);
     if (clamped !== val) {
       
@@ -160,15 +166,28 @@ export class PuestoFormComponent implements OnInit {
     if (typeof raw === 'string' && raw.includes(':')) {
       const [hh, mm] = raw.split(':').map(Number);
       let total = (hh || 0) + (mm || 0) / 60;
-      if (total > 23.9833 && (turno === 'Ambos' || turno === 'ambos')) {
+      if (total > 23.9833 && this.is24hTurn(turno)) {
         total = 24; 
       }
-      const max = turno === 'Ambos' ? 24 : 12;
+      const max = this.is24hTurn(turno) ? 24 : 12;
       return Math.min(Math.max(total, 0), max);
     }
     const n = Number(raw) || 0;
-    const max = turno === 'Ambos' ? 24 : 12;
+    const max = this.is24hTurn(turno) ? 24 : 12;
     return Math.min(Math.max(n, 0), max);
+  }
+
+  private is24hTurn(turno?: string | null): boolean {
+    const t = String(turno || '').trim().toLowerCase();
+    return t === '24h' || t === 'ambos';
+  }
+
+  private toUiTurno(turno?: string | null): string {
+    return this.is24hTurn(turno) ? this.TURNO_24H_UI : String(turno || 'Diurno');
+  }
+
+  private toBackendTurno(turno?: string | null): string {
+    return this.is24hTurn(turno) ? this.TURNO_24H_BACKEND : String(turno || 'Diurno');
   }
 
   private toTimeString(hours: number | string): string {

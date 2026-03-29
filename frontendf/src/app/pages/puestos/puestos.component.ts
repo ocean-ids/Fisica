@@ -193,7 +193,8 @@ export class PuestosComponent implements OnInit {
       const sorted = ordered.filter(t => unique.has(t));
       const extras = [...unique].filter(t => !ordered.includes(t));
       const all = [...sorted, ...extras];
-      return all.length ? all.join(' / ') : '-';
+      const display = all.map(t => (t === 'Ambos' ? '24h' : t));
+      return display.length ? display.join(' / ') : '-';
     } catch (e) {
       return '-';
     }

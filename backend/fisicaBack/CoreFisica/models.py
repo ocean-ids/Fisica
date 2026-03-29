@@ -131,7 +131,7 @@ class Puesto(models.Model):
                             elif val.startswith('n'):
                                 turno_letter = 'N'
                             else:
-                                turno_letter = 'A'
+                                turno_letter = 'H'
                         else:
                             turno_letter = 'M'
             except Exception:
@@ -174,7 +174,7 @@ class Puesto(models.Model):
                         elif val.startswith('n'):
                             turno_letter = 'N'
                         else:
-                            turno_letter = 'A'
+                            turno_letter = 'H'
                     else:
                         turno_letter = 'M'
             except Exception:
@@ -206,6 +206,8 @@ class Puesto(models.Model):
 
     def get_turno_display(self):
         t = self.get_turno()
+        if t == 'Ambos':
+            return '24H'
         return t or '-'
 
     def __str__(self):

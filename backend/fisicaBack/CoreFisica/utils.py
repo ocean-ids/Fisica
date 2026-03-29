@@ -95,9 +95,9 @@ def parse_input(text: str) -> List[Dict[str, int]]:
         seg = seg.strip()
         if not seg:
             continue
-        # Captura horas, días y turno opcional (Diurno/Nocturno/Ambos o D/N/A)
+        # Captura horas, días y turno opcional (Diurno/Nocturno/24h o D/N/A/H)
         m = re.match(
-            r'(?P<h>\d+)\s*H\s*(?P<d>.+?)(?:\s+(?P<t>diurno|nocturno|ambos|d|n|a))?$',
+            r'(?P<h>\d+)\s*H\s*(?P<d>.+?)(?:\s+(?P<t>diurno|nocturno|ambos|d|n|a|h|24h))?$',
             seg,
             flags=re.I,
         )
@@ -110,7 +110,7 @@ def parse_input(text: str) -> List[Dict[str, int]]:
             turno = 'Diurno'
         elif raw_turno.startswith('n'):
             turno = 'Nocturno'
-        elif raw_turno.startswith('a'):
+        elif raw_turno.startswith('a') or raw_turno.startswith('h') or raw_turno.startswith('24'):
             turno = 'Ambos'
         else:
             turno = 'Diurno'  

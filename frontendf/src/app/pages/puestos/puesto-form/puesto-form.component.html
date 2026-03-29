@@ -27,10 +27,10 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Cantidad de Guardias</mat-label>
+      <mat-label>Cantidad de Puestos</mat-label>
       <input matInput type="number" formControlName="cantidad_guardias" required min="1">
       <mat-error *ngIf="puestoForm.get('cantidad_guardias')?.hasError('required')">
-        La cantidad de guardias es requerida
+        La cantidad de puestos es requerida
       </mat-error>
       <mat-error *ngIf="puestoForm.get('cantidad_guardias')?.hasError('min')">
         Debe ser al menos 1
@@ -54,7 +54,7 @@
             <mat-select formControlName="turno" required>
               <mat-option value="Diurno">Diurno</mat-option>
               <mat-option value="Nocturno">Nocturno</mat-option>
-              <mat-option value="Ambos">Ambos</mat-option>
+              <mat-option value="24H">24H</mat-option>
             </mat-select>
           </mat-form-field>
 

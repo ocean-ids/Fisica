@@ -130,7 +130,8 @@ export class AsignacionesComponent implements OnInit {
       const sorted = ordered.filter(t => unique.has(t));
       const extras = [...unique].filter(t => !ordered.includes(t));
       const all = [...sorted, ...extras];
-      return all.length ? all.join(', ') : '-';
+      const display = all.map(t => (t === 'Ambos' ? '24H' : t));
+      return display.length ? display.join(', ') : '-';
     } catch (e) {
       return '-';
     }
@@ -178,7 +179,7 @@ export class AsignacionesComponent implements OnInit {
         const t = turno.toLowerCase();
         if (t.startsWith('d')) return 'D';
         if (t.startsWith('n')) return 'N';
-        if (t.startsWith('a')) return 'A';
+        if (t.startsWith('a')) return 'H';
         return '';
       };
 

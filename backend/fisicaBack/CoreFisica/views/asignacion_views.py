@@ -1216,7 +1216,7 @@ def exportar_asignaciones_excel(request):
                 if lower.startswith('n'):
                     return 'N'
                 if lower.startswith('a'):
-                    return 'A'
+                    return 'H'
                 return ''
 
             parts = []
