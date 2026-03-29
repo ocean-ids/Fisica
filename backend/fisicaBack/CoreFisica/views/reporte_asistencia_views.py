@@ -7,7 +7,7 @@ from pathlib import Path
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from ..models import Asignacion, Persona, ReporteAsistencia
+from ..models import Asignacion, Persona, ReporteAsistencia, AsignacionSemanal
 import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from openpyxl.drawing.image import Image as XLImage
@@ -455,7 +455,10 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
     asig_qs = Asignacion.objects.select_related(
         'cliente', 'instalacion', 'instalacion__canton', 'instalacion__canton__provincia',
         'puesto', 'horario', 'persona'
-    ).prefetch_related('instalacion__zonas').filter(persona__is_active=True, estado='ACTIVO')
+    ).prefetch_related('instalacion__zonas').filter(
+        persona__is_active=True,
+        estado='ACTIVO'
+    ).exclude(persona__tipo='SACAFRANCO')
 
     if fecha_obj:
         # Reporte por rango hasta fin de anio actual cuando la fecha es hoy/futura.
@@ -479,6 +482,32 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
         asig_qs = asig_qs.filter(
             Q(puesto__horarios__turno=turno) | Q(puesto__horarios__turno='Ambos')
         ).distinct()
+
+    # Excluir asignaciones marcadas como cobertura de sacafranco (F) en la fecha consultada.
+    fecha_ref = fecha_obj or hoy
+    day_field_map = {
+        0: 'mon',
+        1: 'tue',
+        2: 'wed',
+        3: 'thu',
+        4: 'fri',
+        5: 'sat',
+        6: 'sun',
+    }
+    day_field = day_field_map.get(fecha_ref.weekday())
+    if day_field:
+        # Semana estilo calendario mensual del sistema (dia 1 y saltos de 7)
+        month_base = fecha_ref.replace(day=1)
+        week_start_month = month_base + datetime.timedelta(days=((fecha_ref.day - 1) // 7) * 7)
+        # Semana estilo ISO (lunes)
+        week_start_iso = fecha_ref - datetime.timedelta(days=fecha_ref.weekday())
+
+        sacafranco_asig_ids = AsignacionSemanal.objects.filter(
+            week_start__in=[week_start_month, week_start_iso],
+            **{f"{day_field}__istartswith": 'F'}
+        ).exclude(asignacion_id__isnull=True).values_list('asignacion_id', flat=True)
+
+        asig_qs = asig_qs.exclude(id__in=sacafranco_asig_ids)
 
     data = []
     personas_con_asignacion = set()
