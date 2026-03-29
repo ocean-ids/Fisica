@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
 import { Cliente } from '../../models';
 import { InstalacionService } from '../../services/instalacion.service';
 import { ClienteService } from '../../services/cliente.service';
@@ -138,7 +139,7 @@ export class InstalacionesComponent implements OnInit {
     if (!res.isConfirmed) return;
 
     try {
-      await this.instalacionService.deleteInstalacion(instalacion.id).toPromise();
+      await firstValueFrom(this.instalacionService.deleteInstalacion(instalacion.id));
       await Swal.fire({ icon: 'success', title: 'Eliminada', timer: 1200, showConfirmButton: false });
       this.cargarInstalaciones();
     } catch (error) {

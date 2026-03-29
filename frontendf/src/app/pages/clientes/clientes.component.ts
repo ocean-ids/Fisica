@@ -5,6 +5,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
+import { firstValueFrom } from 'rxjs';
 import { ClienteService } from '../../services/cliente.service';
 import { Cliente } from '../../models/cliente.model';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -125,7 +126,7 @@ export class ClientesComponent implements OnInit {
     if (!res.isConfirmed) return;
 
     try {
-      await this.clienteService.deleteCliente(cliente.id!).toPromise();
+      await firstValueFrom(this.clienteService.deleteCliente(cliente.id!));
       await Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1200, showConfirmButton: false });
       this.loadClientes();
     } catch (err) {
