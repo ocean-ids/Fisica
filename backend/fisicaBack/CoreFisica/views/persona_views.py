@@ -696,8 +696,6 @@ def desasignar_sacafranco(request):
         mes_ref = week_start_date.month
         anio_ref = week_start_date.year
         asignacion = Asignacion.objects.filter(persona=persona, mes=mes_ref, anio=anio_ref).first()
-        if not asignacion:
-            return JsonResponse({'error': 'No existe asignación para esa persona en el mes/año de la semana'}, status=404)
 
         prop_start = week_start_date if isinstance(week_start_date, datetime.date) else datetime.date.today()
         try:
@@ -707,32 +705,90 @@ def desasignar_sacafranco(request):
             today = datetime.date.today()
             prop_end = datetime.date(today.year, 12, 31)
 
-        semanal = AsignacionSemanal.objects.filter(
-            puesto=puesto,
-            week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start,
-            asignacion_id=asignacion.id
-        ).first()
+        semanal = None
+        if asignacion:
+            semanal = AsignacionSemanal.objects.filter(
+                puesto=puesto,
+                week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start,
+                asignacion_id=asignacion.id
+            ).first()
+
+        # Fallback: en datos históricos puede existir la marca F sin vínculo consistente
+        # con asignación/persona; en ese caso buscamos la fila por puesto/semana/día.
+        if not semanal:
+            semanal = AsignacionSemanal.objects.filter(
+                puesto=puesto,
+                week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start,
+                **{f"{day}__istartswith": 'F'}
+            ).filter(
+                Q(asignacion__persona=persona) | Q(asignacion__isnull=True)
+            ).first() or AsignacionSemanal.objects.filter(
+                puesto=puesto,
+                week_start=week_start_date if isinstance(week_start_date, datetime.date) else week_start,
+                **{f"{day}__istartswith": 'F'}
+            ).first()
+
         if not semanal:
             return JsonResponse({'error': 'No hay programación semanal para ese puesto/semana'}, status=404)
+
+        if not asignacion and semanal.asignacion_id:
+            asignacion = semanal.asignacion
 
         if not hasattr(semanal, day):
             return JsonResponse({'error': 'Día inválido'}, status=400)
 
-        # Limpiar la semana seleccionada (si está en o después de prop_start)
-        setattr(semanal, day, '')
-        # desvincular asignacion de esta fila si corresponde
-        if semanal.asignacion_id == asignacion.id:
-            semanal.asignacion = None
-        semanal.save()
+        day_offsets = {
+            'mon': 0,
+            'tue': 1,
+            'wed': 2,
+            'thu': 3,
+            'fri': 4,
+            'sat': 5,
+            'sun': 6,
+        }
+        day_offset = day_offsets.get(day, 0)
+        today = datetime.date.today()
 
-        # Propagar la eliminación a semanas futuras hasta fin de año (solo filas ligadas a la misma asignacion)
+        # Corta la propagación en la fecha más reciente entre:
+        # - la celda seleccionada
+        # - hoy
+        selected_cell_date = week_start_date + datetime.timedelta(days=day_offset)
+        cutoff_date = max(selected_cell_date, today)
+
+        # Propagar la eliminación solo a fechas vigentes/futuras.
         try:
-            from django.db.models import Q as _Q
-            future_qs = AsignacionSemanal.objects.filter(puesto=puesto, week_start__gte=prop_start, week_start__lte=prop_end, asignacion_id=asignacion.id)
-            # Solo limpiar celdas que contienen 'F' (o comienzan con 'F')
-            target_qs = future_qs.filter(_Q(**{f"{day}__istartswith": 'F'}))
-            if target_qs.exists():
-                target_qs.update(**{day: ''}, asignacion_id=None)
+            if asignacion:
+                candidate_qs = AsignacionSemanal.objects.filter(
+                    puesto=puesto,
+                    week_start__gte=prop_start,
+                    week_start__lte=prop_end,
+                    asignacion_id=asignacion.id
+                )
+            else:
+                candidate_qs = AsignacionSemanal.objects.filter(
+                    puesto=puesto,
+                    week_start__gte=prop_start,
+                    week_start__lte=prop_end,
+                    asignacion_id=semanal.asignacion_id
+                ) if semanal.asignacion_id else AsignacionSemanal.objects.filter(
+                    puesto=puesto,
+                    week_start__gte=prop_start,
+                    week_start__lte=prop_end
+                )
+
+            for fila in candidate_qs:
+                row_day_date = fila.week_start + datetime.timedelta(days=day_offset)
+                if row_day_date < cutoff_date:
+                    continue
+
+                cell_value = str(getattr(fila, day, '') or '').strip().upper()
+                if not cell_value.startswith('F'):
+                    continue
+
+                setattr(fila, day, '')
+                if asignacion or fila.asignacion_id:
+                    fila.asignacion = None
+                fila.save()
         except Exception:
             logger.exception('Error propagando desasignación a semanas futuras')
 
