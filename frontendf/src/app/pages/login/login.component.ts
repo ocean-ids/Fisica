@@ -3,6 +3,7 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { Router, RouterModule } from '@angular/router';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-login',
@@ -13,7 +14,6 @@ import { Router, RouterModule } from '@angular/router';
 export class LoginComponent {
   username: string = '';
   password: string = '';
-  errorMessage: string = '';
   isLoading: boolean = false;
 
   constructor(
@@ -23,21 +23,35 @@ export class LoginComponent {
 
   onSubmit(): void {
     if (!this.username || !this.password) {
-      this.errorMessage = 'Por favor, ingresa usuario y contraseña';
+      Swal.fire({
+        icon: 'warning',
+        title: 'Datos incompletos',
+        text: 'Por favor, ingresa usuario y contraseña'
+      });
       return;
     }
 
     this.isLoading = true;
-    this.errorMessage = '';
 
     this.authService.login(this.username, this.password).subscribe({
       next: (response) =>  {
         console.log('Acceso Exitoso', response);
-        this.router.navigate(['/dashboard']);
+        Swal.fire({
+          icon: 'success',
+          title: 'Acceso exitoso',
+          timer: 1200,
+          showConfirmButton: false
+        }).then(() => {
+          this.router.navigate(['/dashboard']);
+        });
       },
       error: (error) => {
         console.log('Error de login', error);
-        this.errorMessage = 'Usuario o contraseña incorrectos';
+        Swal.fire({
+          icon: 'error',
+          title: 'Error de login',
+          text: 'Usuario o contraseña incorrectos'
+        });
         this.isLoading = false;
       },
       complete: () => {
