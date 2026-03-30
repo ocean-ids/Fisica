@@ -434,18 +434,7 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
     # Solo considerar overrides de asignaciones activas
     reporte_qs = reporte_qs.filter(asignacion__estado='ACTIVO')
     if fecha_obj:
-        if fecha_obj >= hoy:
-            # Desde la fecha filtrada hasta fin de anio actual.
-            reporte_qs = reporte_qs.filter(
-                Q(modificado_en__date__gte=fecha_obj, modificado_en__date__lte=fin_anio_actual) |
-                Q(modificado_en__isnull=True, created_at__date__gte=fecha_obj, created_at__date__lte=fin_anio_actual)
-            )
-        else:
-            # Para fechas pasadas, mantener filtro diario exacto.
-            reporte_qs = reporte_qs.filter(
-                Q(modificado_en__date=fecha_obj) |
-                Q(modificado_en__isnull=True, created_at__date=fecha_obj)
-            )
+        reporte_qs = reporte_qs.filter(fecha_reporte=fecha_obj)
 
     overrides = {
         r.asignacion_id: r
@@ -609,8 +598,17 @@ def insertar_reporte_asistencia(request, asignacion_id):
     if reemplazo_result != 'no-enviado':
         override.reemplazo = reemplazo_result
 
+    fecha_param = request.data.get('fecha')
+    fecha_reporte = None
+    if fecha_param:
+        try:
+            fecha_reporte = datetime.date.fromisoformat(str(fecha_param))
+        except ValueError:
+            fecha_reporte = None
+
     if request.user and request.user.is_authenticated:
         override.modificado_por = request.user
+    override.fecha_reporte = fecha_reporte
     override.modificado_en = timezone.now()
     override.save()
 

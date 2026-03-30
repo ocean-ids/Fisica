@@ -50,7 +50,7 @@ export class ReporteAsistenciaEditDialogComponent {
     private reporteSvc: ReporteAsistenciaService,
     private personaSvc: PersonaService,
     private dialogRef: MatDialogRef<ReporteAsistenciaEditDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { row: ReporteAsistenciaRow }
+    @Inject(MAT_DIALOG_DATA) public data: { row: ReporteAsistenciaRow; fecha?: string | null }
   ) {
     this.dialogRef.disableClose = true;
     this.form = this.fb.group({
@@ -100,7 +100,8 @@ export class ReporteAsistenciaEditDialogComponent {
       codigo: this.form.value.codigo === '' ? null : this.form.value.codigo,
       estado: this.form.value.estado || null,
       reemplazo_id: this.form.value.reemplazo_id === '' ? null : this.form.value.reemplazo_id,
-      descripcion: this.form.value.descripcion === '' ? null : this.form.value.descripcion
+      descripcion: this.form.value.descripcion === '' ? null : this.form.value.descripcion,
+      fecha: this.data?.fecha || null
     };
 
     this.guardando = true;

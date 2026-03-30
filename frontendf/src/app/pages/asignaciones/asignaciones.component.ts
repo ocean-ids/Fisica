@@ -461,6 +461,20 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  editarSacafrancoFila(fila: SacafrancoFila): void{
+    const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
+      width: '520px',
+      data: { personas: this.personas }
+    });
+    ref.afterClosed().subscribe(result => {
+      if (!result?.personaId) return;
+
+      const payload: Partial<SacafrancoFila> = {
+        persona: result.personaId
+      };
+    })
+  }
+
   eliminarSacafrancoFila(fila: SacafrancoFila | number | null | undefined): void {
     const id = typeof fila === 'number' ? fila : fila?.id;
     if (!id) return;

@@ -22,6 +22,7 @@ export interface UpdateReporteAsistenciaPayload {
   reemplazo_id?: number | null;
   descripcion?: string | null;
   row_color?: string | null;
+  fecha?: string | null;
 }
 
 export interface ResumenAsistencia {

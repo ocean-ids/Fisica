@@ -266,7 +266,7 @@ export class ReporteAsistenciaComponent implements OnInit {
     const dialogRef = this.dialog.open(ReporteAsistenciaEditDialogComponent, {
       width: '700px',
       maxWidth: '95vw',
-      data: { row: { ...row } }
+      data: { row: { ...row }, fecha: this.filtroFecha || null }
     });
 
     dialogRef.afterClosed().subscribe((res) => {

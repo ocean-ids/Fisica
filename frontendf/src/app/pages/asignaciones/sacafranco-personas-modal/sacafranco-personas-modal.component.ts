@@ -27,7 +27,7 @@ export class SacafrancoPersonasModalComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.data?.personas && this.data.personas.length) {
-      this.personas = this.data.personas;
+      this.personas = this.data.personas.filter(p => (p.tipo || '').toString().toUpperCase() === 'SACAFRANCO');
       return;
     }
 

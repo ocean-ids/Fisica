@@ -31,7 +31,7 @@
     </section>
 
     <button class="btn btn-outline-secondary me-2" (click)="abrirNuevoPatron()" >
-      <i class="bi bi-bricks"></i> Nuevo Patrón
+      <i class="bi bi-grid-3x3-gap"></i> Nuevo Patrón
     </button>
     
   </div>
@@ -158,13 +158,18 @@
                     <div>{{ row.fila.persona_detalle?.nombres || '' }}</div>
                   </td>
                   <td *ngIf="!columnaOculta('accion')" class="text-center align-middle bg-warning-subtle">
-                    <button
-                      class="btn btn-sm btn-outline-danger"
-                      [title]="canDeleteSacafrancoFila(row.fila) ? 'Eliminar fila sacafranco' : 'No se puede eliminar meses pasados'"
-                      [disabled]="!canDeleteSacafrancoFila(row.fila)"
-                      (click)="eliminarSacafrancoFila(row.fila)">
-                      <i class="bi bi-trash"></i>
-                    </button>
+                    <div class="d-flex gap-2 justify-content-center align-items-center">
+                      <button class="btn btn-sm btn-outline-primary" (click)="editarSacafrancoFila(row.fila)">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <button
+                        class="btn btn-sm btn-outline-danger"
+                        [title]="canDeleteSacafrancoFila(row.fila) ? 'Eliminar fila sacafranco' : 'No se puede eliminar meses pasados'"
+                        [disabled]="!canDeleteSacafrancoFila(row.fila)"
+                        (click)="eliminarSacafrancoFila(row.fila)">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </ng-container>
