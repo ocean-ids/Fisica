@@ -1,0 +1,31 @@
+<h2 mat-dialog-title class="text-center">Seleccionar Persona Sacafranco</h2>
+
+<mat-dialog-content>
+    <div class="list-group" style="max-height: 320px; overflow: auto;">
+        <button
+            type="button"
+            class="list-group-item list-group-item-action"
+            *ngFor="let p of personas"
+            (click)="selectPersona(p.id)"
+            [class.active]="selectedId === p.id"
+        >
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="fw-semibold">{{ p.apellidos }} {{ p.nombres }}</div>
+                    <small class="text-muted">{{ p.cedula }}</small>
+                </div>
+                <span class="badge bg-primary" *ngIf="p.tipo">{{ p.tipo }}</span>
+            </div>
+        </button>
+        <div class="text-muted p-2" *ngIf="!personas.length">
+            No hay personas sacafranco para mostrar.
+        </div>
+    </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+    <button mat-button (click)="cancel()">Cancelar</button>
+    <button mat-raised-button color="primary" (click)="confirm()" [disabled]="!selectedId">
+        Seleccionar
+    </button>
+</mat-dialog-actions>

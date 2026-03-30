@@ -26,6 +26,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form/asignacion-form.component';
 import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
 
 @Component({
   selector: 'app-asignaciones',
@@ -435,18 +436,28 @@ export class AsignacionesComponent implements OnInit {
   }
 
   crearSacafrancoFila(): void {
-    const payload: SacafrancoFila = {
-      mes: this.mes,
-      anio: this.anio,
-      orden: (this.sacafrancoRows || []).length
-    };
-    this.asignacionService.crearSacafrancoFila(payload).subscribe({
-      next: fila => {
-        this.sacafrancoRows = [...(this.sacafrancoRows || []), fila].filter(f => f && f.id);
-        this.buildDisplayRows();
-        this.updateCalendarOrder();
-      },
-      error: err => console.error('Error al crear fila sacafranco', err)
+    const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
+      width: '520px'
+    });
+
+    ref.afterClosed().subscribe(result => {
+      if (!result?.personaId) return;
+
+      const payload: SacafrancoFila = {
+        mes: this.mes,
+        anio: this.anio,
+        orden: (this.sacafrancoRows || []).length,
+        persona: result.personaId
+      };
+
+      this.asignacionService.crearSacafrancoFila(payload).subscribe({
+        next: fila => {
+          this.sacafrancoRows = [...(this.sacafrancoRows || []), fila].filter(f => f && f.id);
+          this.buildDisplayRows();
+          this.updateCalendarOrder();
+        },
+        error: err => console.error('Error al crear fila sacafranco', err)
+      });
     });
   }
 

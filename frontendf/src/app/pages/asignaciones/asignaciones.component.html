@@ -145,10 +145,17 @@
                   cdkDragPreviewContainer="parent"
                   style="height: 45px;"
                   class="align-middle">
-                  <td
-                    [attr.colspan]="columnaOculta('accion') ? totalColumns() : (totalColumns() - 1)"
-                    class="text-center align-middle bg-warning-subtle fw-bold text-success">
-                    SACAFRANCO
+                  <td *ngIf="!columnaOculta('horario')" class="bg-warning-subtle"></td>
+                  <td *ngIf="!columnaOculta('codigo')" class="bg-warning-subtle"></td>
+                  <td *ngIf="!columnaOculta('cliente')" class="bg-warning-subtle"></td>
+                  <td *ngIf="mostrarPuesto()" class="bg-warning-subtle text-center">SACAFRANCO</td>
+                  <td *ngIf="mostrarPuesto()" class="bg-warning-subtle"></td>
+                  <td *ngIf="!columnaOculta('cedula')" class="text-center align-middle bg-warning-subtle">
+                    {{ row.fila.persona_detalle?.cedula || '-' }}
+                  </td>
+                  <td *ngIf="!columnaOculta('persona')" class="text-center align-middle bg-warning-subtle">
+                    <div>{{ row.fila.persona_detalle?.apellidos || '' }}</div>
+                    <div>{{ row.fila.persona_detalle?.nombres || '' }}</div>
                   </td>
                   <td *ngIf="!columnaOculta('accion')" class="text-center align-middle bg-warning-subtle">
                     <button

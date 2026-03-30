@@ -32,6 +32,8 @@ export interface SacafrancoFila {
     mes: number;
     anio: number;
     orden?: number;
+    persona: number;
+    persona_detalle?: Persona | null;
 }
 
 export interface PatronAsignacion{

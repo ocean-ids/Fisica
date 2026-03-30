@@ -330,6 +330,7 @@ class SacafrancoFila(models.Model):
     mes = models.PositiveSmallIntegerField(default=current_month)
     anio = models.PositiveSmallIntegerField(default=current_year)
     orden = models.PositiveIntegerField(default=0)
+    persona = models.ForeignKey(Persona, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -124,9 +124,22 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
 
 
 class SacafrancoFilaSerializer(serializers.ModelSerializer):
+    persona_detalle = serializers.SerializerMethodField(read_only=True)
+
+    def get_persona_detalle(self, obj):
+        if not obj.persona:
+            return None
+        return {
+            'id': obj.persona.id,
+            'nombres': obj.persona.nombres,
+            'apellidos': obj.persona.apellidos,
+            'cedula': obj.persona.cedula,
+            'tipo': obj.persona.tipo
+        }
+
     class Meta:
         model = SacafrancoFila
-        fields = ['id', 'mes', 'anio', 'orden', 'created_at', 'updated_at']
+        fields = ['id', 'mes', 'anio', 'orden', 'persona', 'persona_detalle', 'created_at', 'updated_at']
 
 
 class SacafrancoFilaSemanalSerializer(serializers.ModelSerializer):
