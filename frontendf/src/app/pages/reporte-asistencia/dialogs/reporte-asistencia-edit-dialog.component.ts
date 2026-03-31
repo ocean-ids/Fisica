@@ -28,7 +28,7 @@ import { Persona } from '../../../models';
   styleUrl: './reporte-asistencia-edit-dialog.component.css'
 })
 export class ReporteAsistenciaEditDialogComponent {
-  readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'EVENTUAL', 'ADEL/TURNO'];
+  readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'EVENTUAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO', 'RETEN', 'CUSTODIO'];
   readonly tiposReemplazoPermitidos = new Set([
     'FIJOS',
     'SACAFRANCO',

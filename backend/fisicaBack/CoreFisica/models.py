@@ -449,7 +449,11 @@ class ReporteAsistencia(models.Model):
         ('TURNO', 'Turno'),
         ('ADICIONAL', 'Adicional'),
         ('EVENTUAL', 'Eventual'),
-        ('ADEL/TURNO', 'Adel/Turno')
+        ('ADEL/TURNO', 'Adel/Turno'),
+        ('DOBLADO', 'Doblado'),
+        ('FR/TRABAJADO', 'Fr/Trabajado'),
+        ('RETEN', 'Reten'),
+        ('CUSTODIO', 'Custodio'),
     ]
 
     TIPOS_REEMPLAZO = [
@@ -530,6 +534,8 @@ class ReporteAsistenciaHistorial(models.Model):
         indexes = [
             models.Index(fields=['asignacion', 'fecha_reporte']),
         ]
+
+
 
 
 
