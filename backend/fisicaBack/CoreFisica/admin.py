@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial
 
 
 @admin.register(Cliente)
@@ -120,3 +120,10 @@ class ReporteAsistenciaAdmin(admin.ModelAdmin):
 	list_display = ('codigo', 'cliente', 'persona', 'estado')
 	search_fields = ('codigo', 'persona__nombres', 'persona__apellidos', 'cliente__nombre_comercial')
 	list_filter = ('estado',)
+
+
+@admin.register(ReporteAsistenciaHistorial)
+class ReporteAsistenciaHistorialAdmin(admin.ModelAdmin):
+	list_display = ('reporte', 'usuario', 'creado_en')
+	search_fields = ('reporte__codigo', 'usuario__username')
+	list_filter = ('creado_en',)

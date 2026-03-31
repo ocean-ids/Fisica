@@ -12,6 +12,7 @@ import { PersonaService } from '../../services/persona.service';
 import { PersonaFormComponent } from '../personas/persona-form/persona-form.component';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheet, MatBottomSheetModule, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { ReporteEstadoComponent } from './reporte-estado/reporte-estado.component';
+import { ReporteAsistenciaHistorialDialogComponent } from './dialogs/reporte-asistencia-historial-dialog.component';
 
 interface ReporteAsistenciaGrupoProvincia {
   provincia: string;
