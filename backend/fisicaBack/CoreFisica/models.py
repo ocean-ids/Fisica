@@ -534,5 +534,3 @@ class ReporteAsistenciaHistorial(models.Model):
             models.Index(fields=['asignacion', 'fecha_reporte']),
         ]
 
-
-
