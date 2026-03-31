@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { ReporteAsistenciaService } from '../../services/reporte-asistencia.service';
 import { ReporteAsistenciaEditDialogComponent } from './dialogs/reporte-asistencia-edit-dialog.component';
-import { ReporteAsistenciaRow, ResumenAsistencia, ResumenAsistenciaZona } from '../../models';
+import { ReporteAsistenciaHistorialItem, ReporteAsistenciaRow, ResumenAsistencia, ResumenAsistenciaZona } from '../../models';
 import { ReporteAsistenciaColorDialogComponent } from './dialogs/reporte-asistencia-color-dialog.component';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -35,6 +35,7 @@ export class ReporteAsistenciaComponent implements OnInit {
   reporteAgrupado: ReporteAsistenciaGrupoZona[] = [];
   resumen: ResumenAsistencia = { total: 0, asistencias: 0, faltas: 0 };
   loading = false;
+  historialPorAsignacion: Record<number, ReporteAsistenciaHistorialItem[]> = {};
   filtroFecha = '';
   filtroClienteId = '';
   filtroFechaDisplay = '';
@@ -278,6 +279,19 @@ export class ReporteAsistenciaComponent implements OnInit {
       row.reemplazo = res.reemplazo;
       row.modificado_por = res.modificado_por;
       row.modificado_en = res.modificado_en;
+    });
+  }
+
+  abrirHistorialModal(row: ReporteAsistenciaRow): void {
+    if (!row?.asignacion_id) return;
+
+    this.dialog.open(ReporteAsistenciaHistorialDialogComponent, {
+      width: '720px',
+      maxWidth: '95vw',
+      data: {
+        asignacionId: row.asignacion_id,
+        codigo: row.codigo || null
+      }
     });
   }
 

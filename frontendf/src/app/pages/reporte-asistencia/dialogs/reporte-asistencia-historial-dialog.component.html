@@ -1,0 +1,26 @@
+<h2 mat-dialog-title>Historial de Modificaciones</h2>
+
+<mat-dialog-content>
+  <div *ngIf="loading" class="text-muted">Cargando historial...</div>
+  <div *ngIf="!loading && error" class="text-danger">{{ error }}</div>
+  <div *ngIf="!loading && !error && historial.length === 0" class="text-muted">
+    Sin cambios registrados.
+  </div>
+  <div *ngIf="!loading && !error && historial.length">
+    <div class="list-group">
+      <div class="list-group-item" *ngFor="let h of historial">
+        <div class="d-flex justify-content-between">
+          <strong>{{ h.usuario || 'Usuario' }}</strong>
+          <span class="text-muted">{{ h.creado_en ? (h.creado_en | date:'short') : '-' }}</span>
+        </div>
+        <div class="small text-muted">Fecha reporte: {{ h.fecha_reporte || '-' }}</div>
+        <div class="small">Estado: {{ h.estado || '-' }} | Reemplazo: {{ h.reemplazo || '-' }}</div>
+        <div class="small">Codigo: {{ h.codigo || '-' }} | Descripcion: {{ h.descripcion || '-' }}</div>
+      </div>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="cerrar()">Cerrar</button>
+</mat-dialog-actions>

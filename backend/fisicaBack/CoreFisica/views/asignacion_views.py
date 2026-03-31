@@ -7,6 +7,7 @@ from rest_framework import status
 from ..models import Asignacion, AsignacionSemanal, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal
 from django.db.models import Q, Max
 from django.db import transaction
+from django.utils import timezone
 from ..serializers import AsignacionSerializer, SacafrancoFilaSerializer
 import openpyxl
 import datetime
@@ -105,13 +106,23 @@ def _rebuild_asignacion_semanal(asignacion):
         dias_nums = []
 
     weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
+    hoy = timezone.localdate()
     while current <= last_day:
+        existing = AsignacionSemanal.objects.filter(
+            asignacion_id=asignacion.id,
+            week_start=current
+        ).first()
         defaults = {}
         for idx in range(7):
             day_date = current + datetime.timedelta(days=idx)
             name = weekday_names[day_date.weekday()]
             weekday_keys = ['mon','tue','wed','thu','fri','sat','sun']
             key = weekday_keys[day_date.weekday()]
+
+            if day_date < hoy:
+                if existing:
+                    defaults[key] = getattr(existing, key, '') or ''
+                continue
 
             seq = None
             patron = None
@@ -626,13 +637,23 @@ def asignar_servicio(request):
                                     dias_nums = []
 
                                 weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
+                                hoy = timezone.localdate()
                                 while current <= last_day:
+                                    existing = AsignacionSemanal.objects.filter(
+                                        asignacion_id=asignacion.id,
+                                        week_start=current
+                                    ).first()
                                     defaults = {}
                                     for idx in range(7):
                                         day_date = current + datetime.timedelta(days=idx)
                                         name = weekday_names[day_date.weekday()]
                                         weekday_keys = ['mon','tue','wed','thu','fri','sat','sun']
                                         key = weekday_keys[day_date.weekday()]
+
+                                        if day_date < hoy:
+                                            if existing:
+                                                defaults[key] = getattr(existing, key, '') or ''
+                                            continue
 
                                         # Obtener secuencia del patron antes de evaluar applies_by_puesto
                                         seq = None
@@ -877,12 +898,21 @@ def eliminar_asignacion(request, id):
         try:
             with transaction.atomic():
                 # Eliminar filas ligadas explícitamente a la asignación
-                AsignacionSemanal.objects.filter(asignacion_id=id).delete()
+                hoy = timezone.localdate()
+                week_start_today = hoy - datetime.timedelta(days=hoy.weekday())
+
+                AsignacionSemanal.objects.filter(
+                    asignacion_id=id,
+                    week_start__gte=week_start_today
+                ).delete()
 
                 # Limpiar filas del mismo puesto sin asignación pero con códigos (evita celdas huérfanas)
                 try:
                     if puesto_id:
-                        qs_clean = AsignacionSemanal.objects.filter(puesto_id=puesto_id)
+                        qs_clean = AsignacionSemanal.objects.filter(
+                            puesto_id=puesto_id,
+                            week_start__gte=week_start_today
+                        )
                         if window_start:
                             qs_clean = qs_clean.filter(week_start__gte=window_start)
                         if window_end:
@@ -910,7 +940,10 @@ def eliminar_asignacion(request, id):
                 try:
                     if puesto_id:
                         from django.db.models import Q as _Q
-                        qs_f = AsignacionSemanal.objects.filter(puesto_id=puesto_id)
+                        qs_f = AsignacionSemanal.objects.filter(
+                            puesto_id=puesto_id,
+                            week_start__gte=week_start_today
+                        )
                         if window_start:
                             qs_f = qs_f.filter(week_start__gte=window_start)
                         if window_end:
@@ -943,7 +976,11 @@ def eliminar_asignacion(request, id):
                 # para el mismo puesto dentro de la ventana calculada.
                 try:
                     if puesto_id:
-                        qs = AsignacionSemanal.objects.filter(puesto_id=puesto_id, asignacion__isnull=True)
+                        qs = AsignacionSemanal.objects.filter(
+                            puesto_id=puesto_id,
+                            asignacion__isnull=True,
+                            week_start__gte=week_start_today
+                        )
                         if window_start:
                             qs = qs.filter(week_start__gte=window_start)
                         if window_end:

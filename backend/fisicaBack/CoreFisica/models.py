@@ -513,4 +513,23 @@ class ReporteAsistencia(models.Model):
         return f"Reporte {self.asignacion_id}"
 
 
+class ReporteAsistenciaHistorial(models.Model):
+    reporte = models.ForeignKey(ReporteAsistencia, on_delete=models.CASCADE, related_name='historial')
+    asignacion = models.ForeignKey(Asignacion, on_delete=models.CASCADE, related_name='historial_asistencia')
+    fecha_reporte = models.DateField(null=True, blank=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    codigo = models.CharField(max_length=20, blank=True, null=True)
+    estado = models.CharField(max_length=12, blank=True, null=True)
+    reemplazo = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True)
+    descripcion = models.CharField(max_length=200, blank=True, null=True)
+    row_color = models.CharField(max_length=7, blank=True, null=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado_en']
+        indexes = [
+            models.Index(fields=['asignacion', 'fecha_reporte']),
+        ]
+
+
 

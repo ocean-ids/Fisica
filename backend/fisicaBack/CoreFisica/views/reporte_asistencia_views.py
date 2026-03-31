@@ -7,7 +7,7 @@ from pathlib import Path
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from ..models import Asignacion, Persona, ReporteAsistencia, AsignacionSemanal
+from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal
 import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from openpyxl.drawing.image import Image as XLImage
@@ -612,6 +612,21 @@ def insertar_reporte_asistencia(request, asignacion_id):
     override.modificado_en = timezone.now()
     override.save()
 
+    try:
+        ReporteAsistenciaHistorial.objects.create(
+            reporte=override,
+            asignacion=asignacion,
+            fecha_reporte=override.fecha_reporte,
+            usuario=request.user if request.user and request.user.is_authenticated else None,
+            codigo=override.codigo,
+            estado=override.estado,
+            reemplazo=override.reemplazo,
+            descripcion=override.descripcion,
+            row_color=override.row_color
+        )
+    except Exception:
+        pass
+
     modificado_por_nombre = ''
     if override.modificado_por:
         full_name = f"{override.modificado_por.first_name} {override.modificado_por.last_name}".strip()
@@ -631,6 +646,39 @@ def insertar_reporte_asistencia(request, asignacion_id):
         'row_color': override.row_color or '',
         'modificado_en': override.modificado_en.isoformat() if override.modificado_en else None,
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def historial_reporte_asistencia(request, asignacion_id):
+    if not request.user.has_perm('CoreFisica.view_reporteasistencia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo').filter(
+        asignacion_id=asignacion_id
+    )
+
+    data = []
+    for h in qs:
+        usuario_nombre = ''
+        if h.usuario:
+            full_name = f"{h.usuario.first_name} {h.usuario.last_name}".strip()
+            usuario_nombre = full_name or h.usuario.get_username()
+        reemplazo_nombre = ''
+        if h.reemplazo:
+            reemplazo_nombre = f"{h.reemplazo.nombres} {h.reemplazo.apellidos}".strip()
+        data.append({
+            'fecha_reporte': h.fecha_reporte.isoformat() if h.fecha_reporte else None,
+            'usuario': usuario_nombre,
+            'codigo': h.codigo or '',
+            'estado': h.estado or '',
+            'reemplazo': reemplazo_nombre,
+            'descripcion': h.descripcion or '',
+            'row_color': h.row_color or '',
+            'creado_en': h.creado_en.isoformat() if h.creado_en else None,
+        })
+
+    return JsonResponse(data, safe=False, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

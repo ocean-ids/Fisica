@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../models';
+import { ReporteAsistenciaHistorialItem, ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../models';
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +15,10 @@ export class ReporteAsistenciaService {
 
   updateReporteAsistencia(asignacionId: number, payload: UpdateReporteAsistenciaPayload) {
     return this.apiService.put<ReporteAsistenciaRow>(`/reporte-asistencia/${asignacionId}/`, payload);
+  }
+
+  getReporteAsistenciaHistorial(asignacionId: number) {
+    return this.apiService.get<ReporteAsistenciaHistorialItem[]>(`/reporte-asistencia/${asignacionId}/historial/`);
   }
 
   exportarExcel(params?: any) {

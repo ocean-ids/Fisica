@@ -84,6 +84,7 @@ export class ReporteAsistenciaEditDialogComponent {
     });
   }
 
+
   getNombrePersona(p: Persona): string {
     return `${p.nombres || ''} ${p.apellidos || ''}`.trim();
   }

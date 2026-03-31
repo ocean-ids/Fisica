@@ -25,6 +25,17 @@ export interface UpdateReporteAsistenciaPayload {
   fecha?: string | null;
 }
 
+export interface ReporteAsistenciaHistorialItem {
+  fecha_reporte?: string | null;
+  usuario?: string;
+  codigo?: string;
+  estado?: string;
+  reemplazo?: string;
+  descripcion?: string;
+  row_color?: string;
+  creado_en?: string | null;
+}
+
 export interface ResumenAsistencia {
   total: number;
   asistencias: number;
