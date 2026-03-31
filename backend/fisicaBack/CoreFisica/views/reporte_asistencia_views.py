@@ -535,9 +535,10 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
                 modificado_por_nombre = full_name or override.modificado_por.get_username()
             modificado_en_iso = override.modificado_en.isoformat() if override.modificado_en else None
 
+        codigo_instalacion = getattr(asig.instalacion, 'codigo', '') if asig and asig.instalacion else ''
         data.append({
             'asignacion_id': asig.id,
-            'codigo': override.codigo if (override and override.codigo) else '',
+            'codigo': override.codigo if (override and override.codigo) else (codigo_instalacion or ''),
             'cliente': cliente_nombre,
             'puesto': puesto_nombre,
             'horario': horario_str,
@@ -587,7 +588,9 @@ def insertar_reporte_asistencia(request, asignacion_id):
     override.horario = asignacion.horario
     override.puesto_tipo = getattr(asignacion.puesto, 'tipo', None) if asignacion.puesto else None
 
-    for field in ['codigo', 'estado', 'descripcion', 'row_color']:
+    override.codigo = getattr(asignacion.instalacion, 'codigo', None)
+
+    for field in ['estado', 'descripcion', 'row_color']:
         if field in request.data:
             val = request.data.get(field) or None
             setattr(override, field, val)

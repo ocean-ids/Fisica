@@ -28,7 +28,15 @@ def obtener_clientes(request):
     if size:
         qs = qs.filter(size=size)
 
-    qs = qs.values('id', 'razon_social', 'nombre_comercial', 'ruc', 'size', 'fecha_ingreso', 'fecha_retiro').order_by('nombre_comercial')
+    qs = qs.values(
+        'id',
+        'razon_social',
+        'nombre_comercial',
+        'ruc',
+        'size',
+        'fecha_ingreso',
+        'fecha_retiro'
+    ).order_by('nombre_comercial')
     try:
         count = qs.count()
     except Exception:

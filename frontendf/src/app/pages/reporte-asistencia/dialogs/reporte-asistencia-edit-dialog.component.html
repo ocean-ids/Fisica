@@ -26,7 +26,7 @@
   <form [formGroup]="form" class="editable-grid">
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Nominativo</mat-label>
-      <input matInput formControlName="codigo" [readonly]="guardando">
+      <input matInput [value]="data.row.codigo || '-'" readonly>
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">

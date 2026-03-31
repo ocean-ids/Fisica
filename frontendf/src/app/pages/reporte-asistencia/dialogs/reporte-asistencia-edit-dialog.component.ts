@@ -54,7 +54,6 @@ export class ReporteAsistenciaEditDialogComponent {
   ) {
     this.dialogRef.disableClose = true;
     this.form = this.fb.group({
-      codigo: [data?.row?.codigo ?? ''],
       estado: [data?.row?.estado || 'TURNO', Validators.required],
       reemplazo_id: [data?.row?.reemplazo_id ?? null],
       descripcion: [data?.row?.descripcion ?? '']
@@ -98,7 +97,6 @@ export class ReporteAsistenciaEditDialogComponent {
     if (this.guardando || this.form.invalid || !this.data?.row?.asignacion_id) return;
 
     const payload: UpdateReporteAsistenciaPayload = {
-      codigo: this.form.value.codigo === '' ? null : this.form.value.codigo,
       estado: this.form.value.estado || null,
       reemplazo_id: this.form.value.reemplazo_id === '' ? null : this.form.value.reemplazo_id,
       descripcion: this.form.value.descripcion === '' ? null : this.form.value.descripcion,

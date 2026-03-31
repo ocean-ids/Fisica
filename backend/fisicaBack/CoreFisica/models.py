@@ -12,7 +12,6 @@ def current_year():
 
 
 class Cliente(models.Model):
-
     ruc = models.CharField(
         max_length=13,
         unique=True,
@@ -534,8 +533,6 @@ class ReporteAsistenciaHistorial(models.Model):
         indexes = [
             models.Index(fields=['asignacion', 'fecha_reporte']),
         ]
-
-
 
 
 
