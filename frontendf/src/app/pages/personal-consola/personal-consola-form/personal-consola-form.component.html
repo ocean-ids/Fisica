@@ -32,6 +32,15 @@
           <input matInput formControlName="nombres">
         </mat-form-field>
       </div>
+
+      <div class="col-12 col-md-6">
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>Tipo</mat-label>
+          <mat-select formControlName="tipo">
+            <mat-option *ngFor="let t of tipos" [value]="t">{{ t }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
     </div>
   </form>
 </mat-dialog-content>

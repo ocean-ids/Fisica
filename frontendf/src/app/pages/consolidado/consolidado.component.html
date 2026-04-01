@@ -39,39 +39,37 @@
     <table class="table table-bordered table-hover text-center align-middle">
       <thead class="table-light">
         <tr>
-          <th>Tipo</th>
+          <th>Nominativo</th>
           <th>Proyecto</th>
-          <th>Puesto</th>
-          <th>Cedula</th>
-          <th>Apellidos</th>
-          <th>Nombres</th>
+          <th>Apellidos y Nombre</th>
           <th>Estado</th>
           <th>Observacion</th>
-          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let r of lista">
-          <td>{{ r.tipo || '-' }}</td>
-          <td>{{ r.proyecto || '-' }}</td>
-          <td>{{ r.puesto || '-' }}</td>
-          <td>{{ r.cedula || '-' }}</td>
-          <td>{{ r.apellidos || '-' }}</td>
-          <td>{{ r.nombres || '-' }}</td>
-          <td>{{ r.estado || '-' }}</td>
-          <td class="text-start">
-            <input
-              type="text"
-              class="form-control form-control-sm"
-              [(ngModel)]="r.observacion"
-              placeholder="Observacion">
-          </td>
-          <td>
-            <button class="btn btn-sm btn-outline-primary" (click)="guardarObservacion(r)">Guardar</button>
-          </td>
-        </tr>
-        <tr *ngIf="lista.length === 0">
-          <td colspan="9" class="text-muted text-center">Sin registros</td>
+        <ng-container *ngFor="let g of agrupado">
+          <tr>
+            <td colspan="5" class="fw-bold text-center">{{ g.label }}</td>
+          </tr>
+          <tr *ngFor="let r of g.rows">
+            <td>{{ r.nominativo || '-' }}</td>
+            <td>{{ r.proyecto || '-' }}</td>
+            <td>{{ getNombreCompleto(r) }}</td>
+            <td>{{ r.estado || '-' }}</td>
+            <td class="text-start">
+              <div class="d-flex gap-2">
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  [(ngModel)]="r.observacion"
+                  placeholder="Observacion">
+                <button class="btn btn-sm btn-outline-primary" (click)="guardarObservacion(r)">Guardar</button>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+        <tr *ngIf="agrupado.length === 0">
+          <td colspan="5" class="text-muted text-center">Sin registros</td>
         </tr>
       </tbody>
     </table>

@@ -4,11 +4,12 @@ export interface ConsolidadoRow {
   turno?: 'Diurno' | 'Nocturno';
   tipo?: 'CONSOLa' | 'GUARDIA';
   referencia_id?: number;
+  nominativo?: string;
   proyecto?: string;
-  puesto?: string;
   cedula?: string | null;
   apellidos?: string;
   nombres?: string;
   estado?: string;
   observacion?: string;
+  zona?: string;
 }

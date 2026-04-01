@@ -540,10 +540,16 @@ class PersonalConsola(models.Model):
         ('Diurno', 'Diurno'),
         ('Nocturno', 'Nocturno'),
     ]
+    TIPOS = [
+        ('SUPERVISOR', 'Supervisor'),
+        ('OPERADOR', 'Operador'),
+        ('OCEAN SECURITY', 'Ocean Security'),
+    ]
     turno = models.CharField(max_length=10, choices=TURNOS, db_index=True)
     cedula = models.CharField(max_length=10, blank=True, null=True, validators=[cedula_validator])
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='OPERADOR')
     is_active = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

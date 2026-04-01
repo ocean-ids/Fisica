@@ -130,9 +130,9 @@ class ReporteAsistenciaHistorialAdmin(admin.ModelAdmin):
 
 @admin.register(PersonalConsola)
 class PersonalConsolaAdmin(admin.ModelAdmin):
-	list_display = ('apellidos', 'nombres', 'turno', 'is_active')
+	list_display = ('apellidos', 'nombres', 'tipo', 'turno', 'is_active')
 	search_fields = ('apellidos', 'nombres', 'cedula')
-	list_filter = ('turno', 'is_active')
+	list_filter = ('tipo', 'turno', 'is_active')
 
 
 @admin.register(Consolidado)

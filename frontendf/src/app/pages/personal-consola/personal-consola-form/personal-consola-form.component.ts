@@ -28,6 +28,7 @@ export class PersonalConsolaFormComponent implements OnInit{
   form!: FormGroup;
 
   turnos = ['Diurno', 'Nocturno'];
+  tipos = ['SUPERVISOR', 'OPERADOR', 'OCEAN SECURITY'];
 
   constructor(
     private fb: FormBuilder,
@@ -40,7 +41,8 @@ export class PersonalConsolaFormComponent implements OnInit{
       turno: [this.data?.turno || '', Validators.required],
       cedula: [this.data?.cedula || ''],
       nombres: [this.data?.nombres || '', Validators.required],
-      apellidos: [this.data?.apellidos || '', Validators.required]
+      apellidos: [this.data?.apellidos || '', Validators.required],
+      tipo: [this.data?.tipo || '', Validators.required]
     });
   }
 

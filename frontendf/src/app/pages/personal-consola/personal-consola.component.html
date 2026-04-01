@@ -23,6 +23,7 @@
           <th>Cedula</th>
           <th>Apellidos</th>
           <th>Nombres</th>
+          <th>Tipo</th>
           <th>Activo</th>
           <th>Acciones</th>
         </tr>
@@ -33,6 +34,7 @@
           <td>{{ p.cedula || '-' }}</td>
           <td>{{ p.apellidos }}</td>
           <td>{{ p.nombres }}</td>
+          <td>{{ p.tipo }}</td>
           <td>
             <mat-slide-toggle
               [checked]="p.is_active"
@@ -49,7 +51,7 @@
           </td>
         </tr>
         <tr *ngIf="lista.length === 0">
-          <td colspan="6" class="text-muted text-center">Sin registros</td>
+          <td colspan="7" class="text-muted text-center">Sin registros</td>
         </tr>
       </tbody>
     </table>

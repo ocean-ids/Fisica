@@ -15,6 +15,7 @@ import { ConsolidadoRow } from '../../models/consolidado.model';
 })
 export class ConsolidadoComponent implements OnInit {
   lista: ConsolidadoRow[] = [];
+  agrupado: { label: string; rows: ConsolidadoRow[] }[] = [];
   filtroFecha = '';
   filtroTurno = '';
   loading = false;
@@ -41,6 +42,7 @@ export class ConsolidadoComponent implements OnInit {
     this.svc.getConsolidadoArmado(params).subscribe({
       next: data => {
         this.lista = data || [];
+        this.agrupado = this.buildAgrupado();
         this.loading = false;
       },
       error: err => {
@@ -48,6 +50,29 @@ export class ConsolidadoComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  private buildAgrupado(): { label: string; rows: ConsolidadoRow[] }[] {
+    const consola = this.lista.filter(r => r.tipo === 'CONSOLa');
+    const guardias = this.lista.filter(r => r.tipo !== 'CONSOLa');
+
+    const zonas: Record<string, ConsolidadoRow[]> = {};
+    for (const row of guardias) {
+      const zona = (row.zona || '').trim() || 'SIN ZONA';
+      if (!zonas[zona]) zonas[zona] = [];
+      zonas[zona].push(row);
+    }
+
+    const result: { label: string; rows: ConsolidadoRow[] }[] = [];
+    if (consola.length) {
+      result.push({ label: 'PERSONAL DE CONSOLA Y OFICINAS', rows: consola });
+    }
+
+    for (const zona of Object.keys(zonas).sort()) {
+      result.push({ label: zona.toUpperCase(), rows: zonas[zona] });
+    }
+
+    return result;
   }
 
   guardarObservacion(row: ConsolidadoRow): void {
@@ -83,6 +108,13 @@ export class ConsolidadoComponent implements OnInit {
       },
       error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar' })
     });
+  }
+
+  getNombreCompleto(row: ConsolidadoRow): string {
+    const apellidos = (row.apellidos || '').trim();
+    const nombres = (row.nombres || '').trim();
+    const full = `${apellidos} ${nombres}`.trim();
+    return full || '-';
   }
 
   descargarExcel(): void {
