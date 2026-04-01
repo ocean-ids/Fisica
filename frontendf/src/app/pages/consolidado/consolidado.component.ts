@@ -91,6 +91,10 @@ export class ConsolidadoComponent implements OnInit {
     dialogRef.afterClosed().subscribe(result => {
       if (!result) return;
       row.observacion = result.observacion || '';
+      if (row.tipo === 'CONSOLa') {
+        row.nominativo = result.nominativo || '';
+        row.proyecto = result.proyecto || '';
+      }
       this.guardarObservacion(row);
     });
   }
@@ -103,11 +107,17 @@ export class ConsolidadoComponent implements OnInit {
       turno: row.turno || this.filtroTurno,
       tipo: row.tipo,
       referencia_id: row.referencia_id,
+      nominativo: row.nominativo || '',
+      proyecto: row.proyecto || '',
       observacion: row.observacion || ''
     };
 
     if (row.consolidado_id) {
-      this.svc.updateConsolidado(row.consolidado_id, { observacion: payload.observacion }).subscribe({
+      this.svc.updateConsolidado(row.consolidado_id, {
+        observacion: payload.observacion,
+        nominativo: payload.nominativo,
+        proyecto: payload.proyecto
+      }).subscribe({
         next: () => {
           Swal.fire({ icon: 'success', title: 'Observacion guardada', timer: 1200, showConfirmButton: false });
         },

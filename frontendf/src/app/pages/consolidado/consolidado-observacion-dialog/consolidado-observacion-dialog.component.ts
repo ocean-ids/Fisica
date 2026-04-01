@@ -27,13 +27,18 @@ export interface ConsolidadoObservacionDialogData {
 })
 export class ConsolidadoObservacionDialogComponent {
   form: FormGroup;
+  isConsola: boolean;
 
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<ConsolidadoObservacionDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ConsolidadoObservacionDialogData
   ) {
+    const tipo = (data.row?.tipo || '').toString().toUpperCase();
+    this.isConsola = tipo.startsWith('CONS');
     this.form = this.fb.group({
+      nominativo: [data.row?.nominativo || '', Validators.maxLength(50)],
+      proyecto: [data.row?.proyecto || '', Validators.maxLength(120)],
       observacion: [data.row?.observacion || '', Validators.maxLength(200)]
     });
   }
@@ -44,6 +49,10 @@ export class ConsolidadoObservacionDialogComponent {
 
   guardar(): void {
     if (this.form.invalid) return;
-    this.dialogRef.close({ observacion: this.form.value.observacion || '' });
+    this.dialogRef.close({
+      nominativo: this.form.value.nominativo || '',
+      proyecto: this.form.value.proyecto || '',
+      observacion: this.form.value.observacion || ''
+    });
   }
 }

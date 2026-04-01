@@ -56,8 +56,8 @@ def _build_consolidado_data(fecha, turno):
             'turno': turno_val or item.turno,
             'tipo': TIPO_CONSOLA,
             'referencia_id': item.id,
-            'nominativo': '',
-            'proyecto': '',
+            'nominativo': cons.nominativo if cons and cons.nominativo else '',
+            'proyecto': cons.proyecto if cons and cons.proyecto else '',
             'apellidos': item.apellidos,
             'nombres': item.nombres,
             'estado': item.tipo,
@@ -118,6 +118,8 @@ def _serialize_item(item: Consolidado):
         'turno': item.turno,
         'tipo': item.tipo,
         'referencia_id': item.referencia_id,
+        'nominativo': item.nominativo or '',
+        'proyecto': item.proyecto or '',
         'observacion': item.observacion or ''
     }
 
@@ -171,6 +173,8 @@ def crear_consolidado(request):
     turno = data.get('turno')
     tipo = data.get('tipo')
     referencia_id = data.get('referencia_id')
+    nominativo = (data.get('nominativo') or '').strip() or None
+    proyecto = (data.get('proyecto') or '').strip() or None
     observacion = (data.get('observacion') or '').strip() or None
 
     if not fecha or not turno or not tipo or referencia_id in [None, '']:
@@ -192,6 +196,8 @@ def crear_consolidado(request):
         turno=turno,
         tipo=tipo,
         referencia_id=referencia_id,
+        nominativo=nominativo,
+        proyecto=proyecto,
         observacion=observacion
     )
 
@@ -230,6 +236,12 @@ def actualizar_consolidado(request, id):
             item.referencia_id = int(data.get('referencia_id'))
         except (TypeError, ValueError):
             pass
+
+    if 'nominativo' in data:
+        item.nominativo = (data.get('nominativo') or '').strip() or None
+
+    if 'proyecto' in data:
+        item.proyecto = (data.get('proyecto') or '').strip() or None
 
     if 'observacion' in data:
         item.observacion = (data.get('observacion') or '').strip() or None

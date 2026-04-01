@@ -1,15 +1,15 @@
 <h2 mat-dialog-title>Observacion</h2>
 
 <mat-dialog-content>
-  <div class="readonly-grid">
+  <form [formGroup]="form" class="readonly-grid">
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Nominativo</mat-label>
-      <input matInput [value]="data.row.nominativo || '-'" readonly>
+      <input matInput formControlName="nominativo" [readonly]="!isConsola">
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Proyecto</mat-label>
-      <input matInput [value]="data.row.proyecto || '-'" readonly>
+      <input matInput formControlName="proyecto" [readonly]="!isConsola">
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
@@ -21,9 +21,7 @@
       <mat-label>Estado</mat-label>
       <input matInput [value]="data.row.estado || '-'" readonly>
     </mat-form-field>
-  </div>
 
-  <form [formGroup]="form" class="editable-grid">
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Observacion</mat-label>
       <textarea matInput rows="3" formControlName="observacion"></textarea>

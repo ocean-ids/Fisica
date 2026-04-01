@@ -568,6 +568,8 @@ class Consolidado(models.Model):
     turno = models.CharField(max_length=10, choices=PersonalConsola.TURNOS, db_index=True)
     tipo = models.CharField(max_length=10, choices=TIPOS, db_index=True)
     referencia_id = models.PositiveIntegerField(db_index=True)
+    nominativo = models.CharField(max_length=50, blank=True, null=True)
+    proyecto = models.CharField(max_length=120, blank=True, null=True)
     observacion = models.CharField(max_length=200, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
