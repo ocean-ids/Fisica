@@ -15,10 +15,11 @@ export class SidebarComponent {
     { path: '/dashboard/clientes', label: 'Clientes', icon: 'business', permission: 'CoreFisica.view_cliente' },
     { path: '/dashboard/instalaciones', label: 'Instalaciones', icon: 'location_city', permission: 'CoreFisica.view_instalacion' },
     { path: '/dashboard/puestos', label: 'Puestos', icon: 'work', permission: 'CoreFisica.view_puesto' },
-    { path: '/dashboard/personas', label: 'Personal', icon: 'people', permission: 'CoreFisica.view_persona' },
+    { path: '/dashboard/personas', label: 'Personal', icon: 'admin_panel_settings', permission: 'CoreFisica.view_persona' },
     { path: '/dashboard/horarios', label: 'Horarios', icon: 'schedule', permission: 'CoreFisica.view_horario' },
     { path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'how_to_reg', permission: 'CoreFisica.view_asignacion' },
     { path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'assignment_ind', permission: 'CoreFisica.view_reporteasistencia' },
+    { path: '/dashboard/personal-consola', label: 'Personal Consola', icon: 'computer', permission: 'CoreFisica.view_personalconsola' },
   ];
 
   constructor(private authService: AuthService) {}

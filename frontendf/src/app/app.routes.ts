@@ -12,6 +12,8 @@ import { HorariosComponent } from './pages/horarios/horarios.component';
 import { AsignacionesComponent } from './pages/asignaciones/asignaciones.component';
 import { AsignacionCalendarioComponent } from './pages/asignacion-calendario/asignacion-calendario.component';
 import { ReporteAsistenciaComponent } from './pages/reporte-asistencia/reporte-asistencia.component';
+import { PersonalConsolaComponent } from './pages/personal-consola/personal-consola.component';
+
 
 export const routes: Routes = [
   {path: '', component: LoginComponent},
@@ -30,7 +32,8 @@ export const routes: Routes = [
       { path: 'personas', component: PersonasComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_persona' }},
       { path: 'horarios', component: HorariosComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_horario' }},
       { path: 'asignaciones', component: AsignacionesComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_asignacion' }},
-      { path: 'reporte-asistencia', component: ReporteAsistenciaComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteasistencia' }}
+      { path: 'reporte-asistencia', component: ReporteAsistenciaComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteasistencia' }},
+      { path: 'personal-consola', component: PersonalConsolaComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_personalconsola' }}
     ]
   },
   { path: '**', redirectTo: ''}
