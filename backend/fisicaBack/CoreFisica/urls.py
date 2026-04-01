@@ -15,6 +15,8 @@ from .views.asignacion_views import obtener_asignaciones, asignar_servicio, edit
 from .views.asignacion_semanal_views import listar_asignacion_semanal, semanas_del_mes, crear_o_actualizar_asignacion_semanal, copiar_semana, listar_sacafranco_fila_semanal, crear_o_actualizar_sacafranco_fila_semanal
 from .views.patron_asignacion_views import PatronAsignacionListCreateView, PatronAsignacionRetrieveUpdateDestroyView
 from .views.reporte_asistencia_views import obtener_reporte_asistencia, insertar_reporte_asistencia, historial_reporte_asistencia, exportar_reporte_asistencia_excel, exportar_reporte_asistencia_pdf
+from .views.personal_consola_views import obtener_personal_consola, crear_personal_consola, actualizar_personal_consola, eliminar_personal_consola
+
 urlpatterns = [
     path('login/', login_view),
     path('logout/', logout_view),
@@ -79,5 +81,10 @@ urlpatterns = [
     path('reporte-asistencia/<int:asignacion_id>/historial/', historial_reporte_asistencia, name='reporte-asistencia-historial'),
     path('reporte-asistencia/exportar-excel/', exportar_reporte_asistencia_excel, name='reporte-asistencia-excel'),
     path('reporte-asistencia/exportar-pdf/', exportar_reporte_asistencia_pdf, name='reporte-asistencia-pdf'),
+    path('personal-consola/', obtener_personal_consola),
+    path('personal-consola/crear/', crear_personal_consola),
+    path('personal-consola/<int:id>/', actualizar_personal_consola),
+    path('personal-consola/<int:id>/eliminar/', eliminar_personal_consola),
+
 ]
 

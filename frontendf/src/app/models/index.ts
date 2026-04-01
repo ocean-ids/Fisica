@@ -6,4 +6,5 @@ export * from './horario.models';
 export * from './asignacion.model';
 export * from './reporte-asistencia.model';
 export * from './login.models';
+export * from './personal-consola.model';
 
