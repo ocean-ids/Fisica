@@ -5,3 +5,12 @@
 .table input.form-control {
   min-width: 180px;
 }
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 36px;
+  padding: 0;
+}

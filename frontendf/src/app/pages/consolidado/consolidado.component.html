@@ -60,10 +60,11 @@
             <td>
               <span class="text-center">{{ r.observacion || '-' }}</span>
             </td>
-            <td class="d-flex align-middle">
+            <td>
               <button mat-stroked-button type="button" color="primary" (click)="abrirObservacion(r)" aria-label="Editar observacion">
-                <mat-icon>edit</mat-icon>
-             </button>
+                <i class="bi bi-pencil"></i>
+              </button>
+            </td>
           </tr>
         </ng-container>
         <tr *ngIf="agrupado.length === 0">

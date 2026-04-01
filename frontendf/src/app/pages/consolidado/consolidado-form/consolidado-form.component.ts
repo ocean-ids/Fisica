@@ -7,12 +7,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { ConsolidadoRow } from '../../../models/consolidado.model';
 
-export interface ConsolidadoObservacionDialogData {
+export interface ConsolidadoFormDialogData {
   row: ConsolidadoRow;
 }
 
 @Component({
-  selector: 'app-consolidado-observacion-dialog',
+  selector: 'app-consolidado-form',
   standalone: true,
   imports: [
     CommonModule,
@@ -22,17 +22,17 @@ export interface ConsolidadoObservacionDialogData {
     MatInputModule,
     MatButtonModule
   ],
-  templateUrl: './consolidado-observacion-dialog.component.html',
-  styleUrl: './consolidado-observacion-dialog.component.css'
+  templateUrl: './consolidado-form.component.html',
+  styleUrl: './consolidado-form.component.css'
 })
-export class ConsolidadoObservacionDialogComponent {
+export class ConsolidadoFormComponent {
   form: FormGroup;
   isConsola: boolean;
 
   constructor(
     private fb: FormBuilder,
-    private dialogRef: MatDialogRef<ConsolidadoObservacionDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: ConsolidadoObservacionDialogData
+    private dialogRef: MatDialogRef<ConsolidadoFormComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: ConsolidadoFormDialogData
   ) {
     const tipo = (data.row?.tipo || '').toString().toUpperCase();
     this.isConsola = tipo.startsWith('CONS');

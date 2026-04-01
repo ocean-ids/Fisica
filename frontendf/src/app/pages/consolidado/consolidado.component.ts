@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
 import { ConsolidadoService } from '../../services/consolidado.service';
 import { ConsolidadoRow } from '../../models/consolidado.model';
-import { ConsolidadoObservacionDialogComponent } from './consolidado-observacion-dialog/consolidado-observacion-dialog.component';
+import { ConsolidadoFormComponent } from './consolidado-form/consolidado-form.component';
 
 @Component({
   selector: 'app-consolidado',
@@ -83,7 +83,7 @@ export class ConsolidadoComponent implements OnInit {
   }
 
   abrirObservacion(row: ConsolidadoRow): void {
-    const dialogRef = this.dialog.open(ConsolidadoObservacionDialogComponent, {
+    const dialogRef = this.dialog.open(ConsolidadoFormComponent, {
       width: '640px',
       data: { row }
     });
