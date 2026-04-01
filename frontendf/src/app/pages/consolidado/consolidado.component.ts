@@ -2,14 +2,18 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
 import { ConsolidadoService } from '../../services/consolidado.service';
 import { ConsolidadoRow } from '../../models/consolidado.model';
+import { ConsolidadoObservacionDialogComponent } from './consolidado-observacion-dialog/consolidado-observacion-dialog.component';
 
 @Component({
   selector: 'app-consolidado',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonToggleModule],
+  imports: [CommonModule, FormsModule, MatButtonToggleModule, MatDialogModule, MatButtonModule, MatIconModule],
   templateUrl: './consolidado.component.html',
   styleUrl: './consolidado.component.css'
 })
@@ -20,7 +24,10 @@ export class ConsolidadoComponent implements OnInit {
   filtroTurno = '';
   loading = false;
 
-  constructor(private svc: ConsolidadoService) {}
+  constructor(
+    private svc: ConsolidadoService,
+    private dialog: MatDialog
+  ) {}
 
   ngOnInit(): void {
     this.setHoy();
@@ -75,7 +82,20 @@ export class ConsolidadoComponent implements OnInit {
     return result;
   }
 
-  guardarObservacion(row: ConsolidadoRow): void {
+  abrirObservacion(row: ConsolidadoRow): void {
+    const dialogRef = this.dialog.open(ConsolidadoObservacionDialogComponent, {
+      width: '640px',
+      data: { row }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (!result) return;
+      row.observacion = result.observacion || '';
+      this.guardarObservacion(row);
+    });
+  }
+
+  private guardarObservacion(row: ConsolidadoRow): void {
     if (!row.referencia_id || !row.tipo) return;
 
     const payload = {
