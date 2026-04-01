@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, PersonalConsola
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, PersonalConsola, Consolidado
 
 
 @admin.register(Cliente)
@@ -130,6 +130,13 @@ class ReporteAsistenciaHistorialAdmin(admin.ModelAdmin):
 
 @admin.register(PersonalConsola)
 class PersonalConsolaAdmin(admin.ModelAdmin):
-    list_display = ('apellidos', 'nombres', 'estado', 'turno', 'fecha', 'is_active')
-    search_fields = ('apellidos', 'nombres', 'cedula')
-    list_filter = ('fecha', 'turno', 'estado', 'is_active')
+	list_display = ('apellidos', 'nombres', 'turno', 'is_active')
+	search_fields = ('apellidos', 'nombres', 'cedula')
+	list_filter = ('turno', 'is_active')
+
+
+@admin.register(Consolidado)
+class ConsolidadoAdmin(admin.ModelAdmin):
+	list_display = ('fecha', 'turno', 'tipo', 'referencia_id', 'observacion')
+	search_fields = ('observacion',)
+	list_filter = ('fecha', 'turno', 'tipo')

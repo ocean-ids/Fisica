@@ -6,39 +6,39 @@
     </button>
   </div>
 
-  <div class="d-flex gap-2 mb-3">
-    <input type="date" class="form-control" [(ngModel)]="filtroFecha" style="max-width:200px">
+  <!--<div class="d-flex gap-2 mb-3">
     <select class="form-select" [(ngModel)]="filtroTurno" style="max-width:200px">
       <option value="">Turno</option>
       <option value="Diurno">Diurno</option>
       <option value="Nocturno">Nocturno</option>
     </select>
     <button class="btn btn-outline-secondary" (click)="cargar()">Filtrar</button>
-  </div>
+  </div>-->
 
   <div class="table-responsive">
     <table class="table table-bordered table-hover text-center align-middle">
       <thead class="table-light">
         <tr>
-          <th>Fecha</th>
           <th>Turno</th>
           <th>Cedula</th>
           <th>Apellidos</th>
           <th>Nombres</th>
-          <th>Estado</th>
           <th>Activo</th>
           <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let p of lista">
-          <td>{{ p.fecha }}</td>
           <td>{{ p.turno }}</td>
           <td>{{ p.cedula || '-' }}</td>
           <td>{{ p.apellidos }}</td>
           <td>{{ p.nombres }}</td>
-          <td>{{ p.estado }}</td>
-          <td>{{ p.is_active ? 'Si' : 'No' }}</td>
+          <td>
+            <mat-slide-toggle
+              [checked]="p.is_active"
+              (change)="toggleActivo(p, $event.checked)">
+            </mat-slide-toggle>
+          </td>
           <td>
             <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirModal(p)">
               <i class="bi bi-pencil"></i>
@@ -49,7 +49,7 @@
           </td>
         </tr>
         <tr *ngIf="lista.length === 0">
-          <td colspan="8" class="text-muted text-center">Sin registros</td>
+          <td colspan="6" class="text-muted text-center">Sin registros</td>
         </tr>
       </tbody>
     </table>

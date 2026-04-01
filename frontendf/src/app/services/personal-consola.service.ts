@@ -18,7 +18,7 @@ export class PersonalConsolaService {
     return this.api.post<PersonalConsola>('/personal-consola/crear/', payload);
   }
 
-  updatePersonalConsola(id: number, payload: PersonalConsola): Observable<PersonalConsola> {
+  updatePersonalConsola(id: number, payload: Partial<PersonalConsola>): Observable<PersonalConsola> {
     return this.api.put<PersonalConsola>(`/personal-consola/${id}/`, payload);
   }
 

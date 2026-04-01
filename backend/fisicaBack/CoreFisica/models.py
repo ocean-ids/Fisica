@@ -540,25 +540,38 @@ class PersonalConsola(models.Model):
         ('Diurno', 'Diurno'),
         ('Nocturno', 'Nocturno'),
     ]
-    ESTADOS = [
-        ('SUPERVISOR', 'Supervisor'),
-        ('OPERADOR', 'Operador'),
-        ('OCEAN SECURITY', 'Ocean Security'),
-    ]
-
-    fecha = models.DateField(db_index=True)
     turno = models.CharField(max_length=10, choices=TURNOS, db_index=True)
     cedula = models.CharField(max_length=10, blank=True, null=True, validators=[cedula_validator])
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
-    estado = models.CharField(max_length=20, choices=ESTADOS)
     is_active = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        indexes = [models.Index(fields=['fecha', 'turno'])]
         ordering = ['apellidos', 'nombres']
+
+
+class Consolidado(models.Model):
+    TIPOS = [
+        ('CONSOLa', 'Consola'),
+        ('GUARDIA', 'Guardia'),
+    ]
+
+    fecha = models.DateField(db_index=True)
+    turno = models.CharField(max_length=10, choices=PersonalConsola.TURNOS, db_index=True)
+    tipo = models.CharField(max_length=10, choices=TIPOS, db_index=True)
+    referencia_id = models.PositiveIntegerField(db_index=True)
+    observacion = models.CharField(max_length=200, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['fecha', 'turno', 'tipo']),
+            models.Index(fields=['tipo', 'referencia_id']),
+        ]
+        ordering = ['fecha', 'turno', 'tipo', 'referencia_id']
 
         
 

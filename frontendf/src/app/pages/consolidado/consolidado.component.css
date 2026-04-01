@@ -1,0 +1,7 @@
+.table td, .table th {
+  vertical-align: middle;
+}
+
+.table input.form-control {
+  min-width: 180px;
+}

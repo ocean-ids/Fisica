@@ -20,6 +20,7 @@ export class SidebarComponent {
     { path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'how_to_reg', permission: 'CoreFisica.view_asignacion' },
     { path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'assignment_ind', permission: 'CoreFisica.view_reporteasistencia' },
     { path: '/dashboard/personal-consola', label: 'Personal Consola', icon: 'computer', permission: 'CoreFisica.view_personalconsola' },
+    { path: '/dashboard/consolidado', label: 'Consolidado', icon: 'assignment', permission: 'CoreFisica.view_consolidado' },
   ];
 
   constructor(private authService: AuthService) {}

@@ -1,0 +1,79 @@
+<div class="container-fluid px-1">
+  <h3>Consolidado</h3>
+
+  <div class="d-flex gap-2 align-items-center justify-content-between mb-3">
+    <div class="d-flex gap-2 align-items-center">
+      <input
+        type="date"
+        lang="es"
+        class="form-control"
+        style="max-width:200px"
+        [value]="filtroFecha"
+        (change)="onFechaChange($event)"
+        placeholder="dd/mm/aaaa">
+    </div>
+
+    <mat-button-toggle-group
+      name="turnoFiltro"
+      [(ngModel)]="filtroTurno"
+      (change)="cargar()"
+      aria-label="Filtro de turno">
+      <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
+      <mat-button-toggle disabled>Turnos:</mat-button-toggle>
+      <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    <div class="d-flex gap-4">
+      <button type="button" class="btn btn-outline-primary btn-sm" title="Descargar Excel" aria-label="Descargar Excel" (click)="descargarExcel()" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
+        <img src="assets/images/excel-icon.png" alt="Excel" width="38" height="38" style="vertical-align: middle;" />
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" title="Descargar PDF" aria-label="Descargar PDF" (click)="descargarPdf()" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
+        <img src="assets/images/pdf.png" alt="PDF" width="38" height="38" style="vertical-align: middle;" />
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-muted">Cargando...</div>
+
+  <div class="table-responsive" *ngIf="!loading">
+    <table class="table table-bordered table-hover text-center align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Tipo</th>
+          <th>Proyecto</th>
+          <th>Puesto</th>
+          <th>Cedula</th>
+          <th>Apellidos</th>
+          <th>Nombres</th>
+          <th>Estado</th>
+          <th>Observacion</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of lista">
+          <td>{{ r.tipo || '-' }}</td>
+          <td>{{ r.proyecto || '-' }}</td>
+          <td>{{ r.puesto || '-' }}</td>
+          <td>{{ r.cedula || '-' }}</td>
+          <td>{{ r.apellidos || '-' }}</td>
+          <td>{{ r.nombres || '-' }}</td>
+          <td>{{ r.estado || '-' }}</td>
+          <td class="text-start">
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              [(ngModel)]="r.observacion"
+              placeholder="Observacion">
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" (click)="guardarObservacion(r)">Guardar</button>
+          </td>
+        </tr>
+        <tr *ngIf="lista.length === 0">
+          <td colspan="9" class="text-muted text-center">Sin registros</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -28,7 +28,6 @@ export class PersonalConsolaFormComponent implements OnInit{
   form!: FormGroup;
 
   turnos = ['Diurno', 'Nocturno'];
-  estados = ['SUPERVISOR', 'OPERADOR', 'OCEAN SECURITY'];
 
   constructor(
     private fb: FormBuilder,
@@ -38,13 +37,10 @@ export class PersonalConsolaFormComponent implements OnInit{
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      fecha: [this.data?.fecha || '', Validators.required],
       turno: [this.data?.turno || '', Validators.required],
       cedula: [this.data?.cedula || ''],
       nombres: [this.data?.nombres || '', Validators.required],
-      apellidos: [this.data?.apellidos || '', Validators.required],
-      estado: [this.data?.estado || '', Validators.required],
-      is_active: [this.data?.is_active ?? true]
+      apellidos: [this.data?.apellidos || '', Validators.required]
     });
   }
 
