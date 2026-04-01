@@ -43,31 +43,31 @@
           <th>Proyecto</th>
           <th>Apellidos y Nombre</th>
           <th>Estado</th>
-          <th>Observacion</th>
+          <th>Observación</th>
+          <th>Acción</th>
         </tr>
       </thead>
       <tbody>
         <ng-container *ngFor="let g of agrupado">
           <tr>
-            <td colspan="5" class="fw-bold text-center">{{ g.label }}</td>
+            <td colspan="6" class="fw-bold text-center">{{ g.label }}</td>
           </tr>
           <tr *ngFor="let r of g.rows">
             <td>{{ r.nominativo || '-' }}</td>
             <td>{{ r.proyecto || '-' }}</td>
             <td>{{ getNombreCompleto(r) }}</td>
             <td>{{ r.estado || '-' }}</td>
-            <td class="text-start">
-              <div class="d-flex align-items-center justify-content-between gap-2">
-                <span>{{ r.observacion || '-' }}</span>
-                <button mat-stroked-button type="button" color="primary" (click)="abrirObservacion(r)" aria-label="Editar observacion">
-                  <mat-icon>edit</mat-icon>
-                </button>
-              </div>
+            <td>
+              <span class="text-center">{{ r.observacion || '-' }}</span>
             </td>
+            <td class="d-flex align-middle">
+              <button mat-stroked-button type="button" color="primary" (click)="abrirObservacion(r)" aria-label="Editar observacion">
+                <mat-icon>edit</mat-icon>
+             </button>
           </tr>
         </ng-container>
         <tr *ngIf="agrupado.length === 0">
-          <td colspan="5" class="text-muted text-center">Sin registros</td>
+          <td colspan="6" class="text-muted text-center">Sin registros</td>
         </tr>
       </tbody>
     </table>
