@@ -134,9 +134,39 @@ class PersonalConsolaAdmin(admin.ModelAdmin):
 	search_fields = ('apellidos', 'nombres', 'cedula')
 	list_filter = ('tipo', 'turno', 'is_active')
 
+	def has_module_permission(self, request):
+		return request.user.has_perm('CoreFisica.view_personalconsola')
+
+	def has_view_permission(self, request, obj=None):
+		return request.user.has_perm('CoreFisica.view_personalconsola')
+
+	def has_change_permission(self, request, obj=None):
+		return request.user.has_perm('CoreFisica.change_personalconsola')
+
+	def has_add_permission(self, request):
+		return request.user.has_perm('CoreFisica.add_personalconsola')
+
+	def has_delete_permission(self, request, obj=None):
+		return request.user.has_perm('CoreFisica.delete_personalconsola')
+
 
 @admin.register(Consolidado)
 class ConsolidadoAdmin(admin.ModelAdmin):
 	list_display = ('fecha', 'turno', 'tipo', 'referencia_id', 'observacion')
 	search_fields = ('observacion',)
 	list_filter = ('fecha', 'turno', 'tipo')
+
+	def has_module_permission(self, request):
+		return request.user.has_perm('CoreFisica.view_consolidado')
+
+	def has_view_permission(self, request, obj=None):
+		return request.user.has_perm('CoreFisica.view_consolidado')
+
+	def has_change_permission(self, request, obj=None):
+		return request.user.has_perm('CoreFisica.change_consolidado')
+
+	def has_add_permission(self, request):
+		return request.user.has_perm('CoreFisica.add_consolidado')
+
+	def has_delete_permission(self, request, obj=None):
+		return request.user.has_perm('CoreFisica.delete_consolidado')
