@@ -691,16 +691,6 @@ def exportar_reporte_asistencia_excel(request):
 
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
-    turno = request.GET.get('turno')
-    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno)
-    header_ctx = _build_header_context(request, fecha, turno)
-    asistencias, faltos = _build_resumen_asistencia(data)
-    grouped = _group_reporte_por_zona_y_provincia(data)
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = 'Reporte Asistencia'
-
     headers = [
         'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
         'NOMBRE Y APELLIDOS', 'ESTADO', 'REEMPLAZO', 'DESCRIPCIÓN',
@@ -708,90 +698,103 @@ def exportar_reporte_asistencia_excel(request):
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
-    _draw_excel_header(ws, header_ctx, border)
+    def render_sheet(ws, turno_val):
+        data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno_val)
+        header_ctx = _build_header_context(request, fecha, turno_val)
+        asistencias, faltos = _build_resumen_asistencia(data)
+        grouped = _group_reporte_por_zona_y_provincia(data)
 
-    header_row = 6
-    data_start_row = header_row + 1
+        _draw_excel_header(ws, header_ctx, border)
 
-    for col_idx, header in enumerate(headers, start=1):
-        cell = ws.cell(row=header_row, column=col_idx)
-        cell.value = header
-        cell.border = border
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal='center', vertical='center')
+        header_row = 6
+        data_start_row = header_row + 1
 
-    current_row = data_start_row
-    for zona_group in grouped:
-        # Fila de zona
-        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=8)
-        zona_cell = ws.cell(row=current_row, column=1)
-        zona_cell.value = _normalize_zona_label(zona_group['zona'])
-        zona_cell.font = Font(bold=True, size=11)
-        zona_cell.alignment = Alignment(horizontal='left', vertical='center')
-        for col_idx in range(1, 9):
-            ws.cell(row=current_row, column=col_idx).border = border
-        ws.row_dimensions[current_row].height = 24
-        current_row += 1
+        for col_idx, header in enumerate(headers, start=1):
+            cell = ws.cell(row=header_row, column=col_idx)
+            cell.value = header
+            cell.border = border
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
 
-        zona_items = []
-        for prov_group in zona_group['provincias']:
-            # Fila de provincia
+        current_row = data_start_row
+        for zona_group in grouped:
+            # Fila de zona
             ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=8)
-            prov_cell = ws.cell(row=current_row, column=1)
-            prov_cell.value = str(prov_group['provincia']).upper()
-            prov_cell.font = Font(bold=True, size=10)
-            prov_cell.alignment = Alignment(horizontal='left', vertical='center')
+            zona_cell = ws.cell(row=current_row, column=1)
+            zona_cell.value = _normalize_zona_label(zona_group['zona'])
+            zona_cell.font = Font(bold=True, size=11)
+            zona_cell.alignment = Alignment(horizontal='left', vertical='center')
             for col_idx in range(1, 9):
                 ws.cell(row=current_row, column=col_idx).border = border
-            ws.row_dimensions[current_row].height = 22
+            ws.row_dimensions[current_row].height = 24
             current_row += 1
 
-            for item in prov_group['rows']:
-                zona_items.append(item)
-                row_hex = _normalize_hex_color(item.get('row_color'))
-                row_fill = PatternFill(start_color=row_hex, end_color=row_hex, fill_type='solid') if row_hex else None
-                row_vals = [
-                    item.get('codigo', ''),
-                    item.get('cliente', ''),
-                    item.get('puesto', ''),
-                    item.get('horario', ''),
-                    item.get('nombre_apellidos', ''),
-                    item.get('estado', ''),
-                    item.get('reemplazo', ''),
-                    item.get('descripcion', ''),
-                ]
-                for col_idx, value in enumerate(row_vals, start=1):
-                    cell = ws.cell(row=current_row, column=col_idx)
-                    cell.value = value
-                    cell.border = border
-                    if row_fill:
-                        cell.fill = row_fill
-                    if col_idx == 8:
-                        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-                    else:
-                        cell.alignment = Alignment(horizontal='center', vertical='center')
-                ws.row_dimensions[current_row].height = 32
+            zona_items = []
+            for prov_group in zona_group['provincias']:
+                # Fila de provincia
+                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=8)
+                prov_cell = ws.cell(row=current_row, column=1)
+                prov_cell.value = str(prov_group['provincia']).upper()
+                prov_cell.font = Font(bold=True, size=10)
+                prov_cell.alignment = Alignment(horizontal='left', vertical='center')
+                for col_idx in range(1, 9):
+                    ws.cell(row=current_row, column=col_idx).border = border
+                ws.row_dimensions[current_row].height = 22
                 current_row += 1
 
-        zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
-        _write_excel_resumen(ws, current_row, zona_asistencias, zona_faltos, border)
-        current_row += 2
+                for item in prov_group['rows']:
+                    zona_items.append(item)
+                    row_hex = _normalize_hex_color(item.get('row_color'))
+                    row_fill = PatternFill(start_color=row_hex, end_color=row_hex, fill_type='solid') if row_hex else None
+                    row_vals = [
+                        item.get('codigo', ''),
+                        item.get('cliente', ''),
+                        item.get('puesto', ''),
+                        item.get('horario', ''),
+                        item.get('nombre_apellidos', ''),
+                        item.get('estado', ''),
+                        item.get('reemplazo', ''),
+                        item.get('descripcion', ''),
+                    ]
+                    for col_idx, value in enumerate(row_vals, start=1):
+                        cell = ws.cell(row=current_row, column=col_idx)
+                        cell.value = value
+                        cell.border = border
+                        if row_fill:
+                            cell.fill = row_fill
+                        if col_idx == 8:
+                            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                        else:
+                            cell.alignment = Alignment(horizontal='center', vertical='center')
+                    ws.row_dimensions[current_row].height = 32
+                    current_row += 1
 
-    
-    column_widths = {
-        1: 11,  # Codigo
-        2: 18,  # Cliente
-        3: 23,  # Puesto
-        4: 12,  # Horario
-        5: 40,  # Nombre y Apellidos
-        6: 12,  # Estado
-        7: 40,  # Reemplazo
-        8: 28,  # Descripcion
-    }
-    for col_idx, width in column_widths.items():
-        ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
+            zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
+            _write_excel_resumen(ws, current_row, zona_asistencias, zona_faltos, border)
+            current_row += 2
 
-    _write_excel_resumen(ws, current_row, asistencias, faltos, border)
+        column_widths = {
+            1: 11,  # Codigo
+            2: 18,  # Cliente
+            3: 23,  # Puesto
+            4: 12,  # Horario
+            5: 40,  # Nombre y Apellidos
+            6: 12,  # Estado
+            7: 40,  # Reemplazo
+            8: 28,  # Descripcion
+        }
+        for col_idx, width in column_widths.items():
+            ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
+
+        _write_excel_resumen(ws, current_row, asistencias, faltos, border)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'DIURNO'
+    render_sheet(ws, 'Diurno')
+
+    ws_nocturno = wb.create_sheet('NOCTURNO')
+    render_sheet(ws_nocturno, 'Nocturno')
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.xlsx"'
