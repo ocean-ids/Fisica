@@ -156,14 +156,12 @@ def _build_estado_agentes_counts(rows):
 def _build_resumen_manual(fecha_obj, turno_val, reporte_rows):
     if not turno_val:
         return None
-    resumen = ConsolidadoResumen.objects.filter(fecha=fecha_obj, turno=turno_val).first()
-    if not resumen:
-        faltas_auto = _count_faltas_from_reporte(reporte_rows)
-        resumen = ConsolidadoResumen(
-            fecha=fecha_obj,
-            turno=turno_val,
-            faltas=faltas_auto
-        )
+    faltas_auto = _count_faltas_from_reporte(reporte_rows)
+    resumen, created = ConsolidadoResumen.objects.get_or_create(
+        fecha=fecha_obj,
+        turno=turno_val,
+        defaults={'faltas': faltas_auto}
+    )
     data = {
         'faltas': resumen.faltas,
         'huecas': resumen.huecas,
