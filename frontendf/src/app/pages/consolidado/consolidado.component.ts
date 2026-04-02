@@ -7,8 +7,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
 import { ConsolidadoService } from '../../services/consolidado.service';
-import { ConsolidadoRow } from '../../models/consolidado.model';
+import { ConsolidadoRow, ConsolidadoResumenEstado, ConsolidadoResumenManual } from '../../models/consolidado.model';
 import { ConsolidadoFormComponent } from './consolidado-form/consolidado-form.component';
+import { ConsolidadoEstadoFormComponent } from './consolidado-estado-form/consolidado-estado-form.component';
 
 @Component({
   selector: 'app-consolidado',
@@ -23,6 +24,27 @@ export class ConsolidadoComponent implements OnInit {
   filtroFecha = '';
   filtroTurno = '';
   loading = false;
+  resumenManual: ConsolidadoResumenManual = {
+    faltas: 0,
+    huecas: 0,
+    apoyos: 0,
+    capacitacion: 0,
+    apertura_puesto: 0,
+    servicios_temporales: 0,
+    servicios_adicionales: 0,
+    aprendiendo_consignas: 0,
+    total: 0
+  };
+  resumenEstado: ConsolidadoResumenEstado = {
+    dobla: 0,
+    franco_trabajados: 0,
+    unidades_eventuales: 0,
+    adelanto_turno: 0,
+    reten: 0,
+    unidades_adicionales: 0,
+    custodio: 0,
+    total: 0
+  };
 
   constructor(
     private svc: ConsolidadoService,
@@ -56,6 +78,70 @@ export class ConsolidadoComponent implements OnInit {
         console.error('Error al cargar consolidado:', err);
         this.loading = false;
       }
+    });
+    this.cargarResumen(params);
+  }
+
+  private cargarResumen(params: any): void {
+    this.svc.getResumen(params).subscribe({
+      next: res => {
+        if (res?.manual) {
+          this.resumenManual = res.manual;
+        } else {
+          this.resetResumenManual();
+        }
+        this.resumenEstado = res?.estado_agentes || this.resumenEstado;
+        this.resumenManual.total = this.calcManualTotal();
+        this.resumenEstado.total = this.calcEstadoTotal();
+      },
+      error: err => console.error('Error al cargar resumen:', err)
+    });
+  }
+
+  guardarResumenManual(): void {
+    const payload = {
+      fecha: this.filtroFecha,
+      turno: this.filtroTurno,
+      faltas: this.toInt(this.resumenManual.faltas),
+      huecas: this.toInt(this.resumenManual.huecas),
+      apoyos: this.toInt(this.resumenManual.apoyos),
+      capacitacion: this.toInt(this.resumenManual.capacitacion),
+      apertura_puesto: this.toInt(this.resumenManual.apertura_puesto),
+      servicios_temporales: this.toInt(this.resumenManual.servicios_temporales),
+      servicios_adicionales: this.toInt(this.resumenManual.servicios_adicionales),
+      aprendiendo_consignas: this.toInt(this.resumenManual.aprendiendo_consignas)
+    };
+
+    this.svc.updateResumen(payload).subscribe({
+      next: (res: any) => {
+        if (res?.manual) {
+          this.resumenManual = res.manual;
+        }
+        this.resumenManual.total = this.calcManualTotal();
+        Swal.fire({ icon: 'success', title: 'Resumen guardado', timer: 1200, showConfirmButton: false });
+      },
+      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar resumen' })
+    });
+  }
+
+  onManualChange(): void {
+    this.resumenManual.total = this.calcManualTotal();
+  }
+
+  abrirResumenManual(): void {
+    const dialogRef = this.dialog.open(ConsolidadoEstadoFormComponent, {
+      width: '640px',
+      data: { manual: this.resumenManual }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (!result) return;
+      this.resumenManual = {
+        ...this.resumenManual,
+        ...result,
+        total: this.calcManualTotal()
+      };
+      this.guardarResumenManual();
     });
   }
 
@@ -145,6 +231,46 @@ export class ConsolidadoComponent implements OnInit {
     const nombres = (row.nombres || '').trim();
     const full = `${apellidos} ${nombres}`.trim();
     return full || '-';
+  }
+
+  private calcManualTotal(): number {
+    return this.toInt(this.resumenManual.faltas)
+      + this.toInt(this.resumenManual.huecas)
+      + this.toInt(this.resumenManual.apoyos)
+      + this.toInt(this.resumenManual.capacitacion)
+      + this.toInt(this.resumenManual.apertura_puesto)
+      + this.toInt(this.resumenManual.servicios_temporales)
+      + this.toInt(this.resumenManual.servicios_adicionales)
+      + this.toInt(this.resumenManual.aprendiendo_consignas);
+  }
+
+  private calcEstadoTotal(): number {
+    return this.toInt(this.resumenEstado.dobla)
+      + this.toInt(this.resumenEstado.franco_trabajados)
+      + this.toInt(this.resumenEstado.unidades_eventuales)
+      + this.toInt(this.resumenEstado.adelanto_turno)
+      + this.toInt(this.resumenEstado.reten)
+      + this.toInt(this.resumenEstado.unidades_adicionales)
+      + this.toInt(this.resumenEstado.custodio);
+  }
+
+  private toInt(value: any): number {
+    const num = Number(value);
+    return Number.isFinite(num) ? Math.max(0, Math.trunc(num)) : 0;
+  }
+
+  private resetResumenManual(): void {
+    this.resumenManual = {
+      faltas: 0,
+      huecas: 0,
+      apoyos: 0,
+      capacitacion: 0,
+      apertura_puesto: 0,
+      servicios_temporales: 0,
+      servicios_adicionales: 0,
+      aprendiendo_consignas: 0,
+      total: 0
+    };
   }
 
   descargarExcel(): void {

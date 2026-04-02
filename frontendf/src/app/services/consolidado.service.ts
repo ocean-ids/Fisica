@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
-import { ConsolidadoRow } from '../models/consolidado.model';
+import { ConsolidadoRow, ConsolidadoResumenResponse } from '../models/consolidado.model';
 
 @Injectable({
   providedIn: 'root'
@@ -27,5 +27,13 @@ export class ConsolidadoService {
 
   exportarPdf(params?: any) {
     return this.api.getBlob('/consolidado/exportar-pdf/', params);
+  }
+
+  getResumen(params?: any): Observable<ConsolidadoResumenResponse> {
+    return this.api.get<ConsolidadoResumenResponse>('/consolidado/resumen/', params);
+  }
+
+  updateResumen(payload: any) {
+    return this.api.put<any>('/consolidado/resumen/actualizar/', payload);
   }
 }

@@ -581,6 +581,25 @@ class Consolidado(models.Model):
         ]
         ordering = ['fecha', 'turno', 'tipo', 'referencia_id']
 
-        
+
+class ConsolidadoResumen(models.Model):
+    fecha = models.DateField(db_index=True)
+    turno = models.CharField(max_length=10, choices=PersonalConsola.TURNOS, db_index=True)
+    faltas = models.PositiveIntegerField(default=0)
+    huecas = models.PositiveIntegerField(default=0)
+    apoyos = models.PositiveIntegerField(default=0)
+    capacitacion = models.PositiveIntegerField(default=0)
+    apertura_puesto = models.PositiveIntegerField(default=0)
+    servicios_temporales = models.PositiveIntegerField(default=0)
+    servicios_adicionales = models.PositiveIntegerField(default=0)
+    aprendiendo_consignas = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('fecha', 'turno')
+        indexes = [models.Index(fields=['fecha', 'turno'])]
+    
+
 
 

@@ -73,4 +73,102 @@
       </tbody>
     </table>
   </div>
+
+  <div class="row mt-4" *ngIf="!loading">
+    <div class="col-12 col-lg-6 mb-3">
+      <table class="table table-bordered text-center align-middle">
+        <tbody class="text-center">
+          <tr>
+            <td class="fw-bold">ESTADO</td>
+            <td class="border-0"></td>
+          </tr>
+          <tr>
+            <td>FALTAS</td>
+            <td>{{ resumenManual.faltas }}</td>
+          </tr>
+          <tr>
+            <td>HUECAS</td>
+            <td>{{ resumenManual.huecas }}</td>
+          </tr>
+          <tr>
+            <td>APOYOS</td>
+            <td>{{ resumenManual.apoyos }}</td>
+          </tr>
+          <tr>
+            <td>CAPACITACION</td>
+            <td>{{ resumenManual.capacitacion }}</td>
+          </tr>
+          <tr>
+            <td>APERTURA DE PUESTO</td>
+            <td>{{ resumenManual.apertura_puesto }}</td>
+          </tr>
+          <tr>
+            <td>SERVICIOS TEMPORALES</td>
+            <td>{{ resumenManual.servicios_temporales }}</td>
+          </tr>
+          <tr>
+            <td>SERVICIOS ADICIONALES</td>
+            <td>{{ resumenManual.servicios_adicionales }}</td>
+          </tr>
+          <tr>
+            <td>APRENDIENDO CONSIGNAS</td>
+            <td>{{ resumenManual.aprendiendo_consignas }}</td>
+          </tr>
+          <tr>
+            <td><strong>TOTAL=</strong></td>
+            <td><strong>{{ resumenManual.total }}</strong></td>
+          </tr>
+          <tr>
+            <td colspan="2" class="text-end">
+              <button mat-icon-button type="button" color="primary" (click)="abrirResumenManual()" aria-label="Editar resumen">
+                <mat-icon>edit</mat-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col-12 col-lg-6 mb-3">
+      <table class="table table-bordered text-center align-middle">
+        <tbody>
+          <tr>
+            <td colspan="2" class="fw-bold">ESTADO DE AGENTES</td>
+          </tr>
+          <tr>
+            <td>DOBLA</td>
+            <td>{{ resumenEstado.dobla }}</td>
+          </tr>
+          <tr>
+            <td>FRANCO TRABAJADOS</td>
+            <td>{{ resumenEstado.franco_trabajados }}</td>
+          </tr>
+          <tr>
+            <td>UNIDADES EVENTUALES</td>
+            <td>{{ resumenEstado.unidades_eventuales }}</td>
+          </tr>
+          <tr>
+            <td>ADELANTO DE TURNO</td>
+            <td>{{ resumenEstado.adelanto_turno }}</td>
+          </tr>
+          <tr>
+            <td>RETEN</td>
+            <td>{{ resumenEstado.reten }}</td>
+          </tr>
+          <tr>
+            <td>UNIDADES ADICIONALES</td>
+            <td>{{ resumenEstado.unidades_adicionales }}</td>
+          </tr>
+          <tr>
+            <td>CUSTODIO</td>
+            <td>{{ resumenEstado.custodio }}</td>
+          </tr>
+          <tr>
+            <td><strong>TOTAL=</strong></td>
+            <td><strong>{{ resumenEstado.total }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>

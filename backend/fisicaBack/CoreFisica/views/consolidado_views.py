@@ -12,7 +12,7 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.lib import colors
-from ..models import Consolidado, PersonalConsola, Asignacion
+from ..models import Consolidado, PersonalConsola, Asignacion, ConsolidadoResumen
 from .reporte_asistencia_views import _build_reporte_asistencia_data
 
 ALLOWED_TURNOS = {choice[0] for choice in PersonalConsola.TURNOS}
@@ -99,6 +99,85 @@ def _build_consolidado_data(fecha, turno):
     return data
 
 
+def _count_faltas_from_reporte(rows):
+    total = 0
+    for row in rows:
+        if row.get('reemplazo_id'):
+            total += 1
+            continue
+        reemplazo = (row.get('reemplazo') or '').strip()
+        if reemplazo and reemplazo != '-':
+            total += 1
+    return total
+
+
+def _build_estado_agentes_counts(rows):
+    counts = {
+        'dobla': 0,
+        'franco_trabajados': 0,
+        'unidades_eventuales': 0,
+        'adelanto_turno': 0,
+        'reten': 0,
+        'unidades_adicionales': 0,
+        'custodio': 0,
+    }
+
+    for row in rows:
+        estado = (row.get('estado') or '').strip().upper()
+        if not estado:
+            continue
+
+        if 'DOBL' in estado:
+            counts['dobla'] += 1
+            continue
+        if 'FR/TRABAJADO' in estado or 'FRANCO' in estado:
+            counts['franco_trabajados'] += 1
+            continue
+        if 'EVENTUAL' in estado:
+            counts['unidades_eventuales'] += 1
+            continue
+        if 'ADEL' in estado:
+            counts['adelanto_turno'] += 1
+            continue
+        if 'RETEN' in estado:
+            counts['reten'] += 1
+            continue
+        if 'ADICIONAL' in estado:
+            counts['unidades_adicionales'] += 1
+            continue
+        if 'CUSTODIO' in estado:
+            counts['custodio'] += 1
+            continue
+
+    counts['total'] = sum(counts.values())
+    return counts
+
+
+def _build_resumen_manual(fecha_obj, turno_val, reporte_rows):
+    if not turno_val:
+        return None
+    resumen = ConsolidadoResumen.objects.filter(fecha=fecha_obj, turno=turno_val).first()
+    if not resumen:
+        faltas_auto = _count_faltas_from_reporte(reporte_rows)
+        resumen = ConsolidadoResumen(
+            fecha=fecha_obj,
+            turno=turno_val,
+            faltas=faltas_auto
+        )
+    data = {
+        'faltas': resumen.faltas,
+        'huecas': resumen.huecas,
+        'apoyos': resumen.apoyos,
+        'capacitacion': resumen.capacitacion,
+        'apertura_puesto': resumen.apertura_puesto,
+        'servicios_temporales': resumen.servicios_temporales,
+        'servicios_adicionales': resumen.servicios_adicionales,
+        'aprendiendo_consignas': resumen.aprendiendo_consignas,
+    }
+    data['total'] = sum(data.values())
+    return data
+
+
 def _group_guardias_por_zona(data):
     guardias = [d for d in data if d.get('tipo') == TIPO_GUARDIA]
     zonas = {}
@@ -159,6 +238,67 @@ def obtener_consolidado_armado(request):
     turno = request.GET.get('turno')
     data = _build_consolidado_data(fecha, turno)
     return JsonResponse(data, safe=False)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_consolidado_resumen(request):
+    fecha = request.GET.get('fecha')
+    turno = request.GET.get('turno')
+    turno_val = turno if turno in ALLOWED_TURNOS else None
+    if not turno_val:
+        return JsonResponse({'error': 'Turno requerido'}, status=400)
+    fecha_obj = _parse_fecha(fecha)
+    reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val)
+
+    manual = _build_resumen_manual(fecha_obj, turno_val, reporte_rows)
+    estados = _build_estado_agentes_counts(reporte_rows)
+    return JsonResponse({
+        'manual': manual,
+        'estado_agentes': estados
+    })
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def actualizar_consolidado_resumen(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON invalido'}, status=400)
+
+    fecha = parse_date(data.get('fecha')) if data.get('fecha') else None
+    turno = data.get('turno')
+    if not fecha or turno not in ALLOWED_TURNOS:
+        return JsonResponse({'error': 'Fecha y turno requeridos'}, status=400)
+
+    resumen, _ = ConsolidadoResumen.objects.get_or_create(fecha=fecha, turno=turno)
+
+    fields = [
+        'faltas', 'huecas', 'apoyos', 'capacitacion', 'apertura_puesto',
+        'servicios_temporales', 'servicios_adicionales', 'aprendiendo_consignas'
+    ]
+    for field in fields:
+        if field in data:
+            try:
+                setattr(resumen, field, max(int(data.get(field)), 0))
+            except (TypeError, ValueError):
+                pass
+
+    resumen.save()
+
+    manual = {
+        'faltas': resumen.faltas,
+        'huecas': resumen.huecas,
+        'apoyos': resumen.apoyos,
+        'capacitacion': resumen.capacitacion,
+        'apertura_puesto': resumen.apertura_puesto,
+        'servicios_temporales': resumen.servicios_temporales,
+        'servicios_adicionales': resumen.servicios_adicionales,
+        'aprendiendo_consignas': resumen.aprendiendo_consignas,
+    }
+    manual['total'] = sum(manual.values())
+    return JsonResponse({'manual': manual})
 
 
 @api_view(['POST'])
@@ -267,6 +407,10 @@ def exportar_consolidado_excel(request):
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
     data = _build_consolidado_data(fecha, turno)
+    turno_val = turno if turno in ALLOWED_TURNOS else None
+    reporte_rows = _build_reporte_asistencia_data(fecha=_parse_fecha(fecha).isoformat(), turno=turno_val)
+    manual = _build_resumen_manual(_parse_fecha(fecha), turno_val, reporte_rows) if turno_val else None
+    estados = _build_estado_agentes_counts(reporte_rows)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -353,6 +497,66 @@ def exportar_consolidado_excel(request):
                 cell.alignment = Alignment(horizontal='center', vertical='center')
             row_idx += 1
 
+    if manual:
+        row_idx += 1
+        ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=5)
+        ws.cell(row=row_idx, column=1).value = ''
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'FALTAS'
+        ws.cell(row=row_idx, column=4).value = manual['faltas']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'HUECAS'
+        ws.cell(row=row_idx, column=4).value = manual['huecas']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'APOYOS'
+        ws.cell(row=row_idx, column=4).value = manual['apoyos']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'CAPACITACION'
+        ws.cell(row=row_idx, column=4).value = manual['capacitacion']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'APERTURA DE PUESTO'
+        ws.cell(row=row_idx, column=4).value = manual['apertura_puesto']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'SERVICIOS TEMPORALES'
+        ws.cell(row=row_idx, column=4).value = manual['servicios_temporales']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'SERVICIOS ADICIONALES'
+        ws.cell(row=row_idx, column=4).value = manual['servicios_adicionales']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'APRENDIENDO CONSIGNAS'
+        ws.cell(row=row_idx, column=4).value = manual['aprendiendo_consignas']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'TOTAL='
+        ws.cell(row=row_idx, column=4).value = manual['total']
+
+    if estados:
+        row_idx += 2
+        ws.cell(row=row_idx, column=2).value = 'ESTADO DE AGENTES'
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'DOBLA'
+        ws.cell(row=row_idx, column=4).value = estados['dobla']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'FRANCO TRABAJADOS'
+        ws.cell(row=row_idx, column=4).value = estados['franco_trabajados']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'UNIDADES EVENTUALES'
+        ws.cell(row=row_idx, column=4).value = estados['unidades_eventuales']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'ADELANTO DE TURNO'
+        ws.cell(row=row_idx, column=4).value = estados['adelanto_turno']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'RETEN'
+        ws.cell(row=row_idx, column=4).value = estados['reten']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'UNIDADES ADICIONALES'
+        ws.cell(row=row_idx, column=4).value = estados['unidades_adicionales']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'CUSTODIO'
+        ws.cell(row=row_idx, column=4).value = estados['custodio']
+        row_idx += 1
+        ws.cell(row=row_idx, column=2).value = 'TOTAL='
+        ws.cell(row=row_idx, column=4).value = estados['total']
+
     ws.column_dimensions['A'].width = 18
     ws.column_dimensions['B'].width = 36
     ws.column_dimensions['C'].width = 38
@@ -371,6 +575,10 @@ def exportar_consolidado_pdf(request):
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
     data = _build_consolidado_data(fecha, turno)
+    turno_val = turno if turno in ALLOWED_TURNOS else None
+    reporte_rows = _build_reporte_asistencia_data(fecha=_parse_fecha(fecha).isoformat(), turno=turno_val)
+    manual = _build_resumen_manual(_parse_fecha(fecha), turno_val, reporte_rows) if turno_val else None
+    estados = _build_estado_agentes_counts(reporte_rows)
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="consolidado.pdf"'
@@ -469,6 +677,65 @@ def exportar_consolidado_pdf(request):
                 p.drawString(x + 2, y, text)
                 x += col_widths[i]
             y -= 0.18 * inch
+
+    if manual:
+        y -= 0.25 * inch
+        p.setFont('Helvetica-Bold', 8)
+        p.drawString(x_margin, y, 'FALTAS')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['faltas']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'HUECAS')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['huecas']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'APOYOS')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['apoyos']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'CAPACITACION')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['capacitacion']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'APERTURA DE PUESTO')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['apertura_puesto']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'SERVICIOS TEMPORALES')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['servicios_temporales']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'SERVICIOS ADICIONALES')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['servicios_adicionales']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'APRENDIENDO CONSIGNAS')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['aprendiendo_consignas']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'TOTAL=')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['total']))
+
+    if estados:
+        y -= 0.3 * inch
+        p.setFont('Helvetica-Bold', 8)
+        p.drawString(x_margin, y, 'ESTADO DE AGENTES')
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'DOBLA')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(estados['dobla']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'FRANCO TRABAJADOS')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(estados['franco_trabajados']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'UNIDADES EVENTUALES')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(estados['unidades_eventuales']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'ADELANTO DE TURNO')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(estados['adelanto_turno']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'RETEN')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(estados['reten']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'UNIDADES ADICIONALES')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(estados['unidades_adicionales']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'CUSTODIO')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(estados['custodio']))
+        y -= 0.18 * inch
+        p.drawString(x_margin, y, 'TOTAL=')
+        p.drawRightString(x_margin + 2.8 * inch, y, str(estados['total']))
 
     p.showPage()
     p.save()
