@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 import json
 import datetime
 import openpyxl
-from openpyxl.styles import Alignment, Border, Side, Font
+from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
@@ -403,166 +403,186 @@ def eliminar_consolidado(request, id):
 @permission_classes([IsAuthenticated])
 def exportar_consolidado_excel(request):
     fecha = request.GET.get('fecha')
-    turno = request.GET.get('turno')
-    data = _build_consolidado_data(fecha, turno)
-    turno_val = turno if turno in ALLOWED_TURNOS else None
-    reporte_rows = _build_reporte_asistencia_data(fecha=_parse_fecha(fecha).isoformat(), turno=turno_val)
-    manual = _build_resumen_manual(_parse_fecha(fecha), turno_val, reporte_rows) if turno_val else None
-    estados = _build_estado_agentes_counts(reporte_rows)
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = 'Consolidado'
-
-    fecha_label = _parse_fecha(fecha).strftime('%d/%m/%Y')
-    turno_label = (turno or 'TODOS').upper()
+    fecha_obj = _parse_fecha(fecha)
+    fecha_label = fecha_obj.strftime('%d/%m/%Y')
     operador = ''
     user = getattr(request, 'user', None)
     if user and user.is_authenticated:
         operador = f"{user.first_name} {user.last_name}".strip() or user.get_username()
 
-    ws['A1'] = f"FECHA: {fecha_label}"
-    ws['C1'] = f"TURNO: {turno_label}"
-    ws['E1'] = f"REPORTA: {operador}"
-
     headers = ['NOMINATIVO', 'PROYECTO', 'APELLIDOS Y NOMBRE', 'ESTADO', 'OBSERVACIONES']
-    header_row = 3
+    header_row = 2
 
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    header_fill = PatternFill(fill_type='solid', fgColor='D9EEF7')
+    section_fill = PatternFill(fill_type='solid', fgColor='8FD1EA')
+    total_fill = PatternFill(fill_type='solid', fgColor='FFF200')
 
-    for col_idx, header in enumerate(headers, start=1):
-        cell = ws.cell(row=header_row, column=col_idx)
-        cell.value = header
-        cell.border = border
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal='center', vertical='center')
+    def render_sheet(ws, turno_val):
+        turno_label = (turno_val or 'TODOS').upper()
+        data = _build_consolidado_data(fecha, turno_val)
+        reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val)
+        manual = _build_resumen_manual(fecha_obj, turno_val, reporte_rows) if turno_val else None
+        estados = _build_estado_agentes_counts(reporte_rows)
 
-    row_idx = header_row + 1
+        ws['A1'] = 'FECHA:'
+        ws.merge_cells(start_row=1, start_column=2, end_row=1, end_column=3)
+        ws['B1'] = fecha_label
+        ws['D1'] = f"TURNO: {turno_label}"
+        ws['E1'] = f"REPORTA: {operador}"
 
-    consola_rows = [d for d in data if d.get('tipo') == TIPO_CONSOLA]
-    if consola_rows:
-        ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=5)
-        cell = ws.cell(row=row_idx, column=1)
-        cell.value = 'PERSONAL DE CONSOLA Y OFICINAS'
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal='center', vertical='center')
+        ws['A1'].font = Font(bold=True)
+        ws['D1'].font = Font(bold=True)
+        ws['E1'].font = Font(bold=True)
+        ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
+        ws['B1'].alignment = Alignment(horizontal='center', vertical='center')
+        ws['D1'].alignment = Alignment(horizontal='left', vertical='center')
+        ws['E1'].alignment = Alignment(horizontal='left', vertical='center')
         for col in range(1, 6):
-            c = ws.cell(row=row_idx, column=col)
+            c = ws.cell(row=1, column=col)
             c.border = border
-        row_idx += 1
 
-        for item in consola_rows:
-            nombre = f"{item.get('apellidos', '')} {item.get('nombres', '')}".strip()
-            values = [
-                item.get('nominativo', ''),
-                item.get('proyecto', ''),
-                nombre,
-                item.get('estado', ''),
-                item.get('observacion', ''),
-            ]
-            for col_idx, value in enumerate(values, start=1):
-                cell = ws.cell(row=row_idx, column=col_idx)
-                cell.value = value
-                cell.border = border
-                cell.alignment = Alignment(horizontal='center', vertical='center')
+        for col_idx, header in enumerate(headers, start=1):
+            cell = ws.cell(row=header_row, column=col_idx)
+            cell.value = header
+            cell.border = border
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.fill = header_fill
+
+        row_idx = header_row + 1
+
+        consola_rows = [d for d in data if d.get('tipo') == TIPO_CONSOLA]
+        if consola_rows:
+            ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=5)
+            cell = ws.cell(row=row_idx, column=1)
+            cell.value = 'PERSONAL DE CONSOLA Y OFICINAS'
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.fill = header_fill
+            for col in range(1, 6):
+                c = ws.cell(row=row_idx, column=col)
+                c.border = border
             row_idx += 1
 
-    for zona, items in _group_guardias_por_zona(data):
-        ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=5)
-        cell = ws.cell(row=row_idx, column=1)
-        cell.value = str(zona).upper()
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal='center', vertical='center')
-        for col in range(1, 6):
-            c = ws.cell(row=row_idx, column=col)
-            c.border = border
-        row_idx += 1
+            for item in consola_rows:
+                nombre = f"{item.get('apellidos', '')} {item.get('nombres', '')}".strip()
+                values = [
+                    item.get('nominativo', ''),
+                    item.get('proyecto', ''),
+                    nombre,
+                    item.get('estado', ''),
+                    item.get('observacion', ''),
+                ]
+                for col_idx, value in enumerate(values, start=1):
+                    cell = ws.cell(row=row_idx, column=col_idx)
+                    cell.value = value
+                    cell.border = border
+                    align = 'left' if col_idx in (3, 5) else 'center'
+                    cell.alignment = Alignment(horizontal=align, vertical='center')
+                row_idx += 1
 
-        for item in items:
-            nombre = f"{item.get('apellidos', '')} {item.get('nombres', '')}".strip()
-            values = [
-                item.get('nominativo', ''),
-                item.get('proyecto', ''),
-                nombre,
-                item.get('estado', ''),
-                item.get('observacion', ''),
-            ]
-            for col_idx, value in enumerate(values, start=1):
-                cell = ws.cell(row=row_idx, column=col_idx)
-                cell.value = value
-                cell.border = border
-                cell.alignment = Alignment(horizontal='center', vertical='center')
+        for zona, items in _group_guardias_por_zona(data):
+            ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=5)
+            cell = ws.cell(row=row_idx, column=1)
+            cell.value = str(zona).upper()
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.fill = header_fill
+            for col in range(1, 6):
+                c = ws.cell(row=row_idx, column=col)
+                c.border = border
             row_idx += 1
 
-    if manual:
-        row_idx += 1
-        ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=5)
-        ws.cell(row=row_idx, column=1).value = ''
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'FALTAS'
-        ws.cell(row=row_idx, column=4).value = manual['faltas']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'HUECAS'
-        ws.cell(row=row_idx, column=4).value = manual['huecas']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'APOYOS'
-        ws.cell(row=row_idx, column=4).value = manual['apoyos']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'CAPACITACION'
-        ws.cell(row=row_idx, column=4).value = manual['capacitacion']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'APERTURA DE PUESTO'
-        ws.cell(row=row_idx, column=4).value = manual['apertura_puesto']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'SERVICIOS TEMPORALES'
-        ws.cell(row=row_idx, column=4).value = manual['servicios_temporales']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'SERVICIOS ADICIONALES'
-        ws.cell(row=row_idx, column=4).value = manual['servicios_adicionales']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'APRENDIENDO CONSIGNAS'
-        ws.cell(row=row_idx, column=4).value = manual['aprendiendo_consignas']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'TOTAL='
-        ws.cell(row=row_idx, column=4).value = manual['total']
+            for item in items:
+                nombre = f"{item.get('apellidos', '')} {item.get('nombres', '')}".strip()
+                values = [
+                    item.get('nominativo', ''),
+                    item.get('proyecto', ''),
+                    nombre,
+                    item.get('estado', ''),
+                    item.get('observacion', ''),
+                ]
+                for col_idx, value in enumerate(values, start=1):
+                    cell = ws.cell(row=row_idx, column=col_idx)
+                    cell.value = value
+                    cell.border = border
+                    align = 'left' if col_idx in (3, 5) else 'center'
+                    cell.alignment = Alignment(horizontal=align, vertical='center')
+                row_idx += 1
 
-    if estados:
-        row_idx += 2
-        ws.cell(row=row_idx, column=2).value = 'ESTADO DE AGENTES'
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'DOBLA'
-        ws.cell(row=row_idx, column=4).value = estados['dobla']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'FRANCO TRABAJADOS'
-        ws.cell(row=row_idx, column=4).value = estados['franco_trabajados']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'UNIDADES EVENTUALES'
-        ws.cell(row=row_idx, column=4).value = estados['unidades_eventuales']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'ADELANTO DE TURNO'
-        ws.cell(row=row_idx, column=4).value = estados['adelanto_turno']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'RETEN'
-        ws.cell(row=row_idx, column=4).value = estados['reten']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'UNIDADES ADICIONALES'
-        ws.cell(row=row_idx, column=4).value = estados['unidades_adicionales']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'CUSTODIO'
-        ws.cell(row=row_idx, column=4).value = estados['custodio']
-        row_idx += 1
-        ws.cell(row=row_idx, column=2).value = 'TOTAL='
-        ws.cell(row=row_idx, column=4).value = estados['total']
+        def write_summary_row(row_num, label, value, is_total=False):
+            ws.merge_cells(start_row=row_num, start_column=2, end_row=row_num, end_column=4)
+            label_cell = ws.cell(row=row_num, column=2)
+            value_cell = ws.cell(row=row_num, column=5)
+            label_cell.value = label
+            value_cell.value = value
+            label_cell.alignment = Alignment(horizontal='center', vertical='center')
+            value_cell.alignment = Alignment(horizontal='center', vertical='center')
+            if is_total:
+                value_cell.fill = total_fill
+            for col in range(2, 6):
+                c = ws.cell(row=row_num, column=col)
+                c.border = border
+            return row_num + 1
 
-    ws.column_dimensions['A'].width = 18
-    ws.column_dimensions['B'].width = 36
-    ws.column_dimensions['C'].width = 38
-    ws.column_dimensions['D'].width = 16
-    ws.column_dimensions['E'].width = 40
+        if manual:
+            row_idx += 1
+            row_idx = write_summary_row(row_idx, 'FALTOS', manual['faltas'])
+            row_idx = write_summary_row(row_idx, 'HUECAS', manual['huecas'])
+            row_idx = write_summary_row(row_idx, 'APOYOS', manual['apoyos'])
+            row_idx = write_summary_row(row_idx, 'CAPACITACION', manual['capacitacion'])
+            row_idx = write_summary_row(row_idx, 'APERTURA DE PUESTO', manual['apertura_puesto'])
+            row_idx = write_summary_row(row_idx, 'SERVICIOS TEMPORALES', manual['servicios_temporales'])
+            row_idx = write_summary_row(row_idx, 'SERVICIOS ADICIONALES', manual['servicios_adicionales'])
+            row_idx = write_summary_row(row_idx, 'APRENDIENDO CONSIGNAS', manual['aprendiendo_consignas'])
+            row_idx = write_summary_row(row_idx, 'TOTAL=', manual['total'], is_total=True)
+
+        if estados:
+            row_idx += 1
+            ws.merge_cells(start_row=row_idx, start_column=2, end_row=row_idx, end_column=5)
+            header_cell = ws.cell(row=row_idx, column=2)
+            header_cell.value = 'ESTADO DE AGENTES'
+            header_cell.font = Font(bold=True)
+            header_cell.alignment = Alignment(horizontal='center', vertical='center')
+            header_cell.fill = section_fill
+            for col in range(2, 6):
+                c = ws.cell(row=row_idx, column=col)
+                c.border = border
+            row_idx += 1
+            row_idx = write_summary_row(row_idx, 'DOBLA', estados['dobla'])
+            row_idx = write_summary_row(row_idx, 'FRANCO TRABAJADOS', estados['franco_trabajados'])
+            row_idx = write_summary_row(row_idx, 'UNIDADES EVENTUALES', estados['unidades_eventuales'])
+            row_idx = write_summary_row(row_idx, 'ADELANTO DE TURNO', estados['adelanto_turno'])
+            row_idx = write_summary_row(row_idx, 'RETEN', estados['reten'])
+            row_idx = write_summary_row(row_idx, 'UNIDADES ADICIONALES', estados['unidades_adicionales'])
+            row_idx = write_summary_row(row_idx, 'CUSTODIO', estados['custodio'])
+            row_idx = write_summary_row(row_idx, 'TOTAL=', estados['total'], is_total=True)
+
+        ws.column_dimensions['A'].width = 18
+        ws.column_dimensions['B'].width = 36
+        ws.column_dimensions['C'].width = 38
+        ws.column_dimensions['D'].width = 16
+        ws.column_dimensions['E'].width = 40
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'DIURNO'
+    render_sheet(ws, 'Diurno')
+
+    ws_nocturno = wb.create_sheet('NOCTURNO')
+    render_sheet(ws_nocturno, 'Nocturno')
+
+    meses = [
+        'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+        'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
+    ]
+    fecha_archivo = timezone.localdate()
+    nombre_archivo = f"CONSOLIDADO - {meses[fecha_archivo.month - 1]} {fecha_archivo.year}.xlsx"
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename="consolidado.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
     wb.save(response)
     return response
 
