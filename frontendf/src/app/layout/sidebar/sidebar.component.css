@@ -20,10 +20,10 @@ mat-icon {
 :host-context(body.theme-dark) .sidebar .mdc-list-item__primary-text,
 :host-context(body.theme-dark) .sidebar mat-icon {
   color: #ffffff !important;
-  --mdc-list-list-item-label-text-color: #ffffff;
-  --mdc-list-list-item-leading-icon-color: #ffffff;
-  --mdc-list-list-item-hover-label-text-color: #ffffff;
-  --mdc-list-list-item-hover-leading-icon-color: #ffffff;
+  --mat-list-list-item-label-text-color: #ffffff;
+  --mat-list-list-item-leading-icon-color: #ffffff;
+  --mat-list-list-item-hover-label-text-color: #ffffff;
+  --mat-list-list-item-hover-leading-icon-color: #ffffff;
 }
 
 :host-context(body.theme-dark) .active,

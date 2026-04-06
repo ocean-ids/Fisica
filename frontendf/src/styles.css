@@ -209,16 +209,16 @@ body.theme-dark .mat-mdc-dialog-content h6 {
 }
 
 body.theme-dark .mat-mdc-dialog-surface .mat-mdc-form-field {
-  --mdc-filled-text-field-container-color: #1f2937;
-  --mdc-outlined-text-field-container-color: #1f2937;
-  --mdc-outlined-text-field-label-text-color: #ffffff;
-  --mdc-outlined-text-field-hover-label-text-color: #ffffff;
-  --mdc-outlined-text-field-focus-label-text-color: #ffffff;
-  --mdc-outlined-text-field-input-text-color: #ffffff;
-  --mdc-outlined-text-field-caret-color: #93c5fd;
-  --mdc-outlined-text-field-outline-color: #6b7280;
-  --mdc-outlined-text-field-hover-outline-color: #9ca3af;
-  --mdc-outlined-text-field-focus-outline-color: #93c5fd;
+  --mat-form-field-filled-container-color: #1f2937;
+  --mat-form-field-outlined-container-color: #1f2937;
+  --mat-form-field-outlined-label-text-color: #ffffff;
+  --mat-form-field-outlined-hover-label-text-color: #ffffff;
+  --mat-form-field-outlined-focus-label-text-color: #ffffff;
+  --mat-form-field-outlined-input-text-color: #ffffff;
+  --mat-form-field-outlined-caret-color: #93c5fd;
+  --mat-form-field-outlined-outline-color: #6b7280;
+  --mat-form-field-outlined-hover-outline-color: #9ca3af;
+  --mat-form-field-outlined-focus-outline-color: #93c5fd;
 }
 
 body.theme-dark .mat-mdc-dialog-surface .mat-mdc-input-element,
