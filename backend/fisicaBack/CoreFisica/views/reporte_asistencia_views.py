@@ -313,6 +313,13 @@ def _normalize_zona_label(zona_titulo):
     return str(zona_titulo or '').strip()
 
 
+def _format_zona_label(zona_titulo):
+    label = _normalize_zona_label(zona_titulo)
+    if label.lower().startswith('zona '):
+        return label
+    return f"Zona {label}" if label else 'Zona'
+
+
 def _build_resumen_asistencia(data):
     evaluables = [item for item in data if item.get('asignacion_id')]
     faltos = sum(1 for item in evaluables if _is_falto(item))
@@ -813,7 +820,7 @@ def exportar_reporte_asistencia_excel(request):
             ws.merge_cells(start_row=current_row, start_column=6, end_row=current_row, end_column=8)
 
             zcell = ws.cell(row=current_row, column=1)
-            zcell.value = f"Zona {zona_label}" if zona_label else 'Zona'
+            zcell.value = _format_zona_label(zona_label)
             zcell.font = Font(bold=True)
             zcell.alignment = Alignment(horizontal='left', vertical='center')
 
@@ -973,7 +980,7 @@ def exportar_reporte_asistencia_pdf(request):
         y = ensure_space(y, 0.4 * inch)
         p.setFont('Helvetica', 7)
         for zona_label, zona_asistencias, zona_faltos in zona_resumen:
-            label = f"Zona {zona_label}" if zona_label else 'Zona'
+            label = _format_zona_label(zona_label)
             p.setFont('Helvetica-Bold', 7)
             p.drawString(x_margin, y, f"{label}:")
             p.setFont('Helvetica', 7)
