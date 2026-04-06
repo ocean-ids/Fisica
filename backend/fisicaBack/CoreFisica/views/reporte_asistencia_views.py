@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -436,10 +437,26 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
     if fecha_obj:
         reporte_qs = reporte_qs.filter(fecha_reporte=fecha_obj)
 
-    overrides = {
-        r.asignacion_id: r
-        for r in reporte_qs
-    }
+    overrides = {}
+    if fecha_obj:
+        hist_qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo')
+        hist_qs = hist_qs.filter(fecha_reporte=fecha_obj).order_by('asignacion_id', '-creado_en')
+        for h in hist_qs:
+            if h.asignacion_id in overrides:
+                continue
+            overrides[h.asignacion_id] = SimpleNamespace(
+                codigo=h.codigo,
+                estado=h.estado,
+                descripcion=h.descripcion,
+                reemplazo=h.reemplazo,
+                modificado_por=h.usuario,
+                modificado_en=h.creado_en,
+                row_color=h.row_color
+            )
+
+    for r in reporte_qs:
+        if r.asignacion_id not in overrides:
+            overrides[r.asignacion_id] = r
 
     asig_qs = Asignacion.objects.select_related(
         'cliente', 'instalacion', 'instalacion__canton', 'instalacion__canton__provincia',
