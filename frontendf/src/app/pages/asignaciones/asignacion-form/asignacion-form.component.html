@@ -5,10 +5,19 @@
     <div class="col-md-6 mb-3">
       <mat-form-field class="w-100">
         <mat-label>Cliente</mat-label>
-        <mat-select [(ngModel)]="clienteSeleccionado" (selectionChange)="onClientChange()" [ngModelOptions]="{standalone:true}">
-          <mat-option [value]="null">Seleccione</mat-option>
-          <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
-        </mat-select>
+        <input
+          type="text"
+          matInput
+          [(ngModel)]="clienteFiltro"
+          (ngModelChange)="filtrarClientes()"
+          [matAutocomplete]="clienteAuto"
+          [ngModelOptions]="{standalone:true}"
+        />
+        <mat-autocomplete #clienteAuto="matAutocomplete" (optionSelected)="onClienteSeleccionado($event.option.value)">
+          <mat-option *ngFor="let c of clientesFiltrados" [value]="c">
+            {{ c.nombre_comercial }}
+          </mat-option>
+        </mat-autocomplete>
       </mat-form-field>
     </div>
 
@@ -35,14 +44,19 @@
     <div class="col-md-6 mb-3">
       <mat-form-field class="w-100">
         <mat-label>Persona</mat-label>
-        <mat-select [(ngModel)]="asignacion.persona" [ngModelOptions]="{standalone:true}">
-          <mat-option [value]="0">Seleccione</mat-option>
-          <ng-container *ngFor="let per of personas">
-            <mat-option *ngIf="per.is_active !== false" [value]="per.id">
-              {{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})
-            </mat-option>
-          </ng-container>
-        </mat-select>
+        <input
+          type="text"
+          matInput
+          [(ngModel)]="personaFiltro"
+          (ngModelChange)="filtrarPersonas()"
+          [matAutocomplete]="personaAuto"
+          [ngModelOptions]="{standalone:true}"
+        />
+        <mat-autocomplete #personaAuto="matAutocomplete" (optionSelected)="onPersonaSeleccionada($event.option.value)">
+          <mat-option *ngFor="let per of personasFiltradas" [value]="per">
+            {{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})
+          </mat-option>
+        </mat-autocomplete>
       </mat-form-field>
     </div>
 

@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { Asignacion, PatronAsignacion } from '../../../models/asignacion.model';
 import { Cliente, Persona, Instalacion, Puesto, Horario } from '../../../models';
 import { InstalacionService } from '../../../services/instalacion.service';
@@ -40,7 +41,8 @@ export interface AsignacionFormResult {
     MatFormFieldModule,
     MatSelectModule,
     MatButtonModule,
-    MatInputModule
+    MatInputModule,
+    MatAutocompleteModule
   ],
   templateUrl: './asignacion-form.component.html',
   styleUrl: './asignacion-form.component.css'
@@ -51,7 +53,9 @@ export class AsignacionFormComponent implements OnInit {
   textoBoton: string;
 
   clientes: Cliente[] = [];
+  clientesFiltrados: Cliente[] = [];
   personas: Persona[] = [];
+  personasFiltradas: Persona[] = [];
   horarios: Horario[] = [];
   patrones: PatronAsignacion[] = [];
 
@@ -59,6 +63,10 @@ export class AsignacionFormComponent implements OnInit {
   puestos: Puesto[] = [];
 
   clienteSeleccionado: number | null = null;
+  clienteSeleccionadoNombre = '';
+  clienteFiltro = '';
+  personaSeleccionadaNombre = '';
+  personaFiltro = '';
   instalacionSeleccionada: number | null = null;
 
   constructor(
@@ -76,6 +84,23 @@ export class AsignacionFormComponent implements OnInit {
     this.patrones = data.patrones || [];
     this.clienteSeleccionado = data.clienteSeleccionado ?? null;
     this.instalacionSeleccionada = data.instalacionSeleccionada ?? null;
+    this.clientesFiltrados = [...this.clientes];
+    this.personasFiltradas = [...this.personas];
+    if (this.clienteSeleccionado) {
+      const selected = this.clientes.find(c => c.id === this.clienteSeleccionado);
+      if (selected) {
+        this.clienteSeleccionadoNombre = selected.nombre_comercial || '';
+        this.clienteFiltro = this.clienteSeleccionadoNombre;
+      }
+    }
+
+    if (this.asignacion.persona) {
+      const personaSelected = this.personas.find(p => p.id === this.asignacion.persona);
+      if (personaSelected) {
+        this.personaSeleccionadaNombre = this.formatPersonaLabel(personaSelected);
+        this.personaFiltro = this.personaSeleccionadaNombre;
+      }
+    }
   }
 
   ngOnInit(): void {
@@ -101,6 +126,66 @@ export class AsignacionFormComponent implements OnInit {
     this.instalaciones = [];
     this.puestos = [];
     this.cargarInstalaciones(this.clienteSeleccionado);
+  }
+
+  filtrarClientes(): void {
+    const term = this.clienteFiltro.trim().toLowerCase();
+    if (!term) {
+      this.clientesFiltrados = [...this.clientes];
+      this.clienteSeleccionado = null;
+      this.clienteSeleccionadoNombre = '';
+      this.onClientChange();
+      return;
+    }
+
+    if (this.clienteSeleccionadoNombre.toLowerCase() !== term) {
+      this.clienteSeleccionado = null;
+      this.onClientChange();
+    }
+
+    this.clientesFiltrados = this.clientes.filter(cliente =>
+      (cliente.nombre_comercial || '').toLowerCase().includes(term)
+    );
+  }
+
+  onClienteSeleccionado(cliente: Cliente): void {
+    this.clienteSeleccionado = cliente.id ?? null;
+    this.clienteSeleccionadoNombre = cliente.nombre_comercial || '';
+    this.clienteFiltro = this.clienteSeleccionadoNombre;
+    this.onClientChange();
+  }
+
+  filtrarPersonas(): void {
+    const term = this.personaFiltro.trim().toLowerCase();
+    if (!term) {
+      this.personasFiltradas = [...this.personas];
+      this.asignacion.persona = 0;
+      this.personaSeleccionadaNombre = '';
+      return;
+    }
+
+    if (this.personaSeleccionadaNombre.toLowerCase() !== term) {
+      this.asignacion.persona = 0;
+    }
+
+    this.personasFiltradas = this.personas.filter(persona => {
+      if (persona.is_active === false) return false;
+      const label = this.formatPersonaLabel(persona).toLowerCase();
+      return label.includes(term);
+    });
+  }
+
+  onPersonaSeleccionada(persona: Persona): void {
+    this.asignacion.persona = persona.id ?? 0;
+    this.personaSeleccionadaNombre = this.formatPersonaLabel(persona);
+    this.personaFiltro = this.personaSeleccionadaNombre;
+  }
+
+  private formatPersonaLabel(persona: Persona): string {
+    const apellidos = persona.apellidos || '';
+    const nombres = persona.nombres || '';
+    const tipo = persona.tipo ? ` (${persona.tipo})` : '';
+    return `${apellidos} ${nombres}`.trim() + tipo;
   }
 
   onInstalacionChange(): void {
