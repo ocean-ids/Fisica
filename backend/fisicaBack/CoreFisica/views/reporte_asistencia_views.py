@@ -720,6 +720,7 @@ def exportar_reporte_asistencia_excel(request):
         header_ctx = _build_header_context(request, fecha, turno_val)
         asistencias, faltos = _build_resumen_asistencia(data)
         grouped = _group_reporte_por_zona_y_provincia(data)
+        zona_resumen = []
 
         _draw_excel_header(ws, header_ctx, border)
 
@@ -787,6 +788,7 @@ def exportar_reporte_asistencia_excel(request):
                     current_row += 1
 
             zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
+            zona_resumen.append((zona_group['zona'], zona_asistencias, zona_faltos))
             _write_excel_resumen(ws, current_row, zona_asistencias, zona_faltos, border)
             current_row += 2
 
@@ -803,7 +805,29 @@ def exportar_reporte_asistencia_excel(request):
         for col_idx, width in column_widths.items():
             ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
-        _write_excel_resumen(ws, current_row, asistencias, faltos, border)
+        # Resumen global removido; se deja solo el resumen por zona.
+        current_row += 1
+        for zona_label, zona_asistencias, zona_faltos in zona_resumen:
+            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=2)
+            ws.merge_cells(start_row=current_row, start_column=3, end_row=current_row, end_column=5)
+            ws.merge_cells(start_row=current_row, start_column=6, end_row=current_row, end_column=8)
+
+            zcell = ws.cell(row=current_row, column=1)
+            zcell.value = f"Zona {zona_label}" if zona_label else 'Zona'
+            zcell.font = Font(bold=True)
+            zcell.alignment = Alignment(horizontal='left', vertical='center')
+
+            acell = ws.cell(row=current_row, column=3)
+            acell.value = f"Asistencias: {zona_asistencias}"
+            acell.alignment = Alignment(horizontal='center', vertical='center')
+
+            fcell = ws.cell(row=current_row, column=6)
+            fcell.value = f"Faltas: {zona_faltos}"
+            fcell.alignment = Alignment(horizontal='center', vertical='center')
+
+            for col_idx in range(1, 9):
+                ws.cell(row=current_row, column=col_idx).border = border
+            current_row += 1
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -831,6 +855,7 @@ def exportar_reporte_asistencia_pdf(request):
     header_ctx = _build_header_context(request, fecha, turno)
     asistencias, faltos = _build_resumen_asistencia(data)
     grouped = _group_reporte_por_zona_y_provincia(data)
+    zona_resumen = []
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.pdf"'
@@ -941,9 +966,21 @@ def exportar_reporte_asistencia_pdf(request):
                 y -= 0.2 * inch
 
         zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
+        zona_resumen.append((zona_group['zona'], zona_asistencias, zona_faltos))
         y = draw_resumen(y, zona_asistencias, zona_faltos)
 
-    y = draw_resumen(y, asistencias, faltos)
+    if zona_resumen:
+        y = ensure_space(y, 0.4 * inch)
+        p.setFont('Helvetica', 7)
+        for zona_label, zona_asistencias, zona_faltos in zona_resumen:
+            label = f"Zona {zona_label}" if zona_label else 'Zona'
+            p.setFont('Helvetica-Bold', 7)
+            p.drawString(x_margin, y, f"{label}:")
+            p.setFont('Helvetica', 7)
+            p.drawString(x_margin + 1.0 * inch, y, f"Asistencias: {zona_asistencias}")
+            p.drawString(x_margin + 3.2 * inch, y, f"Faltas: {zona_faltos}")
+            y -= 0.18 * inch
+        y -= 0.1 * inch
 
     p.showPage()
     p.save()
