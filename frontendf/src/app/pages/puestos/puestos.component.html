@@ -8,11 +8,18 @@
     <div class="col-md-6">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Seleccionar Cliente</mat-label>
-        <mat-select [(ngModel)]="clienteSeleccionado" (selectionChange)="cargarPuestos()">
-          <mat-option *ngFor="let cliente of clientes" [value]="cliente.id">
+        <input
+          type="text"
+          matInput
+          [(ngModel)]="clienteFiltro"
+          (ngModelChange)="filtrarClientes()"
+          [matAutocomplete]="clienteAuto"
+        />
+        <mat-autocomplete #clienteAuto="matAutocomplete" (optionSelected)="onClienteSeleccionado($event.option.value)">
+          <mat-option *ngFor="let cliente of clientesFiltrados" [value]="cliente">
             {{ cliente.nombre_comercial }}
           </mat-option>
-        </mat-select>
+        </mat-autocomplete>
       </mat-form-field>
     </div>
     <div class="col-md-6 text-end align-self-center">

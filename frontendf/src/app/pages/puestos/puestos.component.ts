@@ -4,8 +4,9 @@ import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
-import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatInputModule } from '@angular/material/input';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { PuestoService } from '../../services/puesto.service';
@@ -27,8 +28,9 @@ import Swal from 'sweetalert2';
     MatButtonModule,
      MatIconModule,
      MatCardModule,
-     MatSelectModule,
      MatFormFieldModule,
+    MatAutocompleteModule,
+    MatInputModule,
      MatDialogModule,
       FormsModule,
     MatTooltipModule,
@@ -40,7 +42,10 @@ import Swal from 'sweetalert2';
 export class PuestosComponent implements OnInit {
   puestos: Puesto[] = [];
   clientes: Cliente[] = [];
+  clientesFiltrados: Cliente[] = [];
   clienteSeleccionado: number | null = null;
+  clienteSeleccionadoNombre = '';
+  clienteFiltro = '';
 
   constructor(
     private puestoService: PuestoService,
@@ -54,9 +59,39 @@ export class PuestosComponent implements OnInit {
 
   cargarClientes(): void {
     this.clienteService.getClientes().subscribe({
-      next: (data) => this.clientes = data,
+      next: (data) => {
+        this.clientes = data;
+        this.clientesFiltrados = [...data];
+      },
       error: (err) => console.error('Error al cargar clientes', err)
     });
+  }
+
+  filtrarClientes(): void {
+    const term = this.clienteFiltro.trim().toLowerCase();
+    if (!term) {
+      this.clientesFiltrados = [...this.clientes];
+      this.clienteSeleccionado = null;
+      this.clienteSeleccionadoNombre = '';
+      this.puestos = [];
+      return;
+    }
+
+    if (this.clienteSeleccionadoNombre.toLowerCase() !== term) {
+      this.clienteSeleccionado = null;
+      this.puestos = [];
+    }
+
+    this.clientesFiltrados = this.clientes.filter(cliente =>
+      (cliente.nombre_comercial || '').toLowerCase().includes(term)
+    );
+  }
+
+  onClienteSeleccionado(cliente: Cliente): void {
+    this.clienteSeleccionado = cliente.id ?? null;
+    this.clienteSeleccionadoNombre = cliente.nombre_comercial || '';
+    this.clienteFiltro = this.clienteSeleccionadoNombre;
+    this.cargarPuestos();
   }
 
   cargarPuestos(): void {
