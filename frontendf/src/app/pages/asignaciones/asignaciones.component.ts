@@ -27,6 +27,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form/asignacion-form.component';
 import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
+import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dialogs/reporte-asistencia-color-dialog.component';
 
 @Component({
   selector: 'app-asignaciones',
@@ -65,6 +66,29 @@ export class AsignacionesComponent implements OnInit {
   draggingAsignacionId: number | null = null;
   private lastDragPoint: { x: number; y: number } | null = null;
   private pendingPatronId: number | null = null;
+
+  readonly colorPalette: {name: string, value: string}[] = [
+    { name: 'Amarillo', value: '#fff8b3' },
+    { name: 'Rojo', value: '#ffb3b3' },
+    { name: 'Verde', value: '#b3ffb3' },
+    { name: 'Azul', value: '#b3d9ff' },
+    { name: 'Naranja', value: '#ffd9b3' },
+    { name: 'Verde Lima', value: '#2ff968' },
+    { name: 'Gris', value: '#d9d9d9' },
+    { name: 'Celeste', value: '#b3e6ff' },
+    { name: 'Rosa', value: '#ffb3e6' },
+    { name: 'Beige', value: '#f5f5dc' },
+    { name: 'Lima', value: '#d9ffb3' },
+    { name: 'Turquesa', value: '#b3fff0' },
+    { name: 'Lavanda', value: '#e6b3ff' },
+    { name: 'Mostaza', value: '#ffdb58' },
+    { name: 'Coral', value: '#ff7f50' },
+    { name: 'Cian', value: '#00ffff' },
+    { name: 'Crema', value: '#fffdd0' },
+    { name: 'Caqui', value: '#f0e68c' },
+    { name: 'Salmón', value: '#fa8072' },
+    { name: 'Blanco', value: '#ffffff' },
+  ];
 
   private monthStartToday(): string {
     const t = new Date();
@@ -351,6 +375,28 @@ export class AsignacionesComponent implements OnInit {
 
   headerRowspan(): number {
     return this.mostrarPuesto() ? 2 : 1;
+  }
+
+  abrirColorCedula(asig: Asignacion): void {
+    if (!asig?.id) return;
+    const dialogRef = this.dialog.open(ReporteAsistenciaColorDialogComponent, {
+      width: '420px',
+      maxWidth: '95vw',
+      data: {
+        selectedColor: asig.cedula_color || this.colorPalette[0].value,
+        palette: this.colorPalette
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((selectedColor?: string) => {
+      if (!selectedColor || !asig.id) return;
+      this.asignacionService.actualizarAsignacion(asig.id, { cedula_color: selectedColor }).subscribe({
+        next: (res) => {
+          asig.cedula_color = res.cedula_color || selectedColor;
+        },
+        error: (err) => console.error('Error al actualizar color de cédula:', err)
+      });
+    });
   }
 
   totalColumns(): number {

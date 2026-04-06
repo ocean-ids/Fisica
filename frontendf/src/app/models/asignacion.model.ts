@@ -24,7 +24,7 @@ export interface Asignacion{
     agregar_sacafranco?: boolean;
     sacafranco_grupo?: number | null;
     orden?: number;
-    
+    cedula_color?: string;
 }
 
 export interface SacafrancoFila {

@@ -109,7 +109,12 @@
                       </div>
                     </mat-menu>
                   </td>
-                  <td *ngIf="!columnaOculta('cedula')">{{ row.asig.persona_detalle?.cedula }}</td>
+                  <td *ngIf="!columnaOculta('cedula')"
+                      [ngStyle]="{ 'background-color': row.asig.cedula_color || 'transparent' }"
+                      (dblclick)="abrirColorCedula(row.asig)"
+                      style="cursor: pointer;">
+                    {{ row.asig.persona_detalle?.cedula }}
+                  </td>
                   <td *ngIf="!columnaOculta('persona')" class="persona-cell" style="min-width: 200px;">
                       <div>
                         {{ row.asig.persona_detalle?.apellidos }}

@@ -379,6 +379,8 @@ class Asignacion(models.Model):
 
     orden = models.PositiveIntegerField(default=0)
 
+    cedula_color = models.CharField(max_length=7, blank=True, null=True)
+
     estado = models.CharField(
         max_length=10,
         choices=ESTADO_CHOICES,

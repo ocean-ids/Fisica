@@ -41,6 +41,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
     recurring = serializers.BooleanField(required=False)
     start_date = serializers.DateField(required=False, allow_null=True)
     end_date = serializers.DateField(required=False, allow_null=True)
+    cedula_color = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     def get_persona_detalle(self, obj):
         return {
