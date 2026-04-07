@@ -1,5 +1,6 @@
 
 from django.urls import path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,)
@@ -19,6 +20,9 @@ from .views.consolidado_views import obtener_consolidado, crear_consolidado, act
 from .views.personal_consola_views import obtener_personal_consola, crear_personal_consola, actualizar_personal_consola, eliminar_personal_consola
 
 urlpatterns = [
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     path('login/', login_view),
     path('logout/', logout_view),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
