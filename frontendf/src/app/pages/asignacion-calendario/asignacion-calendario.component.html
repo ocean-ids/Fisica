@@ -19,6 +19,7 @@
                   type="text"
                   maxlength="5"
                   class="form-control form-control-sm sacafranco-input"
+                  [class.sacafranco-input-fq]="isSacafrancoHighlight(row[dayKeyFromDate(d.date)])"
                   [(ngModel)]="row[dayKeyFromDate(d.date)]"
                   (change)="onSacafrancoCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
                   (dblclick)="openRangeModal(row, dayKeyFromDate(d.date), true)"

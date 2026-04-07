@@ -194,6 +194,13 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     this.displayRows = combined;
   }
 
+  isSacafrancoHighlight(value: any): boolean {
+    const raw = (value || '').toString().trim().toUpperCase();
+    if (!raw) return false;
+    const letter = raw.charAt(0);
+    return letter === 'F' || letter === 'Q';
+  }
+
   private buildSacafrancoRows(): any[] {
     if (!this.sacafrancoRows || !this.sacafrancoRows.length || !this.weekStart) return [];
     const parts = this.weekStart.split('-').map(Number);

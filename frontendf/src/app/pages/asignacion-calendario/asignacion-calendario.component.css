@@ -138,3 +138,10 @@ button.info-btn .form-control-sm {
   height: 35px !important;
 }
 
+.sacafranco-input.sacafranco-input-fq {
+  background-color: #d6ecff !important;
+  border-color: #9bd6ff !important;
+  color: #0b5ed7 !important;
+  font-weight: 600;
+}
+
