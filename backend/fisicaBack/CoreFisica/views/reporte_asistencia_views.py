@@ -427,7 +427,7 @@ def _resolver_reemplazo_desde_request(request):
 
 
 
-def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
+def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, exclude_sacafranco=False):
     fecha_obj = None
     if fecha:
         try:
@@ -496,31 +496,32 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None):
             Q(puesto__horarios__turno=turno) | Q(puesto__horarios__turno='Ambos')
         ).distinct()
 
-    # Excluir asignaciones marcadas como cobertura de sacafranco (F) en la fecha consultada.
-    fecha_ref = fecha_obj or hoy
-    day_field_map = {
-        0: 'mon',
-        1: 'tue',
-        2: 'wed',
-        3: 'thu',
-        4: 'fri',
-        5: 'sat',
-        6: 'sun',
-    }
-    day_field = day_field_map.get(fecha_ref.weekday())
-    if day_field:
-        # Semana estilo calendario mensual del sistema (dia 1 y saltos de 7)
-        month_base = fecha_ref.replace(day=1)
-        week_start_month = month_base + datetime.timedelta(days=((fecha_ref.day - 1) // 7) * 7)
-        # Semana estilo ISO (lunes)
-        week_start_iso = fecha_ref - datetime.timedelta(days=fecha_ref.weekday())
+    if exclude_sacafranco:
+        # Excluir asignaciones marcadas como cobertura de sacafranco (F) en la fecha consultada.
+        fecha_ref = fecha_obj or hoy
+        day_field_map = {
+            0: 'mon',
+            1: 'tue',
+            2: 'wed',
+            3: 'thu',
+            4: 'fri',
+            5: 'sat',
+            6: 'sun',
+        }
+        day_field = day_field_map.get(fecha_ref.weekday())
+        if day_field:
+            # Semana estilo calendario mensual del sistema (dia 1 y saltos de 7)
+            month_base = fecha_ref.replace(day=1)
+            week_start_month = month_base + datetime.timedelta(days=((fecha_ref.day - 1) // 7) * 7)
+            # Semana estilo ISO (lunes)
+            week_start_iso = fecha_ref - datetime.timedelta(days=fecha_ref.weekday())
 
-        sacafranco_asig_ids = AsignacionSemanal.objects.filter(
-            week_start__in=[week_start_month, week_start_iso],
-            **{f"{day_field}__istartswith": 'F'}
-        ).exclude(asignacion_id__isnull=True).values_list('asignacion_id', flat=True)
+            sacafranco_asig_ids = AsignacionSemanal.objects.filter(
+                week_start__in=[week_start_month, week_start_iso],
+                **{f"{day_field}__istartswith": 'F'}
+            ).exclude(asignacion_id__isnull=True).values_list('asignacion_id', flat=True)
 
-        asig_qs = asig_qs.exclude(id__in=sacafranco_asig_ids)
+            asig_qs = asig_qs.exclude(id__in=sacafranco_asig_ids)
 
     data = []
     personas_con_asignacion = set()
@@ -588,7 +589,13 @@ def obtener_reporte_asistencia(request):
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
     turno = request.GET.get('turno')
-    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno)
+    exclude_sacafranco = str(request.GET.get('exclude_sacafranco', '')).strip() == '1'
+    data = _build_reporte_asistencia_data(
+        fecha=fecha,
+        cliente_id=cliente_id,
+        turno=turno,
+        exclude_sacafranco=exclude_sacafranco
+    )
     return JsonResponse(data, safe=False, status=status.HTTP_200_OK)
 
 @api_view(['PUT', 'PATCH'])
