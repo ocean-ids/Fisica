@@ -17,8 +17,8 @@ import { ConsolidadoComponent } from './pages/consolidado/consolidado.component'
 
 
 export const routes: Routes = [
-  {path: '', component: LoginComponent},
-  {path: '', component: LoginComponent},
+  {path: '', redirectTo: 'login', pathMatch: 'full'},
+  {path: 'login', component: LoginComponent},
   {path: 'forgot-password', component: ForgotPasswordComponent},
   {path: 'reset-password/:uidb64/:token', component: ResetPasswordComponent},
   {

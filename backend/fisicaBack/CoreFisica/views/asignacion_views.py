@@ -240,6 +240,7 @@ def _rebuild_asignacion_semanal(asignacion):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def obtener_asignaciones(request, mes=None, anio=None):
     if not request.user.has_perm('CoreFisica.view_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
@@ -288,6 +289,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def asignar_servicio(request):
     if not request.user.has_perm('CoreFisica.add_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
@@ -789,6 +791,7 @@ def asignar_servicio(request):
 
 
 @api_view(['PUT'])
+@permission_classes([IsAuthenticated])
 def editar_servicio(request, id):
     if not request.user.has_perm('CoreFisica.change_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
@@ -815,6 +818,7 @@ def editar_servicio(request, id):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def guardar_orden_asignacion(request):
     if not request.user.has_perm('CoreFisica.change_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
@@ -832,6 +836,7 @@ def guardar_orden_asignacion(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def guardar_orden_sacafranco(request):
     if not request.user.has_perm('CoreFisica.change_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
@@ -848,6 +853,7 @@ def guardar_orden_sacafranco(request):
     return Response({'mensaje': 'Orden sacafranco actualizado correctamente'})
 
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def eliminar_asignacion(request, id):
     
     if not request.user.has_perm('CoreFisica.delete_asignacion'):
@@ -1004,6 +1010,7 @@ def eliminar_asignacion(request, id):
 
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def sacafranco_filas(request):
     if request.method == 'GET':
         if not request.user.has_perm('CoreFisica.view_asignacion'):
@@ -1036,6 +1043,7 @@ def sacafranco_filas(request):
 
 
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def eliminar_sacafranco_fila(request, id):
     if not request.user.has_perm('CoreFisica.delete_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)

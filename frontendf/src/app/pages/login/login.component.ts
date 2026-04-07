@@ -1,5 +1,5 @@
 import { CommonModule, NgOptimizedImage } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { Router, RouterModule } from '@angular/router';
@@ -11,7 +11,7 @@ import Swal from 'sweetalert2';
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   username: string = '';
   password: string = '';
   isLoading: boolean = false;
@@ -20,6 +20,12 @@ export class LoginComponent {
     private authService: AuthService,
     private router: Router
   ) {}
+
+  ngOnInit(): void {
+    if (this.authService.isLoggedIn()) {
+      this.router.navigateByUrl('/dashboard', { replaceUrl: true });
+    }
+  }
 
   onSubmit(): void {
     if (!this.username || !this.password) {
@@ -42,7 +48,7 @@ export class LoginComponent {
           timer: 1200,
           showConfirmButton: false
         }).then(() => {
-          this.router.navigate(['/dashboard']);
+          this.router.navigateByUrl('/dashboard', { replaceUrl: true });
         });
       },
       error: (error) => {
