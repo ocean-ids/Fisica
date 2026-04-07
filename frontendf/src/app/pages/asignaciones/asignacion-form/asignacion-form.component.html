@@ -13,7 +13,7 @@
           [matAutocomplete]="clienteAuto"
           [ngModelOptions]="{standalone:true}"
         />
-        <mat-autocomplete #clienteAuto="matAutocomplete" (optionSelected)="onClienteSeleccionado($event.option.value)">
+        <mat-autocomplete #clienteAuto="matAutocomplete" (optionSelected)="onClienteSeleccionado($event.option.value)" [displayWith]="displayCliente">
           <mat-option *ngFor="let c of clientesFiltrados" [value]="c">
             {{ c.nombre_comercial }}
           </mat-option>
@@ -52,7 +52,7 @@
           [matAutocomplete]="personaAuto"
           [ngModelOptions]="{standalone:true}"
         />
-        <mat-autocomplete #personaAuto="matAutocomplete" (optionSelected)="onPersonaSeleccionada($event.option.value)">
+        <mat-autocomplete #personaAuto="matAutocomplete" (optionSelected)="onPersonaSeleccionada($event.option.value)" [displayWith]="displayPersona">
           <mat-option *ngFor="let per of personasFiltradas" [value]="per">
             {{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})
           </mat-option>

@@ -64,9 +64,9 @@ export class AsignacionFormComponent implements OnInit {
 
   clienteSeleccionado: number | null = null;
   clienteSeleccionadoNombre = '';
-  clienteFiltro = '';
+  clienteFiltro: any = '';
   personaSeleccionadaNombre = '';
-  personaFiltro = '';
+  personaFiltro: any = '';
   instalacionSeleccionada: number | null = null;
 
   constructor(
@@ -129,7 +129,7 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   filtrarClientes(): void {
-    const term = this.clienteFiltro.trim().toLowerCase();
+    const term = this.normalizeFiltro(this.clienteFiltro).toLowerCase();
     if (!term) {
       this.clientesFiltrados = [...this.clientes];
       this.clienteSeleccionado = null;
@@ -156,7 +156,7 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   filtrarPersonas(): void {
-    const term = this.personaFiltro.trim().toLowerCase();
+    const term = this.normalizeFiltro(this.personaFiltro).toLowerCase();
     if (!term) {
       this.personasFiltradas = [...this.personas];
       this.asignacion.persona = 0;
@@ -181,11 +181,29 @@ export class AsignacionFormComponent implements OnInit {
     this.personaFiltro = this.personaSeleccionadaNombre;
   }
 
-  private formatPersonaLabel(persona: Persona): string {
+  formatPersonaLabel(persona: Persona): string {
     const apellidos = persona.apellidos || '';
     const nombres = persona.nombres || '';
     const tipo = persona.tipo ? ` (${persona.tipo})` : '';
     return `${apellidos} ${nombres}`.trim() + tipo;
+  }
+
+  displayCliente(cliente: Cliente | null): string {
+    return cliente?.nombre_comercial || '';
+  }
+
+  displayPersona(persona: Persona | null): string {
+    return persona ? this.formatPersonaLabel(persona) : '';
+  }
+
+  private normalizeFiltro(value: any): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value.trim();
+    if (value && typeof value === 'object') {
+      if ('nombre_comercial' in value) return String(value.nombre_comercial || '').trim();
+      if ('apellidos' in value || 'nombres' in value) return this.formatPersonaLabel(value).trim();
+    }
+    return String(value).trim();
   }
 
   onInstalacionChange(): void {
