@@ -162,6 +162,9 @@ def _build_resumen_manual(fecha_obj, turno_val, reporte_rows):
         turno=turno_val,
         defaults={'faltas': faltas_auto}
     )
+    if not created and resumen.faltas != faltas_auto:
+        resumen.faltas = faltas_auto
+        resumen.save(update_fields=['faltas'])
     data = {
         'faltas': resumen.faltas,
         'huecas': resumen.huecas,
