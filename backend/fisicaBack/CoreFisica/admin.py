@@ -1,6 +1,10 @@
 from django.contrib import admin
 from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, PersonalConsola, Consolidado, UserProfile
 
+admin.site.site_header = 'Seguridad Física'
+admin.site.site_title = 'Seguridad Física'
+admin.site.index_title = 'Panel de Administración'
+
 
 @admin.register(Cliente)
 class ClienteAdmin(admin.ModelAdmin):
