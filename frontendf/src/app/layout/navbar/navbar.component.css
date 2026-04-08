@@ -27,6 +27,10 @@ mat-toolbar {
   font-size: 1.1rem;
 }
 
+.btn-toggle i {
+  font-size: 1.75rem;
+}
+
 .user-menu-btn {
   color: var(--text-primary);
 }

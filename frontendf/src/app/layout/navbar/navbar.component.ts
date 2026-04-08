@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, Output, EventEmitter } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,6 +17,7 @@ import { ProfileDialogComponent } from '../profile/profile-dialog.component';
 })
 export class NavbarComponent implements OnInit {
   @Input() username?: string;
+  @Output() toggleSidebar = new EventEmitter<void>();
   fullName: string = '';
   photoUrl: string | null = null;
   themeMode: 'light' | 'dark' = 'light';
@@ -66,6 +67,10 @@ export class NavbarComponent implements OnInit {
         this.router.navigate(['/login']);
       }
     });
+  }
+
+  onToggleSidebar(): void {
+    this.toggleSidebar.emit();
   }
 
   openProfile(): void {
