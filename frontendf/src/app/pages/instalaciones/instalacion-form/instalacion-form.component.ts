@@ -47,6 +47,9 @@ export class InstalacionFormComponent implements OnInit {
 
   ngOnInit(): void {
     const instalacion = this.data.instalacion || {};
+    const initialZonaId = instalacion.zona_id
+      ?? (Array.isArray(instalacion.zonas) ? instalacion.zonas[0]?.id : null)
+      ?? null;
     
     this.zonaOptions = this.zonaTitles.map(t => ({ id: t, titulo: t, label: t }));
     this.instalacionForm = this.fb.group({
@@ -56,12 +59,12 @@ export class InstalacionFormComponent implements OnInit {
       provincia_id: [instalacion.provincia_id || '', Validators.required],
       canton_id: [instalacion.canton_id || '', Validators.required],
       direccion: [instalacion.direccion || ''],
-      zona_id: [instalacion.zona_id || this.zonaOptions[0]?.id || null]
+      zona_id: [initialZonaId]
     });
 
     if (instalacion.zonas && Array.isArray(instalacion.zonas) && instalacion.zonas.length) {
       this.zonaOptions = this.withDefaultZonaTitles(this.buildZonaOptions(instalacion.zonas));
-      this.instalacionForm.get('zona_id')?.setValue(this.zonaOptions[0]?.id || null);
+      this.instalacionForm.get('zona_id')?.setValue(initialZonaId);
     }
 
     if (instalacion.id) {
@@ -73,14 +76,13 @@ export class InstalacionFormComponent implements OnInit {
             // instalaciones antiguas sin zonas: ofrecer Zona 1/2/3
             this.zonaOptions = this.zonaTitles.map(t => ({ id: t, titulo: t, label: t }));
           }
-          this.instalacionForm.get('zona_id')?.setValue(this.zonaOptions[0]?.id || null);
+          this.instalacionForm.get('zona_id')?.setValue(initialZonaId);
         },
         error: () => {}
       });
     } else {
       // En creación, ofrece Zona 1/2/3 como títulos; backend creará solo la elegida
       this.zonaOptions = this.zonaTitles.map(t => ({ id: t, titulo: t, label: t }));
-      this.instalacionForm.get('zona_id')?.setValue(this.zonaOptions[0]?.id || null);
     }
 
     this.loadProvincias(instalacion);

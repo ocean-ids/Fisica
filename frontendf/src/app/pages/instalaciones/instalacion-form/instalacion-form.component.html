@@ -46,6 +46,7 @@
     <mat-form-field class="w-100" *ngIf="zonaOptions.length">
       <mat-label>Zonas registradas</mat-label>
       <mat-select formControlName="zona_id">
+        <mat-option [value]="null">Ninguna</mat-option>
         <mat-option *ngFor="let z of zonaOptions" [value]="z.id">{{ z.label }}</mat-option>
       </mat-select>
       <mat-hint *ngIf="!data.instalacion?.id">Se creará solo la zona seleccionada</mat-hint>

@@ -93,8 +93,12 @@ def set_instalacion_zona(instalacion: Instalacion, zona_token):
 
     - Si zona_token es numérico y existe, conserva esa y borra otras.
     - Si es texto, crea/usa esa Zona para la instalación y borra otras.
+    - Si viene '__none__', elimina todas las zonas.
     - Si no viene nada, delega en ensure_default_zonas (Zona 1).
     """
+    if zona_token == '__none__':
+        instalacion.zonas.all().delete()
+        return
     if not zona_token:
         ensure_default_zonas(instalacion)
         return
@@ -208,7 +212,13 @@ def crear_instalacion(request):
     data.pop('provincia_id', None)
 
     # extraer zona antes de validar serializer para evitar campos no permitidos
-    zona_token = data.get('zona_id') or data.get('zona_titulo')
+    zona_token = None
+    if 'zona_id' in data and data.get('zona_id') in [None, '', 'null']:
+        zona_token = '__none__'
+    elif 'zona_titulo' in data and str(data.get('zona_titulo') or '').strip() == '':
+        zona_token = '__none__'
+    else:
+        zona_token = data.get('zona_id') or data.get('zona_titulo')
     data.pop('zona_id', None)
     data.pop('zona_titulo', None)
 
@@ -246,7 +256,13 @@ def actualizar_instalacion(request, id):
         data.pop('provincia_id', None)
 
         # extraer zona antes de validar serializer para evitar campos no permitidos
-        zona_token = data.get('zona_id') or data.get('zona_titulo')
+        zona_token = None
+        if 'zona_id' in data and data.get('zona_id') in [None, '', 'null']:
+            zona_token = '__none__'
+        elif 'zona_titulo' in data and str(data.get('zona_titulo') or '').strip() == '':
+            zona_token = '__none__'
+        else:
+            zona_token = data.get('zona_id') or data.get('zona_titulo')
         data.pop('zona_id', None)
         data.pop('zona_titulo', None)
 
