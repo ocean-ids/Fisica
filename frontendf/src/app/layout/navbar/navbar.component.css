@@ -35,3 +35,7 @@ mat-toolbar {
 :host-context(body.theme-dark) .user-menu-btn mat-icon {
   color: #ffffff !important;
 }
+
+.bordes {
+  text-shadow: 3px 3px 3px #86888c;
+}
