@@ -76,6 +76,10 @@ def crear_cliente(request):
             razon_social = data.get('razon_social')
             nombre_comercial = data.get('nombre_comercial')
             ruc = data.get('ruc')
+            if razon_social:
+                razon_social = str(razon_social).strip().upper()
+            if nombre_comercial:
+                nombre_comercial = str(nombre_comercial).strip().upper()
             size = data.get('size', 'MEDIANO')
             fecha_ingreso = parse_date(data.get('fecha_ingreso')) if data.get('fecha_ingreso') else None
             fecha_retiro = parse_date(data.get('fecha_retiro')) if data.get('fecha_retiro') else None
@@ -114,8 +118,12 @@ def actualizar_cliente(request, id):
                 status=404
             )
 
-        cliente.razon_social = data.get('razon_social', cliente.razon_social)
-        cliente.nombre_comercial = data.get('nombre_comercial', cliente.nombre_comercial)
+        if 'razon_social' in data:
+            razon_social = data.get('razon_social')
+            cliente.razon_social = str(razon_social).strip().upper() if razon_social else ''
+        if 'nombre_comercial' in data:
+            nombre_comercial = data.get('nombre_comercial')
+            cliente.nombre_comercial = str(nombre_comercial).strip().upper() if nombre_comercial else ''
         cliente.ruc = data.get('ruc', cliente.ruc)
         size = data.get('size', cliente.size)
 
