@@ -4,18 +4,33 @@
   <div class="range-form">
     <mat-form-field appearance="outline" class="field">
       <mat-label>Desde</mat-label>
-      <input matInput type="date" [(ngModel)]="start" />
+      <input matInput type="date" [(ngModel)]="start" (ngModelChange)="onInputChange()" />
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="field">
       <mat-label>Hasta</mat-label>
-      <input matInput type="date" [(ngModel)]="end" />
+      <input matInput type="date" [(ngModel)]="end" (ngModelChange)="onInputChange()" />
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="field">
       <mat-label>Secuencia</mat-label>
-      <input matInput type="text" [(ngModel)]="seq" placeholder="" />
+      <input matInput type="text" [(ngModel)]="seq" (ngModelChange)="onInputChange()" placeholder="" />
     </mat-form-field>
+
+    <div class="preview" *ngIf="previewRows.length">
+      <div class="preview-title">Vista previa</div>
+      <div class="preview-sub" *ngIf="rowTitle">{{ rowTitle }}</div>
+      <div class="preview-row" *ngFor="let p of previewRows">
+        <div class="preview-cell label">{{ p.label }}</div>
+        <div class="preview-cell date">{{ p.date }}</div>
+        <div class="preview-cell current">{{ p.currentValue || '-' }}</div>
+        <div class="preview-cell next">{{ p.newValue || '-' }}</div>
+      </div>
+      <div class="preview-legend">
+        <span class="legend">Actual</span>
+        <span class="legend">Nuevo</span>
+      </div>
+    </div>
 
     <div class="error" *ngIf="errorText">{{ errorText }}</div>
   </div>

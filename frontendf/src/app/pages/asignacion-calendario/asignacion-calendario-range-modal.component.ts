@@ -11,6 +11,8 @@ export interface AsignacionRangeModalData {
   end: string;
   seq: string;
   isSacafranco: boolean;
+  weekStart?: string;
+  row?: any;
 }
 
 export interface AsignacionRangeModalResult {
@@ -38,6 +40,8 @@ export class AsignacionCalendarioRangeModalComponent {
   end: string;
   seq: string;
   errorText: string = '';
+  previewRows: Array<{ label: string; date: string; dayKey: string; currentValue: string; newValue: string }> = [];
+  rowTitle: string = '';
 
   constructor(
     private dialogRef: MatDialogRef<AsignacionCalendarioRangeModalComponent, AsignacionRangeModalResult>,
@@ -46,6 +50,12 @@ export class AsignacionCalendarioRangeModalComponent {
     this.start = data.start || '';
     this.end = data.end || '';
     this.seq = data.seq || '';
+    this.rowTitle = this.buildRowTitle(data?.row);
+    this.refreshPreview();
+  }
+
+  onInputChange(): void {
+    this.refreshPreview();
   }
 
   cancel(): void {
@@ -95,5 +105,81 @@ export class AsignacionCalendarioRangeModalComponent {
     if (!raw) return false;
     if (isSacafranco) return true;
     return /[FDN]/.test(raw);
+  }
+
+  private refreshPreview(): void {
+    this.previewRows = [];
+    const startDate = this.parseDate(this.start);
+    const endDate = this.parseDate(this.end);
+    if (!startDate || !endDate) return;
+    if (startDate > endDate) return;
+
+    const tokens = this.parseSequence(this.seq, this.data.isSacafranco);
+    const row = this.data?.row || {};
+    let idx = 0;
+    const d = new Date(startDate);
+    while (d <= endDate) {
+      const dateStr = this.formatDateLocal(d);
+      const label = this.formatLabel(d);
+      const dayKey = this.dayKeyFromDate(dateStr);
+      const currentValue = (row && dayKey ? (row[dayKey] || '') : '').toString().toUpperCase();
+      const newValue = tokens.length ? tokens[idx % tokens.length] : '';
+      this.previewRows.push({
+        label,
+        date: dateStr,
+        dayKey,
+        currentValue,
+        newValue
+      });
+      idx += 1;
+      d.setDate(d.getDate() + 1);
+    }
+  }
+
+  private parseSequence(seq: string, isSacafranco: boolean): string[] {
+    const raw = (seq || '').trim().toUpperCase();
+    if (!raw) return [];
+    if (!isSacafranco) {
+      return raw.match(/[FDN]/g) || [];
+    }
+    const parts = raw.split(/[^A-Z0-9]+/).filter(Boolean);
+    return parts.length ? parts : [raw];
+  }
+
+  private parseDate(value: string): Date | null {
+    if (!value) return null;
+    const d = new Date(value + 'T00:00:00');
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  private formatDateLocal(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  private formatLabel(d: Date): string {
+    const shortOrder = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
+    const dow = d.getDay();
+    const dayNum = String(d.getDate()).padStart(2, '0');
+    return `${shortOrder[dow]}${dayNum}`;
+  }
+
+  private dayKeyFromDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length !== 3) return '';
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const map = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    return map[d.getDay()];
+  }
+
+  private buildRowTitle(row: any): string {
+    if (!row) return '';
+    const puestoNombre = row?.puesto_detalle?.nombre || row?.puesto_detalle?.tipo || '';
+    const personaNombre = row?.persona_nombre || row?.persona || '';
+    const parts = [puestoNombre, personaNombre].filter(Boolean);
+    return parts.join(' · ');
   }
 }

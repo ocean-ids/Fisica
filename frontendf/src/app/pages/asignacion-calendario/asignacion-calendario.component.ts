@@ -438,7 +438,9 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         start: startDefault,
         end: endDefault,
         seq: '',
-        isSacafranco
+        isSacafranco,
+        weekStart: this.weekStart,
+        row
       }
     });
 
