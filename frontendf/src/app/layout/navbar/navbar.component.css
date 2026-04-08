@@ -28,7 +28,7 @@ mat-toolbar {
 }
 
 .btn-toggle i {
-  font-size: 1.75rem;
+  font-size: 1.65rem;
 }
 
 .user-menu-btn {
@@ -48,6 +48,6 @@ mat-toolbar {
   color: #ffffff !important;
 }
 
-.bordes {
+.text-shadow {
   text-shadow: 3px 3px 3px #86888c;
 }
