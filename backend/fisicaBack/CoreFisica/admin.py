@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, PersonalConsola, Consolidado
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, PersonalConsola, Consolidado, UserProfile
 
 
 @admin.register(Cliente)
@@ -170,3 +170,29 @@ class ConsolidadoAdmin(admin.ModelAdmin):
 
 	def has_delete_permission(self, request, obj=None):
 		return request.user.has_perm('CoreFisica.delete_consolidado')
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+	list_display = ('user', 'user_is_active', 'updated_at')
+	search_fields = ('user__username', 'user__email')
+	list_filter = ('user__is_active',)
+
+	def user_is_active(self, obj):
+		return obj.user.is_active
+	user_is_active.boolean = True
+	user_is_active.short_description = 'Activo'
+
+	def has_module_permission(self, request):
+		return request.user.has_perm('CoreFisica.view_userprofile')
+
+	def has_view_permission(self, request, obj=None):
+		return request.user.has_perm('CoreFisica.view_userprofile')
+
+	def has_change_permission(self, request, obj=None):
+		return request.user.has_perm('CoreFisica.change_userprofile')
+
+	def has_add_permission(self, request):
+		return request.user.has_perm('CoreFisica.add_userprofile')
+
+	def has_delete_permission(self, request, obj=None):
+		return request.user.has_perm('CoreFisica.delete_userprofile')
