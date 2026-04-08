@@ -201,6 +201,13 @@ def crear_instalacion(request):
     if 'cliente_id' in data and 'cliente' not in data:
         data['cliente'] = data.pop('cliente_id')
 
+    if 'codigo' in data and data.get('codigo'):
+        data['codigo'] = str(data.get('codigo')).strip().upper()
+    if 'nombre' in data and data.get('nombre'):
+        data['nombre'] = str(data.get('nombre')).strip().upper()
+    if 'direccion' in data and data.get('direccion'):
+        data['direccion'] = str(data.get('direccion')).strip().upper()
+
     # Intentar resolver/crear provincia y cantón desde tokens (id o nombre)
     provincia_token = data.get('provincia_id') or data.get('provincia')
     canton_token = data.get('canton_id') or data.get('canton')
@@ -244,6 +251,13 @@ def actualizar_instalacion(request, id):
         # soportar `cliente_id` desde frontend
         if 'cliente_id' in data and 'cliente' not in data:
             data['cliente'] = data.pop('cliente_id')
+
+        if 'codigo' in data and data.get('codigo'):
+            data['codigo'] = str(data.get('codigo')).strip().upper()
+        if 'nombre' in data and data.get('nombre'):
+            data['nombre'] = str(data.get('nombre')).strip().upper()
+        if 'direccion' in data and data.get('direccion'):
+            data['direccion'] = str(data.get('direccion')).strip().upper()
 
         # Intentar resolver/crear provincia y cantón desde tokens (id o nombre)
         provincia_token = data.get('provincia_id') or data.get('provincia')
