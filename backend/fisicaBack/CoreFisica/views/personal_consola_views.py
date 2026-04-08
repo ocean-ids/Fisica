@@ -51,8 +51,8 @@ def crear_personal_consola(request):
         return JsonResponse({'error': 'JSON invalido'}, status=400)
 
     turno = data.get('turno')
-    nombres = (data.get('nombres') or '').strip()
-    apellidos = (data.get('apellidos') or '').strip()
+    nombres = (data.get('nombres') or '').strip().upper()
+    apellidos = (data.get('apellidos') or '').strip().upper()
     tipo = data.get('tipo')
     cedula = (data.get('cedula') or '').strip() or None
     is_active = _parse_bool(data.get('is_active'), True)
@@ -95,10 +95,10 @@ def actualizar_personal_consola(request, id):
             item.turno = turno
 
     if 'nombres' in data:
-        item.nombres = (data.get('nombres') or '').strip()
+        item.nombres = (data.get('nombres') or '').strip().upper()
 
     if 'apellidos' in data:
-        item.apellidos = (data.get('apellidos') or '').strip()
+        item.apellidos = (data.get('apellidos') or '').strip().upper()
 
     if 'tipo' in data:
         tipo = data.get('tipo')
