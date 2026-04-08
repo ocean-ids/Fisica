@@ -1,48 +1,50 @@
 <mat-toolbar>
-  <div class="d-flex align-items-center">
-    <span class="fw-bold bordes">SEGURIDAD FÍSICA</span>
-  </div>
+  <div class="w-100 d-flex align-items-center">
+    <div class="d-flex align-items-center">
+      <span class="fw-bold bordes">SEGURIDAD FÍSICA</span>
+    </div>
 
-  <div class="d-flex align-items-center ms-auto">
-    <button
-      type="button"
-      class="theme-toggle-btn d-flex align-items-center justify-content-center"
-      mat-icon-button
-      (click)="toggleTheme()"
-      [attr.aria-label]="isLightMode ? 'Activar modo nocturno' : 'Activar modo claro'">
-      <i [class]="isLightMode ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill'"></i>
-    </button>
-    
-    @if (username) {
-      <span class="username">{{ username }}</span>
-    }
-
-
-    <!-- Botón con menú -->
-    <button
-      class="user-menu-btn"
-      mat-icon-button
-      [matMenuTriggerFor]="userMenu"
-      aria-label="Menú de usuario">
-      <ng-container *ngIf="photoUrl; else defaultIcon">
-        <img class="user-avatar" [src]="photoUrl" alt="Foto de perfil" />
-      </ng-container>
-      <ng-template #defaultIcon>
-        <mat-icon>account_circle</mat-icon>
-      </ng-template>
-    </button>
-
-     <!-- Menú -->
-    <mat-menu #userMenu="matMenu">
-      <button mat-menu-item (click)="openProfile()">
-        <mat-icon>person</mat-icon>
-        <span>Editar perfil</span>
+    <div class="ms-auto d-flex align-items-center gap-3">
+      <button
+        type="button"
+        class="theme-toggle-btn d-flex align-items-center justify-content-center"
+        mat-icon-button
+        (click)="toggleTheme()"
+        [attr.aria-label]="isLightMode ? 'Activar modo nocturno' : 'Activar modo claro'">
+        <i [class]="isLightMode ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill'"></i>
       </button>
-      <button mat-menu-item (click)="logout()">
-        <mat-icon color="warn">logout</mat-icon>
-        <span>Cerrar sesión</span>
+      
+      @if (username) {
+        <span class="username">{{ username }}</span>
+      }
+
+
+      <!-- Botón con menú -->
+      <button
+        class="user-menu-btn d-inline-flex align-items-center justify-content-center p-0 overflow-hidden rounded-circle"
+        mat-icon-button
+        [matMenuTriggerFor]="userMenu"
+        aria-label="Menú de usuario">
+        <ng-container *ngIf="photoUrl; else defaultIcon">
+          <img class="user-avatar rounded-circle" [src]="photoUrl" alt="Foto de perfil" />
+        </ng-container>
+        <ng-template #defaultIcon>
+          <mat-icon>account_circle</mat-icon>
+        </ng-template>
       </button>
-    </mat-menu>
+
+      <!-- Menú -->
+      <mat-menu #userMenu="matMenu">
+        <button mat-menu-item (click)="openProfile()">
+          <mat-icon>person</mat-icon>
+          <span>Editar perfil</span>
+        </button>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon color="warn">logout</mat-icon>
+          <span>Cerrar sesión</span>
+        </button>
+      </mat-menu>
+    </div>
   </div>
 
 </mat-toolbar>

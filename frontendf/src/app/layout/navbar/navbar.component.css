@@ -34,9 +34,9 @@ mat-toolbar {
 .user-avatar {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--border-color);
+  display: block;
 }
 
 :host-context(body.theme-dark) .user-menu-btn,
