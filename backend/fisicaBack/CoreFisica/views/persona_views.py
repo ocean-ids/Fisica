@@ -28,10 +28,13 @@ def crear_persona(request):
     if not re.match(r'^\d{1,10}$', cedula):
         return JsonResponse({'error': 'Cédula inválida: sólo dígitos, máximo 10'}, status=400)
 
+    nombres = str(data.get('nombres') or '').strip().upper()
+    apellidos = str(data.get('apellidos') or '').strip().upper()
+
     try:
         persona = Persona.objects.create(
-            nombres=data.get('nombres'),
-            apellidos=data.get('apellidos'),
+            nombres=nombres,
+            apellidos=apellidos,
             cedula=cedula,
             tipo=data.get('tipo'),
         )
@@ -84,8 +87,12 @@ def actualizar_persona(request, id):
     except Persona.DoesNotExist:
         return JsonResponse({'error': 'Persona no encontrada'}, status=404)
 
-    persona.nombres = data.get('nombres', persona.nombres)
-    persona.apellidos = data.get('apellidos', persona.apellidos)
+    if 'nombres' in data:
+        nombres = data.get('nombres')
+        persona.nombres = str(nombres or '').strip().upper()
+    if 'apellidos' in data:
+        apellidos = data.get('apellidos')
+        persona.apellidos = str(apellidos or '').strip().upper()
 
     cedula_in = data.get('cedula')
     if cedula_in is not None:
