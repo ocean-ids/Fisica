@@ -141,6 +141,32 @@ export class AuthService {
     return user ? JSON.parse(user) : null;
   }
 
+  updateStoredUser(partial: any): void {
+    const current = this.getUserFromStorage() || {};
+    const merged = { ...current, ...partial };
+    localStorage.setItem('user', JSON.stringify(merged));
+  }
+
+  updateProfilePhoto(file: File | null, remove: boolean = false): Observable<any> {
+    const formData = new FormData();
+    if (file) {
+      formData.append('photo', file);
+    }
+    if (remove) {
+      formData.append('remove', '1');
+    }
+    return this.http.put(`${this.apiUrl}/user/profile/`, formData).pipe(
+      tap((profile: any) => {
+        this.updateStoredUser({
+          first_name: profile?.first_name,
+          last_name: profile?.last_name,
+          full_name: profile?.full_name,
+          photo_url: profile?.photo_url ?? null
+        });
+      })
+    );
+  }
+
   hasPermission(permission: string): boolean {
     const user = this.getUserFromStorage();
     if (!user) return false;

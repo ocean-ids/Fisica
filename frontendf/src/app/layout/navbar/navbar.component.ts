@@ -6,20 +6,25 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { ProfileDialogComponent } from '../profile/profile-dialog.component';
 
 @Component({
   selector: 'app-navbar',
-  imports: [MatToolbarModule, MatIconModule, MatButtonModule, CommonModule, MatMenuModule],
+  imports: [MatToolbarModule, MatIconModule, MatButtonModule, CommonModule, MatMenuModule, MatDialogModule],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.css'
 })
 export class NavbarComponent implements OnInit {
   @Input() username?: string;
+  fullName: string = '';
+  photoUrl: string | null = null;
   themeMode: 'light' | 'dark' = 'light';
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private dialog: MatDialog
   ){}
 
   ngOnInit(): void {
@@ -27,6 +32,8 @@ export class NavbarComponent implements OnInit {
     const user = this.authService.getUserFromStorage();
     if (user) {
       this.username = user.username;
+      this.fullName = user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ');
+      this.photoUrl = user.photo_url || null;
     }
 
     const storedTheme = localStorage.getItem('themeMode');
@@ -58,6 +65,23 @@ export class NavbarComponent implements OnInit {
         console.log('Error al cerrar sesión');
         this.router.navigate(['/login']);
       }
+    });
+  }
+
+  openProfile(): void {
+    const dialogRef = this.dialog.open(ProfileDialogComponent, {
+      width: '420px',
+      data: {
+        fullName: this.fullName || this.username || '',
+        photoUrl: this.photoUrl
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((result?: any) => {
+      if (!result?.updated) return;
+      const user = this.authService.getUserFromStorage();
+      this.fullName = user?.full_name || this.fullName;
+      this.photoUrl = user?.photo_url || null;
     });
   }
 

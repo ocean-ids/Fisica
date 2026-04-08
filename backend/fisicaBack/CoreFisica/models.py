@@ -601,6 +601,15 @@ class ConsolidadoResumen(models.Model):
     class Meta:
         unique_together = ('fecha', 'turno')
         indexes = [models.Index(fields=['fecha', 'turno'])]
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    photo = models.ImageField(upload_to='user_photos/', null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Perfil {self.user_id}"
     
 
 

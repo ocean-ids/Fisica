@@ -24,11 +24,20 @@
       mat-icon-button
       [matMenuTriggerFor]="userMenu"
       aria-label="Menú de usuario">
-      <mat-icon>account_circle</mat-icon>
+      <ng-container *ngIf="photoUrl; else defaultIcon">
+        <img class="user-avatar" [src]="photoUrl" alt="Foto de perfil" />
+      </ng-container>
+      <ng-template #defaultIcon>
+        <mat-icon>account_circle</mat-icon>
+      </ng-template>
     </button>
 
      <!-- Menú -->
     <mat-menu #userMenu="matMenu">
+      <button mat-menu-item (click)="openProfile()">
+        <mat-icon>person</mat-icon>
+        <span>Editar perfil</span>
+      </button>
       <button mat-menu-item (click)="logout()">
         <mat-icon color="warn">logout</mat-icon>
         <span>Cerrar sesión</span>

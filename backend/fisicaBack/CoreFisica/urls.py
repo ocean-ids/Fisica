@@ -4,7 +4,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,)
-from .views.auth_views import login_view, logout_view, user_view, solicitar_reset_password, reset_password
+from .views.auth_views import login_view, logout_view, user_view, user_profile_view, solicitar_reset_password, reset_password
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
 from .views.importar_clientes import importar_clientes
 from .views.ubicacion_views import obtener_provincias, obtener_cantones, obtener_zonas
@@ -28,6 +28,7 @@ urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('user/', user_view),
+    path('user/profile/', user_profile_view),
     path('solicitar-reset-password/', solicitar_reset_password),
     path('reset-password/<str:uidb64>/<str:token>/', reset_password),
     path('crear-cliente/', crear_cliente),

@@ -1,10 +1,11 @@
 from django.contrib.auth import authenticate
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.core.mail import send_mail
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -12,6 +13,35 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.models import User
 from django.conf import settings
 import json
+from ..models import UserProfile
+
+
+def _get_photo_url(request, profile: UserProfile | None):
+    if not profile or not profile.photo:
+        return None
+    try:
+        return request.build_absolute_uri(profile.photo.url)
+    except Exception:
+        return profile.photo.url
+
+
+def _serialize_user(request, user: User):
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    first = user.first_name or ''
+    last = user.last_name or ''
+    full = f"{first} {last}".strip()
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "first_name": first,
+        "last_name": last,
+        "full_name": full,
+        "photo_url": _get_photo_url(request, profile),
+        "is_superuser": user.is_superuser,
+        "groups": list(user.groups.values_list('name', flat=True)),
+        "permissions": sorted(list(user.get_all_permissions())),
+    }
 
 
 @csrf_exempt
@@ -37,14 +67,7 @@ def login_view(request):
                 "message": "Login exitoso",
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "is_superuser": user.is_superuser,
-                    "groups": list(user.groups.values_list('name', flat=True)),
-                    "permissions": sorted(list(user.get_all_permissions())),
-                }
+                "user": _serialize_user(request, user)
             })
         else:
             return JsonResponse({"error": "Credenciales inválidas."}, status=400)
@@ -88,13 +111,32 @@ def logout_view(request):
 @permission_classes([IsAuthenticated])
 def user_view(request):
     user = request.user
+    return Response(_serialize_user(request, user))
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def user_profile_view(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    if request.method == 'PUT':
+        remove = str(request.data.get('remove') or '').strip() == '1'
+        if remove and profile.photo:
+            profile.photo.delete(save=False)
+            profile.photo = None
+            profile.save(update_fields=['photo'])
+        elif 'photo' in request.FILES:
+            profile.photo = request.FILES['photo']
+            profile.save(update_fields=['photo'])
+
     return Response({
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "is_superuser": user.is_superuser,
-        "groups": list(user.groups.values_list('name', flat=True)),
-        'permissions': sorted(list(user.get_all_permissions())),
+        'photo_url': _get_photo_url(request, profile),
+        'full_name': f"{request.user.first_name} {request.user.last_name}".strip(),
+        'first_name': request.user.first_name or '',
+        'last_name': request.user.last_name or '',
+        'username': request.user.username,
+        'email': request.user.email,
     })
 
 
