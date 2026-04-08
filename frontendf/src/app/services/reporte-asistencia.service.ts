@@ -17,8 +17,8 @@ export class ReporteAsistenciaService {
     return this.apiService.put<ReporteAsistenciaRow>(`/reporte-asistencia/${asignacionId}/`, payload);
   }
 
-  getReporteAsistenciaHistorial(asignacionId: number) {
-    return this.apiService.get<ReporteAsistenciaHistorialItem[]>(`/reporte-asistencia/${asignacionId}/historial/`);
+  getReporteAsistenciaHistorial(asignacionId: number, params?: any) {
+    return this.apiService.get<ReporteAsistenciaHistorialItem[]>(`/reporte-asistencia/${asignacionId}/historial/`, params);
   }
 
   exportarExcel(params?: any) {

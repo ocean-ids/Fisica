@@ -19,7 +19,7 @@ export class ReporteAsistenciaHistorialDialogComponent implements OnInit {
   constructor(
     private reporteSvc: ReporteAsistenciaService,
     private dialogRef: MatDialogRef<ReporteAsistenciaHistorialDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { asignacionId: number; codigo?: string | null }
+    @Inject(MAT_DIALOG_DATA) public data: { asignacionId: number; codigo?: string | null; fecha?: string | null }
   ) {}
 
   ngOnInit(): void {
@@ -30,7 +30,11 @@ export class ReporteAsistenciaHistorialDialogComponent implements OnInit {
       return;
     }
 
-    this.reporteSvc.getReporteAsistenciaHistorial(id).subscribe({
+    const params: any = {};
+    if (this.data?.fecha) {
+      params.fecha = this.data.fecha;
+    }
+    this.reporteSvc.getReporteAsistenciaHistorial(id, params).subscribe({
       next: (items) => {
         this.historial = items || [];
       },

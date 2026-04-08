@@ -688,9 +688,16 @@ def historial_reporte_asistencia(request, asignacion_id):
     if not request.user.has_perm('CoreFisica.view_reporteasistencia'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
+    fecha = request.GET.get('fecha')
     qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo').filter(
         asignacion_id=asignacion_id
     )
+    if fecha:
+        try:
+            fecha_obj = datetime.date.fromisoformat(str(fecha))
+            qs = qs.filter(fecha_reporte=fecha_obj)
+        except ValueError:
+            pass
 
     data = []
     for h in qs:

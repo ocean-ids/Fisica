@@ -291,7 +291,8 @@ export class ReporteAsistenciaComponent implements OnInit {
       maxWidth: '95vw',
       data: {
         asignacionId: row.asignacion_id,
-        codigo: row.codigo || null
+        codigo: row.codigo || null,
+        fecha: this.filtroFecha || null
       }
     });
   }
