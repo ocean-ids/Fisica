@@ -5,19 +5,10 @@
     <div class="col-md-6 mb-3">
       <mat-form-field class="w-100">
         <mat-label>Cliente</mat-label>
-        <input
-          type="text"
-          matInput
-          [(ngModel)]="clienteFiltro"
-          (ngModelChange)="filtrarClientes()"
-          [matAutocomplete]="clienteAuto"
-          [ngModelOptions]="{standalone:true}"
-        />
-        <mat-autocomplete #clienteAuto="matAutocomplete" (optionSelected)="onClienteSeleccionado($event.option.value)" [displayWith]="displayCliente">
-          <mat-option *ngFor="let c of clientesFiltrados" [value]="c">
-            {{ c.nombre_comercial }}
-          </mat-option>
-        </mat-autocomplete>
+        <mat-select [(ngModel)]="clienteSeleccionado" (selectionChange)="onClientChange()" [ngModelOptions]="{standalone:true}">
+          <mat-option [value]="null">Seleccione</mat-option>
+          <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
+        </mat-select>
       </mat-form-field>
     </div>
 
@@ -44,19 +35,12 @@
     <div class="col-md-6 mb-3">
       <mat-form-field class="w-100">
         <mat-label>Persona</mat-label>
-        <input
-          type="text"
-          matInput
-          [(ngModel)]="personaFiltro"
-          (ngModelChange)="filtrarPersonas()"
-          [matAutocomplete]="personaAuto"
-          [ngModelOptions]="{standalone:true}"
-        />
-        <mat-autocomplete #personaAuto="matAutocomplete" (optionSelected)="onPersonaSeleccionada($event.option.value)" [displayWith]="displayPersona">
-          <mat-option *ngFor="let per of personasFiltradas" [value]="per">
+        <mat-select [(ngModel)]="asignacion.persona" [ngModelOptions]="{standalone:true}">
+          <mat-option [value]="0">Seleccione</mat-option>
+          <mat-option *ngFor="let per of getPersonasActivas()" [value]="per.id">
             {{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})
           </mat-option>
-        </mat-autocomplete>
+        </mat-select>
       </mat-form-field>
     </div>
 
