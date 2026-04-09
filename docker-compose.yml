@@ -11,8 +11,7 @@ services:
       - sf_pgdata:/var/lib/postgresql/data
 
   backend:
-    build:
-      context: ./backend/fisicaBack
+    image: oceansecurity/sf_backend:latest
     container_name: sf_backend
     restart: unless-stopped
     environment:
@@ -29,8 +28,7 @@ services:
       - db
 
   frontend:
-    build:
-      context: ./frontendf
+    image: oceansecurity/sf_frontend:latest
     container_name: sf_frontend
     restart: unless-stopped
     ports:
