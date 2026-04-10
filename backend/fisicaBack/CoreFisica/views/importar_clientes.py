@@ -269,7 +269,7 @@ def importar_clientes(request):
         'instalaciones_actualizadas': updated_inst,
         'puestos_creados': created_puestos,
         'puestos_actualizados': updated_puestos,
-        'errores': errors[:10],
+        'errores': errors,
         'errores_total': len(errors),
     }
     return JsonResponse(summary, status=200)

@@ -142,7 +142,14 @@ export class ClientesComponent implements OnInit {
     this.clienteService.importClientes(file).subscribe({
       next: (res) => {
         const resumen = `Creados: ${res?.clientes_creados || 0}, Actualizados: ${res?.clientes_actualizados || 0}, Instalaciones creadas: ${res?.instalaciones_creadas || 0}, actualizadas: ${res?.instalaciones_actualizadas || 0}, Errores: ${res?.errores_total || 0}`;
-        Swal.fire({ icon: 'success', title: 'Importación', text: resumen });
+        const errores = Array.isArray(res?.errores) ? res.errores : [];
+        const erroresHtml = errores.length
+          ? `<div style="text-align:left;max-height:220px;overflow:auto;margin-top:8px;">
+                <strong>Errores:</strong>
+                <ul style="margin:6px 0 0 18px;">${errores.map((e: string) => `<li>${e}</li>`).join('')}</ul>
+             </div>`
+          : '';
+        Swal.fire({ icon: 'success', title: 'Importación', html: `${resumen}${erroresHtml}` });
         this.loadClientes();
       },
       error: (err) => {
