@@ -159,11 +159,25 @@ export class PersonasComponent implements OnInit {
     this.personaService.importPersonas(file).subscribe({
       next: (res) => {
         this.cargarPersonas();
-        const errs = res?.errores?.length ? `<br/>Errores: ${res.errores.length}` : '';
+        const errores = Array.isArray(res?.errores) ? res.errores : [];
+        const errs = errores.length ? `<br/>Errores: ${errores.length}` : '';
+        const erroresHtml = errores.length
+          ? `<div style="text-align:left;max-height:220px;overflow:auto;margin-top:8px;">
+                <strong>Detalle de errores:</strong>
+                <ul style="margin:6px 0 0 18px;">${errores.map((e: any) => {
+                  if (e && typeof e === 'object') {
+                    const fila = e.fila ?? '';
+                    const msg = e.error ?? JSON.stringify(e);
+                    return `<li>Fila ${fila}: ${msg}</li>`;
+                  }
+                  return `<li>${String(e)}</li>`;
+                }).join('')}</ul>
+             </div>`
+          : '';
         Swal.fire({
           icon: res?.errores?.length ? 'warning' : 'success',
           title: 'Importación de personas',
-          html: `Filas: ${res?.total_filas||0}<br/>Válidas: ${res?.filas_validas||0}<br/>Creadas: ${res?.creadas||0}<br/>Actualizadas: ${res?.actualizadas||0}${errs}`,
+          html: `Filas: ${res?.total_filas||0}<br/>Válidas: ${res?.filas_validas||0}<br/>Creadas: ${res?.creadas||0}<br/>Actualizadas: ${res?.actualizadas||0}${errs}${erroresHtml}`,
         });
         if (res?.errores?.length) console.warn('Errores importación', res.errores);
       },
