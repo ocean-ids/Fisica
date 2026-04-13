@@ -1,11 +1,11 @@
-<div class="container-fluid px-0">
+<div class="container-fluid px-0 px-md-2">
   
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Gestión de Puestos</h2>
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <h2 class="m-0">Gestión de Puestos</h2>
   </div>
 
-  <div class="row mb-3">
-    <div class="col-md-6">
+  <div class="row g-2 align-items-center mb-3">
+    <div class="col-12 col-md-7">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Seleccionar Cliente</mat-label>
         <input
@@ -22,7 +22,7 @@
         </mat-autocomplete>
       </mat-form-field>
     </div>
-    <div class="col-md-6 text-end align-self-center">
+    <div class="col-12 col-md-5 d-grid d-md-flex justify-content-md-end">
       <button class="btn btn-outline-primary" (click)="abrirFormularioNuevo()" [disabled]="!clienteSeleccionado">
         <i class="bi bi-plus-circle"></i> Nuevo Puesto
       </button>
@@ -31,8 +31,8 @@
 
   <div class="card" *ngIf="clienteSeleccionado">
     <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover table-bordered">
+      <div class="table-responsive overflow-auto">
+        <table class="table table-hover table-bordered w-100">
           <thead class="table-light">
             <tr class="text-center align-middle">
               <th>Nombre de Puesto</th>
@@ -71,13 +71,15 @@
                 </mat-menu>
               </td> -->
               <td>{{ puesto.instalacion_nombre || '-' }}</td>
-              <td class="d-flex justify-content-around">
-                <button class="btn btn-sm btn-outline-primary" (click)="abrirFormularioNuevo(puesto)" >
+              <td>
+                <div class="d-flex align-middle gap-2">
+                <button class="btn btn-sm btn-outline-primary" (click)="abrirFormularioNuevo(puesto)">
                   <i class="bi bi-pencil"></i> Editar
                 </button>
-                <button class="btn btn-sm btn-outline-danger" (click)="eliminarPuesto(puesto.id!)" >
+                <button class="btn btn-sm btn-outline-danger" (click)="eliminarPuesto(puesto.id!)">
                   <i class="bi bi-trash"></i> Eliminar
                 </button>
+                </div>
               </td>
             </tr>
             <tr *ngIf="puestos.length === 0">
