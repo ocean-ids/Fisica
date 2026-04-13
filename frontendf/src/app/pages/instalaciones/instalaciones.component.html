@@ -7,15 +7,15 @@
       </button>
     </div>
   </div>
-  <div class="row g-2 align-items-center mb-3">
-    <div class="col-12 col-md-9">
-      <input class="form-control"
+  <div class="row g-2 align-items-center mt-3 mb-3">
+    <div class="col-12 col-md-9 d-flex justify-content-md-start">
+      <input class="form-control w-100"
           placeholder="Buscar por cualquier campo"
           [(ngModel)]="filtroTexto"
           (ngModelChange)="cargarInstalaciones()">
     </div>
-    <div class="col-12 col-md-3 d-grid">
-      <button class="btn btn-outline-secondary" (click)="limpiarFiltros()">Limpiar</button>
+    <div class="col-12 col-md-3 d-flex justify-content-md-end">
+      <button class="btn btn-sm btn-outline-secondary w-50" (click)="limpiarFiltros()">Limpiar</button>
     </div>
   </div>
 
