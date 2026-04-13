@@ -24,6 +24,8 @@ services:
       DB_PASSWORD: root
       DB_HOST: db
       DB_PORT: "5432"
+    volumes:
+      - sf_media:/app/media
     depends_on:
       - db
 
@@ -38,3 +40,4 @@ services:
 
 volumes:
   sf_pgdata:
+  sf_media:
