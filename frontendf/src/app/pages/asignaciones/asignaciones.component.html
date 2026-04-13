@@ -1,16 +1,16 @@
-<div class="container-fluid px-0">
-  <h2 class="mb-4">Gestión de Asignaciones</h2>
-  <div class="d-flex justify-content-between align-items-center" >
-    <div class="d-flex align-items-start gap-2">
-      <button class="btn btn-outline-primary" (click)="abrirModalNuevo()">
+<div class="container-fluid px-0 px-md-2">
+  <h2 class="mb-2">Gestión de Asignaciones</h2>
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-3">
+    <div class="d-flex flex-wrap align-items-start gap-2">
+      <button class="btn btn-outline-primary" (click)="abrirModalNuevo()" style="max-width: 175px;">
         <i class="bi bi-clipboard-check"></i> Nueva Asignación
       </button>
-      <button class="btn btn-outline-success" (click)="crearSacafrancoFila()">
+      <button class="btn btn-outline-success" (click)="crearSacafrancoFila()" style="width: 175px;">
         <i class="bi bi-plus-square"></i> Fila Sacafranco
       </button>
     </div>
 
-    <section class="d-flex align-items-center gap-3">
+    <section class="d-flex flex-wrap align-items-center gap-2">
       <mat-button-toggle-group
         name="columnas"
         aria-label="Columnas"
@@ -30,27 +30,26 @@
       </mat-button-toggle-group>
     </section>
 
-    <button class="btn btn-outline-secondary me-2" (click)="abrirNuevoPatron()" >
+    <button class="btn btn-outline-secondary" (click)="abrirNuevoPatron()" >
       <i class="bi bi-grid-3x3-gap"></i> Nuevo Patrón
     </button>
     
   </div>
   
-  <div class="d-flex justify-content-between mt-4 mb-1">
-    <div class="d-flex justify-content-start" >
-      <input type="month" class="form-control mx-auto" [(ngModel)]="monthValue" (change)="onMonthChange()" />
+  <div class="row g-2 align-items-center mt-3 mb-1">
+    <div class="col-12 col-md-4">
+      <input type="month" class="form-control" [(ngModel)]="monthValue" (change)="onMonthChange()" />
     </div>
-    <div class="d-flex justify-content-center align-items-md-start" style="flex: 1; padding: 0 12px;">
+    <div class="col-12 col-md-6">
       <input
         type="text"
         class="form-control"
-        style="max-width: 700px;"
         placeholder="Filtrar por cliente, cédula, persona o puesto"
         [(ngModel)]="filtroTexto"
         (input)="onFiltroChange()"
       />
     </div>
-    <div class="d-flex justify-content-end">
+    <div class="col-12 col-md-2 d-flex justify-content-md-end">
       <button (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center;">
         <img src="assets/images/excel-icon.png" alt="Excel" width="38" height="38" style="vertical-align: middle;" />
       </button>
@@ -60,8 +59,8 @@
   <div class="row asig-row">
     <div class="col-lg-auto">
       <div class="card asig-table-card">
-        <div class="card-body table-responsive ">
-          <table class="table table-hover table-bordered mb-2">
+        <div class="card-body table-responsive overflow-auto">
+          <table class="table table-hover table-bordered mb-2 w-100">
             <thead class="table-light text-center" style="height: 100px;">
               <tr class="text-center align-middle m-0" style="height: 60px">
                 <th *ngIf="!columnaOculta('horario')" [attr.rowspan]="headerRowspan()">Horario</th>
@@ -131,7 +130,7 @@
                       </div>
                     </td>
                   <td *ngIf="!columnaOculta('accion')" class="p-0 align-middle">
-                    <div class="d-flex gap-2 justify-content-center align-items-center">
+                    <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">
                       <button class="btn btn-sm btn-outline-primary " (click)="abrirModalEditar(row.asig)">
                         <i class="bi bi-pencil"></i>
                       </button>
@@ -163,7 +162,7 @@
                     <div>{{ row.fila.persona_detalle?.nombres || '' }}</div>
                   </td>
                   <td *ngIf="!columnaOculta('accion')" class="text-center align-middle bg-warning-subtle">
-                    <div class="d-flex gap-2 justify-content-center align-items-center">
+                    <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">
                       <button class="btn btn-sm btn-outline-primary" (click)="editarSacafrancoFila(row.fila)">
                         <i class="bi bi-pencil"></i>
                       </button>
