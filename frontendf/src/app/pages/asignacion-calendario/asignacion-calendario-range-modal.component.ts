@@ -62,6 +62,16 @@ export class AsignacionCalendarioRangeModalComponent {
     this.dialogRef.close();
   }
 
+  openDatePicker(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (!input) return;
+    if (typeof input.showPicker === 'function') {
+      input.showPicker();
+    } else {
+      input.focus();
+    }
+  }
+
   submit(): void {
     this.errorText = '';
     if (!this.start || !this.end || !this.seq) {

@@ -4,12 +4,12 @@
   <div class="range-form">
     <mat-form-field appearance="outline" class="field">
       <mat-label>Desde</mat-label>
-      <input matInput type="date" [(ngModel)]="start" (ngModelChange)="onInputChange()" />
+      <input matInput type="date" [(ngModel)]="start" (ngModelChange)="onInputChange()" (dblclick)="openDatePicker($event)" />
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="field">
       <mat-label>Hasta</mat-label>
-      <input matInput type="date" [(ngModel)]="end" (ngModelChange)="onInputChange()" />
+      <input matInput type="date" [(ngModel)]="end" (ngModelChange)="onInputChange()" (dblclick)="openDatePicker($event)" />
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="field">
