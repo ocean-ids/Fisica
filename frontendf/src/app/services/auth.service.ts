@@ -20,6 +20,12 @@ export class AuthService {
     this.startTokenWatcher();
   }
 
+  private withCacheBust(url?: string | null): string | null {
+    if (!url) return null;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}v=${Date.now()}`;
+  }
+
   login(username: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/login/`, 
       { username, password }
@@ -28,7 +34,11 @@ export class AuthService {
         // Guardar tokens en localStorage
         localStorage.setItem('access_token', response.access);
         localStorage.setItem('refresh_token', response.refresh);
-        localStorage.setItem('user', JSON.stringify(response.user));
+        const user = {
+          ...response.user,
+          photo_url: this.withCacheBust(response.user?.photo_url ?? null)
+        };
+        localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('groups', JSON.stringify(response.user.groups ?? []));
         localStorage.setItem('permissions', JSON.stringify(response.user.permissions ?? []));
         this.isAuthenticatedSubject.next(true);
@@ -161,7 +171,7 @@ export class AuthService {
           first_name: profile?.first_name,
           last_name: profile?.last_name,
           full_name: profile?.full_name,
-          photo_url: profile?.photo_url ?? null
+          photo_url: this.withCacheBust(profile?.photo_url ?? null)
         });
       })
     );
