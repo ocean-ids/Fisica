@@ -71,7 +71,7 @@
     <div class="col-md-6 mb-3">
       <mat-form-field class="w-100">
         <mat-label>Fecha inicio</mat-label>
-        <input matInput type="date" [(ngModel)]="asignacion.start_date" [ngModelOptions]="{standalone:true}">
+        <input matInput type="date" [(ngModel)]="asignacion.start_date" [ngModelOptions]="{standalone:true}" (dblclick)="openStartDatePicker($event)">
       </mat-form-field>
     </div>
   </div>

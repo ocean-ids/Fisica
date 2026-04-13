@@ -165,4 +165,14 @@ export class AsignacionFormComponent implements OnInit {
       instalacionSeleccionada: this.instalacionSeleccionada
     });
   }
+
+  openStartDatePicker(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (!input) return;
+    if (typeof input.showPicker === 'function') {
+      input.showPicker();
+    } else {
+      input.focus();
+    }
+  }
 }
