@@ -9,8 +9,17 @@
 
     <mat-form-field appearance="outline" class="field">
       <mat-label>Hasta</mat-label>
-      <input matInput type="date" [(ngModel)]="end" (ngModelChange)="onInputChange()" (dblclick)="openDatePicker($event)" />
+      <input
+        matInput
+        type="date"
+        [(ngModel)]="end"
+        (ngModelChange)="onEndChange()"
+        (dblclick)="openDatePicker($event)"
+        [disabled]="noEnd"
+      />
     </mat-form-field>
+
+    <mat-checkbox [(ngModel)]="noEnd" (change)="onNoEndChange()">Sin fecha de fin</mat-checkbox>
 
     <mat-form-field appearance="outline" class="field">
       <mat-label>Secuencia</mat-label>

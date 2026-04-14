@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import {MatCheckboxModule} from '@angular/material/checkbox';
 
 export interface AsignacionRangeModalData {
   start: string;
@@ -30,15 +31,18 @@ export interface AsignacionRangeModalResult {
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
-    MatButtonModule
+    MatButtonModule,
+    MatCheckboxModule
   ],
   templateUrl: './asignacion-calendario-range-modal.component.html',
   styleUrl: './asignacion-calendario-range-modal.component.css'
 })
 export class AsignacionCalendarioRangeModalComponent {
+  private readonly NO_END_YEARS = 100;
   start: string;
   end: string;
   seq: string;
+  noEnd = false;
   errorText: string = '';
   previewRows: Array<{ label: string; date: string; dayKey: string; currentValue: string; newValue: string }> = [];
   rowTitle: string = '';
@@ -50,14 +54,17 @@ export class AsignacionCalendarioRangeModalComponent {
     this.start = data.start || '';
     this.end = data.end || '';
     this.seq = data.seq || '';
+    this.noEnd = !this.end;
     this.rowTitle = this.buildRowTitle(data?.row);
     this.refreshPreview();
   }
 
-  onInputChange(): void {
+  // Maneja el cambio de la opcion hasta"
+  onInputChange(): void { 
     this.refreshPreview();
   }
 
+  // Cierra el modal y devuelve los datos ingresados
   cancel(): void {
     this.dialogRef.close();
   }
@@ -74,25 +81,23 @@ export class AsignacionCalendarioRangeModalComponent {
 
   submit(): void {
     this.errorText = '';
-    if (!this.start || !this.end || !this.seq) {
-      this.errorText = 'Completa desde, hasta y secuencia.';
+    if (!this.start || !this.seq) {
+      this.errorText = 'Completa desde y secuencia.';
       return;
     }
 
-    const startDate = new Date(this.start + 'T00:00:00');
-    const endDate = new Date(this.end + 'T00:00:00');
+    const startDate = this.parseDate(this.start);
+    const endDate = this.getEndDate();
+    if (!startDate || !endDate) {
+      this.errorText = 'Fechas inválidas.';
+      return;
+    }
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       this.errorText = 'Fechas inválidas.';
       return;
     }
     if (startDate > endDate) {
       this.errorText = 'La fecha final debe ser mayor o igual a la inicial.';
-      return;
-    }
-
-    const currentYear = new Date().getFullYear();
-    if (startDate.getFullYear() !== currentYear || endDate.getFullYear() !== currentYear) {
-      this.errorText = 'El rango debe estar dentro del año actual.';
       return;
     }
 
@@ -105,9 +110,40 @@ export class AsignacionCalendarioRangeModalComponent {
 
     this.dialogRef.close({
       start: this.start,
-      end: this.end,
+      end: this.formatDateLocal(endDate),
       seq: this.seq
     });
+  }
+
+  // Maneja el cambio del checkbox "Sin fecha de fin" 
+  onNoEndChange(): void {
+    if (this.noEnd) {
+      this.end = '';
+    }
+    this.onInputChange();
+  }
+
+  // Maneja el cambio del campo "Hasta" para desactivar la opción "Sin fecha de fin" si se ingresa una fecha
+  onEndChange(): void {
+    if (this.end){
+      this.noEnd = false;
+    }
+    this.onInputChange();
+  }
+
+  private getEndDate(): Date | null {
+    const startDate = this.parseDate(this.start);
+    if (!startDate) return null;
+
+    if (this.noEnd) {
+      const end = new Date(startDate);
+      // Use a far-future date to simulate no end limit.
+      end.setFullYear(end.getFullYear() + this.NO_END_YEARS);
+      end.setDate(end.getDate() - 1);
+      return end;
+    }
+
+    return this.parseDate(this.end);
   }
 
   private isValidSequence(seq: string, isSacafranco: boolean): boolean {
@@ -120,7 +156,7 @@ export class AsignacionCalendarioRangeModalComponent {
   private refreshPreview(): void {
     this.previewRows = [];
     const startDate = this.parseDate(this.start);
-    const endDate = this.parseDate(this.end);
+    const endDate = this.getEndDate();
     if (!startDate || !endDate) return;
     if (startDate > endDate) return;
 
