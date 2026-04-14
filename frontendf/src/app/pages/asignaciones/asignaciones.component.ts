@@ -968,6 +968,7 @@ export class AsignacionesComponent implements OnInit {
     // (this.asignacionActual as any).fecha = this.dia ? this.dia : null;
 
     const patronStart = this.asignacionActual.start_date || null;
+    const resetCalendar = !!this.asignacionActual.patronAsignacion;
 
     if (this.modoEdicion && this.asignacionActual.id) {
       const payload = { 
@@ -975,7 +976,8 @@ export class AsignacionesComponent implements OnInit {
         patronAsignacion: this.asignacionActual.patronAsignacion || null,
         start_date: patronStart,
         recurring: true,
-        end_date: null
+        end_date: null,
+        reset_calendar: resetCalendar
       } as any;
       this.asignacionService.actualizarAsignacion(
         this.asignacionActual.id,

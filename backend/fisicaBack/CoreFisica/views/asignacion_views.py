@@ -39,7 +39,7 @@ def _find_asignaciones_logo_path():
     return None
 
 
-def _rebuild_asignacion_semanal(asignacion):
+def _rebuild_asignacion_semanal(asignacion, force_all: bool = False):
     mes = int(asignacion.mes)
     anio = int(asignacion.anio)
     first_day = datetime.date(anio, mes, 1)
@@ -119,7 +119,7 @@ def _rebuild_asignacion_semanal(asignacion):
             weekday_keys = ['mon','tue','wed','thu','fri','sat','sun']
             key = weekday_keys[day_date.weekday()]
 
-            if day_date < hoy:
+            if day_date < hoy and not force_all:
                 if existing:
                     defaults[key] = getattr(existing, key, '') or ''
                 continue
@@ -803,15 +803,21 @@ def editar_servicio(request, id):
 
     old_patron_id = getattr(asignacion, 'patronAsignacion_id', None)
     data = request.data.copy()
+    reset_calendar_raw = data.get('reset_calendar', None)
+    if 'reset_calendar' in data:
+        data.pop('reset_calendar')
+    reset_calendar = str(reset_calendar_raw).strip().lower() in ('1', 'true', 'yes', 'y', 'si', 'sí')
     data['recurring'] = True
     data['end_date'] = None
     serializer = AsignacionSerializer(asignacion, data=data, partial=True)
     if serializer.is_valid():
         asignacion = serializer.save()
         patron_changed = 'patronAsignacion' in request.data and old_patron_id != getattr(asignacion, 'patronAsignacion_id', None)
-        if patron_changed:
+        if reset_calendar or patron_changed:
             try:
-                _rebuild_asignacion_semanal(asignacion)
+                if reset_calendar:
+                    AsignacionSemanal.objects.filter(asignacion_id=asignacion.id).delete()
+                _rebuild_asignacion_semanal(asignacion, force_all=reset_calendar)
             except Exception as e:
                 return Response({'error': f'No se pudo actualizar el calendario semanal: {e}'}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.data)
