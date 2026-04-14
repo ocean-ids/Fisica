@@ -61,6 +61,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     private dialog: MatDialog
   ){}
 
+  // Maneja el clic en una celda para asignar o gestionar sacafrancos, utilizando un temporizador para diferenciar entre clic simple y doble clic
   ngOnInit(): void {
     
     if (!this.weekStart) {
@@ -71,6 +72,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     this.loadWeek();
   }
 
+  // Obtiene la fecha de inicio de la semana como un objeto Date, considerando solo la parte de la fecha
   private formatDateLocal(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -78,7 +80,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     return `${y}-${m}-${day}`;
   }
 
-
+  // Calcula el primer día del mes actual para usarlo como valor inicial de weekStart
   computeCurrentMonthStart(): string{
     const today = new Date();
     const y = today.getFullYear();
@@ -86,6 +88,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     return `${y}-${m}-01`;
   }
 
+  // Convierte el valor de weekStart a un objeto Date, considerando solo la parte de la fecha
   loadWeek(){
   
     this.computeWeekDays();
@@ -135,6 +138,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       });
   }
 
+  // Calcula los días de la semana basándose en el valor de weekStart para mostrar los encabezados de la tabla
   private loadSacafrancoWeek(): void {
     if (!this.weekStart) {
       this.sacafrancoWeekRows = [];
@@ -153,7 +157,8 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         }
       });
   }
-
+  
+  // Limpia la vista previa del sacafranco para un puesto y día específicos, eliminando cualquier información almacenada en el estado para esa combinación
   private getRowOrderKey(row: any): string {
     if (row?._sacafranco) {
       return `sacafranco-${row?._sacafrancoId ?? ''}`;
@@ -162,10 +167,12 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     return String(key);
   }
 
+  // Aplica el orden personalizado a las filas basándose en el arreglo rowOrder proporcionado
   private applyOrder(): void {
     this.buildDisplayRows();
   }
 
+  //Construye el arreglo displayRows combinando las filas regulares y las filas de sacafranco, y aplicando el orden personalizado si se proporciona rowOrder. Las filas de sacafranco se identifican con la propiedad _sacafranco para diferenciarlas de las filas regulares.
   private buildDisplayRows(): void {
     const sacafrancoRows = this.buildSacafrancoRows();
     const combined = [...(this.rows || []), ...sacafrancoRows];
@@ -193,7 +200,8 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
 
     this.displayRows = combined;
   }
-
+  
+  // Limpia la vista previa del sacafranco para un puesto y día específicos, eliminando cualquier información almacenada en el estado para esa combinación
   isSacafrancoHighlight(value: any): boolean {
     const raw = (value || '').toString().trim().toUpperCase();
     if (!raw) return false;
@@ -201,6 +209,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     return letter === 'F' || letter === 'Q';
   }
 
+  // Obtiene la fecha de inicio de la semana como un objeto Date, considerando solo la parte de la fecha
   private buildSacafrancoRows(): any[] {
     if (!this.sacafrancoRows || !this.sacafrancoRows.length || !this.weekStart) return [];
     const parts = this.weekStart.split('-').map(Number);
@@ -236,6 +245,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       });
   }
 
+  // Obtiene la fecha correspondiente a un día de la semana específico basándose en la fecha de inicio de la semana (weekStart) y la clave del día (dayKey), considerando solo la parte de la fecha
   loadWeeksForMonth(mes: number, anio: number){
     const weeksLocal: string[] = [];
     const d = new Date(anio, mes - 1, 1);
@@ -255,6 +265,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     this.loadWeek();
   }
 
+  // Calcula la fecha de la semana anterior basándose en el arreglo weeks y actualiza el estado para mostrar la nueva semana
   prevWeek(){
     if(this.currentWeekIndex > 0){
       this.currentWeekIndex -= 1;
@@ -263,6 +274,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     }
   }
 
+  // Calcula la fecha de la siguiente semana basándose en el arreglo weeks y actualiza el estado para mostrar la nueva semana
   nextWeek(){
     if(this.currentWeekIndex < this.weeks.length - 1){
       this.currentWeekIndex += 1;
@@ -272,7 +284,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   }
 
         @Output() weekStartChange: EventEmitter<string> = new EventEmitter<string>();
-
+  
   saveRow(row: any){
     const asignacionId = row.asignacion || row.asignacion_id;
     if (!asignacionId) {
@@ -299,13 +311,14 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     });
   }
   
-
+  // Guarda los cambios en una fila de sacafranco enviando solo los días que fueron modificados para optimizar la actualización
   onCellChange(row: any, day: string, value: any){
     const v = value ? String(value).toUpperCase().slice(0,4) : '';
     row[day] = v;
     this.saveRow(row);
   }
 
+  // Maneja el evento de cambio en una celda de sacafranco, actualizando el valor en la fila y luego llamando a la función para guardar los cambios en el backend
   onSacafrancoCellChange(row: any, day: string, value: any){
     const raw = value ? String(value).toUpperCase() : '';
     const tokens = raw
@@ -343,6 +356,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     }
   }
 
+  // Guarda los cambios en una fila de sacafranco enviando solo los días que fueron modificados para optimizar la actualización
   private saveSacafrancoRow(row: any, days: string[]): void {
     const filaId = row?._sacafrancoId;
     if (!filaId) return;
@@ -357,6 +371,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       .subscribe({ next: () => {}, error: () => {} });
   }
 
+  // Obtiene la fecha de finalización de la secuencia basándose en la fecha de inicio y la cantidad de tokens, considerando solo la parte de la fecha
   getCellClass(value: string){
     if(!value) return '';
     const v = value.toString().toUpperCase();
@@ -406,6 +421,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     }
   }
 
+  // Maneja el clic en una celda para asignar o gestionar sacafrancos, utilizando un temporizador para diferenciar entre clic simple y doble clic
   private _clickTimer: any = null;
 
   handleCellClick(event: MouseEvent, row: any, day: string, puestoId: any) {
@@ -427,6 +443,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     this.sacafrancoClick.emit({ weekStart: this.weekStart, day: day, puestoId: puestoId, manage: true });
   }
 
+  // Abre el modal de asignación por rango para un puesto y día específicos, prellenando los campos de fecha basándose en la celda clicada, y luego maneja el resultado para aplicar los cambios tanto al backend como a la vista previa de manera eficiente
   openRangeModal(row: any, dayKey: string, isSacafranco: boolean): void {
     const clickedDate = this.getDateForDayKey(this.weekStart, dayKey);
     if (!clickedDate) return;
@@ -463,6 +480,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     });
   }
 
+  // Parsea la secuencia ingresada en un arreglo de tokens, diferenciando entre secuencias de sacafranco (que pueden contener códigos más complejos) y secuencias regulares (que se limitan a letras F, D, N)
   private parseSequence(seq: string, isSacafranco: boolean): string[] {
     const raw = (seq || '').trim().toUpperCase();
     if (!raw) return [];
@@ -474,6 +492,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     return parts.length ? parts : [raw];
   }
 
+  // Construye un mapa de rangos que asigna a cada semana y día el token correspondiente de la secuencia, basándose en las fechas de inicio y fin proporcionadas, y opcionalmente anclando la secuencia a una semana específica para mantener la consistencia visual
   private buildRangeMap(startDate: Date, endDate: Date, tokens: string[], anchorWeekStart?: Date | null): Record<string, Record<string, string>> {
     const map: Record<string, Record<string, string>> = {};
     let idx = 0;
@@ -495,6 +514,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     return map;
   }
 
+  // Parsea una fecha en formato string a un objeto Date, considerando solo la parte de la fecha, y devuelve null si el formato es inválido o si la fecha no es válida
   private parseWeekStart(weekStartStr: string): Date | null {
     if (!weekStartStr) return null;
     const parts = weekStartStr.split('-').map(Number);
@@ -502,6 +522,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     return new Date(parts[0], parts[1] - 1, parts[2]);
   }
 
+  // Obtiene la fecha de inicio de la semana para una fecha dada, considerando solo la parte de la fecha
   private getWeekStartForDate(d: Date): Date {
     const y = d.getFullYear();
     const m = d.getMonth();
@@ -510,6 +531,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     return new Date(y, m, startDay);
   }
 
+  // obtiene la fecha correspondiente a una clave de día de la semana (mon, tue, wed, etc.) basándose en el weekStart y el día clave proporcionados
   private getDateForDayKey(weekStartStr: string, dayKey: string): Date | null {
     if (!weekStartStr || !dayKey) return null;
     const parts = weekStartStr.split('-').map(Number);
@@ -523,6 +545,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     return null;
   }
 
+  // Aplica los cambios de la secuencia a la base de datos enviando solo los dias que fueron modificados para optimizar la actualización, y diferenciando entre filas regulares de asignación y filas de sacafranco para usar los endpoints correspondientes
   private applyRangeToBackend(row: any, rangeMap: Record<string, Record<string, string>>, isSacafranco: boolean): void {
     const keys = Object.keys(rangeMap);
     keys.forEach(weekStart => {
@@ -548,6 +571,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     });
   }
 
+  // Aplica los cambios de la secuencia a la fila actual en la vista previa, actualizando solo los días que fueron modificados para reflejar inmediatamente los cambios sin necesidad de recargar toda la semana
   private applyRangeToCurrentWeek(row: any, rangeMap: Record<string, Record<string, string>>): void {
     const weekDays = rangeMap[this.weekStart] || {};
     Object.keys(weekDays).forEach(k => {
@@ -555,6 +579,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     });
   }
 
+  //Muestra una vista previa del sacafranco asignado para un puesto y dia especificos obteniendo los datos desde el backend solo si no se ha cargado previamente para evitar llamadas redundantes, y maneja los estados de carga y error para mostrar la información de manera eficiente
   showPreview(puestoId: any, day: string) {
     try {
       const key = String(puestoId || '');
@@ -576,16 +601,19 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     } catch (e) {}
   }
 
+  // Limpia la vista previa del sacafranco para un puesto y dia especificos, eliminando la información almacenada en el estado para que no se muestre más en la interfaz
   clearPreview(puestoId: any, day: string) {
     const key = String(puestoId || '');
     if (this.sacafrancoPreview[key]) this.sacafrancoPreview[key][day] = '';
   }
 
+  // Obtiene el titulo de la vista previa del sacafranco para un puesto y dia especificos desde el estado, devolviendo una cadena vacía si no hay información disponible para mostrar
   getPreviewTitle(puestoId: any, day: string) {
     const key = String(puestoId || '');
     return (this.sacafrancoPreview[key] && this.sacafrancoPreview[key][day]) || '';
   }
 
+  // Maneja el evento de clic en el ícono de información para un puesto y día específicos, deteniendo la propagación del evento y emitiendo un evento personalizado con la información relevante
   onInfoClick(event: MouseEvent, puestoId: any, day: string) {
     event.stopPropagation();
     

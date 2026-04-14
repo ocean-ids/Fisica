@@ -131,6 +131,7 @@ export class AsignacionCalendarioRangeModalComponent {
     this.onInputChange();
   }
 
+  // Obtiene la fecha de fin considerando la opción "Sin fecha de fin"
   private getEndDate(): Date | null {
     const startDate = this.parseDate(this.start);
     if (!startDate) return null;
@@ -146,13 +147,15 @@ export class AsignacionCalendarioRangeModalComponent {
     return this.parseDate(this.end);
   }
 
+  // Valida la secuencia ingresada, permitiendo cualquier valor si es sacafranco o solo F/D/N si no lo es
   private isValidSequence(seq: string, isSacafranco: boolean): boolean {
     const raw = (seq || '').trim().toUpperCase();
     if (!raw) return false;
     if (isSacafranco) return true;
     return /[FDN]/.test(raw);
   }
-
+  
+  // Refresca la vista previa de los cambios basándose en las fechas y secuencia ingresadas
   private refreshPreview(): void {
     this.previewRows = [];
     const startDate = this.parseDate(this.start);
@@ -182,6 +185,7 @@ export class AsignacionCalendarioRangeModalComponent {
     }
   }
 
+  // Parsea la secuencia ingresada en un arreglo de tokens
   private parseSequence(seq: string, isSacafranco: boolean): string[] {
     const raw = (seq || '').trim().toUpperCase();
     if (!raw) return [];
@@ -192,12 +196,14 @@ export class AsignacionCalendarioRangeModalComponent {
     return parts.length ? parts : [raw];
   }
 
+  // Convierte una fecha en formato string a un objeto Date, considerando solo la parte de la fecha
   private parseDate(value: string): Date | null {
     if (!value) return null;
     const d = new Date(value + 'T00:00:00');
     return isNaN(d.getTime()) ? null : d;
   }
 
+  // Formatea una fecha a formato YYYY-MM-DD para usar en los campos de fecha
   private formatDateLocal(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -205,6 +211,7 @@ export class AsignacionCalendarioRangeModalComponent {
     return `${y}-${m}-${day}`;
   }
 
+  // Formatea una fecha para mostrarla en la vista previa
   private formatLabel(d: Date): string {
     const shortOrder = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
     const dow = d.getDay();
@@ -212,6 +219,7 @@ export class AsignacionCalendarioRangeModalComponent {
     return `${shortOrder[dow]}${dayNum}`;
   }
 
+  // Obtiene la clave del día de la semana a partir de una fecha en formato string
   private dayKeyFromDate(dateStr: string): string {
     if (!dateStr) return '';
     const parts = dateStr.split('-').map(Number);
@@ -221,6 +229,7 @@ export class AsignacionCalendarioRangeModalComponent {
     return map[d.getDay()];
   }
 
+  // Construye el título de una fila basándose en los detalles del puesto y la persona
   private buildRowTitle(row: any): string {
     if (!row) return '';
     const puestoNombre = row?.puesto_detalle?.nombre || row?.puesto_detalle?.tipo || '';
