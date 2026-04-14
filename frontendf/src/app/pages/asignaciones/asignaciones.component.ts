@@ -882,6 +882,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  //openSacafrancosModal se encarga de abrir un diálogo para mostrar los sacafrancos asociados a una semana, día, puesto y patrón específicos, permitiendo al usuario gestionar las asignaciones de sacafranco para esa combinación de parámetros, y luego actualizando la vista con los cambios realizados después de cerrar el diálogo, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   openSacafrancosModal(weekStart: string, day: string, puestoId?: number, manage: boolean = false){
     this.patronService.getSacafrancos(weekStart, day, puestoId).subscribe(list => {
       const ref = this.dialog.open(PatronSacafrancosModalComponent, {
