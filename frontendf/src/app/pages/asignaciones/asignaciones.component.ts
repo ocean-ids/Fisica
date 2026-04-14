@@ -67,6 +67,7 @@ export class AsignacionesComponent implements OnInit {
   private lastDragPoint: { x: number; y: number } | null = null;
   private pendingPatronId: number | null = null;
 
+  // Paleta de colores para asignaciones
   readonly colorPalette: {name: string, value: string}[] = [
     { name: 'Amarillo', value: '#fff8b3' },
     { name: 'Rojo', value: '#ffb3b3' },
@@ -90,6 +91,7 @@ export class AsignacionesComponent implements OnInit {
     { name: 'Blanco', value: '#ffffff' },
   ];
 
+  // Obtiene la fecha de inicio del mes actual como un string en formato YYYY-MM-DD para inicializar el calendario
   private monthStartToday(): string {
     const t = new Date();
     const y = t.getFullYear();
@@ -121,6 +123,7 @@ export class AsignacionesComponent implements OnInit {
     }, 0);
   }
 
+  // Obtiene las horas de un puesto como un string formateado
   getHorasPuesto(puesto: any): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
@@ -143,7 +146,7 @@ export class AsignacionesComponent implements OnInit {
       return '-';
     }
   }
-
+  // Obtiene los turnos de un puesto como un string formateado
   getTurnosPuesto(puesto: any): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
@@ -162,6 +165,7 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
+  // Obtiene el resumen de puesto para mostrarlo en la vista, combinando horas, turnos y días de manera legible
   getResumenPuestoDisplay(puesto: any): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
@@ -187,6 +191,7 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
+  // Obtiene un resumen compacto del puesto para mostrarlo en la vista, combinando horas, turnos y días de manera concisa
   getResumenPuestoCompacto(puesto: any): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
@@ -230,11 +235,13 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
+  // Obtiene el código de la instalación asociada a una asignación, utilizando diferentes campos según la estructura de datos disponible
   getCodigoInstalacionAsignacion(asig: any): string {
     if (!asig) return '-';
     return asig.instalacion_detalle?.codigo || asig.instalacionCodigo || '-';
   }
 
+  // Obtiene los días de un puesto como un string formateado
   getDiasPuesto(puesto: any): string {
     try {
       if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
@@ -272,7 +279,8 @@ export class AsignacionesComponent implements OnInit {
       return '-';
     }
   }
-
+  
+  // Maneja el cambio de fecha compartida, actualizando el estado del componente y recargando las asignaciones para reflejar la nueva fecha seleccionada
   onSharedDateChange(): void {
     if (!this.dia) {
       this.cargarAsignaciones();
@@ -341,6 +349,7 @@ export class AsignacionesComponent implements OnInit {
       console.log('weeksForMonth initialized', this.mes, this.anio, this.weeksForMonth);
   }
 
+  // onMonthChange se encarga de manejar el cambio de mes en el calendario, actualizando el estado del componente y recargando las asignaciones para reflejar el nuevo mes seleccionado
   onMonthChange(): void {
     if (!this.monthValue) return;
     const parts = this.monthValue.split('-');
@@ -354,6 +363,7 @@ export class AsignacionesComponent implements OnInit {
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
   }
 
+  //onFiltroChange se encarga de manejar el cambio en el filtro de texto, recargando las asignaciones para reflejar el nuevo filtro aplicado y actualizando los calendarios para mostrar la información filtrada correctamente
   onFiltroChange(): void {
     this.cargarAsignaciones();
     if (this.calendarios && this.calendarios.length) {
@@ -361,22 +371,27 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
+  // hideMultipleSelectionIndicator se utiliza para ocultar el indicador de selección múltiple en la vista, devolviendo siempre true para indicar que no se deben mostrar indicadores adicionales incluso si hay múltiples elementos seleccionados
   hideMultipleSelectionIndicator(): boolean {
     return true;
   }
 
+  // columnaOculta se encarga de verificar si una columna específica está oculta en la vista, comprobando si la clave de la columna se encuentra en el arreglo de columnas ocultas y devolviendo un booleano para indicar su estado
   columnaOculta(key: string): boolean {
     return this.columnasOcultas.includes(key);
   }
 
+  // mostrarPuesto se encarga de determinar si la columna de puesto debe mostrarse en la vista, verificando si la columna 'puesto' no está oculta y devolviendo un booleano para indicar su visibilidad
   mostrarPuesto(): boolean {
     return !this.columnaOculta('puesto');
   }
 
+  //headerRowspan se utiliza para calcular el valor de rowspan para las celdas del encabezado de la tabla, devolviendo 2 si la columna de puesto se muestra (ya que ocupará dos filas) o 1 si está oculta (ocupando solo una fila), lo que permite ajustar correctamente la estructura del encabezado según las columnas visibles
   headerRowspan(): number {
     return this.mostrarPuesto() ? 2 : 1;
   }
 
+  //abrirColorCedula se encarga de abrir un diálogo para seleccionar el color de la cédula de una asignación específica, permitiendo al usuario elegir un color de una paleta predefinida y luego actualizando la asignación con el color seleccionado a través del servicio correspondiente
   abrirColorCedula(asig: Asignacion): void {
     if (!asig?.id) return;
     const dialogRef = this.dialog.open(ReporteAsistenciaColorDialogComponent, {
@@ -399,6 +414,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  //totalColumns se encarga de calcular el número total de columnas que se deben mostrar en la tabla de asignaciones, teniendo en cuenta las columnas ocultas y si la columna de puesto está visible, para así ajustar dinámicamente el diseño de la tabla según las preferencias del usuario
   totalColumns(): number {
     let count = 0;
     if (!this.columnaOculta('horario')) count += 1;
@@ -411,13 +427,15 @@ export class AsignacionesComponent implements OnInit {
     return count || 1;
   }
 
+  //canDeleteSacafrancoFila se encarga de determinar si una fila de sacafranco puede ser eliminada, verificando si la fila pertenece al mes y año actuales o posteriores, devolviendo un booleano para indicar si se permite la eliminación
   canDeleteSacafrancoFila(fila?: SacafrancoFila | null): boolean {
     if (!fila) return false;
     if (fila.anio < this.anio) return false;
     if (fila.anio === this.anio && fila.mes < this.mes) return false;
     return true;
   }
-
+  
+  // formatDateLocal se encarga de formatear un objeto Date en un string con formato YYYY-MM-DD, utilizando métodos de la clase Date para obtener el año, mes y día, y asegurándose de que el mes y día tengan dos dígitos mediante el uso de padStart, lo que facilita la manipulación de fechas en el componente
   private formatDateLocal(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -425,6 +443,7 @@ export class AsignacionesComponent implements OnInit {
     return `${y}-${m}-${day}`;
   }
 
+  // computeWeeksForMonth se encarga de calcular las fechas de inicio de cada semana para un mes y año específicos, creando un array de strings con formato YYYY-MM-DD que representan el primer día de cada semana dentro del mes, lo que permite mostrar correctamente las semanas en el calendario y sincronizar la vista con las asignaciones correspondientes
   private computeWeeksForMonth(mes: number, anio: number): string[] {
     const weeksLocal: string[] = [];
     const d = new Date(anio, mes - 1, 1);
@@ -435,6 +454,7 @@ export class AsignacionesComponent implements OnInit {
     return weeksLocal;
   }
 
+  // cargarCatalogos se encarga de cargar los datos necesarios para los catálogos utilizados en el componente, realizando llamadas a los servicios correspondientes para obtener la información de clientes, personas, horarios e instalaciones, y manejando los errores que puedan ocurrir durante la carga de estos datos para asegurar que la vista tenga la información actualizada y disponible para su uso
   cargarCatalogos(): void {
     this.clienteService.getClientes().subscribe({
       next: data => this.clientes = data,
@@ -457,6 +477,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  // cargarAsignaciones se encarga de cargar las asignaciones y filas de sacafranco para el mes y año seleccionados, realizando llamadas a los servicios correspondientes para obtener esta información, aplicando filtros si es necesario, y luego actualizando la vista con los datos obtenidos, además de manejar los errores que puedan ocurrir durante la carga para asegurar que la información mostrada sea precisa y actualizada
   cargarAsignaciones(): void {
     const params: any = {};
     if (this.filtroTexto && this.filtroTexto.trim()) {
@@ -481,6 +502,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  //crearSacafrancoFila se encarga de abrir un diálogo para seleccionar una persona y luego crear una nueva fila de sacafranco asociada a esa persona para el mes y año seleccionados, realizando una llamada al servicio correspondiente para guardar la nueva fila, y luego actualizando la vista con la nueva información, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   crearSacafrancoFila(): void {
     const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
       width: '520px'
@@ -507,6 +529,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  //editarSacafrancoFila se encarga de abrir un diálogo para seleccionar una persona y luego actualizar la fila de sacafranco asociada a esa persona para el mes y año seleccionados, realizando una llamada al servicio correspondiente para guardar los cambios, y luego actualizando la vista con la nueva información, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   editarSacafrancoFila(fila: SacafrancoFila): void{
     const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
       width: '520px',
@@ -521,6 +544,7 @@ export class AsignacionesComponent implements OnInit {
     })
   }
 
+  //eliminarSacafrancoFila se encarga de eliminar una fila de sacafranco específica, mostrando una confirmación al usuario antes de realizar la eliminación, y luego actualizando la vista para reflejar la eliminación de la fila, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   eliminarSacafrancoFila(fila: SacafrancoFila | number | null | undefined): void {
     const id = typeof fila === 'number' ? fila : fila?.id;
     if (!id) return;
@@ -546,6 +570,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  //dropAsignaciones se encarga de manejar el evento de arrastrar y soltar para reordenar las asignaciones y filas de sacafranco en la vista, actualizando el orden de los elementos en el arreglo de visualización, recalculando el orden para cada elemento, y luego persistiendo los cambios en el backend a través de llamadas a los servicios correspondientes, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   dropAsignaciones(event: CdkDragDrop<any[]>): void {
     if (!event) return;
 
@@ -594,10 +619,12 @@ export class AsignacionesComponent implements OnInit {
     this.lastDragPoint = null;
   }
 
+  // trackByAsignacion se utiliza como función de seguimiento para optimizar la renderización de la lista de asignaciones en la vista, devolviendo un identificador único para cada asignación basado en su id, el id del puesto detalle o el índice como último recurso, lo que permite a Angular identificar correctamente los elementos y evitar renderizaciones innecesarias al actualizar la lista
   trackByAsignacion(index: number, asig: Asignacion): number | string {
     return asig?.id ?? asig?.puesto_detalle?.id ?? index;
   }
 
+  // UpdateCalendarOrder se encarga de actualizar el orden de las filas en el calendario según el orden actual de las filas de asignaciones y sacafranco en la vista, generando un nuevo arreglo de orden basado en los identificadores de las asignaciones y filas, y luego actualizando la propiedad que controla el orden en el calendario para reflejar los cambios realizados por el usuario
   private updateCalendarOrder(): void {
     if (this.displayRows && this.displayRows.length) {
       this.calendarRowOrder = this.displayRows
@@ -613,6 +640,7 @@ export class AsignacionesComponent implements OnInit {
     this.calendarRowOrder = [];
   }
 
+  // buildDisplayRows se encarga de construir el arreglo de filas que se mostrarán en la vista combinando las asignaciones y filas de sacafranco, ordenándolas según su propiedad de orden, y luego actualizando las propiedades que controlan la visualización de las filas en la tabla y el calendario, lo que permite mostrar la información de manera organizada y coherente para el usuario
   private buildDisplayRows(): void {
     const asignaciones = this.asignaciones || [];
     const sacRows = this.sacafrancoRows || [];
@@ -647,10 +675,12 @@ export class AsignacionesComponent implements OnInit {
     this.displayAssignmentRows = displayAssignments;
   }
 
+  //onDragStarted se encarga de manejar el evento de inicio de arrastre para una asignación específica, actualizando el estado del componente para indicar qué asignación está siendo arrastrada, lo que permite controlar la lógica relacionada con el arrastre y soltar en la vista, como mostrar indicadores visuales o habilitar ciertas funcionalidades mientras se realiza el arrastre
   onDragStarted(asig: Asignacion): void {
     this.draggingAsignacionId = asig?.id ?? null;
   }
 
+  // onDragEnded se encarga de manejar el evento de finalización de arrastre para una asignación, restableciendo el estado del componente para indicar que ya no se está arrastrando ninguna asignación, y luego utilizando un temporizador para limpiar cualquier punto de referencia relacionado con el arrastre después de un breve retraso, lo que ayuda a evitar problemas de renderización o lógica relacionada con el arrastre en la vista
   onDragEnded(): void {
     this.draggingAsignacionId = null;
     setTimeout(() => {
@@ -658,12 +688,14 @@ export class AsignacionesComponent implements OnInit {
     }, 0);
   }
 
+  //onDragMoved se encarga de manejar el evento de movimiento durante el arrastre de una asignación, actualizando las coordenadas del último punto de arrastre para mantener un seguimiento de la posición del cursor mientras se realiza el arrastre, lo que puede ser útil para mostrar indicadores visuales o realizar cálculos relacionados con la posición durante el proceso de arrastre
   onDragMoved(event: CdkDragMove): void {
     const point = event?.pointerPosition;
     if (!point) return;
     this.lastDragPoint = { x: point.x, y: point.y };
   }
 
+  //persistOrder se encarga de persistir el orden de las asignaciones en el backend, tomando un arreglo opcional de ordenes que contiene los identificadores y el nuevo orden de las asignaciones, y luego realizando una llamada al servicio correspondiente para guardar esta información, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   private persistOrder(ordenes?: { id: number; orden: number }[]): void {
     const payload = (ordenes && ordenes.length)
       ? ordenes
@@ -675,6 +707,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  //persistSacafrancoOrder se encarga de persistir el orden de las filas de sacafranco en el backend, tomando un arreglo opcional de ordenes que contiene los identificadores y el nuevo orden de las filas, y luego realizando una llamada al servicio correspondiente para guardar esta información, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   private persistSacafrancoOrder(ordenes?: { id: number; orden: number }[]): void {
     const payload = (ordenes && ordenes.length)
       ? ordenes
@@ -703,23 +736,23 @@ export class AsignacionesComponent implements OnInit {
     return { ordenAsignaciones, ordenSacafranco };
   }
 
-
+  //trackByDisplayRow se encarga de proporcionar una función de seguimiento para las filas de la vista, utilizando el identificador único de cada fila o su índice como clave, lo que ayuda a Angular a optimizar la renderización de la lista y mejorar el rendimiento
   trackByDisplayRow(index: number, row: any): string | number {
     if (row?.type === 'sacafranco') return `sacafranco-${row.id ?? index}`;
     return row?.asig?.id ?? index;
   }
 
-  
-
- 
+  //prevWeekAndPage se encarga de navegar a la semana anterior en el calendario y actualizar la vista para reflejar los cambios, iterando sobre los componentes de calendario disponibles y llamando a su método para cargar la semana anterior, lo que permite al usuario ver las asignaciones correspondientes a esa semana
   prevWeekAndPage(): void {
     if (this.calendarios) this.calendarios.forEach(c => { try { c.prevWeek(); } catch(e){} });
   }
 
+  //nextWeekAndPage se encarga de navegar a la semana siguiente en el calendario y actualizar la vista para reflejar los cambios, iterando sobre los componentes de calendario disponibles y llamando a su método para cargar la semana siguiente, lo que permite al usuario ver las asignaciones correspondientes a esa semana
   nextWeekAndPage(): void {
     if (this.calendarios) this.calendarios.forEach(c => { try { c.nextWeek(); } catch(e){} });
   }
 
+  //abrirNuevoPatron se encarga de abrir un diálogo para crear un nuevo patrón de asignación, permitiendo al usuario ingresar la información necesaria para el patrón, y luego actualizando la vista con el nuevo patrón creado, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   abrirNuevoPatron(): void {
     const ref = this.dialog.open(PatronFormComponent, {
       width: '480px',
@@ -738,6 +771,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  //nuevaAsignacion se encarga de crear una nueva instancia de asignación con valores predeterminados, incluyendo información sobre la persona, cliente, instalación, puesto, horario, mes, año, estado, recurrencia, fechas de inicio y fin, y patrón de asignación pendiente
   nuevaAsignacion(): Asignacion {
     return {
       persona: 0,
@@ -758,7 +792,7 @@ export class AsignacionesComponent implements OnInit {
     };
   }
 
-  
+  //onClientChange se encarga de manejar el cambio en la selección del cliente para una asignación, actualizando el estado de la asignación actual con el nuevo cliente seleccionado, restableciendo las selecciones de instalación y puesto, y luego cargando las instalaciones correspondientes al nuevo cliente seleccionado para actualizar la vista con la información relevante
   onClientChange(): void {
     this.asignacionActual.cliente = this.clienteSeleccionado!;
     this.instalacionSeleccionada = null;
@@ -771,6 +805,7 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
+  //onInstalacionChange se encarga de manejar el cambio en la selección de la instalación para una asignación, actualizando el estado de la asignación actual con la nueva instalación seleccionada, restableciendo la selección de puesto, y luego cargando los puestos correspondientes a la nueva instalación seleccionada para actualizar la vista con la información relevante
   onInstalacionChange(): void {
     this.asignacionActual.instalacion = this.instalacionSeleccionada!;
     this.asignacionActual.puesto = 0;
@@ -780,6 +815,7 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
+  // cargarInstalaciones se encarga de cargar las instalaciones correspondientes a un cliente específico, realizando una llamada al servicio para obtener esta información, y luego actualizando la vista con las instalaciones obtenidas, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente. También permite preseleccionar una instalación y un puesto si se proporcionan los identificadores correspondientes
   private cargarInstalaciones(clienteId: number, preselectInstalacionId?: number, preselectPuestoId?: number): void {
     this.instalacionService.getInstalaciones({ cliente_id: clienteId }).subscribe({
       next: data => {
@@ -794,6 +830,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  //cargraPuestos se encarga de cargar los puestos correspondientes a una instalación específica, realizando una llamada al servicio para obtener esta información, y luego actualizando la vista con los puestos obtenidos, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente. También permite preseleccionar un puesto si se proporciona el identificador correspondiente
   private cargarPuestos(instalacionId: number, preselectPuestoId?: number): void {
     this.puestoService.getPuestosPorInstalacion(instalacionId).subscribe({
       next: data => {
@@ -806,7 +843,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
-
+  //abrirModalNuevo se encarga de abrir un diálogo para crear una nueva asignación, inicializando el estado del componente para reflejar que se está creando una nueva asignación, y luego mostrando el formulario correspondiente para que el usuario ingrese la información de la nueva asignación. Después de cerrar el diálogo, si se guardó la asignación, se actualiza el estado del componente con la nueva información y se llama al método para guardar la asignación en el backend
   abrirModalNuevo(): void {
     this.modoEdicion = false;
     this.textoBotonAsignacion = 'Guardar';
@@ -862,8 +899,9 @@ export class AsignacionesComponent implements OnInit {
       })
     
     });
-}
+  }
 
+  //descargarReporteExcel se encarga de descargar un reporte de asignaciones en formato Excel para el mes y año seleccionados, realizando una llamada al backend para obtener el archivo como un blob, y luego utilizando la biblioteca FileSaver para guardar el archivo en el dispositivo del usuario con un nombre que incluye el mes y año, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   descargarReporteExcel() {
   const mm = String(this.mes).padStart(2, '0');
   const url = `http://localhost:8000/api/reporte-asignaciones/?mes=${mm}&anio=${this.anio}`;
@@ -879,6 +917,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  //abrirModalEditar se encarga de abrir un diálogo para editar una asignación existente, inicializando el estado del componente con la información de la asignación seleccionada, y luego mostrando el formulario correspondiente para que el usuario pueda modificar la información de la asignación. Después de cerrar el diálogo, si se guardaron los cambios, se actualiza el estado del componente con la nueva información y se llama al método para guardar la asignación en el backend
   abrirModalEditar(asignacion: Asignacion): void {
     this.modoEdicion = true;
     this.textoBotonAsignacion = 'Actualizar';
@@ -924,6 +963,7 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
+  //guardarAsignacion se encarga de validar la información de la asignación actual antes de guardarla, asegurándose de que se hayan seleccionado un cliente, una instalación, un puesto, una persona y un horario. Si alguna de estas validaciones falla, se muestra una alerta al usuario indicando qué información falta. Si todas las validaciones pasan, se procede a guardar la asignación en el backend, ya sea creando una nueva asignación o actualizando una existente según el modo en que se encuentre el componente, y luego se actualiza la vista con los cambios realizados
   guardarAsignacion(): void {
 
     if (!this.clienteSeleccionado) {
@@ -1021,6 +1061,7 @@ export class AsignacionesComponent implements OnInit {
     }
   }
 
+  //buildRowForPuesto se encarga de construir una fila de visualización para un puesto específico, utilizando la información del puesto y sus horarios para determinar qué días de la semana están asociados con ese puesto, y luego creando un objeto que representa la fila con los detalles del puesto y las celdas correspondientes a cada día de la semana, lo que permite mostrar esta información de manera organizada en la vista
   private buildRowForPuesto(puestoId: number) {
     const puesto = this.puestos.find(p => p.id === puestoId) as any;
     const weekdayKeys = ['mon','tue','wed','thu','fri','sat','sun'];
@@ -1052,6 +1093,7 @@ export class AsignacionesComponent implements OnInit {
     return row;
   }
 
+  //eliminarAsignacion se encarga de eliminar una asignación específica, mostrando una confirmación al usuario antes de realizar la eliminación, y luego actualizando la vista para reflejar la eliminación de la asignación, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   eliminarAsignacion(asignacion: Asignacion): void {
     Swal.fire({
       title: '¿Eliminar asignación?',
@@ -1077,11 +1119,12 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
-
+  //cambiarMesAnio se encarga de manejar el cambio en la selección del mes o año para las asignaciones, llamando al método para cargar las asignaciones correspondientes al nuevo mes y año seleccionados, lo que permite actualizar la vista con la información relevante para el período seleccionado por el usuario
   cambiarMesAnio(): void {
     this.cargarAsignaciones();
   }
 
+  //resetAsignacionState se encarga de restablecer el estado relacionado con la asignación actual, limpiando la información de la asignación, las selecciones de cliente e instalación, y los listados de instalaciones y puestos, lo que prepara el componente para crear una nueva asignación o para limpiar el formulario después de guardar o cancelar una operación
   private resetAsignacionState(): void {
     this.asignacionActual = this.nuevaAsignacion();
     this.clienteSeleccionado = null;
