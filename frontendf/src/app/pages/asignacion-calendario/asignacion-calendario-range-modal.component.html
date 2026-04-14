@@ -26,7 +26,7 @@
       <input matInput type="text" [(ngModel)]="seq" (ngModelChange)="onInputChange()" placeholder="ejemplo: N, D, F" />
     </mat-form-field>
 
-    <div class="preview" *ngIf="previewRows.length">
+    <div class="preview" *ngIf="!noEnd && previewRows.length">
       <div class="preview-title">Vista previa</div>
       <div class="preview-sub" *ngIf="rowTitle">{{ rowTitle }}</div>
       <div class="preview-row" *ngFor="let p of previewRows">
