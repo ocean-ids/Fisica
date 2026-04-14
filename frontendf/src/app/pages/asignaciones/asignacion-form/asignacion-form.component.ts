@@ -111,7 +111,10 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   getPersonasActivas(): Persona[] {
-    return this.personas.filter(persona => persona.is_active !== false);
+    return this.personas.filter(persona => {
+      const tipo = (persona.tipo || '').toString().toUpperCase();
+      return persona.is_active !== false && tipo === 'FIJOS';
+    });
   }
 
   onInstalacionChange(): void {
