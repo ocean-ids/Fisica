@@ -258,7 +258,12 @@ def importar_personas(request):
                     raw_row[key] = row[pos] if pos < len(row) else None
                 if all((val is None or str(val).strip() == '') for val in raw_row.values()):
                     continue
-                filas_raw.append((idx, raw_row))
+                filas_raw.append({
+                    'fila': idx,
+                    'raw': raw_row,
+                    'has_fullname_header': has_fullname_header,
+                    'hoja': None,
+                })
         except Exception:
             logger.exception('Error procesando CSV de personas')
             return JsonResponse({'error': 'No se pudo leer el CSV'}, status=400)
@@ -266,31 +271,40 @@ def importar_personas(request):
     elif ext in ['xlsx']:
         try:
             wb = load_workbook(upload, read_only=True, data_only=True)
-            ws = wb.active
-            header_row = None
-            header_norm = []
-            header_idx = None
-            for r_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=min(ws.max_row, 20)), start=1):
-                norm = [normalize_header(cell.value) for cell in row]
-                has_cedula = 'CEDULA' in norm
-                has_fullname_header = any(h in fullname_headers for h in norm)
-                has_apellidos = 'APELLIDOS' in norm
-                has_nombres = 'NOMBRES' in norm
-                if has_cedula and ((has_apellidos and has_nombres) or has_fullname_header):
-                    header_row = norm
-                    header_idx = r_idx
-                    break
-            if header_row is None:
-                return JsonResponse({'error': 'Faltan columnas: CEDULA y APELLIDOS/NOMBRES'}, status=400)
-            header_map_idx = {h: idx for idx, h in enumerate(header_row)}
-            for row_idx, row in enumerate(ws.iter_rows(min_row=header_idx+1, max_row=ws.max_row), start=header_idx+1):
-                raw_row = {}
-                for key in header_map_idx:
-                    pos = header_map_idx[key]
-                    raw_row[key] = row[pos].value if pos < len(row) else None
-                if all((val is None or str(val).strip() == '') for val in raw_row.values()):
+            any_sheet = False
+            for ws in wb.worksheets:
+                header_row = None
+                header_idx = None
+                sheet_has_fullname_header = False
+                for r_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=min(ws.max_row, 20)), start=1):
+                    norm = [normalize_header(cell.value) for cell in row]
+                    has_cedula = 'CEDULA' in norm
+                    sheet_has_fullname_header = any(h in fullname_headers for h in norm)
+                    has_apellidos = 'APELLIDOS' in norm
+                    has_nombres = 'NOMBRES' in norm
+                    if has_cedula and ((has_apellidos and has_nombres) or sheet_has_fullname_header):
+                        header_row = norm
+                        header_idx = r_idx
+                        break
+                if header_row is None:
                     continue
-                filas_raw.append((row_idx, raw_row))
+                any_sheet = True
+                header_map_idx = {h: idx for idx, h in enumerate(header_row)}
+                for row_idx, row in enumerate(ws.iter_rows(min_row=header_idx + 1, max_row=ws.max_row), start=header_idx + 1):
+                    raw_row = {}
+                    for key in header_map_idx:
+                        pos = header_map_idx[key]
+                        raw_row[key] = row[pos].value if pos < len(row) else None
+                    if all((val is None or str(val).strip() == '') for val in raw_row.values()):
+                        continue
+                    filas_raw.append({
+                        'fila': row_idx,
+                        'raw': raw_row,
+                        'has_fullname_header': sheet_has_fullname_header,
+                        'hoja': ws.title,
+                    })
+            if not any_sheet:
+                return JsonResponse({'error': 'No se encontraron hojas con columnas: CEDULA y APELLIDOS/NOMBRES'}, status=400)
         except Exception:
             logger.exception('Error procesando XLSX de personas')
             return JsonResponse({'error': 'No se pudo leer el XLSX'}, status=400)
@@ -300,7 +314,11 @@ def importar_personas(request):
     errores = []
     filas_limpias = []
 
-    for fila_num, raw in filas_raw:
+    for item in filas_raw:
+        fila_num = item['fila']
+        raw = item['raw']
+        fila_hoja = item.get('hoja')
+        row_has_fullname = item.get('has_fullname_header', False)
         cedula = str(raw.get('CEDULA') or '').strip()
         tipo = str(raw.get('TIPO') or 'FIJOS').strip().upper()
         is_active = parse_bool(raw.get('IS_ACTIVE'))
@@ -308,7 +326,7 @@ def importar_personas(request):
         # obtener apellidos/nombres, permitiendo columna combinada
         apellidos = str(raw.get('APELLIDOS') or '').strip()
         nombres = str(raw.get('NOMBRES') or '').strip()
-        if not (apellidos and nombres) and has_fullname_header:
+        if not (apellidos and nombres) and row_has_fullname:
             # buscar la primera columna fullname presente
             fullname_val = None
             for key in raw.keys():
@@ -322,23 +340,24 @@ def importar_personas(request):
                 nombres = n_split
 
         if not cedula:
-            errores.append({'fila': fila_num, 'error': 'CEDULA vacía'})
+            errores.append({'fila': fila_num, 'hoja': fila_hoja, 'error': 'CEDULA vacia'})
             continue
         if not re.match(r'^\d{1,10}$', cedula):
-            errores.append({'fila': fila_num, 'error': 'CEDULA inválida: sólo dígitos, máximo 10'})
+            errores.append({'fila': fila_num, 'hoja': fila_hoja, 'error': 'CEDULA invalida: solo digitos, maximo 10'})
             continue
         if not apellidos:
-            errores.append({'fila': fila_num, 'error': 'APELLIDOS vacíos'})
+            errores.append({'fila': fila_num, 'hoja': fila_hoja, 'error': 'APELLIDOS vacios'})
             continue
         if not nombres:
-            errores.append({'fila': fila_num, 'error': 'NOMBRES vacíos'})
+            errores.append({'fila': fila_num, 'hoja': fila_hoja, 'error': 'NOMBRES vacios'})
             continue
         if tipo and tipo not in allowed_tipos:
-            errores.append({'fila': fila_num, 'error': f'TIPO inválido: {tipo}'})
+            errores.append({'fila': fila_num, 'hoja': fila_hoja, 'error': f'TIPO invalido: {tipo}'})
             continue
 
         filas_limpias.append({
             'fila': fila_num,
+            'hoja': fila_hoja,
             'cedula': cedula,
             'apellidos': apellidos,
             'nombres': nombres,
@@ -365,21 +384,22 @@ def importar_personas(request):
         with transaction.atomic():
             cedulas = [f['cedula'] for f in filas_limpias]
             existentes = {p.cedula: p for p in Persona.objects.filter(cedula__in=cedulas)}
+            procesadas = set(existentes.keys())
 
             for fila in filas_limpias:
-                persona = existentes.get(fila['cedula'])
-                if persona:
-                    # No modificar registros existentes
+                cedula = fila['cedula']
+                if cedula in procesadas:
+                    # Evitar duplicados en el mismo archivo y existentes en BD.
                     continue
-                else:
-                    Persona.objects.create(
-                        nombres=fila['nombres'],
-                        apellidos=fila['apellidos'],
-                        cedula=fila['cedula'],
-                        tipo=fila['tipo'],
-                        is_active=fila['is_active'],
-                    )
-                    resumen['creadas'] += 1
+                Persona.objects.create(
+                    nombres=fila['nombres'],
+                    apellidos=fila['apellidos'],
+                    cedula=cedula,
+                    tipo=fila['tipo'],
+                    is_active=fila['is_active'],
+                )
+                resumen['creadas'] += 1
+                procesadas.add(cedula)
         resumen['mensaje'] = 'Importación completada'
         return JsonResponse(resumen, status=200)
     except IntegrityError as exc:
