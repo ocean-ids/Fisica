@@ -159,9 +159,16 @@ export class AsignacionCalendarioRangeModalComponent {
   private refreshPreview(): void {
     this.previewRows = [];
     const startDate = this.parseDate(this.start);
-    const endDate = this.getEndDate();
+    let endDate = this.getEndDate();
     if (!startDate || !endDate) return;
     if (startDate > endDate) return;
+
+    if (this.noEnd) {
+      const y = startDate.getFullYear();
+      const m = startDate.getMonth();
+      const monthEnd = new Date(y, m + 1, 0);
+      if (monthEnd < endDate) endDate = monthEnd;
+    }
 
     const tokens = this.parseSequence(this.seq, this.data.isSacafranco);
     const row = this.data?.row || {};
