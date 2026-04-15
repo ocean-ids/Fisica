@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario
-from openpyxl import load_workbook
+from openpyxl import load_workbook, workbook
 import csv
 import io
 import re
@@ -387,6 +387,49 @@ def importar_personas(request):
     except Exception:
         logger.exception('Error importando personas')
         return JsonResponse({'error': 'No se pudo importar personas'}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def exportar_personas_excel(request):
+    if not request.user.has_perm('CoreFisica.view_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    
+    q = (request.GET.get('q') or '').strip()
+    tipo = (request.GET.get('tipo') or '').strip()
+
+    personas = Persona.objects.all()
+    if q:
+        personas = personas.filter(
+            Q(nombres__icontains=q) |
+            Q(apellidos__icontains=q) |
+            Q(cedula__icontains=q)
+        )
+    
+    if tipo:
+        personas = personas.filter(tipo=tipo)
+
+    personas = personas.order_by('apellidos', 'nombres')
+
+    wb = workbook.Workbook()
+    ws = wb.active
+    ws.title = "Personas"
+    ws.append(['CEDULA','NOMBRES', 'APELLIDOS', 'TIPO'])
+
+
+    for p in personas:
+        ws.append([p.cedula, p.nombres, p.apellidos, p.tipo])
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    resp = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+    resp['Content-Disposition'] = 'attachment; filename=personal.xlsx'
+    return resp
 
 class SacafrancoListView(APIView):
     permission_classes = [IsAuthenticated]
