@@ -206,6 +206,19 @@ def importar_personas(request):
         text = ''.join(c for c in unicodedata.normalize('NFKD', text) if not unicodedata.combining(c))
         return text
 
+    def normalize_cedula(value):
+        if value is None:
+            return ''
+        raw = str(value).strip()
+        compact = re.sub(r'[\s\-]', '', raw)
+        if not compact:
+            return ''
+        if not re.match(r'^\d+$', compact):
+            return None
+        if len(compact) == 9:
+            return f"0{compact}"
+        return compact
+
     def parse_bool(value):
         if value is None or value == '':
             return True
@@ -319,7 +332,7 @@ def importar_personas(request):
         raw = item['raw']
         fila_hoja = item.get('hoja')
         row_has_fullname = item.get('has_fullname_header', False)
-        cedula = str(raw.get('CEDULA') or '').strip()
+        cedula = normalize_cedula(raw.get('CEDULA'))
         tipo = str(raw.get('TIPO') or 'FIJOS').strip().upper()
         is_active = parse_bool(raw.get('IS_ACTIVE'))
 
@@ -339,6 +352,9 @@ def importar_personas(request):
             if not nombres:
                 nombres = n_split
 
+        if cedula is None:
+            errores.append({'fila': fila_num, 'hoja': fila_hoja, 'error': 'CEDULA invalida: solo digitos'})
+            continue
         if not cedula:
             errores.append({'fila': fila_num, 'hoja': fila_hoja, 'error': 'CEDULA vacia'})
             continue
@@ -383,7 +399,17 @@ def importar_personas(request):
     try:
         with transaction.atomic():
             cedulas = [f['cedula'] for f in filas_limpias]
-            existentes = {p.cedula: p for p in Persona.objects.filter(cedula__in=cedulas)}
+            cedula_candidates = set(cedulas)
+            for c in cedulas:
+                if len(c) == 10 and c.startswith('0'):
+                    cedula_candidates.add(c.lstrip('0') or c)
+                elif len(c) == 9:
+                    cedula_candidates.add(f"0{c}")
+            existentes = {}
+            for p in Persona.objects.filter(cedula__in=list(cedula_candidates)):
+                norm = normalize_cedula(p.cedula)
+                if norm:
+                    existentes[norm] = p
             procesadas = set(existentes.keys())
 
             for fila in filas_limpias:
