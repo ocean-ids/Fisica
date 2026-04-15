@@ -6,7 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario
-from openpyxl import load_workbook, workbook
+from openpyxl import load_workbook, Workbook
+from openpyxl.styles import Border, Side, Alignment, Font, PatternFill
 import csv
 import io
 import re
@@ -410,14 +411,32 @@ def exportar_personas_excel(request):
 
     personas = personas.order_by('apellidos', 'nombres')
 
-    wb = workbook.Workbook()
+    wb = Workbook()
     ws = wb.active
     ws.title = "Personas"
-    ws.append(['CEDULA','NOMBRES', 'APELLIDOS', 'TIPO'])
+    ws.append(['CEDULA', 'APELLIDOS', 'NOMBRES', 'TIPO'])
 
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 25
+    ws.column_dimensions['D'].width = 15
+
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="F1F3F5", end_color="F1F3F5", fill_type="solid")
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+
+    thin = Side(border_style="thin", color="000000")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     for p in personas:
-        ws.append([p.cedula, p.nombres, p.apellidos, p.tipo])
+        ws.append([p.cedula, p.apellidos, p.nombres, p.tipo])
+
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=4):
+        for cell in row:
+            cell.border = border
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
     output = io.BytesIO()
     wb.save(output)
