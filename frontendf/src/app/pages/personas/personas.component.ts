@@ -82,7 +82,8 @@ export class PersonasComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error al crear persona:', error);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo crear' });
+        const msg = error?.error?.error || 'No se pudo crear';
+        Swal.fire({ icon: 'warning', title: 'Duplicado', text: msg });
       }
     });
   }
