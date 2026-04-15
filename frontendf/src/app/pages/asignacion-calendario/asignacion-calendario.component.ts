@@ -1,4 +1,5 @@
 import { Component, OnInit, Output, EventEmitter, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Observable, forkJoin, of } from 'rxjs';
 import { AsignacionSemanal, SacafrancoFilaSemanal } from '../../models/asignacion-calendario';
 import { SacafrancoFila } from '../../models/asignacion.model';
 import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
@@ -25,6 +26,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   @Input() rowOrder: Array<number | string> = [];
   @Input() sacafrancoRows: SacafrancoFila[] = [];
   @Output() sacafrancoClick: EventEmitter<any> = new EventEmitter<any>();
+  @Output() rangeApplied: EventEmitter<void> = new EventEmitter<void>();
     ngOnChanges(changes: SimpleChanges): void {
       if (changes['weekStart'] && !changes['weekStart'].firstChange) {
         this.loadWeek();
@@ -475,8 +477,16 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
 
       const anchor = this.parseWeekStart(this.weekStart);
       const rangeMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
-      this.applyRangeToBackend(row, rangeMap, isSacafranco);
-      this.applyRangeToCurrentWeek(row, rangeMap);
+      this.applyRangeToBackend(row, rangeMap, isSacafranco).subscribe({
+        next: () => {
+          this.applyRangeToCurrentWeek(row, rangeMap);
+          this.rangeApplied.emit();
+        },
+        error: () => {
+          this.applyRangeToCurrentWeek(row, rangeMap);
+          this.rangeApplied.emit();
+        }
+      });
     });
   }
 
@@ -546,7 +556,8 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   }
 
   // Aplica los cambios de la secuencia a la base de datos enviando solo los dias que fueron modificados para optimizar la actualización, y diferenciando entre filas regulares de asignación y filas de sacafranco para usar los endpoints correspondientes
-  private applyRangeToBackend(row: any, rangeMap: Record<string, Record<string, string>>, isSacafranco: boolean): void {
+  private applyRangeToBackend(row: any, rangeMap: Record<string, Record<string, string>>, isSacafranco: boolean): Observable<any> {
+    const requests: Observable<any>[] = [];
     const keys = Object.keys(rangeMap);
     keys.forEach(weekStart => {
       const days = rangeMap[weekStart] || {};
@@ -556,7 +567,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         if (!filaId) return;
         const payload: any = { sacafranco_fila: filaId, week_start: weekStart };
         Object.keys(days).forEach(k => payload[k] = days[k]);
-        this.asignacionCalendarioService.crearSacafrancoFilaSemanal(payload).subscribe({ next: () => {}, error: () => {} });
+        requests.push(this.asignacionCalendarioService.crearSacafrancoFilaSemanal(payload));
       } else {
         const asignacionId = row?.asignacion || row?.asignacion_id;
         if (!asignacionId) return;
@@ -566,9 +577,10 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
           week_start: weekStart
         };
         Object.keys(days).forEach(k => payload[k] = days[k]);
-        this.asignacionCalendarioService.crearAsignacionCalendario(payload).subscribe({ next: () => {}, error: () => {} });
+        requests.push(this.asignacionCalendarioService.crearAsignacionCalendario(payload));
       }
     });
+    return requests.length ? forkJoin(requests) : of(null);
   }
 
   // Aplica los cambios de la secuencia a la fila actual en la vista previa, actualizando solo los días que fueron modificados para reflejar inmediatamente los cambios sin necesidad de recargar toda la semana

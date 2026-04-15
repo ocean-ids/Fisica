@@ -123,6 +123,12 @@ export class AsignacionesComponent implements OnInit {
     }, 0);
   }
 
+  onRangeApplied(): void {
+    if (this.calendarios && this.calendarios.length) {
+      this.calendarios.forEach(c => c.loadWeek());
+    }
+  }
+
   // Obtiene las horas de un puesto como un string formateado
   getHorasPuesto(puesto: any): string {
     try {

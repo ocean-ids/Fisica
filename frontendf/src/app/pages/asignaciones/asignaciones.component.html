@@ -38,7 +38,7 @@
   
   <div class="row g-2 align-items-center mt-3 mb-1">
     <div class="col-12 col-md-4">
-      <input type="month" class="form-control" [(ngModel)]="monthValue" (change)="onMonthChange()" style="max-width: 150px;"/>
+      <input type="month" class="form-control" [(ngModel)]="monthValue" (change)="onMonthChange()" style="max-width: 190px;"/>
     </div>
     <div class="col-12 col-md-6">
       <input
@@ -195,7 +195,8 @@
                     [filterText]="filtroTexto"
                     [sacafrancoRows]="sacafrancoRows"
                     [rowOrder]="calendarRowOrder"
-                    (sacafrancoClick)="openSacafrancosModal($event.weekStart, $event.day, $event.puestoId, $event.manage)"></app-asignacion-calendario>
+                    (sacafrancoClick)="openSacafrancosModal($event.weekStart, $event.day, $event.puestoId, $event.manage)"
+                    (rangeApplied)="onRangeApplied()"></app-asignacion-calendario>
                   <!--<div class="text-center"><strong>Semana: {{ ws }}</strong></div>-->
                 </div>
               </ng-container>
