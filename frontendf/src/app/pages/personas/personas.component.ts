@@ -12,6 +12,7 @@ import { PersonaService } from '../../services/persona.service';
 import { PersonaFormComponent } from './persona-form/persona-form.component';
 import Swal from 'sweetalert2';
 import { ViewChild, ElementRef } from '@angular/core';
+import { saveAs } from 'file-saver';
 
 @Component({
   selector: 'app-personas',
@@ -188,6 +189,21 @@ export class PersonasComponent implements OnInit {
       complete: () => {
         this.isImporting = false;
         this.fileInput.nativeElement.value = '';
+      }
+    });
+  }
+
+  descargarExcel(): void {
+    const params: any = {};
+    if (this.filtroTexto) params.q = this.filtroTexto;
+    if (this.filtroTipo) params.tipo = this.filtroTipo;
+    this.personaService.exportPersonasExcel(params).subscribe({
+      next: (blob) => {
+        const fecha = new Date().toISOString().slice(0, 10);
+        saveAs(blob, `personas_${fecha}.xlsx`);
+      },
+      error: () => {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo descargar el Excel' });
       }
     });
   }

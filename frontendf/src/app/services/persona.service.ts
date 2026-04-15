@@ -45,4 +45,8 @@ export class PersonaService {
     return this.apiService.post<any>(endpoint, formData);
   }
 
+  exportPersonasExcel(params?: { q?: string; tipo?: string }) {
+    return this.apiService.getBlob('/exportar-personas-excel/', params);
+  }
+
 }

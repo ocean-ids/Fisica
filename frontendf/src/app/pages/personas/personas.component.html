@@ -3,11 +3,16 @@
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h2 class="m-0">Gestión de Personal</h2>
     <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary" (click)="abrirModal()">
+        <i class="bi bi-plus-circle"></i> Nueva Persona
+      </button>
       <button class="btn btn-outline-secondary" [disabled]="isImporting" (click)="dispararImportacion()">
         <i class="bi bi-upload"></i> Importar
       </button>
-      <button class="btn btn-outline-primary" (click)="abrirModal()">
-        <i class="bi bi-plus-circle"></i> Nueva Persona
+      <button class="btn btn-outline-success" (click)="descargarExcel()">
+        <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
+        <!--<i class="bi bi-file-earmark-excel"></i>-->
+        Descargar
       </button>
     </div>
   </div>
