@@ -11,7 +11,7 @@
     </div>
 
     <section class="d-flex flex-wrap align-items-center gap-2">
-      <mat-button-toggle-group
+      <mat-button-toggle-group class="row"
         name="columnas"
         aria-label="Columnas"
         [hideMultipleSelectionIndicator]="hideMultipleSelectionIndicator()"
@@ -19,14 +19,14 @@
         [(ngModel)]="columnasOcultas"
         [ngModelOptions]="{standalone:true}"
       >
-        <mat-button-toggle value="horario">Horario</mat-button-toggle>
-        <mat-button-toggle value="codigo">Nominativo</mat-button-toggle>
-        <mat-button-toggle value="cliente">Cliente</mat-button-toggle>
-        <mat-button-toggle value="puesto">Puesto</mat-button-toggle>
-        <mat-button-toggle value="cedula">Cedula</mat-button-toggle>
-        <mat-button-toggle value="persona">Persona</mat-button-toggle>
-        <mat-button-toggle value="sacafranco">SF</mat-button-toggle>
-        <mat-button-toggle value="accion">Accion</mat-button-toggle>
+        <mat-button-toggle class="col-sm" value="horario">Horario</mat-button-toggle>
+        <mat-button-toggle class="col-sm" value="codigo">Nominativo</mat-button-toggle>
+        <mat-button-toggle class="col-sm" value="cliente">Cliente</mat-button-toggle>
+        <mat-button-toggle class="col-sm" value="puesto">Puesto</mat-button-toggle>
+        <mat-button-toggle class="col-sm" value="cedula">Cedula</mat-button-toggle>
+        <mat-button-toggle class="col-sm" value="persona">Persona</mat-button-toggle>
+        <mat-button-toggle class="col-sm" value="sacafranco">SF</mat-button-toggle>
+        <mat-button-toggle class="col-sm" value="accion">Accion</mat-button-toggle>
       </mat-button-toggle-group>
     </section>
 
