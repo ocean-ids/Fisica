@@ -26,6 +26,8 @@ def crear_persona(request):
     data = request.data
 
     cedula = (data.get('cedula') or '').strip()
+    if not cedula:
+        return JsonResponse({'error': 'Cédula es obligatoria'}, status=400)
     if not re.match(r'^\d{1,10}$', cedula):
         return JsonResponse({'error': 'Cédula inválida: sólo dígitos, máximo 10'}, status=400)
 
@@ -98,6 +100,8 @@ def actualizar_persona(request, id):
     cedula_in = data.get('cedula')
     if cedula_in is not None:
         cedula_in = cedula_in.strip()
+        if not cedula_in:
+            return JsonResponse({'error': 'Cédula es obligatoria'}, status=400)
         if not re.match(r'^\d{1,10}$', cedula_in):
             return JsonResponse({'error': 'Cédula inválida: sólo dígitos, máximo 10'}, status=400)
         persona.cedula = cedula_in
