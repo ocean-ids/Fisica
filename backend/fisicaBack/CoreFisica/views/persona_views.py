@@ -448,7 +448,7 @@ def exportar_personas_excel(request):
     q = (request.GET.get('q') or '').strip()
     tipo = (request.GET.get('tipo') or '').strip()
 
-    personas = Persona.objects.all()
+    personas = Persona.objects.filter(is_active=True)
     if q:
         personas = personas.filter(
             Q(nombres__icontains=q) |
