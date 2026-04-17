@@ -10,6 +10,7 @@ export interface LoginResponse {
     last_name?: string;
     full_name?: string;
     photo_url?: string | null;
+    cargo?: string | null;
     is_superuser: boolean;
     groups: string[];
     permissions: string[];

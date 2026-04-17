@@ -177,8 +177,8 @@ class ConsolidadoAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-	list_display = ('user', 'user_is_active', 'updated_at')
-	search_fields = ('user__username', 'user__email')
+	list_display = ('user', 'cargo', 'user_is_active', 'updated_at')
+	search_fields = ('user__username', 'user__email', 'cargo')
 	list_filter = ('user__is_active',)
 
 	def user_is_active(self, obj):

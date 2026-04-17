@@ -38,6 +38,7 @@ def _serialize_user(request, user: User):
         "last_name": last,
         "full_name": full,
         "photo_url": _get_photo_url(request, profile),
+        "cargo": profile.cargo,
         "is_superuser": user.is_superuser,
         "groups": list(user.groups.values_list('name', flat=True)),
         "permissions": sorted(list(user.get_all_permissions())),
@@ -137,6 +138,7 @@ def user_profile_view(request):
         'last_name': request.user.last_name or '',
         'username': request.user.username,
         'email': request.user.email,
+        'cargo': profile.cargo,
     })
 
 

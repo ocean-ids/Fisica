@@ -1,5 +1,5 @@
 <mat-nav-list class="w-100 h-100 d-flex flex-column border-end">
-  <div class="d-flex flex-column align-items-center text-center p-2 border-bottom">
+  <div class="d-flex flex-column align-items-center text-center p-4 border-bottom">
     <div class="d-flex align-items-center justify-content-center">
       @if (photoUrl) {
         <img class="rounded-circle border" width="48" height="48" [src]="photoUrl" alt="Foto de perfil" />
@@ -9,8 +9,8 @@
     </div>
     <div class="mt-2">
       <div class="fw-semibold text-truncate" style="max-width: 200px;">{{ displayName }}</div>
-      @if (puestoName) {
-        <div class="small text-secondary text-truncate" style="max-width: 200px;">{{ puestoName }}</div>
+      @if (cargoName || puestoName) {
+        <div class="small text-secondary text-truncate" style="max-width: 200px;">{{ cargoName || puestoName }}</div>
       }
     </div>
   </div>

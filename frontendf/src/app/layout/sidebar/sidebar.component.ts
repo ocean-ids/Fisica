@@ -27,6 +27,7 @@ export class SidebarComponent implements OnInit {
   username = '';
   photoUrl: string | null = null;
   puestoName = '';
+  cargoName = '';
 
   constructor(private authService: AuthService) {}
 
@@ -38,6 +39,7 @@ export class SidebarComponent implements OnInit {
     this.fullName = user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ');
     this.photoUrl = user.photo_url || null;
     this.puestoName = this.resolvePuestoName(user);
+    this.cargoName = this.resolveCargoName(user);
   }
 
   get menuItems() {
@@ -52,10 +54,14 @@ export class SidebarComponent implements OnInit {
     if (typeof user?.puesto_name === 'string') return user.puesto_name;
     if (typeof user?.puesto_nombre === 'string') return user.puesto_nombre;
     if (typeof user?.puesto === 'string') return user.puesto;
+    if (typeof user?.puesto?.nombre === 'string') return user.puesto.nombre;
+    return '';
+  }
+
+  private resolveCargoName(user: any): string {
     if (typeof user?.cargo === 'string') return user.cargo;
     if (typeof user?.role === 'string') return user.role;
     if (typeof user?.position === 'string') return user.position;
-    if (typeof user?.puesto?.nombre === 'string') return user.puesto.nombre;
     return '';
   }
 }

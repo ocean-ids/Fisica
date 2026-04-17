@@ -606,6 +606,7 @@ class ConsolidadoResumen(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     photo = models.ImageField(upload_to='user_photos/', null=True, blank=True)
+    cargo = models.CharField(max_length=100, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
