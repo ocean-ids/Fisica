@@ -156,7 +156,7 @@ def disable_persona(request, id):
     except Persona.DoesNotExist:
         return JsonResponse({'error': 'Persona no encontrada'}, status=404)
 
-    #
+    # si la persona no está activa, se registra un intento de deshabilitar una persona ya inactiva en el log y se retorna un estado indicando que ya estaba deshabilitada. Esto evita realizar operaciones innecesarias y proporciona información útil para auditoría
     if not persona.is_active:
         logger.info('Intento de deshabilitar persona ya inactiva id=%s', id)
         
@@ -174,6 +174,7 @@ def disable_persona(request, id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def enable_persona(request, id):
+    # si el usuario no tiene permiso de cambiar persona, se retorna un error 403. Si tiene permiso, se intenta obtener la persona por id, si no existe se retorna un error 404. Si la persona ya está activa, se registra un intento de habilitar una persona ya activa en el log y se retorna un estado indicando que ya estaba habilitada. Si la persona está inactiva, se llama al método enable() de la persona, pasando el usuario que realiza la acción para registrar quién hizo el cambio. Si la habilitación es exitosa, se registra en el log y se retorna un estado indicando que fue habilitada. Si ocurre cualquier error durante el proceso, se registra en el log y se retorna un error 500
     if not  request.user.has_perm('CoreFisica.change_persona'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     
@@ -182,6 +183,7 @@ def enable_persona(request, id):
     except Persona.DoesNotExist:
         return JsonResponse({'error': 'Persona no encontrada'}, status=404)
 
+    # si la persona ya esta activa, se re|gistra un intento de habilitar una persona ya activa en el log y se retorna un estado indicando que ya estaba habilitada. Esto evita realizar operaciones innecesarias y proporciona información útil para auditoría
     if persona.is_active:
         logger.info('Intento de habilitar persona ya activa id=%s', id)
         return JsonResponse({'status': 'already_enabled'}, status=200)
@@ -198,10 +200,9 @@ def enable_persona(request, id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def importar_personas(request):
-    """
-    Importa personas desde CSV o XLSX.
-    Requiere columnas: CEDULA, APELLIDOS, NOMBRES. Opcionales: TIPO, IS_ACTIVE.
-    """
+
+    #Importa personas desde CSV o XLSX.
+    # Requiere columnas: CEDULA, APELLIDOS, NOMBRES. Opcionales: TIPO, IS_ACTIVE.
     if not request.user.has_perm('CoreFisica.change_persona'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
@@ -209,10 +210,12 @@ def importar_personas(request):
     if not upload:
         return JsonResponse({'error': 'Falta el archivo (campo file)'}, status=400)
 
+    # El parámetro dry_run permite validar el archivo sin realizar cambios en la base de datos. Si dry_run es true, se procesará el archivo y se devolverá un resumen de validación sin crear ni actualizar registros. Esto es útil para verificar que el formato y los datos del archivo son correctos antes de hacer la importación real.
     dry_run = str(request.GET.get('dry_run', 'false')).lower() in ['1', 'true', 'yes']
     fullname_headers = ['APELLIDOS Y NOMBRES', 'APELLIDOS Y NOMBRE', 'NOMBRES Y APELLIDOS']
     allowed_tipos = {choice[0] for choice in Persona.TIPO_CHOICES}
 
+    # Función para normalizar encabezados, convirtiendo a mayúsculas, quitando espacios y acentos para facilitar la detección de columnas relevantes sin importar variaciones comunes en los nombres de las columnas.
     def normalize_header(value):
         if value is None:
             return ''
@@ -222,6 +225,7 @@ def importar_personas(request):
         text = ''.join(c for c in unicodedata.normalize('NFKD', text) if not unicodedata.combining(c))
         return text
 
+    # Función para normalizar cédula, eliminando espacios y guiones, validando que solo contenga dígitos y ajustando a formato de 10 dígitos si es necesario. Retorna la cédula normalizada o None si es inválida.
     def normalize_cedula(value):
         if value is None:
             return ''
@@ -235,11 +239,13 @@ def importar_personas(request):
             return f"0{compact}"
         return compact
 
+    # funcion para parsear valores booleanos, interpretando varias formas comunes de representar falso (0, false, no, n) y considerando vacío o None como verdadero por defecto. Esto permite flexibilidad en cómo se indican los valores booleanos en el archivo de importación.
     def parse_bool(value):
         if value is None or value == '':
             return True
         return str(value).strip().lower() not in ['0', 'false', 'no', 'n']
 
+    # funcion para dividir un nombre completo en apellidos y nombres, utilizando heurísticas para manejar casos comunes. Si el nombre completo tiene una sola palabra, se asume que son nombres sin apellidos. Si tiene dos palabras, se asigna la primera a apellidos y la segunda a nombres. Si tiene más de dos palabras, se asume que las dos primeras son apellidos y el resto son nombres. Esto permite procesar columnas combinadas de nombre completo sin requerir un formato específico.
     def split_full_name(raw: str):
         parts = [p for p in str(raw or '').strip().split() if p]
         if not parts:
@@ -255,6 +261,7 @@ def importar_personas(request):
     has_fullname_header = False
     ext = upload.name.lower().rsplit('.', 1)[-1] if '.' in upload.name else ''
 
+    # Procesar CSV o XLSX, detectando la fila de encabezado que contenga las columnas requeridas (CEDULA y APELLIDOS/NOMBRES o columna combinada), y extrayendo los datos en un formato intermedio sin validar aún. Esto permite manejar archivos con formatos variados y detectar correctamente las columnas relevantes para la importación.
     if ext in ['csv', 'txt']:
         try:
             raw_data = upload.read().decode('utf-8-sig', errors='ignore')
@@ -368,6 +375,7 @@ def importar_personas(request):
             if not nombres:
                 nombres = n_split
 
+        #Validaciones: cedula no vacia, solo dgitos, maximo 10 caracteres, apellidos y nombres no vacios, tipo valido si se proporciona. Se acumulan errores para cada fila sin detener el proceso, permitiendo reportar múltiples problemas en un solo intento de importación.
         if cedula is None:
             errores.append({'fila': fila_num, 'hoja': fila_hoja, 'error': 'CEDULA invalida: solo digitos'})
             continue
@@ -386,7 +394,8 @@ def importar_personas(request):
         if tipo and tipo not in allowed_tipos:
             errores.append({'fila': fila_num, 'hoja': fila_hoja, 'error': f'TIPO invalido: {tipo}'})
             continue
-
+        
+        # Si la fila es válida, se agrega a filas_limpias para su posterior procesamiento. Esto permite separar claramente las filas que tienen problemas de formato o datos inválidos de aquellas que están listas para ser importadas, facilitando la gestión de errores y la importación efectiva.
         filas_limpias.append({
             'fila': fila_num,
             'hoja': fila_hoja,
@@ -396,7 +405,7 @@ def importar_personas(request):
             'tipo': tipo or None,
             'is_active': bool(is_active),
         })
-
+    # Se construye un resumen del proceso de validación, incluyendo el total de filas procesadas, cuántas son válidas, cuántas se crearían o actualizarían (inicialmente 0 en este caso) y los errores encontrados. Este resumen se devuelve al cliente para proporcionar retroalimentación sobre el resultado de la validación, especialmente útil cuando se utiliza el modo dry_run para verificar el archivo sin realizar cambios en la base de datos.
     resumen = {
         'total_filas': len(filas_raw),
         'filas_validas': len(filas_limpias),
@@ -405,13 +414,15 @@ def importar_personas(request):
         'errores': errores,
     }
 
+    # Si dry_run es true, se devuelve el resumen de validación sin realizar la importación real. Esto permite al usuario verificar que el archivo tiene el formato correcto y que los datos son válidos antes de proceder con la importación, evitando cambios no deseados en la base de datos.
     if dry_run:
         resumen['mensaje'] = 'Validación realizada (dry_run)'
         return JsonResponse(resumen, status=200)
-
+    
+    # si no hay filas válidas para importar, se devuelve un error con el resumen de errores encontrados. Esto evita intentar realizar una importación cuando no hay datos correctos, proporcionando retroalimentación clara sobre los problemas que deben corregirse en el archivo antes de intentar importar nuevamente.
     if not filas_limpias:
         return JsonResponse({'error': 'No hay filas válidas para importar', 'detalles': errores}, status=400)
-
+    # Importar filas válidas, evitando duplicados tanto en el archivo como con registros existentes en la base de datos
     try:
         with transaction.atomic():
             cedulas = [f['cedula'] for f in filas_limpias]
@@ -454,14 +465,18 @@ def importar_personas(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def exportar_personas_excel(request):
+    # si el usuario no tiene permiso de ver personas, se retorna un error 403. Si tiene permiso, se obtienen los parámetros de búsqueda q y tipo para filtrar las personas. Solo se exportan personas activas para evitar confusión, pero se pueden ajustar filtros según necesidad. Se crea un archivo Excel con los datos de las personas filtradas, aplicando formato a las celdas para mejorar la legibilidad. Finalmente, se devuelve el archivo Excel como una respuesta de descarga al cliente.
     if not request.user.has_perm('CoreFisica.view_persona'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     
+    # Obtener parámetros de búsqueda y strip para eliminar espacios al inicio y final. Esto permite filtrar las personas por cédula, nombres o apellidos (q) y por tipo de persona (tipo) antes de generar el archivo Excel, proporcionando una exportación más relevante según los criterios especificados por el usuario.
     q = (request.GET.get('q') or '').strip()
     tipo = (request.GET.get('tipo') or '').strip()
 
     # Solo exportamos personas activas para evitar confusión, pero se pueden ajustar filtros según necesidad
     personas = Persona.objects.filter(is_active=True)
+
+    # Si se proporciona un parámetro de búsqueda q, se filtran las personas buscando coincidencias en los campos nombres, apellidos o cedula utilizando una consulta Q para combinar las condiciones. Si se especifica un tipo, se filtran las personas por ese tipo. Finalmente, se ordenan las personas por apellidos y nombres para una presentación más organizada en el archivo Excel.
     if q:
         personas = personas.filter(
             Q(nombres__icontains=q) |
@@ -469,14 +484,20 @@ def exportar_personas_excel(request):
             Q(cedula__icontains=q)
         )
     
+    # si tipo no esta vacio se filtra por tipo
     if tipo:
         personas = personas.filter(tipo=tipo)
 
+    # variable personas se ordena por apellidos y nombres en el excel
     personas = personas.order_by('apellidos', 'nombres')
-
+    
+    # wb es un objeto Workbook de openpyxl que representa el archivo Excel que se va a generar
     wb = Workbook()
+    # wb.active obtiene la hoja activa del libro de Excel, que es donde se escribirán los datos de las personas. Se asigna a la variable ws para facilitar su manipulación. Luego se establece el título de la hoja como "Personas" para identificar claramente el contenido del archivo.
     ws = wb.active
+    # ws.title establece el título de la hoja activa a "Personas", lo que ayuda a identificar el contenido del archivo Excel. Luego, se agregan los encabezados de las columnas (CEDULA, APELLIDOS, NOMBRES, TIPO) como la primera fila de la hoja utilizando ws.append(). Esto proporciona una estructura clara para los datos que se agregarán a continuación.
     ws.title = "Personas"
+    #ws.append agrega los encabezados de las columnas al archivo Excel, definiendo claramente qué información se encuentra en cada columna. Esto es importante para la legibilidad del archivo y para que los usuarios puedan entender fácilmente los datos que se presentan. Los encabezados son: CEDULA, APELLIDOS, NOMBRES y TIPO, que corresponden a los campos principales de la entidad Persona.
     ws.append(['CEDULA', 'APELLIDOS', 'NOMBRES', 'TIPO'])
 
     ws.column_dimensions['A'].width = 15
@@ -580,6 +601,7 @@ class SacafrancoListView(APIView):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def asignar_sacafranco(request):
+    # si el ususario no tiene permiso de cambiar asignacionsemanal, se retorna un error 403. Si tiene permiso, se obtienen los parámetros necesarios del request.data para realizar la asignación de sacafranco a una persona en un puesto específico para una semana y día determinados. Se valida que todos los parámetros requeridos estén presentes y que el día sea válido. Luego se intenta obtener la persona y el puesto por sus IDs, retornando errores 404 si no se encuentran. Se determina el mes y año de referencia a partir de week_start para mantener la unicidad de asignación por persona/mes/año. Si no existe una asignación para esa persona/mes/año, se crea una nueva asignación con el contexto del puesto actual. Si ya existe una asignación, se sincroniza su contexto con el puesto actual si es necesario. Finalmente, se propaga la asignación a semanas futuras a partir de la semana indicada, sin tocar semanas pasadas ni sobrescribir códigos existentes.
     if not request.user.has_perm('CoreFisica.change_asignacionsemanal'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
@@ -786,11 +808,13 @@ def desasignar_sacafranco(request):
         return JsonResponse({'error': 'Faltan parámetros requeridos'}, status=400)
 
     try:
+        # Obtener la persona por ID, retornando un error 404 si no se encuentra. Esto es esencial para asegurarse de que la persona a la que se le va a desasignar el sacafranco existe en la base de datos antes de intentar realizar cualquier operación relacionada con ella.
         persona = Persona.objects.get(id=persona_id)
     except Persona.DoesNotExist:
         return JsonResponse({'error': 'Persona no encontrada'}, status=404)
 
     try:
+        # Obtener el puesto por ID, retornando un error 404 si no se encuentra. Esto es esencial para asegurarse de que el puesto al que se le va a desasignar el sacafranco existe en la base de datos antes de intentar realizar cualquier operación relacionada con él.
         puesto = Puesto.objects.get(id=puesto_id)
     except Puesto.DoesNotExist:
         return JsonResponse({'error': 'Puesto no encontrado'}, status=404)
