@@ -22,18 +22,21 @@ logger = logging.getLogger(__name__)
 def crear_persona(request):
     if not request.user.has_perm('CoreFisica.add_persona'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-
+    # variable data para recibir los datos de request.data, se asigna a data para evitar modificar request.data directamente
     data = request.data
 
+    #cedula es obligatoria, se valida que exista, no esté vacía, tenga solo dígitos y máximo 10 caracteres
     cedula = (data.get('cedula') or '').strip()
     if not cedula:
         return JsonResponse({'error': 'Cédula es obligatoria'}, status=400)
     if not re.match(r'^\d{1,10}$', cedula):
         return JsonResponse({'error': 'Cédula inválida: sólo dígitos, máximo 10'}, status=400)
 
+    #nombres y apellidos se normalizan a mayuscula y se quitan espacios al inicio y final
     nombres = str(data.get('nombres') or '').strip().upper()
     apellidos = str(data.get('apellidos') or '').strip().upper()
 
+    
     try:
         persona = Persona.objects.create(
             nombres=nombres,
@@ -51,6 +54,7 @@ def crear_persona(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_personas(request):
+    # si el ususario tiene permiso de ver personas, se obtiene el parametro de busqueda q y tipo para filtrar por tipo de persona (empleado, cliente, etc)
     if not request.user.has_perm('CoreFisica.view_persona'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
@@ -58,6 +62,7 @@ def obtener_personas(request):
         q = (request.GET.get('q') or '').strip()
         tipo = (request.GET.get('tipo') or '').strip()
 
+        # la variable persona se asigna a la consulta de todas las personas, luego se filtra por q si existe, buscando coincidencias en nombres, apellidos o cedula, y por tipo si se especifica. Finalmente se ordena por apellidos
         personas = Persona.objects.all()
         if q:
             personas = personas.filter(
@@ -90,6 +95,7 @@ def actualizar_persona(request, id):
     except Persona.DoesNotExist:
         return JsonResponse({'error': 'Persona no encontrada'}, status=404)
 
+    # si el request.data contiene los campos nombres o apellidos, se actualizan normalizando a mayuscula y quitando espacios al inicio y final. Si contiene cedula, se valida que no esté vacía, tenga solo dígitos y máximo 10 caracteres antes de actualizarla. El campo tipo se actualiza si está presente en el request.data, de lo contrario se mantiene el valor actual
     if 'nombres' in data:
         nombres = data.get('nombres')
         persona.nombres = str(nombres or '').strip().upper()
@@ -97,6 +103,7 @@ def actualizar_persona(request, id):
         apellidos = data.get('apellidos')
         persona.apellidos = str(apellidos or '').strip().upper()
 
+    # si se proporciona una nueva cedula, se valida que no este vacia, tenga solo dígitos y máximo 10 caracteres antes de actualizarla. Si la cedula es inválida, se retorna un error. Si es válida, se actualiza la cedula de la persona
     cedula_in = data.get('cedula')
     if cedula_in is not None:
         cedula_in = cedula_in.strip()
@@ -106,6 +113,7 @@ def actualizar_persona(request, id):
             return JsonResponse({'error': 'Cédula inválida: sólo dígitos, máximo 10'}, status=400)
         persona.cedula = cedula_in
 
+    # persona.tipo se actualiza si el campo tipo está presente en el request.data, de lo contrario se mantiene el valor actual. Esto permite actualizar el tipo de persona (empleado, cliente, etc) si se proporciona en la solicitud, sin requerir que siempre esté presente
     persona.tipo = data.get('tipo', persona.tipo)
 
     try:
@@ -121,9 +129,11 @@ def actualizar_persona(request, id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_persona(request, id):
+    # si solo el usuario tiene permiso de eliminar persona, se intenta obtener la persona por id, si no existe se retorna un error 404, si existe se elimina y se retorna un mensaje de éxito. Si ocurre cualquier otro error, se registra en el log y se retorna un error 500
     if not request.user.has_perm('CoreFisica.delete_persona'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
+    # se intenta obtener la persona por id, si no existe se retorna un error 404, si existe se elimina y se retorna un mensaje de éxito. Si ocurre cualquier otro error, se registra en el log y se retorna un error 500
     try:
         persona = Persona.objects.get(id=id)
         persona.delete()
@@ -138,6 +148,7 @@ def eliminar_persona(request, id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def disable_persona(request, id):
+    # si el usuario no tiene permiso de cambiar persona, se retorna un error 403. Si tiene permiso, se intenta obtener la persona por id, si no existe se retorna un error 404. Si la persona ya está inactiva, se registra un intento de deshabilitar una persona ya inactiva en el log y se retorna un estado indicando que ya estaba deshabilitada. Si la persona está activa, se llama al método disable() de la persona, pasando el usuario que realiza la acción para registrar quién hizo el cambio. Si la deshabilitación es exitosa, se registra en el log y se retorna un estado indicando que fue deshabilitada. Si ocurre cualquier error durante el proceso, se registra en el log y se retorna un error 500
     if not request.user.has_perm('CoreFisica.change_persona'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
@@ -145,6 +156,7 @@ def disable_persona(request, id):
     except Persona.DoesNotExist:
         return JsonResponse({'error': 'Persona no encontrada'}, status=404)
 
+    #
     if not persona.is_active:
         logger.info('Intento de deshabilitar persona ya inactiva id=%s', id)
         
@@ -448,6 +460,7 @@ def exportar_personas_excel(request):
     q = (request.GET.get('q') or '').strip()
     tipo = (request.GET.get('tipo') or '').strip()
 
+    # Solo exportamos personas activas para evitar confusión, pero se pueden ajustar filtros según necesidad
     personas = Persona.objects.filter(is_active=True)
     if q:
         personas = personas.filter(
