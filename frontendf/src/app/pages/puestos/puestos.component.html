@@ -37,7 +37,7 @@
             <tr class="text-center align-middle">
               <th>Nombre de Puesto</th>
               <th>Tipo de Puesto</th>
-              <th>Cantidad de Puesto</th>
+              <!--<th>Cantidad de Puesto</th>-->
               <th>Días</th>
               <th> Horas</th>
               <th>Turno</th>
@@ -50,7 +50,7 @@
             <tr class="text-center align-middle" *ngFor="let puesto of puestos">
               <td>{{ puesto.nombre }}</td>
               <td>{{puesto.tipo}}</td>
-              <td>{{ puesto.cantidad_guardias }}</td>
+              <!--<td>{{ puesto.cantidad_guardias }}</td>-->
               <td>{{ getDias(puesto) }}</td>
               <td>{{ getHoras(puesto) }}</td>
               <td>{{ getTurnos(puesto) }}</td>

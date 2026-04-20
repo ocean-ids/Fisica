@@ -36,38 +36,62 @@ def crear_puesto(request):
             return JsonResponse({'error': 'Zona no encontrada'}, status=404)
         if zona.instalacion_id != instalacion.id:
             return JsonResponse({'error': 'La zona no pertenece a la instalación'}, status=400)
-    puesto = Puesto.objects.create(
-        nombre=data.get('nombre'),
-        tipo=tipo,
-        cantidad_guardias=cantidad_guardias,
-        instalacion_id=instalacion.id,
-        zona=zona
-    )
-    # crear horarios si vienen
+    try:
+        cantidad_guardias = int(cantidad_guardias)
+    except (TypeError, ValueError):
+        cantidad_guardias = 1
+    if cantidad_guardias < 1:
+        cantidad_guardias = 1
+
+    horarios_payload = []
     try:
         if horarios_text:
             parsed = parse_input(horarios_text)
             for r in parsed:
-                turno_val = r.get('turno') or 'Diurno'
-                PuestoHorario.objects.create(puesto=puesto, dia=r['dia'], horas=r.get('horas', 12), turno=turno_val)
+                horarios_payload.append({
+                    'dia': r.get('dia'),
+                    'horas': r.get('horas', 12),
+                    'turno': r.get('turno') or 'Diurno'
+                })
         elif isinstance(horarios, list):
             for h in horarios:
                 dia = h.get('dia')
                 horas = h.get('horas')
                 if dia and horas is not None:
-                    turno_val = h.get('turno') or 'Diurno'
-                    PuestoHorario.objects.create(puesto=puesto, dia=dia, horas=h.get('horas', 12), turno=turno_val)
+                    horarios_payload.append({
+                        'dia': dia,
+                        'horas': h.get('horas', 12),
+                        'turno': h.get('turno') or 'Diurno'
+                    })
     except Exception:
-        pass
-    # sincronizar resumen
-    try:
-        puesto.sync_from_horarios()
-        puesto.save()
-    except Exception:
-        pass
-    return JsonResponse({
-        'message': 'Puesto creado',
-        'puesto': {
+        horarios_payload = []
+
+    puestos_creados = []
+    for _ in range(cantidad_guardias):
+        puesto = Puesto.objects.create(
+            nombre=data.get('nombre'),
+            tipo=tipo,
+            cantidad_guardias=cantidad_guardias,
+            instalacion_id=instalacion.id,
+            zona=zona
+        )
+
+        for h in horarios_payload:
+            if h.get('dia'):
+                PuestoHorario.objects.create(
+                    puesto=puesto,
+                    dia=h['dia'],
+                    horas=h.get('horas', 12),
+                    turno=h.get('turno') or 'Diurno'
+                )
+
+        try:
+            puesto.sync_from_horarios()
+            puesto.save()
+        except Exception:
+            pass
+
+        puestos_creados.append({
             'id': puesto.id,
             'nombre': puesto.nombre,
             'tipo': puesto.tipo,
@@ -78,7 +102,13 @@ def crear_puesto(request):
             'instalacion_id': puesto.instalacion_id,
             'zona_id': puesto.zona_id,
             'resumen': puesto.resumen,
-        }
+        })
+
+    return JsonResponse({
+        'message': 'Puesto creado',
+        'cantidad_creada': len(puestos_creados),
+        'puesto': puestos_creados[0] if puestos_creados else None,
+        'puestos': puestos_creados
     })
 
 
@@ -188,7 +218,14 @@ def actualizar_puesto(request, id):
 
         puesto.nombre = data.get('nombre', puesto.nombre)
         puesto.tipo = data.get('tipo', puesto.tipo)
-        puesto.cantidad_guardias = data.get('cantidad_guardias', puesto.cantidad_guardias)
+        cantidad_guardias = data.get('cantidad_guardias', puesto.cantidad_guardias)
+        try:
+            cantidad_guardias = int(cantidad_guardias)
+        except (TypeError, ValueError):
+            cantidad_guardias = puesto.cantidad_guardias
+        if cantidad_guardias < 1:
+            cantidad_guardias = 1
+        puesto.cantidad_guardias = cantidad_guardias
         # turno ya no se guarda a nivel de Puesto; se maneja por horario
         # actualizar horarios si vienen
         horarios = data.get('horarios')
@@ -196,6 +233,7 @@ def actualizar_puesto(request, id):
 
         # aplicar cambios básicos
         puesto.save()
+        horarios_payload = []
         try:
             if horarios_text:
                 parsed = parse_input(horarios_text)
@@ -203,6 +241,11 @@ def actualizar_puesto(request, id):
                 for r in parsed:
                     turno_val = r.get('turno') or 'Diurno'
                     PuestoHorario.objects.create(puesto=puesto, dia=r['dia'], horas=r['horas'], turno=turno_val)
+                    horarios_payload.append({
+                        'dia': r.get('dia'),
+                        'horas': r.get('horas', 12),
+                        'turno': turno_val
+                    })
             elif isinstance(horarios, list):
                 puesto.horarios.all().delete()
                 for h in horarios:
@@ -211,11 +254,49 @@ def actualizar_puesto(request, id):
                     if dia and horas is not None:
                         turno_val = h.get('turno') or 'Diurno'
                         PuestoHorario.objects.create(puesto=puesto, dia=dia, horas=horas, turno=turno_val)
+                        horarios_payload.append({
+                            'dia': dia,
+                            'horas': horas,
+                            'turno': turno_val
+                        })
         except Exception:
             pass
         try:
             puesto.sync_from_horarios()
             puesto.save()
+        except Exception:
+            pass
+
+        # crear puestos adicionales si la cantidad es mayor al grupo existente
+        try:
+            group_count = Puesto.objects.filter(
+                nombre=puesto.nombre,
+                instalacion_id=puesto.instalacion_id,
+                zona_id=puesto.zona_id,
+                tipo=puesto.tipo
+            ).count()
+            faltantes = max(cantidad_guardias - group_count, 0)
+            for _ in range(faltantes):
+                extra = Puesto.objects.create(
+                    nombre=puesto.nombre,
+                    tipo=puesto.tipo,
+                    cantidad_guardias=cantidad_guardias,
+                    instalacion_id=puesto.instalacion_id,
+                    zona=puesto.zona
+                )
+                for h in horarios_payload:
+                    if h.get('dia'):
+                        PuestoHorario.objects.create(
+                            puesto=extra,
+                            dia=h['dia'],
+                            horas=h.get('horas', 12),
+                            turno=h.get('turno') or 'Diurno'
+                        )
+                try:
+                    extra.sync_from_horarios()
+                    extra.save()
+                except Exception:
+                    pass
         except Exception:
             pass
         return JsonResponse({

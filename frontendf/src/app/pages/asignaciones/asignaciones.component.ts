@@ -511,8 +511,8 @@ export class AsignacionesComponent implements OnInit {
   //crearSacafrancoFila se encarga de abrir un diálogo para seleccionar una persona y luego crear una nueva fila de sacafranco asociada a esa persona para el mes y año seleccionados, realizando una llamada al servicio correspondiente para guardar la nueva fila, y luego actualizando la vista con la nueva información, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   crearSacafrancoFila(): void {
     const assignedIds = [
-      ...(this.asignaciones || []).map(a => a?.persona),
-      ...(this.sacafrancoRows || []).map(f => f?.persona)
+      ...(this.asignaciones || []).map(a => a?.persona ?? a?.persona_detalle?.id),
+      ...(this.sacafrancoRows || []).map(f => f?.persona ?? f?.persona_detalle?.id)
     ].filter((id): id is number => typeof id === 'number');
     const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
       width: '520px',
@@ -543,8 +543,8 @@ export class AsignacionesComponent implements OnInit {
   //editarSacafrancoFila se encarga de abrir un diálogo para seleccionar una persona y luego actualizar la fila de sacafranco asociada a esa persona para el mes y año seleccionados, realizando una llamada al servicio correspondiente para guardar los cambios, y luego actualizando la vista con la nueva información, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   editarSacafrancoFila(fila: SacafrancoFila): void{
     const assignedIds = [
-      ...(this.asignaciones || []).map(a => a?.persona),
-      ...(this.sacafrancoRows || []).map(f => f?.persona)
+      ...(this.asignaciones || []).map(a => a?.persona ?? a?.persona_detalle?.id),
+      ...(this.sacafrancoRows || []).map(f => f?.persona ?? f?.persona_detalle?.id)
     ].filter((id): id is number => typeof id === 'number');
     const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
       width: '520px',
