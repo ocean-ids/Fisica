@@ -356,7 +356,9 @@ def importar_personas(request):
         fila_hoja = item.get('hoja')
         row_has_fullname = item.get('has_fullname_header', False)
         cedula = normalize_cedula(raw.get('CEDULA'))
-        tipo = str(raw.get('TIPO') or 'FIJOS').strip().upper()
+        tipo = str(raw.get('TIPO') or '').strip().upper()
+        if not tipo:
+            tipo = None
         is_active = parse_bool(raw.get('IS_ACTIVE'))
 
         # obtener apellidos/nombres, permitiendo columna combinada
