@@ -255,6 +255,7 @@ class Persona(models.Model):
     TIPO_CHOICES = [
         ('FIJOS', 'FIJOS'),
         ('RETENES', 'RETENES'),
+        ('CUSTODIO', 'CUSTODIO'),
         ('EVENTUALES', 'EVENTUALES'),
         ('SACAFRANCO', 'SACAFRANCO'),
         ('SACAVACACIONES', 'SACAVACACIONES'),

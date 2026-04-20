@@ -28,6 +28,7 @@ export class PersonaFormComponent implements OnInit {
   tipos: Persona['tipo'][] = [
     'FIJOS',
     'RETENES',
+    'CUSTODIO',
     'EVENTUALES',
     'SACAFRANCO',
     'SACAVACACIONES',
