@@ -14,7 +14,12 @@
                     <div class="fw-semibold">{{ p.apellidos }} {{ p.nombres }}</div>
                     <small class="text-muted">{{ p.cedula }}</small>
                 </div>
-                <span class="badge bg-primary" *ngIf="p.tipo">{{ p.tipo }}</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge" [ngClass]="isAssigned(p.id) ? 'bg-warning text-dark' : 'bg-success'">
+                        {{ isAssigned(p.id) ? 'Asignado' : 'Disponible' }}
+                    </span>
+                    <span class="badge bg-primary" *ngIf="p.tipo">{{ p.tipo }}</span>
+                </div>
             </div>
         </button>
         <div class="text-muted p-2" *ngIf="!personas.length">

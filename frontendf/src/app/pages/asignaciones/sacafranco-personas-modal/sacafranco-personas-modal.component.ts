@@ -18,14 +18,18 @@ import { PersonaService } from '../../../services/persona.service';
 export class SacafrancoPersonasModalComponent implements OnInit {
   personas: Persona[] = [];
   selectedId: number | null = null;
+  assignedIds = new Set<number>();
 
   constructor(
     private dialogRef: MatDialogRef<SacafrancoPersonasModalComponent, { personaId: number } | null>,
     private personaService: PersonaService,
-    @Inject(MAT_DIALOG_DATA) public data: { personas?: Persona[] } | null
+    @Inject(MAT_DIALOG_DATA) public data: { personas?: Persona[]; assignedPersonaIds?: number[] } | null
   ) {}
 
   ngOnInit(): void {
+    if (this.data?.assignedPersonaIds?.length) {
+      this.assignedIds = new Set(this.data.assignedPersonaIds);
+    }
     if (this.data?.personas && this.data.personas.length) {
       this.personas = this.data.personas.filter(p => (p.tipo || '').toString().toUpperCase() === 'SACAFRANCO');
       return;
@@ -44,6 +48,11 @@ export class SacafrancoPersonasModalComponent implements OnInit {
   selectPersona(id: number | null | undefined): void {
     if (!id) return;
     this.selectedId = id;
+  }
+
+  isAssigned(personaId?: number | null): boolean {
+    if (!personaId) return false;
+    return this.assignedIds.has(personaId);
   }
 
   confirm(): void {
