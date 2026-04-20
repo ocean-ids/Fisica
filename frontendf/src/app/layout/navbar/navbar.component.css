@@ -48,3 +48,8 @@ mat-toolbar {
   color: #ffffff !important;
 }
 
+.border-text {
+  -webkit-text-stroke: 0.5px #0c2f5a;
+  color: #0b0b0b;
+}
+
