@@ -17,8 +17,8 @@
 /* Cada semana es una tarjeta con ancho fijo para evitar que el calendario se vaya hacia abajo */
 .vertical-scroll-calendars > .week-card {
   flex: 0 0 auto;
-  min-width: 620px;
-  max-width: 620px;
+  min-width: 0;
+  max-width: none;
   border-right: 0;
   padding-right: 0;
 }

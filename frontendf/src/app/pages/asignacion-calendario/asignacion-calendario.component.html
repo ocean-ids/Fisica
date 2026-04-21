@@ -1,8 +1,8 @@
 <div class="container-fluid">
-  <table class="table table-bordered table-sm">
+  <table class="table table-bordered table-sm" style="width: auto; min-width: 0; table-layout: fixed;">
       <thead class="table-light" style="height: 100px;">
         <tr class="text-center align-middle header-row">
-          <th *ngFor="let d of weekDays" title="{{d.name}}">
+          <th *ngFor="let d of weekDays" title="{{d.name}}" style="max-width: 60px !important; width: 60px !important;">
             <div class="header-day" *ngIf="d.date">
               <span class="short">{{d.short || ''}}</span>
               <span class="dayNum">{{d.dayNum || ''}}</span>
@@ -14,11 +14,12 @@
         <tr *ngFor="let row of displayRows; let i = index">
           <ng-container *ngIf="row?._sacafranco; else normalRow">
             <ng-container *ngFor="let d of weekDays">
-              <td *ngIf="d.date; else emptyDay" style="height: 45px;" >
+              <td *ngIf="d.date; else emptyDay" style="height: 45px; max-width: 60px !important; width: 60px !important;" >
                 <input
                   type="text"
                   maxlength="5"
                   class="form-control form-control-sm sacafranco-input"
+                  style="max-width: 60px !important; width: 60px !important; min-width: 60px !important; margin: 0 auto;"
                   [class.sacafranco-input-fq]="isSacafrancoHighlight(row[dayKeyFromDate(d.date)])"
                   [(ngModel)]="row[dayKeyFromDate(d.date)]"
                   (change)="onSacafrancoCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
@@ -29,7 +30,7 @@
           </ng-container>
           <ng-template #normalRow>
             <ng-container *ngFor="let d of weekDays">
-              <td *ngIf="d.date; else emptyDay" style="max-height: 70px;">
+              <td *ngIf="d.date; else emptyDay" style="max-height: 70px; max-width: 60px !important; width: 60px !important;">
                 <ng-container *ngIf="((row[dayKeyFromDate(d.date)] || '').toString().toUpperCase().charAt(0) === 'F'); else normalInput">
                   <button class="info-btn btn btn-sm btn-outline-info"
                           (click)="onInfoClick($event, row.puesto, dayKeyFromDate(d.date))"
@@ -38,7 +39,7 @@
                           (mouseleave)="clearPreview(row.puesto, dayKeyFromDate(d.date))"
                           [title]="getPreviewTitle(row.puesto, dayKeyFromDate(d.date))">
                     <div class="cell-inner">
-                      <span class="form-control form-control-sm text-center" style="min-width:3rem;">
+                      <span class="form-control form-control-sm text-center" style="max-width: 60px !important; width: 60px !important; min-width: 60px !important; display: inline-block;">
                         {{ (row[dayKeyFromDate(d.date)] || '').toString().toUpperCase() }}
                       </span>
                         
@@ -47,6 +48,7 @@
                 </ng-container>
                 <ng-template #normalInput>
                         <input type="text" maxlength="4" class="form-control form-control-sm"
+                          style="max-width: 60px !important; width: 60px !important; min-width: 60px !important; margin: 0 auto;"
                           [(ngModel)]="row[dayKeyFromDate(d.date)]"
                           (change)="onCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
                           (dblclick)="openRangeModal(row, dayKeyFromDate(d.date), false)"
@@ -55,7 +57,7 @@
               </td>
             </ng-container>
           </ng-template>
-          <ng-template #emptyDay><td></td></ng-template>
+          <ng-template #emptyDay><td style="max-width: 60px !important; width: 60px !important; min-width: 60px !important;"></td></ng-template>
         </tr>
       </tbody>
       <tbody *ngIf="!displayRows || displayRows.length===0" >
