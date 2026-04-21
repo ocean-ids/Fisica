@@ -518,6 +518,9 @@ class ReporteAsistencia(models.Model):
         indexes = [
             models.Index(fields=['estado']),
         ]
+        permissions = [
+            ('export_reporte_asistencia', 'Can export reporte asistencia'),
+        ]
 
     def __str__(self):
         if self.codigo:
