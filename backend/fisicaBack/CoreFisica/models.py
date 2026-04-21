@@ -592,6 +592,9 @@ class Consolidado(models.Model):
             models.Index(fields=['tipo', 'referencia_id']),
         ]
         ordering = ['fecha', 'turno', 'tipo', 'referencia_id']
+        permissions = [
+            ('export_consolidado', 'Can export consolidado'),
+        ]
 
 
 class ConsolidadoResumen(models.Model):

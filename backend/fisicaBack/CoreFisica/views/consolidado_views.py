@@ -207,6 +207,8 @@ def _serialize_item(item: Consolidado):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_consolidado(request):
+    if not request.user.has_perm('CoreFisica.view_consolidado'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
     tipo = request.GET.get('tipo')
@@ -235,6 +237,8 @@ def obtener_consolidado(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_consolidado_armado(request):
+    if not request.user.has_perm('CoreFisica.view_consolidado'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
     data = _build_consolidado_data(fecha, turno)
@@ -244,6 +248,8 @@ def obtener_consolidado_armado(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_consolidado_resumen(request):
+    if not request.user.has_perm('CoreFisica.view_consolidado'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
     turno_val = turno if turno in ALLOWED_TURNOS else None
@@ -263,6 +269,8 @@ def obtener_consolidado_resumen(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def actualizar_consolidado_resumen(request):
+    if not request.user.has_perm('CoreFisica.change_consolidado'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -305,6 +313,8 @@ def actualizar_consolidado_resumen(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_consolidado(request):
+    if not request.user.has_perm('CoreFisica.add_consolidado'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -348,6 +358,8 @@ def crear_consolidado(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def actualizar_consolidado(request, id):
+    if not request.user.has_perm('CoreFisica.change_consolidado'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -394,6 +406,8 @@ def actualizar_consolidado(request, id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_consolidado(request, id):
+    if not request.user.has_perm('CoreFisica.delete_consolidado'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     item = Consolidado.objects.filter(id=id).first()
     if not item:
         return JsonResponse({'error': 'Registro no encontrado'}, status=404)
@@ -405,6 +419,8 @@ def eliminar_consolidado(request, id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def exportar_consolidado_excel(request):
+    if not request.user.has_perm('CoreFisica.export_consolidado'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     fecha = request.GET.get('fecha')
     fecha_obj = _parse_fecha(fecha)
     fecha_label = fecha_obj.strftime('%d/%m/%Y')
@@ -593,6 +609,8 @@ def exportar_consolidado_excel(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def exportar_consolidado_pdf(request):
+    if not request.user.has_perm('CoreFisica.export_consolidado'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
     data = _build_consolidado_data(fecha, turno)

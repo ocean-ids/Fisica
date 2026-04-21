@@ -120,7 +120,7 @@ export class ConsolidadoComponent implements OnInit {
         this.resumenManual.total = this.calcManualTotal();
         Swal.fire({ icon: 'success', title: 'Resumen guardado', timer: 1200, showConfirmButton: false });
       },
-      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar resumen' })
+      error: (err) => this.handleActionError(err, 'No se pudo guardar resumen')
     });
   }
 
@@ -207,7 +207,7 @@ export class ConsolidadoComponent implements OnInit {
         next: () => {
           Swal.fire({ icon: 'success', title: 'Observacion guardada', timer: 1200, showConfirmButton: false });
         },
-        error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar' })
+        error: (err) => this.handleActionError(err, 'No se pudo guardar')
       });
       return;
     }
@@ -222,7 +222,7 @@ export class ConsolidadoComponent implements OnInit {
         row.consolidado_id = res?.id;
         Swal.fire({ icon: 'success', title: 'Observacion guardada', timer: 1200, showConfirmButton: false });
       },
-      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar' })
+      error: (err) => this.handleActionError(err, 'No se pudo guardar')
     });
   }
 
@@ -279,7 +279,7 @@ export class ConsolidadoComponent implements OnInit {
     if (this.filtroTurno) params.turno = this.filtroTurno;
     this.svc.exportarExcel(params).subscribe({
       next: (blob: Blob) => this.descargarArchivo(blob, `consolidado_${this.filtroFecha || 'hoy'}.xlsx`),
-      error: (err) => console.error('Error al descargar excel:', err)
+      error: (err) => this.handleDownloadError(err, 'Excel')
     });
   }
 
@@ -289,8 +289,22 @@ export class ConsolidadoComponent implements OnInit {
     if (this.filtroTurno) params.turno = this.filtroTurno;
     this.svc.exportarPdf(params).subscribe({
       next: (blob: Blob) => this.descargarArchivo(blob, `consolidado_${this.filtroFecha || 'hoy'}.pdf`),
-      error: (err) => console.error('Error al descargar pdf:', err)
+      error: (err) => this.handleDownloadError(err, 'PDF')
     });
+  }
+
+  private handleDownloadError(err: any, tipo: string): void {
+    const status = err?.status;
+    const msg = status === 403
+      ? 'No autorizado'
+      : `No se pudo descargar el ${tipo}`;
+    Swal.fire({ icon: 'error', title: 'Error', text: msg });
+  }
+
+  private handleActionError(err: any, fallback: string): void {
+    const status = err?.status;
+    const msg = status === 403 ? 'No autorizado' : fallback;
+    Swal.fire({ icon: 'error', title: 'Error', text: msg });
   }
 
   private descargarArchivo(blob: Blob, nombre: string): void {
