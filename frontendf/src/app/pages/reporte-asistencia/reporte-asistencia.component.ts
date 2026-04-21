@@ -13,6 +13,7 @@ import { PersonaFormComponent } from '../personas/persona-form/persona-form.comp
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheet, MatBottomSheetModule, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { ReporteEstadoComponent } from './reporte-estado/reporte-estado.component';
 import { ReporteAsistenciaHistorialDialogComponent } from './dialogs/reporte-asistencia-historial-dialog.component';
+import Swal from 'sweetalert2';
 
 interface ReporteAsistenciaGrupoProvincia {
   provincia: string;
@@ -221,7 +222,7 @@ export class ReporteAsistenciaComponent implements OnInit {
     if (this.filtroTurno) params. turno = this.filtroTurno;
     this.reporteSvc.exportarExcel(params).subscribe({
       next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.xlsx`),
-      error: (err) => console.error("Error al descargar el excel", err)
+      error: (err) => this.handleDownloadError(err, 'Excel')
     });
   }
 
@@ -232,8 +233,16 @@ export class ReporteAsistenciaComponent implements OnInit {
     if(this.filtroTurno) params.turno = this.filtroTurno;
     this.reporteSvc.exportarPdf(params).subscribe({
       next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.pdf`),
-      error: (err) => console.error("Error al descargar el pdf", err)
+      error: (err) => this.handleDownloadError(err, 'PDF')
     })
+  }
+
+  private handleDownloadError(err: any, tipo: string): void {
+    const status = err?.status;
+    const msg = status === 403
+      ? 'No autorizado'
+      : `No se pudo descargar el ${tipo}`;
+    Swal.fire({ icon: 'error', title: 'Error', text: msg });
   }
 
   private descargarArchivo(blob: Blob, nombre: string): void {
