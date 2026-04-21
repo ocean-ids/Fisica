@@ -120,6 +120,10 @@ def set_instalacion_zona(instalacion: Instalacion, zona_token):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_instalaciones(request):
+    # si el usuario no tiene permiso para ver instalaciones, devolver error 403
+    if not request.user.has_perm('CoreFisica.view_instalacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     q = (request.GET.get('q') or '').strip()
     cliente_id = request.GET.get('cliente_id')
     cliente = (request.GET.get('cliente') or '').strip()
@@ -192,6 +196,10 @@ def obtener_instalaciones(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_instalacion(request):
+    #si el usuario no tiene permiso para crear instalaciones, devolver error 403
+    if not request.user.has_perm('CoreFisica.add_instalacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    #data es un diccionario con los campos codigo, nombre, cliente_id, canton_id, direccion para crear una nueva instalación
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -240,6 +248,9 @@ def crear_instalacion(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def actualizar_instalacion(request, id):
+    if not request.user.has_perm('CoreFisica.change_instalacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     try:
         data = json.loads(request.body)
 
@@ -294,6 +305,8 @@ def actualizar_instalacion(request, id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_instalacion(request, id):
+    if not request.user.has_perm('CoreFisica.delete_instalacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         instalacion = Instalacion.objects.get(id=id)
         instalacion.delete()
