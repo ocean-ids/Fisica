@@ -248,6 +248,7 @@ def crear_instalacion(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def actualizar_instalacion(request, id):
+    #si el usuario no tiene permiso para actualizar instalaciones, devolver error 403
     if not request.user.has_perm('CoreFisica.change_instalacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
@@ -305,6 +306,7 @@ def actualizar_instalacion(request, id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_instalacion(request, id):
+    #si el usuario no tiene permiso para eliminar instalaciones, devolver error 403
     if not request.user.has_perm('CoreFisica.delete_instalacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
