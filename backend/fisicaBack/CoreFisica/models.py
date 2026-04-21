@@ -41,6 +41,9 @@ class Cliente(models.Model):
         indexes = [
             models.Index(fields=['nombre_comercial']),
         ]
+        permissions = [
+            ('import_cliente', 'Can import cliente'),
+        ]
 
     def __str__(self):
         return self.nombre_comercial

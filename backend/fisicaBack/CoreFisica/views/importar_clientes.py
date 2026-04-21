@@ -142,6 +142,9 @@ def parse_excel_date(val):
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def importar_clientes(request):
+    if not request.user.has_perm('CoreFisica.import_cliente'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+        
     file = request.FILES.get('file')
     if not file:
         return JsonResponse({'error': 'No se envió archivo'}, status=400)

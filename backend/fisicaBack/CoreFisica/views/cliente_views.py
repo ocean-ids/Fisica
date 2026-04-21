@@ -6,13 +6,15 @@ from rest_framework.permissions import IsAuthenticated
 import json
 from ..models import Cliente
 
+
 ALLOWED_SIZES = {choice[0] for choice in Cliente.SIZE_CHOICES}
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_clientes(request):
-
+    if not request.user.has_perm('CoreFisica.view_cliente'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     q = request.GET.get('q', '').strip()
     size = request.GET.get('size', '').strip()
 
@@ -52,6 +54,8 @@ def obtener_clientes(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_cliente_id(request, id):
+    if not request.user.has_perm('CoreFisica.view_cliente'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         cliente = Cliente.objects.get(pk=id)
         data = {
@@ -70,6 +74,9 @@ def obtener_cliente_id(request, id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_cliente(request):
+    if not request.user.has_perm('CoreFisica.add_cliente'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -107,6 +114,8 @@ def crear_cliente(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def actualizar_cliente(request, id):
+    if not request.user.has_perm('CoreFisica.change_cliente'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         data = json.loads(request.body)
 
@@ -153,6 +162,8 @@ def actualizar_cliente(request, id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_cliente(request, id):
+    if not request.user.has_perm('CoreFisica.delete_cliente'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         cliente = Cliente.objects.get(pk=id)
         cliente.delete()
