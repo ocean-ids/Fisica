@@ -390,6 +390,9 @@ class Asignacion(models.Model):
 
     class Meta:
         unique_together = ('persona', 'mes', 'anio')
+        permissions = [
+            ('export_asignacion', 'Can export asignacion'),
+        ]
 
     def __str__(self):
         return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio})"

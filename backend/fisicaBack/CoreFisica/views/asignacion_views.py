@@ -1071,11 +1071,10 @@ def eliminar_sacafranco_fila(request, id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def exportar_asignaciones_excel(request):
+    if not request.user.has_perm('CoreFisica.export_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     import calendar
     from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-
-    if not request.user.has_perm('CoreFisica.view_asignacion'):
-        return JsonResponse({'error': 'No autorizado'}, status=403)
 
     wb = openpyxl.Workbook()
     ws = wb.active
