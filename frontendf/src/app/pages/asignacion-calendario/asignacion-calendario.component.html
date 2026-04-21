@@ -50,7 +50,7 @@
                         <input type="text" maxlength="4" class="form-control form-control-sm"
                           style="max-width: 60px !important; width: 60px !important; min-width: 60px !important; margin: 0 auto;"
                           [(ngModel)]="row[dayKeyFromDate(d.date)]"
-                          (change)="onCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
+                          (input)="onCellChange(row, dayKeyFromDate(d.date), $any($event.target).value)"
                           (dblclick)="openRangeModal(row, dayKeyFromDate(d.date), false)"
                           [ngModelOptions]="{standalone:true}">
                 </ng-template>
