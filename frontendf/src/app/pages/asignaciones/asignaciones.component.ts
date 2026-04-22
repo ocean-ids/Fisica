@@ -872,6 +872,7 @@ export class AsignacionesComponent implements OnInit {
     }
     const ref = this.dialog.open(AsignacionFormComponent, {
       width: '720px',
+      autoFocus: false,
       data: {
         asignacion: { ...this.asignacionActual },
         modoEdicion: false,
@@ -954,6 +955,7 @@ export class AsignacionesComponent implements OnInit {
 
     const ref = this.dialog.open(AsignacionFormComponent, {
       width: '720px',
+      autoFocus: false,
       data: {
         asignacion: { ...this.asignacionActual },
         modoEdicion: true,
