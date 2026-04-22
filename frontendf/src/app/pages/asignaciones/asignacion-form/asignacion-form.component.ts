@@ -79,11 +79,24 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (!this.asignacion.start_date) {
+      const today = new Date();
+      this.asignacion.start_date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+    }
     if (this.clienteSeleccionado) {
       this.cargarInstalaciones(this.clienteSeleccionado, this.instalacionSeleccionada || undefined, this.asignacion.puesto || undefined);
     }
   }
 
+  forceFirstDayOfMonth(value?: string | null): void {
+    const raw = (value ?? this.asignacion.start_date) || '';
+    if (!raw) return;
+    const parts = raw.split('-').map(Number);
+    const year = Number.isFinite(parts[0]) ? parts[0] : new Date().getFullYear();
+    const month = Number.isFinite(parts[1]) ? parts[1] : new Date().getMonth() + 1;
+    this.asignacion.start_date = `${year}-${String(month).padStart(2, '0')}-01`;
+  }
+  
   onClientChange(): void {
     if (!this.clienteSeleccionado) {
       this.instalaciones = [];

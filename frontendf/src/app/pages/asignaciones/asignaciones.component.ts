@@ -798,7 +798,7 @@ export class AsignacionesComponent implements OnInit {
       anio: this.anio,
       estado: 'ACTIVO',
       recurring: true,
-      start_date: null,
+      start_date: `${this.anio}-${String(this.mes).padStart(2, '0')}-01`,
       end_date: null,
       agregar_sacafranco: false,
       sacafranco_grupo: null,
