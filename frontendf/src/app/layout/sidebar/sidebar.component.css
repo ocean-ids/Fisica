@@ -1,1 +1,22 @@
+:host ::ng-deep mat-nav-list {
+	background-color: var(--panel-bg);
+	color: var(--text-primary);
+}
+
+:host-context(body.theme-dark) ::ng-deep mat-nav-list {
+	background-color: var(--panel-bg);
+	color: #ffffff;
+}
+
+:host-context(body.theme-dark) ::ng-deep mat-nav-list a,
+:host-context(body.theme-dark) ::ng-deep mat-nav-list mat-icon,
+:host-context(body.theme-dark) ::ng-deep .mdc-list-item__primary-text {
+	color: #ffffff !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep mat-nav-list .border-end,
+:host-context(body.theme-dark) ::ng-deep mat-nav-list .border-bottom,
+:host-context(body.theme-dark) ::ng-deep mat-nav-list .border {
+	border-color: var(--border-color) !important;
+}
 
