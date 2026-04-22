@@ -5,10 +5,25 @@
     <div class="col-md-6 mb-3">
       <mat-form-field class="w-100">
         <mat-label>Cliente</mat-label>
-        <mat-select [(ngModel)]="clienteSeleccionado" (selectionChange)="onClientChange()" [ngModelOptions]="{standalone:true}">
-          <mat-option [value]="null">Seleccione</mat-option>
-          <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
-        </mat-select>
+        <input
+          matInput
+          type="text"
+          #clienteInput
+          [matAutocomplete]="clienteAuto"
+          [ngModel]="clienteSeleccionadoObj"
+          [ngModelOptions]="{standalone:true}"
+          (input)="filtrarClientes(clienteInput.value)"
+        />
+
+        <mat-autocomplete
+          #clienteAuto="matAutocomplete"
+          [displayWith]="displayClienteLabel"
+          (optionSelected)="seleccionarCliente($event.option.value)"
+        >
+          <mat-option *ngFor="let c of clientesFiltrados" [value]="c">
+            {{ c.nombre_comercial }}
+          </mat-option>
+        </mat-autocomplete>
       </mat-form-field>
     </div>
 

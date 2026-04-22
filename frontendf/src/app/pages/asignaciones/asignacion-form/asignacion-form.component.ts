@@ -63,6 +63,9 @@ export class AsignacionFormComponent implements OnInit {
   personaSeleccionada: Persona | null = null;
   personasFiltradas: Persona[] = [];
 
+  clienteSeleccionadoObj: Cliente | null = null;
+  clientesFiltrados: Cliente[] = [];
+
   clienteSeleccionado: number | null = null;
   instalacionSeleccionada: number | null = null;
 
@@ -88,6 +91,8 @@ export class AsignacionFormComponent implements OnInit {
       const today = new Date();
       this.asignacion.start_date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
     }
+    this.clientesFiltrados = this.clientes.slice();
+    this.setClienteSeleccionadoFromAsignacion();
     this.personasFiltradas = this.getPersonasActivas();
     this.setPersonaSeleccionadaFromAsignacion();
     if (this.clienteSeleccionado) {
@@ -121,6 +126,30 @@ export class AsignacionFormComponent implements OnInit {
     this.instalaciones = [];
     this.puestos = [];
     this.cargarInstalaciones(this.clienteSeleccionado);
+  }
+
+  filtrarClientes(value: string): void {
+    const term = (value || '').trim().toLowerCase();
+    this.clientesFiltrados = this.clientes.filter(cliente => {
+      if (!term) return true;
+      const nombre = (cliente.nombre_comercial || '').toLowerCase();
+      return nombre.includes(term);
+    });
+  }
+
+  displayClienteLabel = (cliente: Cliente | null): string => {
+    return cliente?.nombre_comercial || '';
+  };
+
+  seleccionarCliente(cliente: Cliente): void {
+    this.clienteSeleccionado = cliente?.id ?? null;
+    this.clienteSeleccionadoObj = cliente || null;
+    this.onClientChange();
+  }
+
+  private setClienteSeleccionadoFromAsignacion(): void {
+    if (!this.clienteSeleccionado) return;
+    this.clienteSeleccionadoObj = this.clientes.find(c => c.id === this.clienteSeleccionado) || null;
   }
 
   formatPersonaLabel(persona: Persona): string {
