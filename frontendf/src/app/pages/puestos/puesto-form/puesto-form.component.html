@@ -28,11 +28,11 @@
 
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Cantidad de Puestos</mat-label>
-      <input matInput type="number" formControlName="cantidad_guardias" required min="1">
-      <mat-error *ngIf="puestoForm.get('cantidad_guardias')?.hasError('required')">
+      <input matInput type="number" formControlName="cantidad_puestos" required min="1">
+      <mat-error *ngIf="puestoForm.get('cantidad_puestos')?.hasError('required')">
         La cantidad de puestos es requerida
       </mat-error>
-      <mat-error *ngIf="puestoForm.get('cantidad_guardias')?.hasError('min')">
+      <mat-error *ngIf="puestoForm.get('cantidad_puestos')?.hasError('min')">
         Debe ser al menos 1
       </mat-error>
     </mat-form-field>

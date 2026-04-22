@@ -50,7 +50,7 @@ class SacafrancoFilaSemanalAdmin(admin.ModelAdmin):
 
 @admin.register(Puesto)
 class PuestoAdmin(admin.ModelAdmin):
-	list_display = ('nombre', 'instalacion', 'get_turno_display', 'cantidad_guardias', 'get_horarios_count')
+	list_display = ('nombre', 'instalacion', 'get_turno_display', 'cantidad_puestos', 'get_horarios_count')
 	search_fields = ('nombre', 'instalacion__nombre')
 	readonly_fields = ('resumen',)
 	inlines = (PuestoHorarioInline,)

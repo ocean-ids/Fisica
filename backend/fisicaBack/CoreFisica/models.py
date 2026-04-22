@@ -91,14 +91,14 @@ class Puesto(models.Model):
     zona = models.ForeignKey(Zona, on_delete=models.PROTECT, related_name='puestos', null=True, blank=True)
     nombre = models.CharField(max_length=100)
     tipo = models.CharField(max_length=50, blank=True, null=True)
-    cantidad_guardias = models.IntegerField(default=1)
+    cantidad_puestos = models.IntegerField(default=1)
     
     resumen = models.CharField(max_length=50, blank=True, editable=False)  
 
     def save(self, *args, **kwargs):
         
         try:
-            cantidad = int(self.cantidad_guardias) if self.cantidad_guardias is not None else 0
+            cantidad = int(self.cantidad_puestos) if self.cantidad_puestos is not None else 0
             
             horas = 0
             dias_code = ''
@@ -181,7 +181,7 @@ class Puesto(models.Model):
                         turno_letter = 'M'
             except Exception:
                 turno_letter = 'M'
-            cantidad = int(self.cantidad_guardias) if self.cantidad_guardias is not None else 0
+            cantidad = int(self.cantidad_puestos) if self.cantidad_puestos is not None else 0
             self.resumen = f"{cantidad} {horas}{turno_letter}{dias_code}"
         except Exception:
             return

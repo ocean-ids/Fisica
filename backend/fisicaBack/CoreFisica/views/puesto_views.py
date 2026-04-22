@@ -17,7 +17,7 @@ def crear_puesto(request):
     data = json.loads(request.body)
     instalacion_id = data.get('instalacion_id')
     zona_id = data.get('zona_id') or data.get('zona')
-    cantidad_guardias = data.get('cantidad_guardias', 1)
+    cantidad_puestos = data.get('cantidad_puestos', 1)
     tipo = data.get('tipo')
     horarios = data.get('horarios')
     horarios_text = data.get('horarios_text')
@@ -37,11 +37,11 @@ def crear_puesto(request):
         if zona.instalacion_id != instalacion.id:
             return JsonResponse({'error': 'La zona no pertenece a la instalación'}, status=400)
     try:
-        cantidad_guardias = int(cantidad_guardias)
+        cantidad_puestos = int(cantidad_puestos)
     except (TypeError, ValueError):
-        cantidad_guardias = 1
-    if cantidad_guardias < 1:
-        cantidad_guardias = 1
+        cantidad_puestos = 1
+    if cantidad_puestos < 1:
+        cantidad_puestos = 1
 
     horarios_payload = []
     try:
@@ -67,11 +67,11 @@ def crear_puesto(request):
         horarios_payload = []
 
     puestos_creados = []
-    for _ in range(cantidad_guardias):
+    for _ in range(cantidad_puestos):
         puesto = Puesto.objects.create(
             nombre=data.get('nombre'),
             tipo=tipo,
-            cantidad_guardias=cantidad_guardias,
+            cantidad_puestos=cantidad_puestos,
             instalacion_id=instalacion.id,
             zona=zona
         )
@@ -95,7 +95,7 @@ def crear_puesto(request):
             'id': puesto.id,
             'nombre': puesto.nombre,
             'tipo': puesto.tipo,
-            'cantidad_guardias': puesto.cantidad_guardias,
+            'cantidad_puestos': puesto.cantidad_puestos,
             'turno': puesto.get_turno(),
             'turno_display': puesto.get_turno_display(),
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in puesto.horarios.all()],
@@ -124,7 +124,7 @@ def obtener_puestos(request):
             'id': p.id,
             'nombre': p.nombre,
             'tipo': p.tipo,
-            'cantidad_guardias': p.cantidad_guardias,
+            'cantidad_puestos': p.cantidad_puestos,
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
@@ -148,7 +148,7 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
             'id': p.id,
             'nombre': p.nombre,
             'tipo': p.tipo,
-            'cantidad_guardias': p.cantidad_guardias,
+            'cantidad_puestos': p.cantidad_puestos,
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
@@ -173,7 +173,7 @@ def obtener_puestos_por_cliente(request, cliente_id):
             'id': p.id,
             'nombre': p.nombre,
             'tipo': p.tipo,
-            'cantidad_guardias': p.cantidad_guardias,
+            'cantidad_puestos': p.cantidad_puestos,
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
@@ -218,14 +218,14 @@ def actualizar_puesto(request, id):
 
         puesto.nombre = data.get('nombre', puesto.nombre)
         puesto.tipo = data.get('tipo', puesto.tipo)
-        cantidad_guardias = data.get('cantidad_guardias', puesto.cantidad_guardias)
+        cantidad_puestos = data.get('cantidad_puestos', puesto.cantidad_puestos)
         try:
-            cantidad_guardias = int(cantidad_guardias)
+            cantidad_puestos = int(cantidad_puestos)
         except (TypeError, ValueError):
-            cantidad_guardias = puesto.cantidad_guardias
-        if cantidad_guardias < 1:
-            cantidad_guardias = 1
-        puesto.cantidad_guardias = cantidad_guardias
+            cantidad_puestos = puesto.cantidad_puestos
+        if cantidad_puestos < 1:
+            cantidad_puestos = 1
+        puesto.cantidad_puestos = cantidad_puestos
         # turno ya no se guarda a nivel de Puesto; se maneja por horario
         # actualizar horarios si vienen
         horarios = data.get('horarios')
@@ -275,12 +275,12 @@ def actualizar_puesto(request, id):
                 zona_id=puesto.zona_id,
                 tipo=puesto.tipo
             ).count()
-            faltantes = max(cantidad_guardias - group_count, 0)
+            faltantes = max(cantidad_puestos - group_count, 0)
             for _ in range(faltantes):
                 extra = Puesto.objects.create(
                     nombre=puesto.nombre,
                     tipo=puesto.tipo,
-                    cantidad_guardias=cantidad_guardias,
+                    cantidad_puestos=cantidad_puestos,
                     instalacion_id=puesto.instalacion_id,
                     zona=puesto.zona
                 )
@@ -305,7 +305,7 @@ def actualizar_puesto(request, id):
                 'id': puesto.id,
                 'nombre': puesto.nombre,
                 'tipo': puesto.tipo,
-                'cantidad_guardias': puesto.cantidad_guardias,
+                'cantidad_puestos': puesto.cantidad_puestos,
                 'turno': puesto.get_turno(),
                 'turno_display': puesto.get_turno_display(),
                 'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in puesto.horarios.all()],

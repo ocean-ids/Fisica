@@ -2,7 +2,7 @@ export interface Puesto {
   id: number;
   nombre: string;
   tipo?: string;
-  cantidad_guardias: number;
+  cantidad_puestos: number;
   horas_trabajo?: number;
   dias?: string[];
   horarios?: { dia: number; horas: number; turno?: string }[];

@@ -231,7 +231,7 @@ export class AsignacionesComponent implements OnInit {
           return (isNaN(numA) ? 0 : numA) - (isNaN(numB) ? 0 : numB);
         });
 
-      const cant = puesto.cantidad_guardias ? `${puesto.cantidad_guardias}` : '';
+      const cant = puesto.cantidad_puestos ? `${puesto.cantidad_puestos}` : '';
       const body = parts.join(' / ');
       if (cant && body) return `${cant} ${body}`;
       if (cant) return `${cant}`;

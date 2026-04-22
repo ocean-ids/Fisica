@@ -254,7 +254,7 @@ def importar_clientes(request):
 
             # Puesto por instalación + nombre
             if puesto_nombre:
-                puesto_defaults = {'cantidad_guardias': 1}
+                puesto_defaults = {'cantidad_puestos': 1}
                 if puesto_tipo:
                     puesto_defaults['tipo'] = puesto_tipo
                 puesto, puesto_created = Puesto.objects.get_or_create(

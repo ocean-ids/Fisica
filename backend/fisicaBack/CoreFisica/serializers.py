@@ -78,7 +78,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
         return {
             'id': obj.puesto.id,
             'nombre': obj.puesto.nombre,
-            'cantidad_guardias': obj.puesto.cantidad_guardias,
+            'cantidad_puestos': obj.puesto.cantidad_puestos,
             'zona_id': getattr(obj.puesto, 'zona_id', None),
             'zona_titulo': getattr(getattr(obj.puesto, 'zona', None), 'titulo', ''),
             'turno': obj.puesto.get_turno(),
@@ -110,7 +110,7 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
         return {
             'id': p.id,
             'nombre': p.nombre,
-            'cantidad_guardias': p.cantidad_guardias,
+            'cantidad_puestos': p.cantidad_puestos,
             'zona_id': getattr(p, 'zona_id', None),
             'zona_titulo': getattr(getattr(p, 'zona', None), 'titulo', ''),
             'turno': p.get_turno(),
@@ -167,7 +167,7 @@ class PuestoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Puesto
         fields = (
-            'id', 'instalacion', 'zona', 'nombre', 'tipo', 'cantidad_guardias',
+            'id', 'instalacion', 'zona', 'nombre', 'tipo', 'cantidad_puestos',
             'resumen', 'horarios', 'horarios_text'
         )
 
