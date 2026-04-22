@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { Asignacion, PatronAsignacion } from '../../../models/asignacion.model';
 import { Cliente, Persona, Instalacion, Puesto, Horario } from '../../../models';
 import { InstalacionService } from '../../../services/instalacion.service';
@@ -40,7 +41,8 @@ export interface AsignacionFormResult {
     MatFormFieldModule,
     MatSelectModule,
     MatButtonModule,
-    MatInputModule
+    MatInputModule,
+    MatAutocompleteModule
   ],
   templateUrl: './asignacion-form.component.html',
   styleUrl: './asignacion-form.component.css'
@@ -57,6 +59,9 @@ export class AsignacionFormComponent implements OnInit {
 
   instalaciones: Instalacion[] = [];
   puestos: Puesto[] = [];
+
+  personaSeleccionada: Persona | null = null;
+  personasFiltradas: Persona[] = [];
 
   clienteSeleccionado: number | null = null;
   instalacionSeleccionada: number | null = null;
@@ -83,6 +88,8 @@ export class AsignacionFormComponent implements OnInit {
       const today = new Date();
       this.asignacion.start_date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
     }
+    this.personasFiltradas = this.getPersonasActivas();
+    this.setPersonaSeleccionadaFromAsignacion();
     if (this.clienteSeleccionado) {
       this.cargarInstalaciones(this.clienteSeleccionado, this.instalacionSeleccionada || undefined, this.asignacion.puesto || undefined);
     }
@@ -129,6 +136,33 @@ export class AsignacionFormComponent implements OnInit {
       return persona.is_active !== false && tipo === 'FIJOS';
     });
   }
+
+  filtrarPersonas(value: string): void {
+    const term = (value || '').trim().toLowerCase();
+    this.personasFiltradas = this.getPersonasActivas().filter(persona => {
+      if (!term) return true;
+      const full = `${persona.apellidos || ''} ${persona.nombres || ''}`.toLowerCase();
+      return full.includes(term);
+    });
+  }
+
+  displayPersonaLabel = (persona: Persona | null): string => {
+    if (!persona) return '';
+    const apellidos = persona.apellidos || '';
+    const nombres = persona.nombres || '';
+    return `${apellidos} ${nombres}`.trim();
+  };
+
+  seleccionarPersona(persona: Persona): void {
+    this.asignacion.persona = persona?.id || 0;
+    this.personaSeleccionada = persona || null;
+  }
+
+  private setPersonaSeleccionadaFromAsignacion(): void {
+    if (!this.asignacion.persona) return;
+    this.personaSeleccionada = this.personas.find(p => p.id === this.asignacion.persona) || null;
+  }
+
 
   onInstalacionChange(): void {
     if (!this.instalacionSeleccionada) {

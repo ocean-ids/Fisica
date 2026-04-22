@@ -35,12 +35,25 @@
     <div class="col-md-6 mb-3">
       <mat-form-field class="w-100">
         <mat-label>Persona</mat-label>
-        <mat-select [(ngModel)]="asignacion.persona" [ngModelOptions]="{standalone:true}">
-          <mat-option [value]="0">Seleccione</mat-option>
-          <mat-option *ngFor="let per of getPersonasActivas()" [value]="per.id">
+        <input
+          matInput
+          type="text"
+          #personaInput
+          [matAutocomplete]="personaAuto"
+          [ngModel]="personaSeleccionada"
+          [ngModelOptions]="{standalone:true}"
+          (input)="filtrarPersonas(personaInput.value)"
+        />
+
+        <mat-autocomplete
+          #personaAuto="matAutocomplete"
+          [displayWith]="displayPersonaLabel"
+          (optionSelected)="seleccionarPersona($event.option.value)"
+        >
+          <mat-option *ngFor="let per of personasFiltradas" [value]="per">
             {{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})
           </mat-option>
-        </mat-select>
+        </mat-autocomplete>
       </mat-form-field>
     </div>
 
