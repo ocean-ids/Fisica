@@ -128,6 +128,7 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
 
 class SacafrancoFilaSerializer(serializers.ModelSerializer):
     persona_detalle = serializers.SerializerMethodField(read_only=True)
+    persona = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def get_persona_detalle(self, obj):
         if not obj.persona:
