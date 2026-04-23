@@ -266,7 +266,18 @@ export class AsignacionFormComponent implements OnInit {
     this.dialogRef.close({ action: 'cancel' });
   }
 
+  isFormValid(): boolean {
+    return !!this.clienteSeleccionado
+      && !!this.instalacionSeleccionada
+      && !!this.asignacion.puesto
+      && !!this.asignacion.persona
+      && !!this.asignacion.horario
+      && !!this.asignacion.patronAsignacion
+      && !!this.asignacion.start_date;
+    }
+
   onSave(): void {
+    if (!this.isFormValid()) return;
     this.dialogRef.close({
       action: 'save',
       asignacion: this.asignacion,

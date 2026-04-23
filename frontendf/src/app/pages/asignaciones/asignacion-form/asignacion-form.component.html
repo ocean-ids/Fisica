@@ -66,7 +66,7 @@
           (optionSelected)="seleccionarPersona($event.option.value)"
         >
           <mat-option *ngFor="let per of personasFiltradas" [value]="per">
-            {{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }})
+            {{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }} - {{ per.canton_nombre || per.provincia_nombre || per.canton || '-' }})
           </mat-option>
         </mat-autocomplete>
       </mat-form-field>
@@ -111,5 +111,7 @@
 
 <mat-dialog-actions align="end">
   <button mat-button (click)="onCancel()">Cancelar</button>
-  <button mat-raised-button color="primary" (click)="onSave()">{{ textoBoton }}</button>
+  <button mat-raised-button color="primary" (click)="onSave()" [disabled]="!isFormValid()">
+    {{ textoBoton }}
+  </button>
 </mat-dialog-actions>
