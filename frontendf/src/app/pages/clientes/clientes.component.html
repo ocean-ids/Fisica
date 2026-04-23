@@ -11,12 +11,14 @@
       </button>
     </div>
   </div>
-
   <div class="row g-2 align-items-center mb-3">
     <div class="col-12 col-md-9">
-      <input class="form-control"
-            placeholder="Razón Social o Nombre Comercial"
-            [(ngModel)]="filtroTexto">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input class="form-control"
+              placeholder="Razón Social o Nombre Comercial"
+              [(ngModel)]="filtroTexto">
+      </div>
     </div>
     <div class="col-12 col-md-3">
       <select class="form-select"

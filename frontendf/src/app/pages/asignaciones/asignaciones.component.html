@@ -41,13 +41,16 @@
       <input type="month" class="form-control" [(ngModel)]="monthValue" (change)="onMonthChange()" style="max-width: 190px;"/>
     </div>
     <div class="col-12 col-md-6">
-      <input
-        type="text"
-        class="form-control"
-        placeholder="Filtrar por cliente, cédula, persona o puesto"
-        [(ngModel)]="filtroTexto"
-        (input)="onFiltroChange()"
-      />
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Filtrar por cliente, cédula, persona o puesto"
+          [(ngModel)]="filtroTexto"
+          (input)="onFiltroChange()"
+        />
+      </div>
     </div>
     <div class="col-12 col-md-2 d-flex justify-content-md-end">
       <button class="btn btn-outline-success" (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel">
@@ -82,7 +85,7 @@
                 <tr *ngIf="row.type === 'provincia'" class="provincia-row">
                   <td [attr.colspan]="totalColumns()">{{ row.label }}</td>
                 </tr>
-                <tr
+                <tr 
                   *ngIf="row.type === 'asignacion' && row.asig.persona_detalle?.is_active !== false"
                   cdkDrag
                   [cdkDragData]="row"

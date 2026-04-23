@@ -21,9 +21,12 @@
       class="d-none" (change)="onFileSelected($event)">
 
   <div class="d-flex justify-content-center gap-2 pt-2 mb-3">
-    <input class="form-control" style="max-width: 60%;"
-         placeholder="Buscar por cédula, nombre o apellido"
-         [(ngModel)]="filtroTexto" (ngModelChange)="cargarPersonas()">
+    <div class="input-group" style="max-width: 60%;">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input class="form-control"
+           placeholder="Buscar por cédula, nombre o apellido"
+           [(ngModel)]="filtroTexto" (ngModelChange)="cargarPersonas()">
+    </div>
     <select class="form-select" style="max-width: 20%;"
             [(ngModel)]="filtroTipo" (ngModelChange)="cargarPersonas()">
       <option value="">Todos los tipos</option>

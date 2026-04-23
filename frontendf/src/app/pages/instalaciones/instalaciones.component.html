@@ -9,10 +9,13 @@
   </div>
   <div class="d-flex justify-content-center g-2 align-items-center mt-3 mb-3">
     <div class="col-12 col-md-9 d-flex justify-content-md-center">
-      <input class="form-control w-100"
-          placeholder="Buscar por cualquier campo"
-          [(ngModel)]="filtroTexto"
-          (ngModelChange)="cargarInstalaciones()">
+      <div class="input-group w-100">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input class="form-control"
+            placeholder="Buscar por cualquier campo"
+            [(ngModel)]="filtroTexto"
+            (ngModelChange)="cargarInstalaciones()">
+      </div>
     </div>
     <!--<div class="col-12 col-md-3 d-flex justify-content-md-end">
       <button class="btn btn-sm btn-outline-secondary w-50" (click)="limpiarFiltros()">Limpiar</button>
