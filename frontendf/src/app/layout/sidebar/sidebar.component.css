@@ -20,3 +20,6 @@
 	border-color: var(--border-color) !important;
 }
 
+.bg-color {
+  background-color: #be9a57;
+}
