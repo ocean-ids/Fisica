@@ -32,7 +32,7 @@ export interface SacafrancoFila {
     mes: number;
     anio: number;
     orden?: number;
-    persona: number;
+    persona: number | null;
     persona_detalle?: Persona | null;
 }
 

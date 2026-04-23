@@ -167,9 +167,6 @@
                   </td>
                   <td *ngIf="!columnaOculta('accion')" class="text-center align-middle bg-warning-subtle">
                     <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">
-                      <button class="btn btn-sm btn-outline-primary" (click)="editarSacafrancoFila(row.fila)">
-                        <i class="bi bi-pencil"></i>
-                      </button>
                       <button
                         class="btn btn-sm btn-outline-danger"
                         [title]="canDeleteSacafrancoFila(row.fila) ? 'Eliminar fila sacafranco' : 'No se puede eliminar meses pasados'"

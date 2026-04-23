@@ -26,7 +26,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form/asignacion-form.component';
 import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
 import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dialogs/reporte-asistencia-color-dialog.component';
 
 @Component({
@@ -509,55 +508,28 @@ export class AsignacionesComponent implements OnInit {
     });
   }
 
-  //crearSacafrancoFila se encarga de abrir un diálogo para seleccionar una persona y luego crear una nueva fila de sacafranco asociada a esa persona para el mes y año seleccionados, realizando una llamada al servicio correspondiente para guardar la nueva fila, y luego actualizando la vista con la nueva información, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
+  //crearSacafrancoFila crea una fila de sacafranco vacía para el mes y año seleccionados
   crearSacafrancoFila(): void {
-    const assignedIds = [
-      ...(this.asignaciones || []).map(a => a?.persona ?? a?.persona_detalle?.id),
-      ...(this.sacafrancoRows || []).map(f => f?.persona ?? f?.persona_detalle?.id)
-    ].filter((id): id is number => typeof id === 'number');
-    const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
-      width: '520px',
-      data: { assignedPersonaIds: assignedIds }
-    });
+    const payload: SacafrancoFila = {
+      mes: this.mes,
+      anio: this.anio,
+      orden: (this.sacafrancoRows || []).length,
+      persona: null
+    };
 
-    ref.afterClosed().subscribe(result => {
-      if (!result?.personaId) return;
-
-      const payload: SacafrancoFila = {
-        mes: this.mes,
-        anio: this.anio,
-        orden: (this.sacafrancoRows || []).length,
-        persona: result.personaId
-      };
-
-      this.asignacionService.crearSacafrancoFila(payload).subscribe({
-        next: fila => {
-          this.sacafrancoRows = [...(this.sacafrancoRows || []), fila].filter(f => f && f.id);
-          this.buildDisplayRows();
-          this.updateCalendarOrder();
-        },
-        error: err => console.error('Error al crear fila sacafranco', err)
-      });
+    this.asignacionService.crearSacafrancoFila(payload).subscribe({
+      next: fila => {
+        this.sacafrancoRows = [...(this.sacafrancoRows || []), fila].filter(f => f && f.id);
+        this.buildDisplayRows();
+        this.updateCalendarOrder();
+      },
+      error: err => console.error('Error al crear fila sacafranco', err)
     });
   }
 
-  //editarSacafrancoFila se encarga de abrir un diálogo para seleccionar una persona y luego actualizar la fila de sacafranco asociada a esa persona para el mes y año seleccionados, realizando una llamada al servicio correspondiente para guardar los cambios, y luego actualizando la vista con la nueva información, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
-  editarSacafrancoFila(fila: SacafrancoFila): void{
-    const assignedIds = [
-      ...(this.asignaciones || []).map(a => a?.persona ?? a?.persona_detalle?.id),
-      ...(this.sacafrancoRows || []).map(f => f?.persona ?? f?.persona_detalle?.id)
-    ].filter((id): id is number => typeof id === 'number');
-    const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
-      width: '520px',
-      data: { personas: this.personas, assignedPersonaIds: assignedIds }
-    });
-    ref.afterClosed().subscribe(result => {
-      if (!result?.personaId) return;
-
-      const payload: Partial<SacafrancoFila> = {
-        persona: result.personaId
-      };
-    })
+  //editarSacafrancoFila queda sin lógica de selección de persona
+  editarSacafrancoFila(_fila: SacafrancoFila): void {
+    return;
   }
 
   //eliminarSacafrancoFila se encarga de eliminar una fila de sacafranco específica, mostrando una confirmación al usuario antes de realizar la eliminación, y luego actualizando la vista para reflejar la eliminación de la fila, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
