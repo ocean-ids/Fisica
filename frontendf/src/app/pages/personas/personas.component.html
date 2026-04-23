@@ -41,8 +41,10 @@
               <th>Cédula</th>
               <th>Apellidos</th>
               <th>Nombres</th>
-              <th>Tipo</th>
+              <th>Provincia</th>
+              <th>Cantón</th>
               <th>Activo</th>
+              <th>Tipo</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -51,6 +53,8 @@
               <td>{{ persona.cedula }}</td>
               <td >{{ persona.apellidos }}</td>
               <td >{{ persona.nombres }}</td>
+              <td>{{ persona.provincia_nombre || persona.provincia || '-' }}</td>
+              <td>{{ persona.canton_nombre || persona.canton || '-' }}</td>
               <td>
                 <span class="badge" [ngClass]="persona.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
                   {{ persona.tipo }}
@@ -70,7 +74,7 @@
               </td>
             </tr>
             <tr *ngIf="personas.length === 0">
-              <td colspan="6" class="text-center text-muted py-4">
+              <td colspan="8" class="text-center text-muted py-4">
                 No hay personas registradas
               </td>
             </tr>

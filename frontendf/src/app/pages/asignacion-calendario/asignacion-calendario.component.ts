@@ -162,6 +162,9 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   
   // Limpia la vista previa del sacafranco para un puesto y día específicos, eliminando cualquier información almacenada en el estado para esa combinación
   private getRowOrderKey(row: any): string {
+    if (row?._spacer) {
+      return String(row?._spacerId ?? '');
+    }
     if (row?._sacafranco) {
       return `sacafranco-${row?._sacafrancoId ?? ''}`;
     }
@@ -186,6 +189,12 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     if (this.rowOrder && this.rowOrder.length) {
       const orderMap = new Map<string, number>();
       this.rowOrder.forEach((id, idx) => orderMap.set(String(id), idx));
+      const existingKeys = new Set(combined.map(r => this.getRowOrderKey(r)));
+      const placeholders = this.rowOrder
+        .map(id => String(id))
+        .filter(id => id.startsWith('provincia-') && !existingKeys.has(id))
+        .map(id => ({ _spacer: true, _spacerId: id }));
+      combined.push(...placeholders);
       combined.sort((a, b) => {
         const aKey = this.getRowOrderKey(a);
         const bKey = this.getRowOrderKey(b);

@@ -49,7 +49,9 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'nombres': obj.persona.nombres,
             'apellidos': obj.persona.apellidos,
             'cedula': obj.persona.cedula,
-            'tipo': obj.persona.tipo
+            'tipo': obj.persona.tipo,
+            'provincia': obj.persona.provincia_id,
+            'canton': obj.persona.canton_id
         }
 
     def get_cliente_detalle(self, obj):
@@ -135,7 +137,9 @@ class SacafrancoFilaSerializer(serializers.ModelSerializer):
             'nombres': obj.persona.nombres,
             'apellidos': obj.persona.apellidos,
             'cedula': obj.persona.cedula,
-            'tipo': obj.persona.tipo
+            'tipo': obj.persona.tipo,
+            'provincia': obj.persona.provincia_id,
+            'canton': obj.persona.canton_id
         }
 
     class Meta:

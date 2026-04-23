@@ -269,7 +269,8 @@ class Persona(models.Model):
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     cedula = models.CharField(max_length=10, unique=True, validators=[cedula_validator])
-
+    provincia = models.ForeignKey(Provincia, null=True, blank=True, on_delete=models.PROTECT)
+    canton = models.ForeignKey(Canton, null=True, blank=True, on_delete=models.PROTECT)
     
     is_active = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
 

@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario
+from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Border, Side, Alignment, Font, PatternFill
 import csv
@@ -15,6 +15,37 @@ import logging
 import datetime
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_provincia_id(token):
+    if token is None or token == '':
+        return None
+    try:
+        return int(token)
+    except (TypeError, ValueError):
+        pass
+    try:
+        prov = Provincia.objects.filter(nombre__iexact=str(token).strip()).first()
+        return prov.id if prov else None
+    except Exception:
+        return None
+
+
+def _resolve_canton_id(token, provincia_id=None):
+    if token is None or token == '':
+        return None
+    try:
+        return int(token)
+    except (TypeError, ValueError):
+        pass
+    try:
+        qs = Canton.objects.all()
+        if provincia_id:
+            qs = qs.filter(provincia_id=provincia_id)
+        canton = qs.filter(nombre__iexact=str(token).strip()).first()
+        return canton.id if canton else None
+    except Exception:
+        return None
 
 
 @api_view(['POST'])
@@ -37,12 +68,19 @@ def crear_persona(request):
     apellidos = str(data.get('apellidos') or '').strip().upper()
 
     
+    provincia_token = data.get('provincia') or data.get('provincia_id')
+    provincia_id = _resolve_provincia_id(provincia_token)
+    canton_token = data.get('canton') or data.get('canton_id')
+    canton_id = _resolve_canton_id(canton_token, provincia_id)
+
     try:
         persona = Persona.objects.create(
             nombres=nombres,
             apellidos=apellidos,
             cedula=cedula,
             tipo=data.get('tipo'),
+            provincia_id=provincia_id,
+            canton_id=canton_id,
         )
         return JsonResponse({'message': 'Persona creada correctamente', 'id': persona.id}, status=201)
     except IntegrityError:
@@ -74,9 +112,24 @@ def obtener_personas(request):
         if tipo:
             personas = personas.filter(tipo=tipo)
 
-        personas = personas.order_by('apellidos')
-        
-        return JsonResponse(list(personas.values('id', 'nombres', 'apellidos', 'cedula', 'tipo', 'is_active')), safe=False)
+        personas = personas.select_related('provincia', 'canton').order_by('apellidos')
+
+        data = []
+        for p in personas:
+            data.append({
+                'id': p.id,
+                'nombres': p.nombres,
+                'apellidos': p.apellidos,
+                'cedula': p.cedula,
+                'tipo': p.tipo,
+                'is_active': p.is_active,
+                'provincia': p.provincia_id,
+                'canton': p.canton_id,
+                'provincia_nombre': getattr(p.provincia, 'nombre', None),
+                'canton_nombre': getattr(p.canton, 'nombre', None),
+            })
+
+        return JsonResponse(data, safe=False)
     except Exception:
         logger.exception('Error obteniendo personas')
         return JsonResponse({'error': 'No se encontraron personas'}, status=404)
@@ -115,6 +168,14 @@ def actualizar_persona(request, id):
 
     # persona.tipo se actualiza si el campo tipo está presente en el request.data, de lo contrario se mantiene el valor actual. Esto permite actualizar el tipo de persona (empleado, cliente, etc) si se proporciona en la solicitud, sin requerir que siempre esté presente
     persona.tipo = data.get('tipo', persona.tipo)
+
+    if 'provincia' in data or 'provincia_id' in data:
+        provincia_token = data.get('provincia') if 'provincia' in data else data.get('provincia_id')
+        persona.provincia_id = _resolve_provincia_id(provincia_token)
+
+    if 'canton' in data or 'canton_id' in data:
+        canton_token = data.get('canton') if 'canton' in data else data.get('canton_id')
+        persona.canton_id = _resolve_canton_id(canton_token, persona.provincia_id)
 
     try:
         persona.save()

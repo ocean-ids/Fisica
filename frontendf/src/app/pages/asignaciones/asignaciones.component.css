@@ -103,6 +103,13 @@ table tbody td{
   box-shadow: inset 0 0 0 2px #198754;
 }
 
+.provincia-row td {
+  font-weight: 600;
+  text-align: left;
+  background-color: #f3f4f6;
+  height: 32px;
+}
+
 /* Allow elementFromPoint to detect underlying rows during drag. */
 .cdk-drag-preview,
 .cdk-drag-placeholder {

@@ -125,6 +125,9 @@ export class AsignacionFormComponent implements OnInit {
     this.asignacion.puesto = 0;
     this.instalaciones = [];
     this.puestos = [];
+    this.personaSeleccionada = null;
+    this.asignacion.persona = 0;
+    this.personasFiltradas = this.getPersonasActivas();
     this.cargarInstalaciones(this.clienteSeleccionado);
   }
 
@@ -160,10 +163,30 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   getPersonasActivas(): Persona[] {
+    const provinciaId = this.getProvinciaIdFromInstalacion();
+
     return this.personas.filter(persona => {
       const tipo = (persona.tipo || '').toString().toUpperCase();
-      return persona.is_active !== false && tipo === 'FIJOS';
+      if (persona.is_active === false || tipo !== 'FIJOS') return false;
+
+      if (provinciaId && persona.provincia !== provinciaId) return false;
+
+      return true;
     });
+  }
+
+  private getProvinciaIdFromInstalacion(): number | null {
+    const instId = this.instalacionSeleccionada;
+    if (!instId) return null;
+    const inst = this.instalaciones.find(i => i.id === instId);
+    return (inst as any)?.provincia_id || (inst as any)?.provincia || null;
+  }
+
+  private getCantonIdFromInstalacion(): number | null {
+    const instId = this.instalacionSeleccionada;
+    if (!instId) return null;
+    const inst = this.instalaciones.find(i => i.id === instId);
+    return (inst as any)?.canton_id || (inst as any)?.canton || null;
   }
 
   filtrarPersonas(value: string): void {
@@ -198,11 +221,17 @@ export class AsignacionFormComponent implements OnInit {
       this.asignacion.instalacion = 0;
       this.asignacion.puesto = 0;
       this.puestos = [];
+      this.personaSeleccionada = null;
+      this.asignacion.persona = 0;
+      this.personasFiltradas = this.getPersonasActivas();
       return;
     }
     this.asignacion.instalacion = this.instalacionSeleccionada;
     this.asignacion.puesto = 0;
     this.puestos = [];
+    this.personaSeleccionada = null;
+    this.asignacion.persona = 0;
+    this.personasFiltradas = this.getPersonasActivas();
     this.cargarPuestos(this.instalacionSeleccionada);
   }
 
@@ -214,6 +243,7 @@ export class AsignacionFormComponent implements OnInit {
           this.instalacionSeleccionada = preselectInstalacionId;
           this.asignacion.instalacion = preselectInstalacionId;
           this.cargarPuestos(preselectInstalacionId, preselectPuestoId);
+          this.personasFiltradas = this.getPersonasActivas();
         }
       },
       error: err => console.error('Error al cargar instalaciones', err)

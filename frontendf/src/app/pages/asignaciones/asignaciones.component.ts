@@ -59,7 +59,8 @@ export class AsignacionesComponent implements OnInit {
   calendarRowOrder: Array<number | string> = [];
   displayRows: Array<
     { type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } |
-    { type: 'sacafranco'; id: number; fila: SacafrancoFila }
+    { type: 'sacafranco'; id: number; fila: SacafrancoFila } |
+    { type: 'provincia'; label: string }
   > = [];
   displayAssignmentRows: Asignacion[] = [];
   sacafrancoRows: SacafrancoFila[] = [];
@@ -628,6 +629,7 @@ export class AsignacionesComponent implements OnInit {
       .map(r => r.fila)
       .filter(f => !!f);
 
+    this.buildDisplayRows();
     this.updateCalendarOrder();
     this.persistOrder(ordenAsignaciones);
     this.persistSacafrancoOrder(ordenSacafranco);
@@ -644,6 +646,9 @@ export class AsignacionesComponent implements OnInit {
     if (this.displayRows && this.displayRows.length) {
       this.calendarRowOrder = this.displayRows
         .map(row => {
+          if ((row as any).type === 'provincia') {
+            return `provincia-${(row as any).label ?? ''}`;
+          }
           if ((row as any).type === 'sacafranco') {
             return `sacafranco-${(row as any).id}`;
           }
@@ -662,7 +667,8 @@ export class AsignacionesComponent implements OnInit {
 
     const rows: Array<
       { type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } |
-      { type: 'sacafranco'; id: number; fila: SacafrancoFila }
+      { type: 'sacafranco'; id: number; fila: SacafrancoFila } |
+      { type: 'provincia'; label: string }
     > = [];
     const displayAssignments: Asignacion[] = [];
 
@@ -671,6 +677,8 @@ export class AsignacionesComponent implements OnInit {
       ...sacRows.map(f => ({ kind: 'sacafranco' as const, fila: f }))
     ];
 
+    let lastProvincia: string | null = null;
+
     orderables
       .sort((a, b) => {
         const aOrd = a.kind === 'asignacion' ? (a.asig.orden ?? 0) : (a.fila.orden ?? 0);
@@ -678,6 +686,13 @@ export class AsignacionesComponent implements OnInit {
         return aOrd - bOrd;
       })
       .forEach(item => {
+        if (item.kind === 'asignacion') {
+          const provincia = this.getProvinciaLabel(item.asig);
+          if (provincia !== lastProvincia) {
+            rows.push({ type: 'provincia', label: provincia });
+            lastProvincia = provincia;
+          }
+        }
         if (item.kind === 'asignacion') {
           rows.push({ type: 'asignacion', asig: item.asig, isGroupedChild: false });
           displayAssignments.push(item.asig);
@@ -754,7 +769,13 @@ export class AsignacionesComponent implements OnInit {
   //trackByDisplayRow se encarga de proporcionar una función de seguimiento para las filas de la vista, utilizando el identificador único de cada fila o su índice como clave, lo que ayuda a Angular a optimizar la renderización de la lista y mejorar el rendimiento
   trackByDisplayRow(index: number, row: any): string | number {
     if (row?.type === 'sacafranco') return `sacafranco-${row.id ?? index}`;
+    if (row?.type === 'provincia') return `provincia-${row.label ?? index}`;
     return row?.asig?.id ?? index;
+  }
+
+  private getProvinciaLabel(asig: Asignacion): string {
+    const label = (asig?.instalacion_detalle?.provincia_nombre || '').trim();
+    return label || 'SIN PROVINCIA';
   }
 
   //prevWeekAndPage se encarga de navegar a la semana anterior en el calendario y actualizar la vista para reflejar los cambios, iterando sobre los componentes de calendario disponibles y llamando a su método para cargar la semana anterior, lo que permite al usuario ver las asignaciones correspondientes a esa semana
