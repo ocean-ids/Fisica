@@ -300,6 +300,25 @@ def asignar_servicio(request):
     data = request.data.copy()
     data['recurring'] = True
     data['end_date'] = None
+
+    try:
+        puesto_id = data.get('puesto') or data.get('puesto_id')
+        mes_val = data.get('mes')
+        anio_val = data.get('anio')
+        if puesto_id and mes_val and anio_val:
+            existe_puesto = Asignacion.objects.filter(
+                puesto_id=int(puesto_id),
+                mes=int(mes_val),
+                anio=int(anio_val),
+                estado='ACTIVO'
+            ).exists()
+            if existe_puesto:
+                return Response(
+                    {'error': 'Ya existe una asignación para este puesto en el mes seleccionado.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+    except Exception:
+        pass
     serializer = AsignacionSerializer(data=data)
     if serializer.is_valid():
         asignacion = serializer.save()

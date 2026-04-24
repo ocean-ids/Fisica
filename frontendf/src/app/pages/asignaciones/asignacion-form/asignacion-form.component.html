@@ -111,7 +111,7 @@
 
 <mat-dialog-actions align="end">
   <button mat-button (click)="onCancel()">Cancelar</button>
-  <button mat-raised-button color="primary" (click)="onSave()" [disabled]="!isFormValid()">
+  <button mat-raised-button color="primary" (click)="onSave()" [disabled]="!isFormValid() || isSaving">
     {{ textoBoton }}
   </button>
 </mat-dialog-actions>

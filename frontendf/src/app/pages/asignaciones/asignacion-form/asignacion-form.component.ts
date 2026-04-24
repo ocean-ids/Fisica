@@ -52,6 +52,8 @@ export class AsignacionFormComponent implements OnInit {
   modoEdicion: boolean;
   textoBoton: string;
 
+  isSaving = false;
+
   clientes: Cliente[] = [];
   personas: Persona[] = [];
   horarios: Horario[] = [];
@@ -277,7 +279,8 @@ export class AsignacionFormComponent implements OnInit {
     }
 
   onSave(): void {
-    if (!this.isFormValid()) return;
+    if (!this.isFormValid() || this.isSaving) return;
+    this.isSaving = true;
     this.dialogRef.close({
       action: 'save',
       asignacion: this.asignacion,

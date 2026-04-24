@@ -66,6 +66,7 @@ export class AsignacionesComponent implements OnInit {
   draggingAsignacionId: number | null = null;
   private lastDragPoint: { x: number; y: number } | null = null;
   private pendingPatronId: number | null = null;
+  isSaving = false;
 
   // Paleta de colores para asignaciones
   readonly colorPalette: {name: string, value: string}[] = [
@@ -976,6 +977,7 @@ export class AsignacionesComponent implements OnInit {
 
   //guardarAsignacion se encarga de validar la información de la asignación actual antes de guardarla, asegurándose de que se hayan seleccionado un cliente, una instalación, un puesto, una persona y un horario. Si alguna de estas validaciones falla, se muestra una alerta al usuario indicando qué información falta. Si todas las validaciones pasan, se procede a guardar la asignación en el backend, ya sea creando una nueva asignación o actualizando una existente según el modo en que se encuentre el componente, y luego se actualiza la vista con los cambios realizados
   guardarAsignacion(): void {
+    if (this.isSaving) return;
 
     if (!this.clienteSeleccionado) {
       Swal.fire({ icon: 'warning', title: 'Falta Cliente', text: 'Debe seleccionar un Cliente' });
@@ -1030,6 +1032,7 @@ export class AsignacionesComponent implements OnInit {
         end_date: null,
         reset_calendar: resetCalendar
       } as any;
+      this.isSaving = true;
       this.asignacionService.actualizarAsignacion(
         this.asignacionActual.id,
         payload
@@ -1039,11 +1042,13 @@ export class AsignacionesComponent implements OnInit {
           this.cargarAsignaciones();
           this.resetAsignacionState();
           if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
+          this.isSaving = false;
         },
         error: err => {
           console.error(err);
           const detail = err?.error ? JSON.stringify(err.error) : 'No se pudo actualizar la asignación';
           Swal.fire({ icon: 'error', title: 'Error', text: detail });
+          this.isSaving = false;
         }
       });
     } else {
@@ -1056,17 +1061,20 @@ export class AsignacionesComponent implements OnInit {
         recurring: true,
         end_date: null
       } as any;
+      this.isSaving = true;
       this.asignacionService.crearAsignacion(payload).subscribe({
         next: () => {
           Swal.fire({ icon: 'success', title: 'Asignación creada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
           this.resetAsignacionState();
           if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
+          this.isSaving = false;
         },
         error: err => {
           console.error(err);
           const detail = err?.error ? JSON.stringify(err.error) : 'No se pudo crear la asignación';
           Swal.fire({ icon: 'error', title: 'Error', text: detail });
+          this.isSaving = false;
         }
       });
     }
