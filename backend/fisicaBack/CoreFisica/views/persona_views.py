@@ -782,8 +782,11 @@ def asignar_sacafranco(request):
             except Exception:
                 week_start_date = week_start
 
-            # empezamos a propagar desde la semana seleccionada
-            prop_start = week_start_date if isinstance(week_start_date, datetime.date) else datetime.date.today()
+            # empezamos a propagar desde hoy (nunca hacia atras)
+            today = datetime.date.today()
+            prop_start = week_start_date if isinstance(week_start_date, datetime.date) else today
+            if prop_start < today:
+                prop_start = today
             # asegurar filas semanales alineadas con el front (semanas por mes: día 1 y saltos de 7)
             # y propagar varios años hacia adelante para que quede "de largo".
             weeks = []
@@ -922,7 +925,10 @@ def desasignar_sacafranco(request):
         anio_ref = week_start_date.year
         asignacion = Asignacion.objects.filter(persona=persona, mes=mes_ref, anio=anio_ref).first()
 
-        prop_start = week_start_date if isinstance(week_start_date, datetime.date) else datetime.date.today()
+        today = datetime.date.today()
+        prop_start = week_start_date if isinstance(week_start_date, datetime.date) else today
+        if prop_start < today:
+            prop_start = today
         try:
             year_for_end = week_start_date.year if isinstance(week_start_date, datetime.date) else datetime.date.today().year
             prop_end = datetime.date(year_for_end, 12, 31)
@@ -972,15 +978,12 @@ def desasignar_sacafranco(request):
             'sun': 6,
         }
         day_offset = day_offsets.get(day, 0)
-        today = datetime.date.today()
-
-        # Corta la propagación en la fecha más reciente entre:
-        # - la celda seleccionada
-        # - hoy
+        # Corta la propagación desde hoy hacia adelante (nunca hacia atras)
         selected_cell_date = week_start_date + datetime.timedelta(days=day_offset)
-        cutoff_date = max(selected_cell_date, today)
+        cutoff_date = today if today > selected_cell_date else selected_cell_date
 
-        # Propagar la eliminación solo a fechas vigentes/futuras.
+        # Propagar la desasignacion solo a fechas vigentes/futuras,
+        # sin borrar la marca 'F'.
         try:
             if asignacion:
                 candidate_qs = AsignacionSemanal.objects.filter(
@@ -1010,10 +1013,9 @@ def desasignar_sacafranco(request):
                 if not cell_value.startswith('F'):
                     continue
 
-                setattr(fila, day, '')
-                if asignacion or fila.asignacion_id:
+                if fila.asignacion_id is not None:
                     fila.asignacion = None
-                fila.save()
+                    fila.save()
         except Exception:
             logger.exception('Error propagando desasignación a semanas futuras')
 
