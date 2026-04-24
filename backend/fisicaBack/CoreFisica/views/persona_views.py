@@ -785,16 +785,22 @@ def asignar_sacafranco(request):
             # empezamos a propagar desde la semana seleccionada
             prop_start = week_start_date if isinstance(week_start_date, datetime.date) else datetime.date.today()
             # asegurar filas semanales alineadas con el front (semanas por mes: día 1 y saltos de 7)
+            # y propagar varios años hacia adelante para que quede "de largo".
             weeks = []
+            year_cursor = prop_start.year
             month_cursor = prop_start.month
-            while month_cursor <= 12:
-                base = datetime.date(prop_start.year, month_cursor, 1)
+            end_year = prop_start.year + 5
+            while (year_cursor < end_year) or (year_cursor == end_year and month_cursor <= 12):
+                base = datetime.date(year_cursor, month_cursor, 1)
                 cursor = base
                 while cursor.month == month_cursor:
                     if cursor >= prop_start:
                         weeks.append(cursor)
                     cursor += datetime.timedelta(days=7)
                 month_cursor += 1
+                if month_cursor > 12:
+                    month_cursor = 1
+                    year_cursor += 1
 
             for ws in weeks:
                 semanal_obj, _ = AsignacionSemanal.objects.get_or_create(
