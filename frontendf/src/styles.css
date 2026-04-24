@@ -117,6 +117,11 @@ body.theme-dark .form-control[type="date"]::-webkit-calendar-picker-indicator {
   opacity: 1;
 }
 
+body.theme-dark .form-control[type="month"]::-webkit-calendar-picker-indicator {
+  filter: brightness(0) invert(1) !important;
+  opacity: 1;
+}
+
 /* Botones outline usados en listados */
 body.theme-dark .btn-outline-secondary {
   color: #cbd5e1;

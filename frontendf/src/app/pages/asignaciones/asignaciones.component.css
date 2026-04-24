@@ -110,6 +110,11 @@ table tbody td{
   height: 32px;
 }
 
+:host-context(body.theme-dark) .provincia-row td {
+  background-color: #1f2937;
+  color: #ffffff;
+}
+
 /* Allow elementFromPoint to detect underlying rows during drag. */
 .cdk-drag-preview,
 .cdk-drag-placeholder {

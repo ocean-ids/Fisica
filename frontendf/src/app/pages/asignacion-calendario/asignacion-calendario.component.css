@@ -159,3 +159,13 @@ button.info-btn .form-control-sm {
   background-color: #f3f4f6;
 }
 
+:host-context(body.theme-dark) .table thead.table-light th,
+:host-context(body.theme-dark) .table thead.table-light {
+  background-color: #1f2937 !important;
+  color: #ffffff;
+}
+
+:host-context(body.theme-dark) .provincia-spacer {
+  background-color: #1f2937;
+}
+
