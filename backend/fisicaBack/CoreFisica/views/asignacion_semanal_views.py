@@ -1,4 +1,4 @@
-from ..models import AsignacionSemanal, SacafrancoFilaSemanal
+from ..models import AsignacionSemanal, SacafrancoFilaSemanal, CoberturaSacafranco, Puesto
 from django.db.models import Q
 from django.http import JsonResponse
 from rest_framework.permissions import IsAuthenticated
@@ -8,6 +8,66 @@ from rest_framework import status
 from ..serializers import AsignacionSemanalSerializer, SacafrancoFilaSemanalSerializer
 from django.db import transaction
 from datetime import datetime, date, timedelta
+
+
+def _puesto_detalle_dict(puesto):
+    return {
+        'id': puesto.id,
+        'nombre': puesto.nombre,
+        'cantidad_puestos': puesto.cantidad_puestos,
+        'zona_id': getattr(puesto, 'zona_id', None),
+        'zona_titulo': getattr(getattr(puesto, 'zona', None), 'titulo', ''),
+        'turno': puesto.get_turno(),
+        'turno_display': puesto.get_turno_display(),
+        'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in puesto.horarios.all()],
+        'resumen': puesto.resumen,
+    }
+
+
+def _overlay_coberturas_sacafranco(rows, week_start_date):
+    coberturas = list(
+        CoberturaSacafranco.objects.filter(week_start=week_start_date)
+        .select_related('puesto', 'puesto__zona')
+        .prefetch_related('puesto__horarios')
+        .order_by('puesto_id', 'day')
+    )
+    if not coberturas:
+        return rows
+
+    rows_by_puesto = {}
+    for row in rows:
+        puesto_id = row.get('puesto')
+        if puesto_id is not None and puesto_id not in rows_by_puesto:
+            rows_by_puesto[puesto_id] = row
+
+    for cobertura in coberturas:
+        row = rows_by_puesto.get(cobertura.puesto_id)
+        if row is None:
+            row = {
+                'id': None,
+                'asignacion': None,
+                'puesto': cobertura.puesto_id,
+                'week_start': week_start_date.isoformat(),
+                'mon': '',
+                'tue': '',
+                'wed': '',
+                'thu': '',
+                'fri': '',
+                'sat': '',
+                'sun': '',
+                'created_at': None,
+                'updated_at': None,
+                'puesto_detalle': _puesto_detalle_dict(cobertura.puesto),
+                'asignacion_sacafranco': False,
+            }
+            rows.append(row)
+            rows_by_puesto[cobertura.puesto_id] = row
+
+        current_value = str(row.get(cobertura.day) or '').strip()
+        if current_value == '':
+            row[cobertura.day] = 'F'
+
+    return rows
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -284,7 +344,10 @@ def listar_asignacion_semanal(request):
         qs = qs.filter(puesto__horarios__turno=turno).distinct()
 
     serializer = AsignacionSemanalSerializer(qs, many=True)
-    return Response(serializer.data)
+    rows = list(serializer.data)
+    if week_start:
+        rows = _overlay_coberturas_sacafranco(rows, ws)
+    return Response(rows)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

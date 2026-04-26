@@ -453,6 +453,39 @@ class SacafrancoFilaSemanal(models.Model):
         return f"SacafrancoFila {self.sacafranco_fila_id} - {self.week_start}"
 
 
+class CoberturaSacafranco(models.Model):
+    DAY_CHOICES = [
+        ('mon', 'Lunes'),
+        ('tue', 'Martes'),
+        ('wed', 'Miércoles'),
+        ('thu', 'Jueves'),
+        ('fri', 'Viernes'),
+        ('sat', 'Sábado'),
+        ('sun', 'Domingo'),
+    ]
+
+    persona = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='coberturas_sacafranco')
+    puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE, related_name='coberturas_sacafranco')
+    week_start = models.DateField()
+    day = models.CharField(max_length=3, choices=DAY_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (
+            ('puesto', 'week_start', 'day'),
+            ('persona', 'week_start', 'day'),
+        )
+        indexes = [
+            models.Index(fields=['week_start']),
+            models.Index(fields=['puesto', 'week_start', 'day']),
+            models.Index(fields=['persona', 'week_start', 'day']),
+        ]
+
+    def __str__(self):
+        return f"{self.persona} cubre {self.puesto} {self.week_start} {self.day}"
+
+
 class ReporteAsistencia(models.Model):
     ESTADO_CHOICES = [
         ('TURNO', 'Turno'),

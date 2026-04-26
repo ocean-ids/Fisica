@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton
+from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton, CoberturaSacafranco
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Border, Side, Alignment, Font, PatternFill
 import csv
@@ -15,6 +15,199 @@ import logging
 import datetime
 
 logger = logging.getLogger(__name__)
+
+DAY_KEYS = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
+
+
+def _normalize_day(tok):
+    t = str(tok or '').strip().lower()
+    mapping = {
+        'l': 'mon', 'lu': 'mon', 'lun': 'mon', 'lunes': 'mon',
+        'm': 'tue', 'ma': 'tue', 'mar': 'tue', 'martes': 'tue',
+        'mi': 'wed', 'mie': 'wed', 'mié': 'wed', 'mier': 'wed', 'miercoles': 'wed', 'miércoles': 'wed',
+        'j': 'thu', 'ju': 'thu', 'jue': 'thu', 'jueves': 'thu',
+        'v': 'fri', 'vi': 'fri', 'vie': 'fri', 'viernes': 'fri',
+        's': 'sat', 'sa': 'sat', 'sab': 'sat', 'sabado': 'sat', 'sábado': 'sat',
+        'd': 'sun', 'do': 'sun', 'dom': 'sun', 'domingo': 'sun'
+    }
+    if t in DAY_KEYS:
+        return t
+    return mapping.get(t, '')
+
+
+def _iter_future_week_starts(start_date, years=5):
+    weeks = []
+    year_cursor = start_date.year
+    month_cursor = start_date.month
+    end_year = start_date.year + years
+    while (year_cursor < end_year) or (year_cursor == end_year and month_cursor <= 12):
+        base = datetime.date(year_cursor, month_cursor, 1)
+        cursor = base
+        while cursor.month == month_cursor:
+            if cursor >= start_date:
+                weeks.append(cursor)
+            cursor += datetime.timedelta(days=7)
+        month_cursor += 1
+        if month_cursor > 12:
+            month_cursor = 1
+            year_cursor += 1
+    return weeks
+
+
+def _get_or_create_sacafranco_marker_row(puesto, week_start):
+    semanal = AsignacionSemanal.objects.filter(
+        puesto=puesto,
+        week_start=week_start,
+        asignacion__isnull=True,
+    ).order_by('id').first()
+    if semanal:
+        return semanal
+    return AsignacionSemanal.objects.create(puesto=puesto, week_start=week_start)
+
+
+def _marker_value_allows_sacafranco(semanal, day):
+    value = str(getattr(semanal, day, '') or '').strip()
+    return value == '' or value.upper().startswith('F'), value
+
+
+def _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day):
+    today = datetime.date.today()
+    prop_start = week_start_date if week_start_date >= today else today
+
+    existing_slot = CoberturaSacafranco.objects.filter(
+        puesto=puesto,
+        week_start=week_start_date,
+        day=day,
+    ).first()
+    if existing_slot and existing_slot.persona_id != persona.id:
+        return JsonResponse({'error': 'Ese puesto ya tiene un sacafranco asignado para esa fecha'}, status=400)
+
+    existing_person = CoberturaSacafranco.objects.filter(
+        persona=persona,
+        week_start=week_start_date,
+        day=day,
+    ).exclude(puesto=puesto).first()
+    if existing_person:
+        return JsonResponse({'error': 'La persona ya está asignada a otro puesto en esa fecha'}, status=400)
+
+    with transaction.atomic():
+        weeks = _iter_future_week_starts(prop_start)
+        selected_semanal = AsignacionSemanal.objects.filter(
+            puesto=puesto,
+            week_start=week_start_date,
+        ).order_by('id').first()
+
+        for ws in weeks:
+            slot_conflict = CoberturaSacafranco.objects.filter(
+                puesto=puesto,
+                week_start=ws,
+                day=day,
+            ).exclude(persona=persona).exists()
+            if slot_conflict:
+                continue
+
+            person_conflict = CoberturaSacafranco.objects.filter(
+                persona=persona,
+                week_start=ws,
+                day=day,
+            ).exclude(puesto=puesto).exists()
+            if person_conflict:
+                continue
+
+            CoberturaSacafranco.objects.get_or_create(
+                persona=persona,
+                puesto=puesto,
+                week_start=ws,
+                day=day,
+            )
+
+            _clear_sacafranco_marker_if_unused(puesto, ws, day)
+
+            if ws == week_start_date:
+                selected_semanal = AsignacionSemanal.objects.filter(
+                    puesto=puesto,
+                    week_start=ws,
+                ).order_by('id').first() or selected_semanal
+
+        if selected_semanal is None:
+            CoberturaSacafranco.objects.get_or_create(
+                persona=persona,
+                puesto=puesto,
+                week_start=week_start_date,
+                day=day,
+            )
+            _clear_sacafranco_marker_if_unused(puesto, week_start_date, day)
+            selected_semanal = AsignacionSemanal.objects.filter(
+                puesto=puesto,
+                week_start=week_start_date,
+            ).order_by('id').first()
+
+    return JsonResponse({'status': 'assigned', 'semanal_id': selected_semanal.id})
+
+
+def _clear_sacafranco_marker_if_unused(puesto, week_start, day):
+    if CoberturaSacafranco.objects.filter(puesto=puesto, week_start=week_start, day=day).exists():
+        return None
+
+    semanal = AsignacionSemanal.objects.filter(
+        puesto=puesto,
+        week_start=week_start,
+        asignacion__isnull=True,
+        **{f'{day}__istartswith': 'F'}
+    ).order_by('id').first()
+    if not semanal:
+        return None
+
+    setattr(semanal, day, '')
+    semanal.save()
+    return semanal
+
+
+def _desasignar_sacafranco_without_asignacion(persona, puesto, week_start_date, day):
+    day_offsets = {
+        'mon': 0,
+        'tue': 1,
+        'wed': 2,
+        'thu': 3,
+        'fri': 4,
+        'sat': 5,
+        'sun': 6,
+    }
+    day_offset = day_offsets.get(day, 0)
+    today = datetime.date.today()
+    selected_cell_date = week_start_date + datetime.timedelta(days=day_offset)
+    cutoff_date = today if today > selected_cell_date else selected_cell_date
+    prop_end = datetime.date(week_start_date.year, 12, 31)
+
+    candidates = CoberturaSacafranco.objects.filter(
+        persona=persona,
+        puesto=puesto,
+        day=day,
+        week_start__gte=week_start_date,
+        week_start__lte=prop_end,
+    ).order_by('week_start')
+
+    delete_ids = []
+    affected_weeks = []
+    for cobertura in candidates:
+        row_day_date = cobertura.week_start + datetime.timedelta(days=day_offset)
+        if row_day_date < cutoff_date:
+            continue
+        delete_ids.append(cobertura.id)
+        affected_weeks.append(cobertura.week_start)
+
+    if not delete_ids:
+        return None
+
+    with transaction.atomic():
+        CoberturaSacafranco.objects.filter(id__in=delete_ids).delete()
+        semanal = None
+        for ws in affected_weeks:
+            cleared = _clear_sacafranco_marker_if_unused(puesto, ws, day)
+            if ws == week_start_date:
+                semanal = cleared
+
+    return JsonResponse({'status': 'unassigned', 'semanal_id': getattr(semanal, 'id', None)})
 
 
 def _resolve_provincia_id(token):
@@ -609,23 +802,8 @@ class SacafrancoListView(APIView):
         puesto_id = request.query_params.get('puesto_id')
         week_start_date = None
 
-        def normalize_day(tok):
-            t = str(tok or '').strip().lower()
-            mapping = {
-                'l': 'mon', 'lu': 'mon', 'lun': 'mon', 'lunes': 'mon',
-                'm': 'tue', 'ma': 'tue', 'mar': 'tue', 'martes': 'tue',
-                'mi': 'wed', 'mie': 'wed', 'mié': 'wed', 'mier': 'wed', 'miercoles': 'wed', 'miércoles': 'wed',
-                'j': 'thu', 'ju': 'thu', 'jue': 'thu', 'jueves': 'thu',
-                'v': 'fri', 'vi': 'fri', 'vie': 'fri', 'viernes': 'fri',
-                's': 'sat', 'sa': 'sat', 'sab': 'sat', 'sabado': 'sat', 'sábado': 'sat',
-                'd': 'sun', 'do': 'sun', 'dom': 'sun', 'domingo': 'sun'
-            }
-            if t in ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']:
-                return t
-            return mapping.get(t, '')
-
         if day:
-            day_norm = normalize_day(day)
+            day_norm = _normalize_day(day)
             if not day_norm:
                 return Response({'error': 'Día inválido'}, status=400)
             day = day_norm
@@ -641,12 +819,19 @@ class SacafrancoListView(APIView):
         for p in qs:
             occupied = False
             if week_start_date and day:
-                if AsignacionSemanal.objects.filter(asignacion__persona=p, week_start=week_start_date, **{f"{day}__istartswith": 'F'}).exists():
+                if CoberturaSacafranco.objects.filter(persona=p, week_start=week_start_date, day=day).exists():
+                    occupied = True
+                elif AsignacionSemanal.objects.filter(asignacion__persona=p, week_start=week_start_date, **{f"{day}__istartswith": 'F'}).exists():
                     occupied = True
             assigned_for_puesto = None
             if puesto_id and week_start_date and day:
-                assigned = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start_date, asignacion__persona=p, **{f"{day}__istartswith": 'F'}).first()
-                if assigned:
+                assigned = CoberturaSacafranco.objects.filter(
+                    puesto_id=puesto_id,
+                    week_start=week_start_date,
+                    day=day,
+                    persona=p,
+                ).first()
+                if assigned or AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start_date, asignacion__persona=p, **{f"{day}__istartswith": 'F'}).exists():
                     assigned_for_puesto = p.id
 
             results.append({
@@ -679,22 +864,7 @@ def asignar_sacafranco(request):
         return JsonResponse({'error': 'Faltan parámetros requeridos'}, status=400)
 
     # Normalizar día a las claves del modelo (mon..sun)
-    def normalize_day(tok):
-        t = str(tok or '').strip().lower()
-        mapping = {
-            'l': 'mon', 'lu': 'mon', 'lun': 'mon', 'lunes': 'mon',
-            'm': 'tue', 'ma': 'tue', 'mar': 'tue', 'martes': 'tue',
-            'mi': 'wed', 'mie': 'wed', 'mié': 'wed', 'mier': 'wed', 'miercoles': 'wed', 'miércoles': 'wed',
-            'j': 'thu', 'ju': 'thu', 'jue': 'thu', 'jueves': 'thu',
-            'v': 'fri', 'vi': 'fri', 'vie': 'fri', 'viernes': 'fri',
-            's': 'sat', 'sa': 'sat', 'sab': 'sat', 'sabado': 'sat', 'sábado': 'sat',
-            'd': 'sun', 'do': 'sun', 'dom': 'sun', 'domingo': 'sun'
-        }
-        if t in ['mon','tue','wed','thu','fri','sat','sun']:
-            return t
-        return mapping.get(t, '')
-
-    day_norm = normalize_day(day)
+    day_norm = _normalize_day(day)
     if not day_norm:
         return JsonResponse({'error': 'Día inválido'}, status=400)
     day = day_norm
@@ -720,6 +890,13 @@ def asignar_sacafranco(request):
 
     mes_ref = week_start_date.month
     anio_ref = week_start_date.year
+
+    if persona.tipo == 'SACAFRANCO':
+        try:
+            return _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day)
+        except Exception:
+            logger.exception('Error asignando sacafranco sin crear asignación')
+            return JsonResponse({'error': 'No se pudo asignar sacafranco'}, status=500)
 
     asignacion = Asignacion.objects.filter(persona=persona, mes=mes_ref, anio=anio_ref).first()
     try:
@@ -892,22 +1069,7 @@ def desasignar_sacafranco(request):
         return JsonResponse({'error': 'Puesto no encontrado'}, status=404)
 
     # Normalizar día a las claves del modelo (mon..sun)
-    def normalize_day(tok):
-        t = str(tok or '').strip().lower()
-        mapping = {
-            'l': 'mon', 'lu': 'mon', 'lun': 'mon', 'lunes': 'mon',
-            'm': 'tue', 'ma': 'tue', 'mar': 'tue', 'martes': 'tue',
-            'mi': 'wed', 'mie': 'wed', 'mié': 'wed', 'mier': 'wed', 'miercoles': 'wed', 'miércoles': 'wed',
-            'j': 'thu', 'ju': 'thu', 'jue': 'thu', 'jueves': 'thu',
-            'v': 'fri', 'vi': 'fri', 'vie': 'fri', 'viernes': 'fri',
-            's': 'sat', 'sa': 'sat', 'sab': 'sat', 'sabado': 'sat', 'sábado': 'sat',
-            'd': 'sun', 'do': 'sun', 'dom': 'sun', 'domingo': 'sun'
-        }
-        if t in ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']:
-            return t
-        return mapping.get(t, '')
-
-    day_norm = normalize_day(day)
+    day_norm = _normalize_day(day)
     if not day_norm:
         return JsonResponse({'error': 'Día inválido'}, status=400)
     day = day_norm
@@ -920,6 +1082,11 @@ def desasignar_sacafranco(request):
                 week_start_date = week_start if isinstance(week_start, datetime.date) else datetime.date.today()
         except Exception:
             week_start_date = datetime.date.today()
+
+        if persona.tipo == 'SACAFRANCO':
+            unassigned = _desasignar_sacafranco_without_asignacion(persona, puesto, week_start_date, day)
+            if unassigned is not None:
+                return unassigned
 
         mes_ref = week_start_date.month
         anio_ref = week_start_date.year
