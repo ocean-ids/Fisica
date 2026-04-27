@@ -66,8 +66,8 @@
           [displayWith]="displayPersonaLabel"
           (optionSelected)="seleccionarPersona($event.option.value)"
         >
-          <mat-option *ngFor="let per of personasFiltradas" [value]="per">
-            {{ per.apellidos }} {{ per.nombres }} ({{ per.tipo }} - {{ per.canton_nombre || per.provincia_nombre || per.canton || '-' }})
+          <mat-option *ngFor="let per of personasFiltradas" [value]="per" >
+            {{ per.apellidos }} {{ per.nombres }} <span class="badge rounded-pill bg-info text-dark" style="font-size: 10px;">({{ per.tipo }} - {{ per.canton_nombre || per.provincia_nombre || per.canton || '-' }})</span>
           </mat-option>
         </mat-autocomplete>
       </mat-form-field>
