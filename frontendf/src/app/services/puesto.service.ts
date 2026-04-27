@@ -45,4 +45,13 @@ export class PuestoService {
     eliminarPuesto(id: number): Observable<any>{
         return this.apiService.delete(`/eliminar-puesto/${id}/`);
     }
+
+    importPuestosAsignaciones(file: File, clienteId?: number): Observable<any> {
+        const formData = new FormData();
+        formData.append('file', file);
+        const endpoint = clienteId
+            ? `/importar-puestos-asignaciones/?cliente_id=${clienteId}`
+            : '/importar-puestos-asignaciones/';
+        return this.apiService.post<any>(endpoint, formData);
+    }
 }

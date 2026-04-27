@@ -23,7 +23,8 @@
       </mat-form-field>
     </div>
     <div class="col-12 col-md-5 d-grid d-md-flex justify-content-md-end gap-2">
-      <button class="btn btn-outline-secondary">
+      <input type="file" #fileInput class="d-none" accept=".xlsx" (change)="onFileSelected($event)">
+      <button class="btn btn-outline-secondary" (click)="fileInput.click()">
          <i class="bi bi-upload"></i> Importar
       </button>
       <button class="btn btn-outline-primary" (click)="abrirFormularioNuevo()" [disabled]="!clienteSeleccionado">

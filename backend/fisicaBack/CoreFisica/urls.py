@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import (
 from .views.auth_views import login_view, logout_view, user_view, user_profile_view, solicitar_reset_password, reset_password
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
 from .views.importar_clientes import importar_clientes
+from .views.importar_puestos_asignaciones import importar_puestos_asignaciones
 from .views.ubicacion_views import obtener_provincias, obtener_cantones, obtener_zonas
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
 from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona, disable_persona, enable_persona, importar_personas, exportar_personas_excel, SacafrancoListView, asignar_sacafranco, desasignar_sacafranco
@@ -37,6 +38,7 @@ urlpatterns = [
     path('actualizar-cliente/<int:id>/', actualizar_cliente),
     path('eliminar-cliente/<int:id>/', eliminar_cliente),
     path('importar-clientes/', importar_clientes),
+    path('importar-puestos-asignaciones/', importar_puestos_asignaciones),
     path('personas/', obtener_personas),
     path('crear-persona/', crear_persona),
     path('actualizar-persona/<int:id>/', actualizar_persona),

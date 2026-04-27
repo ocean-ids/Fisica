@@ -256,6 +256,40 @@ export class PuestosComponent implements OnInit {
     }
   }
 
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    this.puestoService.importPuestosAsignaciones(file, this.clienteSeleccionado || undefined).subscribe({
+      next: (res) => {
+        const resumen = `Filas: ${res?.filas_validas || 0}/${res?.total_filas || 0}`
+          + `, Personas creadas: ${res?.personas_creadas || 0}`
+          + `, Puestos creados: ${res?.puestos_creados || 0}`
+          + `, Horarios creados: ${res?.horarios_creados || 0}`
+          + `, Asignaciones creadas: ${res?.asignaciones_creadas || 0}`
+          + `, Asignaciones actualizadas: ${res?.asignaciones_actualizadas || 0}`;
+        const errores = Array.isArray(res?.errores) ? res.errores : [];
+        const erroresHtml = errores.length
+          ? `<div style="text-align:left;max-height:220px;overflow:auto;margin-top:8px;">
+                <strong>Errores:</strong>
+                <ul style="margin:6px 0 0 18px;">${errores.map((e: string) => `<li>${e}</li>`).join('')}</ul>
+             </div>`
+          : '';
+        Swal.fire({ icon: 'success', title: 'Importacion', html: `${resumen}${erroresHtml}` });
+        if (this.clienteSeleccionado) {
+          this.cargarPuestos();
+        }
+      },
+      error: (err) => {
+        const msg = err?.error?.error || 'No se pudo importar';
+        Swal.fire({ icon: 'error', title: 'Error', text: msg });
+      }
+    });
+
+    input.value = '';
+  }
+
 }
 
 
