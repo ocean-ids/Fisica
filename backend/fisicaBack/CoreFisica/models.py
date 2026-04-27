@@ -396,6 +396,7 @@ class Asignacion(models.Model):
         unique_together = ('persona', 'mes', 'anio')
         permissions = [
             ('export_asignacion', 'Can export asignacion'),
+            ('import_puestos_asignaciones', 'Can import puestos/asignaciones'),
         ]
 
     def __str__(self):

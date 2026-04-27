@@ -193,8 +193,8 @@ def compute_horas(hora_ingreso, hora_salida):
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def importar_puestos_asignaciones(request):
-    if not request.user.has_perm('CoreFisica.add_asignacion'):
-        return JsonResponse({'error': 'No autorizado'}, status=403)
+    if not request.user.has_perm('CoreFisica.import_puestos_asignaciones'):
+        return JsonResponse({'error': 'No Autorizado'}, status=403)
 
     upload = request.FILES.get('file')
     if not upload:
