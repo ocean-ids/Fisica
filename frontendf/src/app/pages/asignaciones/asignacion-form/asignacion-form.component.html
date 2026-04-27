@@ -58,6 +58,7 @@
           [ngModel]="personaSeleccionada"
           [ngModelOptions]="{standalone:true}"
           (input)="filtrarPersonas(personaInput.value)"
+          [disabled]="!canSelectPersona()"
         />
 
         <mat-autocomplete

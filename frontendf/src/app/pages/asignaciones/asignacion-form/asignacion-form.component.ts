@@ -191,6 +191,12 @@ export class AsignacionFormComponent implements OnInit {
     return (inst as any)?.canton_id || (inst as any)?.canton || null;
   }
 
+  canSelectPersona(): boolean {
+    return !!this.clienteSeleccionado
+      && !!this.instalacionSeleccionada
+      && !!this.asignacion.puesto;
+  }
+
   filtrarPersonas(value: string): void {
     const term = (value || '').trim().toLowerCase();
     this.personasFiltradas = this.getPersonasActivas().filter(persona => {
