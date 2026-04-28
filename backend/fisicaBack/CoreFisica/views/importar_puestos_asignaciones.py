@@ -193,14 +193,17 @@ def compute_horas(hora_ingreso, hora_salida):
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def importar_puestos_asignaciones(request):
+    # si el usuario no tiene permiso de importacion, retorna un jsonreponse con error 403
     if not request.user.has_perm('CoreFisica.import_puestos_asignaciones'):
         return JsonResponse({'error': 'No Autorizado'}, status=403)
-
+    # se espera  un respuesta con un archivo excel
     upload = request.FILES.get('file')
+    # si no se recibe un archivo, retorna un jsonresponse con error 400
     if not upload:
         return JsonResponse({'error': 'Falta el archivo (campo file)'}, status=400)
 
     cliente_id = request.GET.get('cliente_id')
+    # si se recibe cliente_id, intenta convertirlo a entero, si no es posible, lo ignora y continua sin filtro de cliente
     if cliente_id:
         try:
             cliente_id = int(cliente_id)
@@ -208,15 +211,18 @@ def importar_puestos_asignaciones(request):
             cliente_id = None
 
     try:
+        # intenta abrir el archivo excel usando openpyxl, si no es posible, retorna un jsonresponse con error 400
         wb = load_workbook(upload, read_only=True, data_only=True)
     except Exception as exc:
         return JsonResponse({'error': f'No se pudo abrir el archivo: {exc}'}, status=400)
-
+    # ws es la hoja activa del libro excel
     ws = wb.active
+    # rows es una lista de filas de la hoja excel, cada fila es una tupla de valores de celdas, usando values_only=True para obtener solo los valores sin formato
     rows = list(ws.iter_rows(values_only=True))
+    # si no se encuentran filas en el archivo, retorna un jsonresponse con error 400
     if not rows:
         return JsonResponse({'error': 'El archivo esta vacio'}, status=400)
-
+    # se buscan las columnas obligatorias en las primeras 15 filas del archivo, normalizando los encabezados y comparandolos con el HEADER_MAP para encontrar los indices de las columnas necesarias, si no se encuentran todas las columnas obligatorias, retorna un jsonresponse con error 400 indicando las columnas faltantes y los encabezados detectados
     header_idx = None
     header_row_num = None
     headers_raw = []
@@ -229,13 +235,13 @@ def importar_puestos_asignaciones(request):
             header_idx = tmp_idx
             header_row_num = ridx
             break
-
+    # si no se encuentran todas las columnas obligatorias, retorna un jsonresponse con error 400 indicando las columnas faltantes y los encabezados detectados
     if header_idx is None:
         return JsonResponse({
             'error': 'Faltan columnas obligatorias: INSTALACION, PUESTO, CEDULA, HORA INGRESO, HORA SALIDA, DIAS',
             'headers_detectados': headers_raw
         }, status=400)
-
+    # se inicializa un diccionario de resumen para llevar conteo de filas procesadas, personas/puestos/horarios/asignaciones creadas o actualizadas, y errores encontrados durante el proceso de importacion
     resumen = {
         'total_filas': 0,
         'filas_validas': 0,
@@ -246,7 +252,7 @@ def importar_puestos_asignaciones(request):
         'asignaciones_actualizadas': 0,
         'errores': [],
     }
-
+    # start_row se establece como la fila siguiente a la fila de encabezado encontrada, para comenzar a procesar los datos desde esa fila en adelante
     start_row = (header_row_num or 0) + 1
 
     try:
@@ -282,42 +288,55 @@ def importar_puestos_asignaciones(request):
                 turno = parse_turno(col('turno'))
                 dias = parse_dias(col('dias'))
                 fecha = parse_excel_date(col_raw('fecha'))
-
+                # si el puesto_nombre se agrega un mensaje de error al resumen indicando que el puesto esta vacio y se continua con la siguiente fila sin procesar la fila actual, ya que el puesto es un campo obligatorio para crear o actualizar una asignacion
                 if not puesto_nombre:
                     resumen['errores'].append(f'Fila {i}: puesto vacio')
                     continue
+                # si la cedula se agrega un mensaje de error al resumen indicando que la cedula esta vacia o invalida y se continua con la siguiente fila sin procesar la fila actual, ya que la cedula es un campo obligatorio para crear o actualizar una persona y asignacion
                 if not cedula:
                     resumen['errores'].append(f'Fila {i}: cedula vacia o invalida')
                     continue
+                # si la hora_ingreso o hora_salida es invalida se agrega un mensaje de error al resumen indicando que la hora de ingreso o salida es invalida y se continua con la siguiente fila sin procesar la fila actual, ya que ambos campos son obligatorios para crear o actualizar un horario y asignacion
                 if not hora_ingreso or not hora_salida:
                     resumen['errores'].append(f'Fila {i}: hora ingreso/salida invalida')
                     continue
+                # si la lista de dias esta vacia se agrega un mensaje de error al resumen indicando que los dias estan vacios y se continua con la siguiente fila sin procesar la fila actual, ya que los dias son un campo obligatorio para crear o actualizar un puesto horario y asignacion
                 if not dias:
                     resumen['errores'].append(f'Fila {i}: dias vacio')
                     continue
-
+                # se intenta obtener la instalacion usando el instalacion_id si se proporciona, si no se encuentra la instalacion con ese id, se agrega un mensaje de error al resumen indicando que la instalacion no fue encontrada y se continua con la siguiente fila sin procesar la fila actual, ya que la instalacion es un campo obligatorio para crear o actualizar un puesto y asignacion. Si no se proporciona el instalacion_id, se intenta buscar la instalacion usando el nombre de la instalacion y opcionalmente filtrando por cliente usando el cliente_id, cliente_ruc o cliente_nombre si se proporcionan, si se encuentran varias instalaciones que coinciden con el nombre, se agrega un mensaje de error al resumen indicando que hay instalaciones duplicadas y se continua con la siguiente fila sin procesar la fila actual, ya que no se puede determinar a cual instalacion asociar el puesto y asignacion. Si no se encuentra ninguna instalacion que coincida con el nombre (y filtro de cliente), se agrega un mensaje de error al resumen indicando que la instalacion no fue encontrada y se continua con la siguiente fila sin procesar la fila actual, ya que la instalacion es un campo obligatorio para crear o actualizar un puesto y asignacion
                 instalacion = None
+                # si la instalacion_id se proporciona
                 if instalacion_id:
                     try:
+                        # se intenta obtener la instalacion usando el instalacion_id
                         instalacion = Instalacion.objects.get(id=int(instalacion_id))
                     except (ValueError, Instalacion.DoesNotExist):
                         resumen['errores'].append(f'Fila {i}: instalacion_id no encontrada')
                         continue
+                # si la instalacion_id no se proporciona, se intenta buscar la instalacion usando el nombre de la instalacion y opcionalmente filtrando por cliente usando el cliente_id, cliente_ruc o cliente_nombre si se proporcionan
                 else:
+                    # si el nombre de la instalcion est avacio se agrega un mensaje de error el resumen indicando que la instalacion esta vacia y se continua con la siguiente fila sin procesar la fila actual, ya que la instalacion es un campo obligatorio para crear o actualizar un puesto y asignacion
                     if not instalacion_nombre:
                         resumen['errores'].append(f'Fila {i}: instalacion vacia')
                         continue
+                    # se busca la instalacion usando el nombre de la instalacion
                     inst_qs = Instalacion.objects.filter(nombre__iexact=instalacion_nombre)
+                    # si el cliente_id se proporciona, se filtra la instalacion por cliente_id
                     if cliente_id:
                         inst_qs = inst_qs.filter(cliente_id=cliente_id)
+                    # si el cliente_ruc se proporciona, se busca el cliente por ruc
                     elif cliente_ruc:
                         cliente = Cliente.objects.filter(ruc=cliente_ruc).first()
+                        # si se encuentra el cliente, se filtra la instalacion por cliente
                         if cliente:
                             inst_qs = inst_qs.filter(cliente=cliente)
+                    # si el cliente_nombre se proporciona, se busca el cliente por nombre comercial
                     elif cliente_nombre:
                         cliente = Cliente.objects.filter(nombre_comercial__iexact=cliente_nombre).first()
                         if cliente:
                             inst_qs = inst_qs.filter(cliente=cliente)
+                    # si la cantidad de instalaciones que coinciden con el nombre (y filtro de cliente) es mayor a 1, se agrega un mensaje de error al resumen indicando que hay instalaciones duplicadas y se continua con la siguiente fila sin procesar la fila actual, ya que no se puede determinar a cual instalacion asociar el puesto y asignacion
                     if inst_qs.count() > 1:
                         resumen['errores'].append(f'Fila {i}: instalacion duplicada, use instalacion_id o cliente')
                         continue
@@ -325,12 +344,14 @@ def importar_puestos_asignaciones(request):
                     if not instalacion:
                         resumen['errores'].append(f'Fila {i}: instalacion no encontrada')
                         continue
-
+                # persona se busca o crea una persona usando la cedula, si no se encuentra una persona con esa cedula.
                 persona = Persona.objects.filter(cedula=cedula).first()
+                # si no se encuentra una persona 
                 if not persona:
                     if not apellidos or not nombres:
                         resumen['errores'].append(f'Fila {i}: apellidos/nombres requeridos para nueva persona')
                         continue
+                    #persona se crea una persona nueva con los datos de nombres, apellidos, cedula, tipo
                     persona = Persona.objects.create(
                         nombres=str(nombres).strip().upper(),
                         apellidos=str(apellidos).strip().upper(),
@@ -338,21 +359,23 @@ def importar_puestos_asignaciones(request):
                         tipo=persona_tipo or None,
                     )
                     resumen['personas_creadas'] += 1
-
+                # se obtiene o crea un horario usando la hora_ingreso y hora_salida
                 horario, created_horario = Horario.objects.get_or_create(
                     hora_ingreso=hora_ingreso,
                     hora_salida=hora_salida,
                 )
+                # si se creo un nuevo horario, se incrementa el contador de horarios_creados en el resumen
                 if created_horario:
                     resumen['horarios_creados'] += 1
 
                 try:
+                    #se intenta convertir la cantidad de puestos a entero, si no es posible, se establece en 1 por defecto, ya que la cantidad de puestos es un campo opcional para crear o actualizar un puesto y asignacion, pero si se proporciona debe ser un numero entero positivo
                     cantidad_int = int(cantidad_puestos) if cantidad_puestos else 1
                 except (TypeError, ValueError):
                     cantidad_int = 1
                 if cantidad_int < 1:
                     cantidad_int = 1
-
+                # se obtiene o crea un puesto usando el nombre del puesto y la instalacion
                 puesto, puesto_created = Puesto.objects.get_or_create(
                     instalacion=instalacion,
                     nombre=puesto_nombre,
@@ -361,16 +384,19 @@ def importar_puestos_asignaciones(request):
                         'tipo': puesto_tipo or None,
                     }
                 )
+                #si se creo un nuevo puesto, se incrementa el cantador de puestos_ creados en el resumen
                 if puesto_created:
                     resumen['puestos_creados'] += 1
+                # si no se creo un nuevo puesto
                 else:
+                    #si se proporciono la cantidad de puestos y es diferente a la cantidad de puestos actual del puesto, se actualiza la cantidad de puestos del puesto con el valor proporcionado, ya que la cantidad de puestos es un campo opcional para crear o actualizar un puesto y asignacion, pero si se proporciona debe ser un numero entero positivo y se asume que el valor proporcionado es el correcto para ese puesto
                     if cantidad_int and puesto.cantidad_puestos != cantidad_int:
                         puesto.cantidad_puestos = cantidad_int
                         puesto.save(update_fields=['cantidad_puestos'])
                     if puesto_tipo and puesto.tipo != puesto_tipo:
                         puesto.tipo = puesto_tipo
                         puesto.save(update_fields=['tipo'])
-
+                # se actualizan o crean los puestos horarios para el puesto usando la lista de dias, hora_ingreso, hora_salida y turno proporcionados, ya que los puestos horarios son necesarios para crear o actualizar una asignacion y se asume que el horario y turno proporcionados aplican para todos los dias indicados
                 horas = compute_horas(hora_ingreso, hora_salida)
                 for dia in dias:
                     PuestoHorario.objects.update_or_create(
@@ -380,15 +406,17 @@ def importar_puestos_asignaciones(request):
                     )
 
                 try:
+                    # se sincroniza el puesto con los horarios usando el metodo sync_from_horarios, para asegurar que el puesto tenga el horario correcto basado en los puestos horarios asociados, ya que el horario es un campo necesario para crear o actualizar una asignacion y se asume que el horario del puesto debe reflejar los horarios definidos en los puestos horarios asociados
                     puesto.sync_from_horarios()
                     puesto.save()
                 except Exception:
                     pass
-
+                
+                # se actualizan o crean las asignaciones para la persona, puesto, instalacion, horario
                 ref_date = fecha or date.today()
                 mes = ref_date.month
                 anio = ref_date.year
-
+                # asig se actualiza o crea una asignacion usando la persona, mes, anio como campos unicos para identificar la asignacion 
                 asig, created_asig = Asignacion.objects.update_or_create(
                     persona=persona,
                     mes=mes,
@@ -402,7 +430,7 @@ def importar_puestos_asignaciones(request):
                         'estado': 'ACTIVO'
                     }
                 )
-
+                # si se creo una nueva asignacion
                 if created_asig:
                     resumen['asignaciones_creadas'] += 1
                 else:
