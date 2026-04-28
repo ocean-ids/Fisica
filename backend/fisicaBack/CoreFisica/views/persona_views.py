@@ -815,9 +815,31 @@ class SacafrancoListView(APIView):
         for p in qs:
             occupied = False
             if week_start_date and day:
-                if CoberturaSacafranco.objects.filter(persona=p, week_start=week_start_date, day=day).exists():
+                any_f = Q()
+                for key in DAY_KEYS:
+                    any_f |= Q(**{f"{key}__istartswith": 'F'})
+
+                if CoberturaSacafranco.objects.filter(
+                    persona=p,
+                    week_start=week_start_date,
+                ).exists():
                     occupied = True
-                elif AsignacionSemanal.objects.filter(asignacion__persona=p, week_start=week_start_date, **{f"{day}__istartswith": 'F'}).exists():
+                elif CoberturaSacafranco.objects.filter(
+                    persona=p,
+                    week_start__gte=week_start_date,
+                    day=day,
+                ).exists():
+                    occupied = True
+                elif AsignacionSemanal.objects.filter(
+                    asignacion__persona=p,
+                    week_start=week_start_date,
+                ).filter(any_f).exists():
+                    occupied = True
+                elif AsignacionSemanal.objects.filter(
+                    asignacion__persona=p,
+                    week_start__gte=week_start_date,
+                    **{f"{day}__istartswith": 'F'}
+                ).exists():
                     occupied = True
             assigned_for_puesto = None
             if puesto_id and week_start_date and day:
