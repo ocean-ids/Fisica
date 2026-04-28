@@ -73,6 +73,18 @@ def _marker_value_allows_sacafranco(semanal, day):
 def _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day):
     prop_start = week_start_date
 
+    def _format_conflict_message(cobertura):
+        conflict_puesto = cobertura.puesto
+        conflict_instalacion = getattr(conflict_puesto, 'instalacion', None)
+        conflict_cliente = getattr(conflict_instalacion, 'cliente', None) if conflict_instalacion else None
+        cliente_nombre = getattr(conflict_cliente, 'nombre_comercial', None) or 'cliente'
+        instalacion_nombre = getattr(conflict_instalacion, 'nombre', None) or 'instalacion'
+        puesto_nombre = getattr(conflict_puesto, 'nombre', None) or 'puesto'
+        return (
+            f"La persona ya esta asignada como sacafranco en {cliente_nombre} "
+            f"({instalacion_nombre} - {puesto_nombre}) para esa fecha"
+        )
+
     existing_slot = CoberturaSacafranco.objects.filter(
         puesto=puesto,
         week_start=week_start_date,
@@ -87,7 +99,7 @@ def _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day)
         day=day,
     ).exclude(puesto=puesto).first()
     if existing_person:
-        return JsonResponse({'error': 'La persona ya está asignada a otro puesto en esa fecha'}, status=400)
+        return JsonResponse({'error': _format_conflict_message(existing_person)}, status=400)
 
     with transaction.atomic():
         weeks = _iter_future_week_starts(prop_start)
@@ -812,35 +824,64 @@ class SacafrancoListView(APIView):
 
         qs = Persona.objects.filter(tipo='SACAFRANCO', is_active=True).order_by('nombres', 'apellidos')
         results = []
+        day_offsets = {
+            'mon': 0,
+            'tue': 1,
+            'wed': 2,
+            'thu': 3,
+            'fri': 4,
+            'sat': 5,
+            'sun': 6,
+        }
+        today = datetime.date.today()
         for p in qs:
             occupied = False
             if week_start_date and day:
+                selected_day_date = None
+                if day in day_offsets:
+                    selected_day_date = week_start_date + datetime.timedelta(days=day_offsets[day])
+
+                allowed_days = []
+                week_end_date = week_start_date + datetime.timedelta(days=6)
+                if week_start_date >= today:
+                    allowed_days = list(DAY_KEYS)
+                elif week_start_date <= today <= week_end_date:
+                    for key, offset in day_offsets.items():
+                        if week_start_date + datetime.timedelta(days=offset) >= today:
+                            allowed_days.append(key)
+
                 any_f = Q()
-                for key in DAY_KEYS:
+                for key in allowed_days:
                     any_f |= Q(**{f"{key}__istartswith": 'F'})
 
-                if CoberturaSacafranco.objects.filter(
+                if allowed_days and CoberturaSacafranco.objects.filter(
                     persona=p,
                     week_start=week_start_date,
+                    day__in=allowed_days,
                 ).exists():
                     occupied = True
-                elif CoberturaSacafranco.objects.filter(
-                    persona=p,
-                    week_start__gte=week_start_date,
-                    day=day,
-                ).exists():
-                    occupied = True
-                elif AsignacionSemanal.objects.filter(
-                    asignacion__persona=p,
-                    week_start=week_start_date,
-                ).filter(any_f).exists():
-                    occupied = True
-                elif AsignacionSemanal.objects.filter(
-                    asignacion__persona=p,
-                    week_start__gte=week_start_date,
-                    **{f"{day}__istartswith": 'F'}
-                ).exists():
-                    occupied = True
+                else:
+                    min_week_start_for_day = week_start_date
+                    if selected_day_date and selected_day_date < today:
+                        min_week_start_for_day = week_start_date + datetime.timedelta(days=7)
+
+                    if CoberturaSacafranco.objects.filter(
+                        persona=p,
+                        week_start__gte=min_week_start_for_day,
+                        day=day,
+                    ).exists():
+                        occupied = True
+                    elif allowed_days and AsignacionSemanal.objects.filter(
+                        asignacion__persona=p,
+                        week_start=week_start_date,
+                    ).filter(any_f).exists():
+                        occupied = True
+                    elif AsignacionSemanal.objects.filter(
+                        asignacion__persona=p,
+                        week_start__gte=min_week_start_for_day,
+                        **{f"{day}__istartswith": 'F'}
+                    ).exists():
+                        occupied = True
             assigned_for_puesto = None
             if puesto_id and week_start_date and day:
                 assigned = CoberturaSacafranco.objects.filter(

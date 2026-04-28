@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { PatronAsignacionService } from '../../../services/patron-asignacion.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-patron-sacafrancos-modal',
@@ -58,7 +59,15 @@ export class PatronSacafrancosModalComponent {
     };
     this.patronService.asignarSacafranco(payload).subscribe({
       next: (res) => { this.loading = false; this.dialogRef.close({ action: 'assigned', result: res }); },
-      error: (err) => { this.loading = false; console.error('Error asignando', err); }
+      error: (err) => {
+        this.loading = false;
+        console.error('Error asignando', err);
+        Swal.fire({
+          icon: 'warning',
+          title: 'Sacafranco ocupado',
+          text: this.getErrorMessage(err) || 'La persona ya esta asignada en otro puesto'
+        });
+      }
     });
   }
 
@@ -90,5 +99,10 @@ export class PatronSacafrancosModalComponent {
     if (!status) { return '';
     }
     return status.toString().toLowerCase() === 'available' ? 'primary' : 'warn';
+  }
+
+  private getErrorMessage(err: any): string {
+    if (!err) return '';
+    return err?.error?.error || err?.error?.detail || err?.message || '';
   }
 }
