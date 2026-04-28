@@ -92,7 +92,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
 
   // Convierte el valor de weekStart a un objeto Date, considerando solo la parte de la fecha
   loadWeek(){
-  
+    this.sacafrancoPreview = {};
     this.computeWeekDays();
     this.loading = true;
     const params: any = { week_start: this.weekStart, auto_create: true };
@@ -574,7 +574,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     try {
       const key = String(puestoId || '');
       this.sacafrancoPreview[key] = this.sacafrancoPreview[key] || {};  
-      if (this.sacafrancoPreview[key][day]) return;
+      this.sacafrancoPreview[key][day] = '';
 
       this.patronAsignacionService.getSacafrancos(this.weekStart, day, puestoId)
         .subscribe({

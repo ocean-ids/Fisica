@@ -70,7 +70,7 @@ def _marker_value_allows_sacafranco(semanal, day):
     return value == '' or value.upper().startswith('F'), value
 
 
-def _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day):
+def _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day, replace=False):
     prop_start = week_start_date
 
     def _format_conflict_message(cobertura):
@@ -90,7 +90,7 @@ def _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day)
         week_start=week_start_date,
         day=day,
     ).first()
-    if existing_slot and existing_slot.persona_id != persona.id:
+    if existing_slot and existing_slot.persona_id != persona.id and not replace:
         return JsonResponse({'error': 'Ese puesto ya tiene un sacafranco asignado para esa fecha'}, status=400)
 
     existing_person = CoberturaSacafranco.objects.filter(
@@ -109,13 +109,17 @@ def _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day)
         ).order_by('id').first()
 
         for ws in weeks:
-            slot_conflict = CoberturaSacafranco.objects.filter(
+            slot_qs = CoberturaSacafranco.objects.filter(
                 puesto=puesto,
                 week_start=ws,
                 day=day,
-            ).exclude(persona=persona).exists()
+            )
+            slot_conflict = slot_qs.exclude(persona=persona).exists()
             if slot_conflict:
-                continue
+                if replace:
+                    slot_qs.exclude(persona=persona).delete()
+                else:
+                    continue
 
             person_conflict = CoberturaSacafranco.objects.filter(
                 persona=persona,
@@ -834,6 +838,25 @@ class SacafrancoListView(APIView):
             'sun': 6,
         }
         today = datetime.date.today()
+        slot_occupied_by = None
+        if puesto_id and week_start_date and day:
+            slot = CoberturaSacafranco.objects.filter(
+                puesto_id=puesto_id,
+                week_start=week_start_date,
+                day=day,
+            ).select_related('persona').first()
+            if slot and slot.persona:
+                slot_occupied_by = slot.persona
+            else:
+                assigned_row = AsignacionSemanal.objects.filter(
+                    puesto_id=puesto_id,
+                    week_start=week_start_date,
+                    asignacion__isnull=False,
+                    **{f"{day}__istartswith": 'F'}
+                ).select_related('asignacion__persona').first()
+                if assigned_row and assigned_row.asignacion and assigned_row.asignacion.persona:
+                    slot_occupied_by = assigned_row.asignacion.persona
+
         for p in qs:
             occupied = False
             if week_start_date and day:
@@ -884,13 +907,22 @@ class SacafrancoListView(APIView):
                         occupied = True
             assigned_for_puesto = None
             if puesto_id and week_start_date and day:
+                min_week_start_for_day = week_start_date
+                selected_day_date = week_start_date + datetime.timedelta(days=day_offsets.get(day, 0))
+                if selected_day_date < today:
+                    min_week_start_for_day = week_start_date + datetime.timedelta(days=7)
                 assigned = CoberturaSacafranco.objects.filter(
                     puesto_id=puesto_id,
-                    week_start=week_start_date,
+                    week_start__gte=min_week_start_for_day,
                     day=day,
                     persona=p,
                 ).first()
-                if assigned or AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start_date, asignacion__persona=p, **{f"{day}__istartswith": 'F'}).exists():
+                if assigned or AsignacionSemanal.objects.filter(
+                    puesto_id=puesto_id,
+                    week_start__gte=min_week_start_for_day,
+                    asignacion__persona=p,
+                    **{f"{day}__istartswith": 'F'}
+                ).exists():
                     assigned_for_puesto = p.id
 
             results.append({
@@ -900,6 +932,9 @@ class SacafrancoListView(APIView):
                 'cedula': p.cedula,
                 'status': 'asignado' if (assigned_for_puesto or occupied) else 'available',
                 'assigned_for_puesto': assigned_for_puesto,
+                'slot_occupied_by_id': getattr(slot_occupied_by, 'id', None),
+                'slot_occupied_by_name': f"{slot_occupied_by.nombres} {slot_occupied_by.apellidos}".strip() if slot_occupied_by else None,
+                'slot_occupied_by_cedula': getattr(slot_occupied_by, 'cedula', None) if slot_occupied_by else None,
             })
 
         return Response(results)
@@ -917,6 +952,7 @@ def asignar_sacafranco(request):
     puesto_id = data.get('puesto_id')
     week_start = data.get('week_start')
     day = data.get('day')
+    replace = bool(data.get('replace'))
    
 
     if not all([persona_id, puesto_id, week_start, day]):
@@ -952,7 +988,7 @@ def asignar_sacafranco(request):
 
     if persona.tipo == 'SACAFRANCO':
         try:
-            return _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day)
+            return _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day, replace=replace)
         except Exception:
             logger.exception('Error asignando sacafranco sin crear asignación')
             return JsonResponse({'error': 'No se pudo asignar sacafranco'}, status=500)

@@ -197,6 +197,15 @@ body.theme-dark .mat-mdc-select-panel .mat-mdc-option .mat-pseudo-checkbox-indet
   border-color: #ffffff !important;
 }
 
+/* SweetAlert above Material dialogs */
+.swal2-container.swal-on-top {
+  z-index: 20000 !important;
+}
+
+.swal2-container {
+  z-index: 20000 !important;
+}
+
 /* Dialogos en modo oscuro */
 body.theme-dark .mat-mdc-dialog-title,
 body.theme-dark .mat-mdc-dialog-content,

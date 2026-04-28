@@ -21,6 +21,9 @@ export class PatronSacafrancosModalComponent {
   day?: string;
   selected: any = null;
   loading: boolean = false;
+  slotOccupiedById: number | null = null;
+  slotOccupiedByName: string | null = null;
+  slotOccupiedByCedula: string | null = null;
 
   constructor(
     public dialogRef: MatDialogRef<PatronSacafrancosModalComponent>,
@@ -36,6 +39,11 @@ export class PatronSacafrancosModalComponent {
     } catch (e) {
       this.selected = null;
     }
+    if (this.lista.length) {
+      this.slotOccupiedById = this.lista[0]?.slot_occupied_by_id ?? null;
+      this.slotOccupiedByName = this.lista[0]?.slot_occupied_by_name ?? null;
+      this.slotOccupiedByCedula = this.lista[0]?.slot_occupied_by_cedula ?? null;
+    }
   }
 
   close(): void {
@@ -49,26 +57,51 @@ export class PatronSacafrancosModalComponent {
 
   asignar() {
     if (!this.selected || !this.weekStart || !this.day) return;
-    this.loading = true;
-    const payload = {
-      persona_id: this.selected.id,
-      puesto_id: this.data.puestoId || this.data.puestoId,
-      week_start: this.weekStart,
-      day: this.day,
-      value: 'S'
+    const doAssign = (replace: boolean) => {
+      this.loading = true;
+      const payload = {
+        persona_id: this.selected.id,
+        puesto_id: this.data.puestoId || this.data.puestoId,
+        week_start: this.weekStart,
+        day: this.day,
+        value: 'S',
+        replace
+      };
+      this.patronService.asignarSacafranco(payload).subscribe({
+        next: (res) => { this.loading = false; this.dialogRef.close({ action: 'assigned', result: res }); },
+        error: (err) => {
+          this.loading = false;
+          console.error('Error asignando', err);
+          Swal.fire({
+            icon: 'warning',
+            title: 'Sacafranco ocupado',
+            text: this.getErrorMessage(err) || 'La persona ya esta asignada en otro puesto',
+            target: document.body,
+            customClass: { container: 'swal-on-top' }
+          });
+        }
+      });
     };
-    this.patronService.asignarSacafranco(payload).subscribe({
-      next: (res) => { this.loading = false; this.dialogRef.close({ action: 'assigned', result: res }); },
-      error: (err) => {
-        this.loading = false;
-        console.error('Error asignando', err);
-        Swal.fire({
-          icon: 'warning',
-          title: 'Sacafranco ocupado',
-          text: this.getErrorMessage(err) || 'La persona ya esta asignada en otro puesto'
-        });
-      }
-    });
+
+    if (this.slotOccupiedById && this.slotOccupiedById !== this.selected.id) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Puesto ya asignado',
+        text: `Ya existe un sacafranco asignado: ${this.getSlotOccupiedLabel()}. ¿Deseas reemplazarlo?`,
+        showCancelButton: true,
+        confirmButtonText: 'Reemplazar',
+        cancelButtonText: 'Cancelar',
+        target: document.body,
+        customClass: { container: 'swal-on-top' }
+      }).then(result => {
+        if (result.isConfirmed) {
+          doAssign(true);
+        }
+      });
+      return;
+    }
+
+    doAssign(false);
   }
 
   desasignar() {
@@ -99,6 +132,13 @@ export class PatronSacafrancosModalComponent {
     if (!status) { return '';
     }
     return status.toString().toLowerCase() === 'available' ? 'primary' : 'warn';
+  }
+
+  getSlotOccupiedLabel(): string {
+    const name = (this.slotOccupiedByName || '').trim();
+    const cedula = (this.slotOccupiedByCedula || '').trim();
+    if (name && cedula) return `${name} (${cedula})`;
+    return name || cedula || 'otro puesto';
   }
 
   private getErrorMessage(err: any): string {

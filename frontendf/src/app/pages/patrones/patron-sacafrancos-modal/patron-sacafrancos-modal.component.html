@@ -16,6 +16,9 @@
             </mat-option>
         </mat-select>
     </mat-form-field>
+    <div *ngIf="slotOccupiedById" class="text-warning small mb-2">
+        Puesto ya tiene sacafranco asignado: {{ getSlotOccupiedLabel() }}
+    </div>
   
 </mat-dialog-content>
 <mat-dialog-actions align="end">
