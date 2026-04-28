@@ -427,7 +427,8 @@ def importar_puestos_asignaciones(request):
                         'puesto': puesto,
                         'horario': horario,
                         'fecha': fecha,
-                        'estado': 'ACTIVO'
+                        'estado': 'ACTIVO',
+                        'publicada_calendario': True
                     }
                 )
                 # si se creo una nueva asignacion

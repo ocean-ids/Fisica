@@ -379,6 +379,7 @@ class Asignacion(models.Model):
     recurring = models.BooleanField(default=False)
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
+    publicada_calendario = models.BooleanField(default=False, db_index=True)
 
     agregar_sacafranco = models.BooleanField(default=False)
 
