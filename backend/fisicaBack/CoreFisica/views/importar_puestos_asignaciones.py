@@ -10,7 +10,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from openpyxl import load_workbook
 from openpyxl.utils.datetime import from_excel
 
-from ..models import Cliente, Instalacion, Puesto, PuestoHorario, Persona, Horario, Asignacion
+from ..models import Cliente, Instalacion, Puesto, PuestoHorario, Persona, Horario, Asignacion, PatronAsignacion
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,10 @@ HEADER_MAP = {
     'CANTIDAD PUESTOS': 'cantidad_puestos',
     'CANTIDAD': 'cantidad_puestos',
     'PUESTO CANTIDAD': 'cantidad_puestos',
+    'PATRON': 'patron',
+    'PATRON CODIGO': 'patron',
+    'CODIGO PATRON': 'patron',
+    'PATRON ID': 'patron_id',
 }
 
 
@@ -277,6 +281,8 @@ def importar_puestos_asignaciones(request):
                 puesto_nombre = col('puesto')
                 puesto_tipo = col('puesto_tipo')
                 cantidad_puestos = col('cantidad_puestos')
+                patron_codigo = col('patron')
+                patron_id = col('patron_id')
 
                 cedula = normalize_cedula(col('cedula'))
                 apellidos = col('apellidos')
@@ -416,6 +422,17 @@ def importar_puestos_asignaciones(request):
                 ref_date = fecha or date.today()
                 mes = ref_date.month
                 anio = ref_date.year
+                patron_obj = None
+                if patron_id:
+                    try:
+                        patron_obj = PatronAsignacion.objects.filter(id=int(patron_id)).first()
+                    except (TypeError, ValueError):
+                        patron_obj = None
+                if not patron_obj and patron_codigo:
+                    token = str(patron_codigo).strip()
+                    patron_obj = PatronAsignacion.objects.filter(codigo=token).first()
+                    if patron_obj is None and token.isdigit():
+                        patron_obj = PatronAsignacion.objects.filter(id=int(token)).first()
                 # asig se actualiza o crea una asignacion usando la persona, mes, anio como campos unicos para identificar la asignacion 
                 asig, created_asig = Asignacion.objects.update_or_create(
                     persona=persona,
@@ -427,6 +444,7 @@ def importar_puestos_asignaciones(request):
                         'puesto': puesto,
                         'horario': horario,
                         'fecha': fecha,
+                        'patronAsignacion': patron_obj,
                         'estado': 'ACTIVO',
                         'publicada_calendario': True
                     }
