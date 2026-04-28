@@ -43,25 +43,8 @@ def _overlay_coberturas_sacafranco(rows, week_start_date):
     for cobertura in coberturas:
         row = rows_by_puesto.get(cobertura.puesto_id)
         if row is None:
-            row = {
-                'id': None,
-                'asignacion': None,
-                'puesto': cobertura.puesto_id,
-                'week_start': week_start_date.isoformat(),
-                'mon': '',
-                'tue': '',
-                'wed': '',
-                'thu': '',
-                'fri': '',
-                'sat': '',
-                'sun': '',
-                'created_at': None,
-                'updated_at': None,
-                'puesto_detalle': _puesto_detalle_dict(cobertura.puesto),
-                'asignacion_sacafranco': False,
-            }
-            rows.append(row)
-            rows_by_puesto[cobertura.puesto_id] = row
+            # No crear filas nuevas solo por cobertura sacafranco.
+            continue
 
         current_value = str(row.get(cobertura.day) or '').strip()
         if current_value == '':

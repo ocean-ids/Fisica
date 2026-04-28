@@ -1048,6 +1048,17 @@ def sacafranco_filas(request):
                 mes_val = int(mes)
                 anio_val = int(anio)
                 qs = qs.filter(Q(anio__lt=anio_val) | Q(anio=anio_val, mes__lte=mes_val))
+                # Mostrar filas sacafranco solo si hay datos semanales en el mes.
+                first_day = datetime.date(anio_val, mes_val, 1)
+                cursor = first_day
+                week_starts = []
+                while cursor.month == mes_val:
+                    week_starts.append(cursor)
+                    cursor += datetime.timedelta(days=7)
+                fila_ids = SacafrancoFilaSemanal.objects.filter(
+                    week_start__in=week_starts
+                ).values_list('sacafranco_fila_id', flat=True)
+                qs = qs.filter(id__in=list(fila_ids))
             except (TypeError, ValueError):
                 pass
         qs = qs.order_by('orden', 'id')
