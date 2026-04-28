@@ -71,8 +71,7 @@ def _marker_value_allows_sacafranco(semanal, day):
 
 
 def _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day):
-    today = datetime.date.today()
-    prop_start = week_start_date if week_start_date >= today else today
+    prop_start = week_start_date
 
     existing_slot = CoberturaSacafranco.objects.filter(
         puesto=puesto,
@@ -121,8 +120,6 @@ def _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day)
                 day=day,
             )
 
-            _clear_sacafranco_marker_if_unused(puesto, ws, day)
-
             if ws == week_start_date:
                 selected_semanal = AsignacionSemanal.objects.filter(
                     puesto=puesto,
@@ -136,7 +133,6 @@ def _assign_sacafranco_without_asignacion(persona, puesto, week_start_date, day)
                 week_start=week_start_date,
                 day=day,
             )
-            _clear_sacafranco_marker_if_unused(puesto, week_start_date, day)
             selected_semanal = AsignacionSemanal.objects.filter(
                 puesto=puesto,
                 week_start=week_start_date,
