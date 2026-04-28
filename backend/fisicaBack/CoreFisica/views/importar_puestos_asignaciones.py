@@ -434,20 +434,26 @@ def importar_puestos_asignaciones(request):
                     if patron_obj is None and token.isdigit():
                         patron_obj = PatronAsignacion.objects.filter(id=int(token)).first()
                 # asig se actualiza o crea una asignacion usando la persona, mes, anio como campos unicos para identificar la asignacion 
+                defaults = {
+                    'cliente': instalacion.cliente,
+                    'instalacion': instalacion,
+                    'puesto': puesto,
+                    'horario': horario,
+                    'fecha': fecha,
+                    'patronAsignacion': patron_obj,
+                    'estado': 'ACTIVO',
+                    'publicada_calendario': True,
+                }
+                if patron_obj:
+                    defaults['recurring'] = True
+                    defaults['start_date'] = date(ref_date.year, ref_date.month, 1)
+                    defaults['end_date'] = None
+
                 asig, created_asig = Asignacion.objects.update_or_create(
                     persona=persona,
                     mes=mes,
                     anio=anio,
-                    defaults={
-                        'cliente': instalacion.cliente,
-                        'instalacion': instalacion,
-                        'puesto': puesto,
-                        'horario': horario,
-                        'fecha': fecha,
-                        'patronAsignacion': patron_obj,
-                        'estado': 'ACTIVO',
-                        'publicada_calendario': True
-                    }
+                    defaults=defaults,
                 )
                 # si se creo una nueva asignacion
                 if created_asig:
