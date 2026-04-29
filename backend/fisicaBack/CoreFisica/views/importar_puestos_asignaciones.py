@@ -10,7 +10,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from openpyxl import load_workbook
 from openpyxl.utils.datetime import from_excel
 
-from ..models import Cliente, Instalacion, Puesto, PuestoHorario, Persona, Horario, Asignacion, PatronAsignacion
+from ..models import Cliente, Instalacion, Puesto, PuestoHorario, Persona, Horario, Asignacion, PatronAsignacion, AsignacionSemanal
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,9 @@ HEADER_MAP = {
     'CODIGO PATRON': 'patron',
     'PATRON ID': 'patron_id',
 }
+
+for day_num in range(1, 32):
+    HEADER_MAP[str(day_num)] = f'day_{day_num}'
 
 
 def normalize_header(value):
@@ -179,6 +182,46 @@ def parse_dias(value):
     return sorted(result)
 
 
+def parse_calendar_value(val):
+    if val is None:
+        return ''
+    if isinstance(val, (int, float)):
+        if isinstance(val, float) and val.is_integer():
+            return str(int(val)).strip().upper()
+        return str(val).strip().upper()
+    return str(val).strip().upper()
+
+
+def _detect_month_year_from_sheet(rows):
+    month_map = {
+        'ENERO': 1,
+        'FEBRERO': 2,
+        'MARZO': 3,
+        'ABRIL': 4,
+        'MAYO': 5,
+        'JUNIO': 6,
+        'JULIO': 7,
+        'AGOSTO': 8,
+        'SEPTIEMBRE': 9,
+        'SETIEMBRE': 9,
+        'OCTUBRE': 10,
+        'NOVIEMBRE': 11,
+        'DICIEMBRE': 12,
+    }
+    for row in rows[:10]:
+        for cell in row:
+            if not cell:
+                continue
+            text = str(cell).strip().upper()
+            match = re.search(r'(ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SETIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\s+(\d{4})', text)
+            if match:
+                month = month_map.get(match.group(1))
+                year = int(match.group(2))
+                if month:
+                    return year, month
+    return None, None
+
+
 def compute_horas(hora_ingreso, hora_salida):
     if not hora_ingreso or not hora_salida:
         return 12
@@ -245,6 +288,7 @@ def importar_puestos_asignaciones(request):
             'error': 'Faltan columnas obligatorias: INSTALACION, PUESTO, CEDULA, HORA INGRESO, HORA SALIDA, DIAS',
             'headers_detectados': headers_raw
         }, status=400)
+    sheet_year, sheet_month = _detect_month_year_from_sheet(rows)
     # se inicializa un diccionario de resumen para llevar conteo de filas procesadas, personas/puestos/horarios/asignaciones creadas o actualizadas, y errores encontrados durante el proceso de importacion
     resumen = {
         'total_filas': 0,
@@ -419,7 +463,7 @@ def importar_puestos_asignaciones(request):
                     pass
                 
                 # se actualizan o crean las asignaciones para la persona, puesto, instalacion, horario
-                ref_date = fecha or date.today()
+                ref_date = fecha or (date(sheet_year, sheet_month, 1) if sheet_year and sheet_month else date.today())
                 mes = ref_date.month
                 anio = ref_date.year
                 patron_obj = None
@@ -461,11 +505,52 @@ def importar_puestos_asignaciones(request):
                 else:
                     resumen['asignaciones_actualizadas'] += 1
 
-                try:
-                    from .asignacion_views import _rebuild_asignacion_semanal
-                    _rebuild_asignacion_semanal(asig, force_all=created_asig)
-                except Exception:
-                    logger.exception('Error reconstruyendo asignacion semanal')
+                # aplicar calendario manual desde columnas 1..31 si existen
+                calendar_updates = {}
+                days_in_month = (date(ref_date.year, ref_date.month + 1, 1) - timedelta(days=1)).day if ref_date.month < 12 else 31
+                has_calendar_values = False
+                for day_num in range(1, 32):
+                    if day_num > days_in_month:
+                        continue
+                    key = f'day_{day_num}'
+                    idx = header_idx.get(key)
+                    if idx is None or idx >= len(row):
+                        continue
+                    raw_val = row[idx]
+                    val = parse_calendar_value(raw_val)
+                    if not val:
+                        continue
+                    has_calendar_values = True
+                    day_date = date(ref_date.year, ref_date.month, day_num)
+                    week_index = (day_num - 1) // 7
+                    week_start = date(ref_date.year, ref_date.month, 1) + timedelta(days=week_index * 7)
+                    day_field = ['mon','tue','wed','thu','fri','sat','sun'][day_date.weekday()]
+                    calendar_updates.setdefault(week_start, {})[day_field] = val
+
+                if has_calendar_values:
+                    for ws, day_map in calendar_updates.items():
+                        defaults = {**day_map, 'puesto_id': puesto.id}
+                        obj, created = AsignacionSemanal.objects.get_or_create(
+                            asignacion_id=asig.id,
+                            week_start=ws,
+                            defaults=defaults,
+                        )
+                        if not created:
+                            changed = False
+                            for d_key, d_val in day_map.items():
+                                setattr(obj, d_key, d_val)
+                                changed = True
+                            if getattr(obj, 'puesto_id', None) is None:
+                                obj.puesto_id = puesto.id
+                                changed = True
+                            if changed:
+                                obj.save()
+                else:
+                    try:
+                        from .asignacion_views import _rebuild_asignacion_semanal
+                        _rebuild_asignacion_semanal(asig, force_all=created_asig)
+                    except Exception:
+                        logger.exception('Error reconstruyendo asignacion semanal')
 
                 resumen['filas_validas'] += 1
 
