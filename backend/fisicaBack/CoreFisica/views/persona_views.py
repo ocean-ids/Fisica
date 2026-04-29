@@ -847,15 +847,6 @@ class SacafrancoListView(APIView):
             ).select_related('persona').first()
             if slot and slot.persona:
                 slot_occupied_by = slot.persona
-            else:
-                assigned_row = AsignacionSemanal.objects.filter(
-                    puesto_id=puesto_id,
-                    week_start=week_start_date,
-                    asignacion__isnull=False,
-                    **{f"{day}__istartswith": 'F'}
-                ).select_related('asignacion__persona').first()
-                if assigned_row and assigned_row.asignacion and assigned_row.asignacion.persona:
-                    slot_occupied_by = assigned_row.asignacion.persona
 
         for p in qs:
             occupied = False
@@ -872,10 +863,6 @@ class SacafrancoListView(APIView):
                     for key, offset in day_offsets.items():
                         if week_start_date + datetime.timedelta(days=offset) >= today:
                             allowed_days.append(key)
-
-                any_f = Q()
-                for key in allowed_days:
-                    any_f |= Q(**{f"{key}__istartswith": 'F'})
 
                 if allowed_days and CoberturaSacafranco.objects.filter(
                     persona=p,
@@ -894,35 +881,15 @@ class SacafrancoListView(APIView):
                         day=day,
                     ).exists():
                         occupied = True
-                    elif allowed_days and AsignacionSemanal.objects.filter(
-                        asignacion__persona=p,
-                        week_start=week_start_date,
-                    ).filter(any_f).exists():
-                        occupied = True
-                    elif AsignacionSemanal.objects.filter(
-                        asignacion__persona=p,
-                        week_start__gte=min_week_start_for_day,
-                        **{f"{day}__istartswith": 'F'}
-                    ).exists():
-                        occupied = True
             assigned_for_puesto = None
             if puesto_id and week_start_date and day:
-                min_week_start_for_day = week_start_date
-                selected_day_date = week_start_date + datetime.timedelta(days=day_offsets.get(day, 0))
-                if selected_day_date < today:
-                    min_week_start_for_day = week_start_date + datetime.timedelta(days=7)
                 assigned = CoberturaSacafranco.objects.filter(
                     puesto_id=puesto_id,
-                    week_start__gte=min_week_start_for_day,
+                    week_start=week_start_date,
                     day=day,
                     persona=p,
                 ).first()
-                if assigned or AsignacionSemanal.objects.filter(
-                    puesto_id=puesto_id,
-                    week_start__gte=min_week_start_for_day,
-                    asignacion__persona=p,
-                    **{f"{day}__istartswith": 'F'}
-                ).exists():
+                if assigned:
                     assigned_for_puesto = p.id
 
             results.append({
