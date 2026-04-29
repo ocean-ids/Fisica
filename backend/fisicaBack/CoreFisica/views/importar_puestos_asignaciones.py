@@ -155,6 +155,7 @@ def parse_dias(value):
     if not value:
         return []
     text = str(value).strip().upper()
+    text = text.replace('"', '').replace("'", '')
     if not text:
         return []
     tokens = re.split(r'[\s,;/|]+', text)
@@ -171,7 +172,7 @@ def parse_dias(value):
     for tok in tokens:
         if not tok:
             continue
-        tok = tok.strip('.').upper()
+        tok = re.sub(r'[^A-Z0-9]', '', tok.strip('.').upper())
         if tok.isdigit():
             num = int(tok)
             if 1 <= num <= 7:
