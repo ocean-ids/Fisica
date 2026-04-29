@@ -32,6 +32,7 @@ HEADER_MAP = {
     'HORARIO SALIDA': 'hora_salida',
     'HORA SALIDA': 'hora_salida',
     'SALIDA': 'hora_salida',
+    'HORAS': 'horas',
     'TURNO': 'turno',
     'DIAS': 'dias',
     'DIAS TURNO': 'dias',
@@ -151,6 +152,32 @@ def parse_turno(value):
     return 'Diurno'
 
 
+def parse_turno_groups(value):
+    if not value:
+        return []
+    text = str(value).strip()
+    if not text:
+        return []
+    parts = [p.strip() for p in text.split('/') if p.strip()]
+    return [parse_turno(p) for p in parts]
+
+
+def parse_hours_groups(value):
+    if value is None:
+        return []
+    text = str(value).strip()
+    if not text:
+        return []
+    parts = [p.strip() for p in text.split('/') if p.strip()]
+    hours = []
+    for part in parts:
+        try:
+            hours.append(int(float(part)))
+        except (TypeError, ValueError):
+            continue
+    return hours
+
+
 def parse_dias(value):
     if not value:
         return []
@@ -181,6 +208,60 @@ def parse_dias(value):
         if tok in mapping:
             result.add(mapping[tok])
     return sorted(result)
+
+
+def parse_dias_groups(value):
+    if not value:
+        return []
+    text = str(value).strip().upper()
+    text = text.replace('"', '').replace("'", '')
+    if not text:
+        return []
+    # Support "LUNES-JUEVES / VIERNES-SABADO" or "L,M,X,J / V,S"
+    group_tokens = [g.strip() for g in text.split('/') if g.strip()]
+    mapping = {
+        'L': 1, 'LU': 1, 'LUN': 1, 'LUNES': 1,
+        'M': 2, 'MA': 2, 'MAR': 2, 'MARTES': 2,
+        'X': 3, 'MI': 3, 'MIE': 3, 'MIERCOLES': 3,
+        'J': 4, 'JU': 4, 'JUE': 4, 'JUEVES': 4,
+        'V': 5, 'VI': 5, 'VIE': 5, 'VIERNES': 5,
+        'S': 6, 'SA': 6, 'SAB': 6, 'SABADO': 6,
+        'D': 7, 'DO': 7, 'DOM': 7, 'DOMINGO': 7,
+    }
+    def normalize_tok(tok: str):
+        tok = re.sub(r'[^A-Z0-9]', '', tok.strip().upper())
+        return tok
+
+    groups = []
+    for group in group_tokens:
+        group = group.replace(' A ', '-').replace(' A\t', '-').replace('\tA ', '-')
+        days = []
+        if '-' in group:
+            parts = [p for p in re.split(r'-+', group) if p.strip()]
+            if len(parts) >= 2:
+                start = mapping.get(normalize_tok(parts[0]))
+                end = mapping.get(normalize_tok(parts[1]))
+                if start and end:
+                    if start <= end:
+                        days = list(range(start, end + 1))
+                    else:
+                        days = list(range(start, 8)) + list(range(1, end + 1))
+        if not days:
+            tokens = re.split(r'[\s,;|]+', group)
+            for tok in tokens:
+                if not tok:
+                    continue
+                key = normalize_tok(tok.strip('.'))
+                if key.isdigit():
+                    num = int(key)
+                    if 1 <= num <= 7:
+                        days.append(num)
+                    continue
+                if key in mapping:
+                    days.append(mapping[key])
+        if days:
+            groups.append(sorted(set(days)))
+    return groups
 
 
 def parse_calendar_value(val):
@@ -336,8 +417,9 @@ def importar_puestos_asignaciones(request):
 
                 hora_ingreso = parse_excel_time(col_raw('hora_ingreso'))
                 hora_salida = parse_excel_time(col_raw('hora_salida'))
+                horas_raw = col('horas')
                 turno = parse_turno(col('turno'))
-                dias = parse_dias(col('dias'))
+                dias_groups = parse_dias_groups(col('dias'))
                 fecha = parse_excel_date(col_raw('fecha'))
                 # si el puesto_nombre se agrega un mensaje de error al resumen indicando que el puesto esta vacio y se continua con la siguiente fila sin procesar la fila actual, ya que el puesto es un campo obligatorio para crear o actualizar una asignacion
                 if not puesto_nombre:
@@ -348,11 +430,11 @@ def importar_puestos_asignaciones(request):
                     resumen['errores'].append(f'Fila {i}: cedula vacia o invalida')
                     continue
                 # si la hora_ingreso o hora_salida es invalida se agrega un mensaje de error al resumen indicando que la hora de ingreso o salida es invalida y se continua con la siguiente fila sin procesar la fila actual, ya que ambos campos son obligatorios para crear o actualizar un horario y asignacion
-                if not hora_ingreso or not hora_salida:
+                if (not hora_ingreso or not hora_salida) and not horas_raw:
                     resumen['errores'].append(f'Fila {i}: hora ingreso/salida invalida')
                     continue
                 # si la lista de dias esta vacia se agrega un mensaje de error al resumen indicando que los dias estan vacios y se continua con la siguiente fila sin procesar la fila actual, ya que los dias son un campo obligatorio para crear o actualizar un puesto horario y asignacion
-                if not dias:
+                if not dias_groups:
                     resumen['errores'].append(f'Fila {i}: dias vacio')
                     continue
                 # se intenta obtener la instalacion usando el instalacion_id si se proporciona, si no se encuentra la instalacion con ese id, se agrega un mensaje de error al resumen indicando que la instalacion no fue encontrada y se continua con la siguiente fila sin procesar la fila actual, ya que la instalacion es un campo obligatorio para crear o actualizar un puesto y asignacion. Si no se proporciona el instalacion_id, se intenta buscar la instalacion usando el nombre de la instalacion y opcionalmente filtrando por cliente usando el cliente_id, cliente_ruc o cliente_nombre si se proporcionan, si se encuentran varias instalaciones que coinciden con el nombre, se agrega un mensaje de error al resumen indicando que hay instalaciones duplicadas y se continua con la siguiente fila sin procesar la fila actual, ya que no se puede determinar a cual instalacion asociar el puesto y asignacion. Si no se encuentra ninguna instalacion que coincida con el nombre (y filtro de cliente), se agrega un mensaje de error al resumen indicando que la instalacion no fue encontrada y se continua con la siguiente fila sin procesar la fila actual, ya que la instalacion es un campo obligatorio para crear o actualizar un puesto y asignacion
@@ -448,13 +530,18 @@ def importar_puestos_asignaciones(request):
                         puesto.tipo = puesto_tipo
                         puesto.save(update_fields=['tipo'])
                 # se actualizan o crean los puestos horarios para el puesto usando la lista de dias, hora_ingreso, hora_salida y turno proporcionados, ya que los puestos horarios son necesarios para crear o actualizar una asignacion y se asume que el horario y turno proporcionados aplican para todos los dias indicados
-                horas = compute_horas(hora_ingreso, hora_salida)
-                for dia in dias:
-                    PuestoHorario.objects.update_or_create(
-                        puesto=puesto,
-                        dia=dia,
-                        defaults={'horas': horas, 'turno': turno}
-                    )
+                horas_groups = parse_hours_groups(horas_raw)
+                turnos_groups = parse_turno_groups(col('turno'))
+                default_horas = compute_horas(hora_ingreso, hora_salida)
+                for idx, dias in enumerate(dias_groups):
+                    horas = horas_groups[idx] if idx < len(horas_groups) else default_horas
+                    turno_val = turnos_groups[idx] if idx < len(turnos_groups) else turno
+                    for dia in dias:
+                        PuestoHorario.objects.update_or_create(
+                            puesto=puesto,
+                            dia=dia,
+                            defaults={'horas': horas, 'turno': turno_val}
+                        )
 
                 try:
                     # se sincroniza el puesto con los horarios usando el metodo sync_from_horarios, para asegurar que el puesto tenga el horario correcto basado en los puestos horarios asociados, ya que el horario es un campo necesario para crear o actualizar una asignacion y se asume que el horario del puesto debe reflejar los horarios definidos en los puestos horarios asociados
