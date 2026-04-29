@@ -82,9 +82,9 @@ def listar_asignacion_semanal(request):
                         (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
                     ).select_related('puesto', 'patronAsignacion')
                     active_asign_ids = set(asigns.values_list('id', flat=True))
-
+                    # weekday_names para normalizar tokens de días y compararlos con días del puesto o patrón sin depender de idioma o formato exacto.
                     weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
-
+                    # funcion para normalizar tokens de dias a formato estándar (ej: 'lun', 'Lunes' -> 'lunes') 
                     def normalize_day_token(tok: str) -> str:
                         t = str(tok).strip().lower()
                         if not t:
@@ -99,15 +99,17 @@ def listar_asignacion_semanal(request):
                             'd': 'domingo', 'do': 'domingo', 'dom': 'domingo', 'domingo': 'domingo'
                         }
                         return map_short.get(t, t)
-
+                    # itera las asignaciones activas y asegura que exista una fila semanal para el
                     for asign in asigns:
+                    
                         puesto_obj = getattr(asign, 'puesto', None)
+                        # si no se obtiene puesto relacionado, intentar por puesto_id (caso de asignaciones sin relación correcta pero con puesto_id presente)
                         if not puesto_obj:
                             try:
                                 puesto_obj = Puesto.objects.get(id=asign.puesto_id)
                             except Exception:
                                 puesto_obj = None
-
+                        #
                         dias_puesto = []
                         if puesto_obj:
                             try:
@@ -304,10 +306,10 @@ def listar_asignacion_semanal(request):
                 qs = qs.none()
         except Exception:
             return Response({'error': 'week_start inválida, formato YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
-
+    #si el cliente_id se proporciona como filtro, aplicarlo al queryset después de filtrar por semana para optimizar la consulta y evitar crear filas semanales innecesarias para clientes no relacionados.
     if cliente_id:
         qs = qs.filter(puesto__instalacion__cliente_id=cliente_id)
-
+    # si se proporciona un término de búsqueda, aplicarlo a campos relevantes de asignación, persona y puesto. Esto se hace después de filtrar por semana para optimizar la consulta.
     if q:
         filtros = (
             Q(asignacion__cliente__nombre_comercial__icontains=q) |
@@ -317,15 +319,16 @@ def listar_asignacion_semanal(request):
             Q(asignacion__persona__apellidos__icontains=q) |
             Q(puesto__nombre__icontains=q)
         )
+        # Si el término de búsqueda es un número, también buscar por ID de asignación o ID de fila semanal para facilitar acceso directo.
         if q.isdigit():
             filtros = filtros | Q(id=int(q)) | Q(asignacion_id=int(q))
         qs = qs.filter(filtros).distinct()
-
+    # ordena por asignacion_id para matener un orden consistente, especialmente al aplicar filtros
     qs = qs.order_by('asignacion_id')
-
+    # si se proporciona filtro de turno, aplicarlo al queryset para mostrar solo filas semanales cuyos puestos tengan ese turno. Esto se hace al final para no afectar la creación automática de filas semanales basada en asignaciones activas.
     if turno in ['Diurno', 'Nocturno']:
         qs = qs.filter(puesto__horarios__turno=turno).distinct()
-
+    #serializa y devuelve los resultados, si se proporciono week_start, aplicar overlay de coberturas sacafranco para marcar días con cobertura aunque no tengan asignación activa.
     serializer = AsignacionSemanalSerializer(qs, many=True)
     rows = list(serializer.data)
     if week_start:
@@ -339,9 +342,10 @@ def semanas_del_mes(request):
     obtener parametros: mes 1-12, año(yyyy)
     Retorna: { weeks: ['YYYY-MM-DD', ...] }
     """
+    # si el usuario no tiene permiso para ver asignaciones semanales, devolver error 403 antes de procesar parámetros
     if not request.user.has_perm('CoreFisica.view_asignacionsemanal'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-
+    
     mes = request.GET.get('mes')
     anio = request.GET.get('anio')
 

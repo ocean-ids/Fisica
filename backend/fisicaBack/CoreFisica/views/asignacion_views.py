@@ -40,11 +40,16 @@ def _find_asignaciones_logo_path():
 
 
 def _rebuild_asignacion_semanal(asignacion, force_all: bool = False):
+    # mes es igual a un entero entre 1 y 12
     mes = int(asignacion.mes)
+    #anio es un entero de 4 digitos
     anio = int(asignacion.anio)
+    # cacular primer y último día del mes
     first_day = datetime.date(anio, mes, 1)
+    # si mes es igual a 12, el siguiente mes es enero del año siguiente
     if mes == 12:
         next_month_first = datetime.date(anio + 1, 1, 1)
+    # De no ser diciembre, el siguiente mes es el mismo año y mes + 1
     else:
         next_month_first = datetime.date(anio, mes + 1, 1)
     last_day = next_month_first - datetime.timedelta(days=1)
@@ -60,7 +65,7 @@ def _rebuild_asignacion_semanal(asignacion, force_all: bool = False):
             puesto_obj = Puesto.objects.get(id=asignacion.puesto_id)
         except Exception:
             puesto_obj = None
-
+    # dias_puesto es una lista de días de la semana asociados al puesto, obtenidos directamente del campo 'dias' del puesto o inferidos a partir de los horarios asociados al puesto. Se normalizan a nombres de días en español para facilitar comparación con las fechas del calendario.
     dias_puesto = []
     if puesto_obj:
         try:
@@ -104,15 +109,18 @@ def _rebuild_asignacion_semanal(asignacion, force_all: bool = False):
                 dias_nums = list(horarios_qs.values_list('dia', flat=True))
     except Exception:
         dias_nums = []
-
+    #weekday_names es una lista de los nombres de los dias de la semana usada para iterar sobre las fechas del mes y determinar el nombre del día correspondiente a cada fecha. Se utiliza para comparar con los días asociados al puesto y decidir si se asigna un código específico o se deja vacío.
     weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
+    # hoy es la fecha actual, se utiliza para evitar modificar dias pasados 
     hoy = timezone.localdate()
+    #mientras la fecha actual este dentro del mes de la asignacion
     while current <= last_day:
         existing = AsignacionSemanal.objects.filter(
             asignacion_id=asignacion.id,
             week_start=current
         ).first()
         defaults = {}
+        # iterar sobre los 7 dias de la semana comenzando por la fecha actual (current) y determinar el código a asignar para cada día según la lógica de secuencia, días del puesto, días de la semana y fechas de la asignación. Si force_all es False, no se modificarán los días pasados (antes de hoy) y se mantendrán los valores existentes en esos días.
         for idx in range(7):
             day_date = current + datetime.timedelta(days=idx)
             name = weekday_names[day_date.weekday()]
@@ -242,13 +250,16 @@ def _rebuild_asignacion_semanal(asignacion, force_all: bool = False):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_asignaciones(request, mes=None, anio=None):
+    # si el usuario no tiene permiso para ver asignaciones, devolver error 403 antes de procesar parámetros
     if not request.user.has_perm('CoreFisica.view_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-
+    # obtener parametros de filtro: mes, año, instalacion_id, cliente_id, q (texto libre para buscar en varios campos)
     instalacion_id = request.GET.get('instalacion_id')
+    #cliente_id se puede recibir como query param o como parte de la ruta (en este caso se prioriza el query param para mantener consistencia con otros filtros)
     cliente_id = request.GET.get('cliente_id')
+    #q es un texto libre q se busca
     q = (request.GET.get('q') or '').strip()
-
+    # si se proporcionan mes y año, filtrar asignaciones activas que correspondan al mes/año o que sean recurrentes y tengan rango de fechas que incluya el mes/año. Si no se proporcionan mes/año, devolver todas las asignaciones activas. En ambos casos, excluir personas de tipo SACAFRANCO y ordenar por orden y id para mantener un orden consistente.   
     if mes and anio:
         month_start = datetime.date(int(anio), int(mes), 1)
         if int(mes) == 12:
@@ -266,7 +277,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
         asignaciones = Asignacion.objects.filter(
             estado='ACTIVO'
         ).exclude(persona__tipo='SACAFRANCO').select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').order_by('orden', 'id')
-
+    # si se proporciona cliente_id, filtrar por cliente_id despues de filtrar por mes/año para optimizar la consulta y evitar crear filas semanales innecesarias para clientes no relacionados. Si se proporciona instalacion_id, filtrar por instalacion_id después de filtrar por mes/año para optimizar la consulta y evitar crear filas semanales innecesarias para instalaciones no relacionadas. Si se proporciona un término de búsqueda q, aplicarlo a campos relevantes de asignación, persona y puesto para facilitar búsqueda rápida. Esto se hace después de filtrar por mes/año para optimizar la consulta y evitar aplicar filtros de texto a asignaciones que no corresponden al periodo seleccionado.
     if cliente_id:
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
     if instalacion_id:
@@ -291,9 +302,10 @@ def obtener_asignaciones(request, mes=None, anio=None):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def asignar_servicio(request):
+    #si el usuario no tiene permiso para agregar asignaciones, devolver error 403 antes de procesar la solicitud
     if not request.user.has_perm('CoreFisica.add_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-
+    # global datetime se declara para asegurar que se utiliza el módulo datetime importado en lugar de cualquier variable local con el mismo nombre, ya que se realizan operaciones con fechas dentro de esta función y es crucial que se utilice el módulo correcto para evitar errores.
     global datetime
 
     print(f"📥 Datos recibidos: {request.data}")
@@ -389,6 +401,7 @@ def asignar_servicio(request):
                         dias_puesto = []
 
                 def normalize_day_token(tok: str) -> str:
+                    # Normaliza un token de día a un nombre de día completo en español. Se utiliza para comparar los días asociados al puesto con los días del calendario. El mapeo incluye formas abreviadas y completas de los días de la semana, y se ignoran mayúsculas, espacios y acentos para facilitar la comparación.
                     t = str(tok).strip().lower()
                     if not t:
                         return ''
@@ -418,7 +431,7 @@ def asignar_servicio(request):
                     dias_nums = []
                 turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
                 default_code = 'N' if turno.startswith('n') else 'D'
-
+                # iterar sobre las semanas del mes y crear o actualzar filas de AsignacionSemanal según corresponda, aplicando la lógica de secuencia, días del puesto, días de la semana y fechas de la asignación para determinar el código a asignar en cada día. Se utiliza update_or_create para garantizar que haya una fila 1:1 por asignación/semana, y se actualizan los campos relacionados (persona, cliente, instalacion, horario) para mantener consistencia con la asignación principal.
                 while current <= last_day:
                     defaults = {}
                     for idx in range(7):
@@ -670,7 +683,7 @@ def asignar_servicio(request):
                                         name = weekday_names[day_date.weekday()]
                                         weekday_keys = ['mon','tue','wed','thu','fri','sat','sun']
                                         key = weekday_keys[day_date.weekday()]
-
+                                        # si la fecha de la semana es anterior a hoy, no actualizar el código para no afectar reportes históricos, pero sí asegurar que se mantiene el mismo código existente (en caso de que se haya modificado la asignación para un mes/año pasado, o se esté creando una asignación con fecha pasada). Esto permite corregir asignaciones pasadas sin perder la consistencia de los reportes históricos, y evita que cambios en asignaciones futuras afecten datos de semanas anteriores.
                                         if day_date < hoy:
                                             if existing:
                                                 defaults[key] = getattr(existing, key, '') or ''
@@ -680,6 +693,7 @@ def asignar_servicio(request):
                                         seq = None
                                         patron = None
                                         try:
+                                            #Obtener patronAsignacion relacionado a la asignación, ya sea por relación directa o por id, para luego obtener su secuencia y aplicarla si corresponde. Esto permite que la lógica de asignación semanal respete el patrón definido en la asignación, aplicando la secuencia de códigos de forma continua
                                             patron = getattr(asignacion, 'patronAsignacion', None)
                                             if patron and not hasattr(patron, 'secuencia'):
                                                 from ..models import PatronAsignacion as _PA
@@ -687,6 +701,7 @@ def asignar_servicio(request):
                                                     patron = _PA.objects.get(id=int(patron))
                                                 except Exception:
                                                     patron = None
+                                            #si se obtuvo un patron con secuencia, normalizar la secuencia a una lista de códigos en mayúscula sin espacios para facilitar su aplicación continua por día
                                             if patron and getattr(patron, 'secuencia', None):
                                                 seq = [str(x).strip().upper() for x in patron.secuencia if x]
                                         except Exception:
@@ -760,6 +775,7 @@ def asignar_servicio(request):
                                                                 except Exception:
                                                                     horas_list = list(horarios_qs.values_list('horas', flat=True))
                                                                     is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_list)
+                                                        # si corresponde aplicar secuencia con offset por 24h, calcular el índice de la secuencia sumando el offset a la diferencia de días y aplicando módulo por la longitud de la secuencia para que sea continua
                                                         if is_24h and seq:
                                                             # offset = longitud del primer bloque consecutivo igual al primer símbolo
                                                             first = seq[0]
@@ -812,10 +828,12 @@ def asignar_servicio(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def editar_servicio(request, id):
+    # si el ususario no tiene permiso de cambio de asignacion, retornar error 403
     if not request.user.has_perm('CoreFisica.change_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
     try:
+        # Obtener la asignación a editar por id. Si no existe, retornar error 404.
         asignacion = Asignacion.objects.get(id=id)
     except Asignacion.DoesNotExist:
         return Response({'error': 'Asignación no encontrada'}, status=status.HTTP_404_NOT_FOUND)
@@ -829,6 +847,7 @@ def editar_servicio(request, id):
     data['recurring'] = True
     data['end_date'] = None
     serializer = AsignacionSerializer(asignacion, data=data, partial=True)
+    # Si la actualización es válida, guardar la asignación y luego actualizar el calendario semanal si se indicó reset_calendar o si cambió el patrón de asignación. Esto asegura que los cambios en la asignación se reflejen correctamente en las filas semanales, especialmente si se modificó el patrón o se solicitó un reseteo del calendario.
     if serializer.is_valid():
         asignacion = serializer.save()
         patron_changed = 'patronAsignacion' in request.data and old_patron_id != getattr(asignacion, 'patronAsignacion_id', None)
@@ -845,11 +864,13 @@ def editar_servicio(request, id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def guardar_orden_asignacion(request):
+    # si el usuario no tiene permiso de cambio de asignacion, retornar error 403
     if not request.user.has_perm('CoreFisica.change_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-        
+    # ordenes es igual a la lista de objetos con id y orden que viene en el body de la petición. Por ejemplo: [{"id": 1, "orden": 2}, {"id": 2, "orden": 1}]  
     ordenes = request.data.get('ordenes', [])
 
+    #itera sobre la lista de ordenes y para cada una intenta obtener la asignación por id, si existe actualiza su campo orden con el valor que viene en la petición y guarda la asignación. Si no existe, continúa con la siguiente orden sin hacer nada. Al final retorna un mensaje de éxito indicando que el orden se actualizó correctamente.
     for item in ordenes:
         try:
             asignacion = Asignacion.objects.get(id=item['id'])
@@ -863,12 +884,14 @@ def guardar_orden_asignacion(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def guardar_orden_sacafranco(request):
+    # si el usuario no tiene permiso de cambio de asignacion, retornar error 403
     if not request.user.has_perm('CoreFisica.change_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-
+    #ordenes es igual a la lista de objetos con id y orden que viene en el body de la petición. Por ejemplo: [{"id": 1, "orden": 2}, {"id": 2, "orden": 1}]
     ordenes = request.data.get('ordenes', [])
-
+    # itera sobre la lista de ordenes y para cada una intenta obtener la fila de sacafranco por id, si existe actualiza su campo orden con el valor que viene en la petición y guarda la fila. Si no existe, continúa con la siguiente orden sin hacer nada. Al final retorna un mensaje de éxito indicando que el orden de sacafranco se actualizó correctamente.
     for item in ordenes:
+        
         try:
             fila = SacafrancoFila.objects.get(id=item['id'])
             fila.orden = item['orden']
@@ -880,7 +903,7 @@ def guardar_orden_sacafranco(request):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_asignacion(request, id):
-    
+    # si el usuario no tiene permiso de eliminar asignacion, retornar error 403
     if not request.user.has_perm('CoreFisica.delete_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
@@ -1037,11 +1060,14 @@ def eliminar_asignacion(request, id):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def sacafranco_filas(request):
+    # si el usuario no tiene permiso de ver asignacion, retornar error 403
     if request.method == 'GET':
         if not request.user.has_perm('CoreFisica.view_asignacion'):
             return JsonResponse({'error': 'No autorizado'}, status=403)
+        # Obtener mes y año desde los parámetros de la solicitud
         mes = request.GET.get('mes')
         anio = request.GET.get('anio')
+        # se obtiene las filas de sacafranco
         qs = SacafrancoFila.objects.all()
         if mes and anio:
             try:
@@ -1322,7 +1348,7 @@ def exportar_asignaciones_excel(request):
             return body
         except Exception:
             return ''
-
+    # itera sobre las asignaciones y para cada una rellena una fila con sus datos y luego rellena las celdas de cada día con los datos de AsignacionSemanal correspondientes, aplicando la lógica de prioridad entre filas ligadas a la asignación y filas generales por puesto, y también aplicando el formato de celda para marcar días 'F' con fondo celeste.
     for asignacion in asignaciones:
         row_idx = start_row
         # datos izquierdos
@@ -1425,8 +1451,15 @@ def exportar_asignaciones_excel(request):
 
         start_row += 1
 
+    sacafranco_sem_qs = SacafrancoFilaSemanal.objects.filter(
+        week_start__gte=month_start,
+        week_start__lte=month_end
+    ).filter(
+        Q(mon__gt='') | Q(tue__gt='') | Q(wed__gt='') | Q(thu__gt='') | Q(fri__gt='') | Q(sat__gt='') | Q(sun__gt='')
+    )
+    sacafranco_ids = list(sacafranco_sem_qs.values_list('sacafranco_fila_id', flat=True).distinct())
     sacafranco_rows = SacafrancoFila.objects.filter(
-        Q(anio__lt=year) | Q(anio=year, mes__lte=month)
+        id__in=sacafranco_ids
     ).order_by('orden', 'id')
     sac_sem_cache = {}
     for fila in sacafranco_rows:
