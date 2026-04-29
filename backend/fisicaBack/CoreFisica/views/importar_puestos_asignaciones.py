@@ -10,7 +10,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from openpyxl import load_workbook
 from openpyxl.utils.datetime import from_excel
 
-from ..models import Cliente, Instalacion, Puesto, PuestoHorario, Persona, Horario, Asignacion, PatronAsignacion, AsignacionSemanal
+from ..models import Cliente, Instalacion, Puesto, PuestoHorario, Persona, Horario, Asignacion, PatronAsignacion, AsignacionSemanal, ReporteAsistencia
 
 logger = logging.getLogger(__name__)
 
@@ -386,6 +386,8 @@ def importar_puestos_asignaciones(request):
     start_row = (header_row_num or 0) + 1
 
     try:
+        touched_asig_ids = set()
+        touched_dates = set()
         with transaction.atomic():
             for i, row in enumerate(rows[start_row:], start=start_row + 1):
                 if not row or all(v is None or str(v).strip() == '' for v in row):
@@ -420,7 +422,7 @@ def importar_puestos_asignaciones(request):
                 horas_raw = col('horas')
                 turno = parse_turno(col('turno'))
                 dias_groups = parse_dias_groups(col('dias'))
-                fecha = parse_excel_date(col_raw('fecha'))
+                fecha = None
                 # si el puesto_nombre se agrega un mensaje de error al resumen indicando que el puesto esta vacio y se continua con la siguiente fila sin procesar la fila actual, ya que el puesto es un campo obligatorio para crear o actualizar una asignacion
                 if not puesto_nombre:
                     resumen['errores'].append(f'Fila {i}: puesto vacio')
@@ -571,7 +573,7 @@ def importar_puestos_asignaciones(request):
                     'instalacion': instalacion,
                     'puesto': puesto,
                     'horario': horario,
-                    'fecha': fecha,
+                    'fecha': None,
                     'patronAsignacion': patron_obj,
                     'estado': 'ACTIVO',
                     'publicada_calendario': True,
@@ -588,6 +590,8 @@ def importar_puestos_asignaciones(request):
                     anio=anio,
                     defaults=defaults,
                 )
+                touched_asig_ids.add(asig.id)
+                touched_dates.add(ref_date)
                 # si se creo una nueva asignacion
                 if created_asig:
                     resumen['asignaciones_creadas'] += 1
@@ -642,6 +646,38 @@ def importar_puestos_asignaciones(request):
                         logger.exception('Error reconstruyendo asignacion semanal')
 
                 resumen['filas_validas'] += 1
+
+            if touched_asig_ids:
+                # Asegurar ReporteAsistencia base para las asignaciones importadas
+                asig_qs = Asignacion.objects.select_related(
+                    'persona', 'cliente', 'instalacion', 'puesto', 'horario'
+                ).filter(id__in=touched_asig_ids)
+                for asig in asig_qs:
+                    try:
+                        reporte, _ = ReporteAsistencia.objects.get_or_create(asignacion=asig)
+                        reporte.persona = asig.persona
+                        reporte.cliente = asig.cliente
+                        reporte.instalacion = asig.instalacion
+                        reporte.puesto = asig.puesto
+                        reporte.horario = asig.horario
+                        reporte.puesto_tipo = getattr(asig.puesto, 'tipo', None) if asig.puesto else None
+                        reporte.save()
+                    except Exception:
+                        pass
+
+                # Actualizar resumen de consolidado para fechas importadas (turnos diurno/nocturno)
+                try:
+                    from .reporte_asistencia_views import _build_reporte_asistencia_data
+                    from .consolidado_views import _build_resumen_manual
+                    for ref_date in touched_dates:
+                        for turno_val in ('Diurno', 'Nocturno'):
+                            rows_data = _build_reporte_asistencia_data(
+                                fecha=ref_date.isoformat(),
+                                turno=turno_val
+                            )
+                            _build_resumen_manual(ref_date, turno_val, rows_data)
+                except Exception:
+                    pass
 
         return JsonResponse(resumen, status=200)
     except Exception:
