@@ -1,4 +1,4 @@
-from ..models import AsignacionSemanal, SacafrancoFilaSemanal, CoberturaSacafranco, Puesto
+from ..models import AsignacionSemanal, SacafrancoFilaSemanal, CoberturaSacafranco
 from django.db.models import Q
 from django.http import JsonResponse
 from rest_framework.permissions import IsAuthenticated
