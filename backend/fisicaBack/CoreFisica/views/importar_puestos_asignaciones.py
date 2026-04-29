@@ -73,7 +73,7 @@ def norm(val):
         if isinstance(val, float) and val.is_integer():
             return str(int(val))
         return str(val)
-    return str(val).strip()
+    return re.sub(r'\s+', ' ', str(val)).strip()
 
 
 def parse_excel_date(val):
@@ -478,7 +478,7 @@ def importar_puestos_asignaciones(request):
                     patron_obj = PatronAsignacion.objects.filter(codigo=token).first()
                     if patron_obj is None and token.isdigit():
                         patron_obj = PatronAsignacion.objects.filter(id=int(token)).first()
-                # asig se actualiza o crea una asignacion usando la persona, mes, anio como campos unicos para identificar la asignacion 
+                # asig se actualiza o crea una asignacion usando persona + puesto + mes + anio como claves
                 defaults = {
                     'cliente': instalacion.cliente,
                     'instalacion': instalacion,
@@ -496,6 +496,7 @@ def importar_puestos_asignaciones(request):
 
                 asig, created_asig = Asignacion.objects.update_or_create(
                     persona=persona,
+                    puesto=puesto,
                     mes=mes,
                     anio=anio,
                     defaults=defaults,

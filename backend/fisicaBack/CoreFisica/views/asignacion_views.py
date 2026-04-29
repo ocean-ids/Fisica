@@ -1225,7 +1225,7 @@ def exportar_asignaciones_excel(request):
             x_offset_px = int((box_w_px - final_w) / 2)
             y_offset_px = int((box_h_px - final_h) / 2)
             y_offset_px += 16
-
+            
             img.anchor = OneCellAnchor(
                 _from=AnchorMarker(
                     col=0,
