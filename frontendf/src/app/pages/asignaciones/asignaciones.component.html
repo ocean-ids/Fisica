@@ -10,7 +10,7 @@
       </button>
     </div>
 
-    <section class="d-flex flex-wrap align-items-center gap-2">
+    <!--<section class="d-flex flex-wrap align-items-center gap-2">
       <mat-button-toggle-group
         name="columnas"
         aria-label="Columnas"
@@ -28,7 +28,7 @@
         <mat-button-toggle class="col-sm" value="sacafranco">SF</mat-button-toggle>
         <mat-button-toggle class="col-sm" value="accion">Accion</mat-button-toggle>
       </mat-button-toggle-group>
-    </section>
+    </section>-->
 
     <button class="btn btn-outline-secondary" (click)="abrirNuevoPatron()" >
       <i class="bi bi-grid-3x3-gap"></i> Nuevo Patrón
@@ -63,10 +63,47 @@
   <div class="row asig-row g-0">
     <div class="col-lg-auto pe-0">
       <div class="card asig-table-card">
-        <div class="card-body table-responsive overflow-auto">
+        <div class="card-body table-responsive overflow-auto"> 
           <table class="table table-hover table-bordered mb-2 w-100">
             <thead class="table-light text-center" style="height: 100px;">
-              <tr class="text-center align-middle m-0" style="height: 60px">
+              <tr class="text-center align-middle header-toggle-row" style="height: 28px;">
+                <th *ngIf="!columnaOculta('horario')">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('horario')" aria-label="Ocultar columna Horario">
+                    <i class="bi" [ngClass]="columnaOculta('horario') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="!columnaOculta('codigo')" style="width: 50px;">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('codigo')" aria-label="Ocultar columna Nominativo">
+                    <i class="bi" [ngClass]="columnaOculta('codigo') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="!columnaOculta('cliente')" style="width: 200px; height: 30px;">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('cliente')" aria-label="Ocultar columna Cliente">
+                    <i class="bi" [ngClass]="columnaOculta('cliente') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="mostrarPuesto()" style="width: 50px;" [attr.colspan]="2">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('puesto')" aria-label="Ocultar columna Puesto">
+                    <i class="bi" [ngClass]="columnaOculta('puesto') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="!columnaOculta('cedula')">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('cedula')" aria-label="Ocultar columna Cedula">
+                    <i class="bi" [ngClass]="columnaOculta('cedula') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="!columnaOculta('persona')">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('persona')" aria-label="Ocultar columna Persona">
+                    <i class="bi" [ngClass]="columnaOculta('persona') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="!columnaOculta('accion')">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('accion')" aria-label="Ocultar columna Accion">
+                    <i class="bi" [ngClass]="columnaOculta('accion') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+              </tr>
+              <tr class="text-center align-middle m-0" style="height: 40px">
                 <th *ngIf="!columnaOculta('horario')" [attr.rowspan]="headerRowspan()">Horario</th>
                 <th *ngIf="!columnaOculta('codigo')" [attr.rowspan]="headerRowspan()" style="width: 50px;">Nominativo</th>
                 <th *ngIf="!columnaOculta('cliente')" [attr.rowspan]="headerRowspan()" style="width: 200px; height: 30px;">Cliente</th>

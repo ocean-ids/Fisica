@@ -388,6 +388,14 @@ export class AsignacionesComponent implements OnInit {
     return this.columnasOcultas.includes(key);
   }
 
+  toggleColumna(key: string): void {
+    if (this.columnaOculta(key)) {
+      this.columnasOcultas = this.columnasOcultas.filter(col => col !== key);
+      return;
+    }
+    this.columnasOcultas = [...this.columnasOcultas, key];
+  }
+
   // mostrarPuesto se encarga de determinar si la columna de puesto debe mostrarse en la vista, verificando si la columna 'puesto' no está oculta y devolviendo un booleano para indicar su visibilidad
   mostrarPuesto(): boolean {
     return !this.columnaOculta('puesto');

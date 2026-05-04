@@ -76,6 +76,23 @@ table tbody td{
   white-space: nowrap;
 }
 
+.header-eye-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  line-height: 1;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.header-eye-btn:hover {
+  color: #212529;
+}
+
+.header-toggle-row th {
+  padding: 4px 2px;
+}
+
 
 .asig-row {
   flex-wrap: nowrap;
