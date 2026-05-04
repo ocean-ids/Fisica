@@ -40,7 +40,8 @@ export class PersonaFormComponent implements OnInit {
     'SACAFRANCO',
     'SACAVACACIONES',
     'SUPERVISOR ZONAL',
-    'SUPERVISOR MOTORIZADO'
+    'SUPERVISOR MOTORIZADO',
+    'SUPERVISOR DE ACOMPAÑAMIENTO',
   ];
 
   constructor(

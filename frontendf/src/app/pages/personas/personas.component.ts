@@ -29,7 +29,7 @@ export class PersonasComponent implements OnInit {
 
   filtroTexto = '';
   filtroTipo = '';
-  tipos = [ 'FIJOS', 'RETENES', 'CUSTODIO', 'EVENTUALES', 'SACAFRANCO', 'SACAVACACIONES', 'SUPERVISOR ZONAL', 'SUPERVISOR MOTORIZADO']
+  tipos = [ 'FIJOS', 'RETENES', 'CUSTODIO', 'EVENTUALES', 'SACAFRANCO', 'SACAVACACIONES', 'SUPERVISOR ZONAL', 'SUPERVISOR MOTORIZADO', 'SUPERVISOR DE ACOMPAÑAMIENTO' ];
 
   constructor(
     private personaService: PersonaService,

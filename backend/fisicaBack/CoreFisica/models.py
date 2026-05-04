@@ -264,8 +264,9 @@ class Persona(models.Model):
         ('SACAVACACIONES', 'SACAVACACIONES'),
         ('SUPERVISOR ZONAL', 'SUPERVISOR ZONAL'),
         ('SUPERVISOR MOTORIZADO', 'SUPERVISOR MOTORIZADO'),
+        ('SUPERVISOR DE ACOMPAÑAMIENTO', 'SUPERVISOR DE ACOMPAÑAMIENTO')
     ]
-    tipo = models.CharField(null=True, max_length=25, choices=TIPO_CHOICES)
+    tipo = models.CharField(null=True, max_length=28, choices=TIPO_CHOICES)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     cedula = models.CharField(max_length=10, unique=True, validators=[cedula_validator])
@@ -498,6 +499,7 @@ class ReporteAsistencia(models.Model):
         ('FR/TRABAJADO', 'Fr/Trabajado'),
         ('RETEN', 'Reten'),
         ('CUSTODIO', 'Custodio'),
+        
     ]
 
     TIPOS_REEMPLAZO = [
@@ -508,6 +510,8 @@ class ReporteAsistencia(models.Model):
         'EVENTUALES',
         'SUPERVISOR ZONAL',
         'SUPERVISOR MOTORIZADO',
+        'SUPERVISOR DE ACOMPAÑAMIENTO',
+        
     ]
 
     asignacion = models.OneToOneField(
