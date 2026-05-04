@@ -46,8 +46,8 @@
               <th>Nombres</th>
               <th>Provincia</th>
               <th>Cantón</th>
+              <th style="max-width: 30px;">Tipo</th>
               <th>Activo</th>
-              <th>Tipo</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -58,8 +58,8 @@
               <td >{{ persona.nombres }}</td>
               <td>{{ persona.provincia_nombre || persona.provincia || '-' }}</td>
               <td>{{ persona.canton_nombre || persona.canton || '-' }}</td>
-              <td>
-                <span class="badge" [ngClass]="persona.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
+              <td style="max-width: 120px; white-space:normal;">
+                <span class="badge d-inline-block text-wrap text-break" [ngClass]="persona.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
                   {{ persona.tipo }}
                 </span>
               </td>
