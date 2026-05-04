@@ -757,7 +757,7 @@ def exportar_personas_excel(request):
         personas = personas.filter(tipo=tipo)
 
     # variable personas se ordena por apellidos y nombres en el excel
-    personas = personas.order_by('apellidos', 'nombres')
+    personas = personas.select_related('provincia', 'canton').order_by('apellidos', 'nombres')
     
     # wb es un objeto Workbook de openpyxl que representa el archivo Excel que se va a generar
     wb = Workbook()
@@ -766,12 +766,14 @@ def exportar_personas_excel(request):
     # ws.title establece el título de la hoja activa a "Personas", lo que ayuda a identificar el contenido del archivo Excel. Luego, se agregan los encabezados de las columnas (CEDULA, APELLIDOS, NOMBRES, TIPO) como la primera fila de la hoja utilizando ws.append(). Esto proporciona una estructura clara para los datos que se agregarán a continuación.
     ws.title = "Personas"
     #ws.append agrega los encabezados de las columnas al archivo Excel, definiendo claramente qué información se encuentra en cada columna. Esto es importante para la legibilidad del archivo y para que los usuarios puedan entender fácilmente los datos que se presentan. Los encabezados son: CEDULA, APELLIDOS, NOMBRES y TIPO, que corresponden a los campos principales de la entidad Persona.
-    ws.append(['CEDULA', 'APELLIDOS', 'NOMBRES', 'TIPO'])
+    ws.append(['CEDULA', 'APELLIDOS', 'NOMBRES', 'TIPO', 'PROVINCIA', 'CANTON'])
 
     ws.column_dimensions['A'].width = 15
     ws.column_dimensions['B'].width = 25
     ws.column_dimensions['C'].width = 25
     ws.column_dimensions['D'].width = 15
+    ws.column_dimensions['E'].width = 25
+    ws.column_dimensions['F'].width = 25
 
     header_font = Font(bold=True)
     header_fill = PatternFill(start_color="F1F3F5", end_color="F1F3F5", fill_type="solid")
@@ -783,9 +785,11 @@ def exportar_personas_excel(request):
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     for p in personas:
-        ws.append([p.cedula, p.apellidos, p.nombres, p.tipo])
+        provincia = getattr(getattr(p, 'provincia', None), 'nombre', '') or ''
+        canton = getattr(getattr(p, 'canton', None), 'nombre', '') or ''
+        ws.append([p.cedula, p.apellidos, p.nombres, p.tipo, provincia, canton])
 
-    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=4):
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=6):
         for cell in row:
             cell.border = border
             cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
