@@ -12,8 +12,12 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.models import User
 from django.conf import settings
+from django.core.cache import cache
+import logging
 import json
 from ..models import UserProfile
+
+logger = logging.getLogger(__name__)
 
 
 def _get_photo_url(request, profile: UserProfile | None):
@@ -43,6 +47,13 @@ def _serialize_user(request, user: User):
         "groups": list(user.groups.values_list('name', flat=True)),
         "permissions": sorted(list(user.get_all_permissions())),
     }
+
+
+def _get_client_ip(request):
+    forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '')
 
 
 @csrf_exempt
@@ -144,8 +155,25 @@ def user_profile_view(request):
 
 @api_view(['POST'])
 def solicitar_reset_password(request):
+    email = (request.data.get('email') or '').strip().lower()
+    if not email:
+        return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
 
-    email = request.data.get('email')
+    ip = _get_client_ip(request)
+    cooldown_seconds = getattr(settings, 'RESET_PASSWORD_COOLDOWN_SECONDS', 60)
+    max_per_hour = getattr(settings, 'RESET_PASSWORD_MAX_PER_HOUR', 5)
+    cooldown_key = f"reset:cooldown:{email}:{ip}"
+    hour_key = f"reset:hour:{email}:{ip}"
+
+    if cache.get(cooldown_key):
+        return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
+
+    count = cache.get(hour_key, 0)
+    if count >= max_per_hour:
+        return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
+
+    cache.set(cooldown_key, 1, timeout=cooldown_seconds)
+    cache.set(hour_key, count + 1, timeout=3600)
     
     try:
         user = User.objects.get(email=email)
@@ -158,7 +186,8 @@ def solicitar_reset_password(request):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     
    
-    reset_link = f"http://localhost:4200/reset-password/{uid}/{token}"
+    base_url = getattr(settings, 'PASSWORD_RESET_BASE_URL', 'http://localhost:4200').rstrip('/')
+    reset_link = f"{base_url}/reset-password/{uid}/{token}"
     
     
     try:
@@ -169,9 +198,9 @@ def solicitar_reset_password(request):
             recipient_list=[email],
             fail_silently=False,
         )
-        print(f"✓ Email enviado exitosamente a {email}")
+        logger.info("Password reset email sent to %s", email)
     except Exception as e:
-        print(f"✗ ERROR al enviar email: {e}")
+        logger.error("Error sending password reset email", exc_info=e)
        
         if settings.DEBUG:
             return JsonResponse({'error': f'Error al enviar email: {str(e)}'}, status=500)
