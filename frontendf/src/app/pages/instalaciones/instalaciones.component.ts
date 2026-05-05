@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,6 +11,10 @@ import { Cliente } from '../../models';
 import { InstalacionService } from '../../services/instalacion.service';
 import { ClienteService } from '../../services/cliente.service';
 import { InstalacionFormComponent } from './instalacion-form/instalacion-form.component';
+import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { GlobalFilterStateService } from '../../services/global-filter-state.service';
+
 import Swal from 'sweetalert2';
 
 @Component({
@@ -20,21 +24,33 @@ import Swal from 'sweetalert2';
   templateUrl: './instalaciones.component.html',
   styleUrl: './instalaciones.component.css'
 })
-export class InstalacionesComponent implements OnInit {
+export class InstalacionesComponent implements OnInit, OnDestroy {
   instalaciones: any[] = [];
   clientes: Cliente[] = [];
 
   filtroTexto = '';
+  private filterSub?: Subscription;
 
   constructor(
     private instalacionService: InstalacionService,
     private clienteService: ClienteService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private globalFilter: GlobalFilterStateService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
     this.cargarInstalaciones();
     this.cargarClientes();
+    this.filterSub = this.globalFilter.state$.subscribe(state => {
+      if (!this.router.url.startsWith('/dashboard/instalaciones')) return;
+      this.filtroTexto = state.query || '';
+      this.cargarInstalaciones();
+    })
+  }
+
+  ngOnDestroy(): void {
+    this.filterSub?.unsubscribe();
   }
 
   cargarInstalaciones(): void {

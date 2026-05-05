@@ -1,7 +1,7 @@
 <div class="container-fluid px-0">
-  <h3>Consolidado</h3>
+  <h3 class="mb-3 text-center mx-5">Consolidado</h3>
 
-  <div class="d-flex gap-2 align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
     <div class="d-flex gap-2 align-items-center">
       <input
         type="date"
@@ -13,7 +13,7 @@
         placeholder="dd/mm/aaaa">
     </div>
 
-    <mat-button-toggle-group
+    <mat-button-toggle-group 
       name="turnoFiltro"
       [(ngModel)]="filtroTurno"
       (change)="cargar()"
@@ -23,7 +23,7 @@
       <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
     </mat-button-toggle-group>
 
-    <div class="d-flex gap-4">
+    <div class="d-flex gap-2">
       <button type="button" class="btn btn-outline-success" title="Descargar Excel" aria-label="Descargar Excel" (click)="descargarExcel()" >
         <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;"  />
         Descargar
