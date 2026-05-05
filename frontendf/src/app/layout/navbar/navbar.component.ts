@@ -8,10 +8,13 @@ import { Router } from '@angular/router';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ProfileDialogComponent } from '../profile/profile-dialog.component';
+import { GlobalFilterStateService } from '../../services/global-filter-state.service';
+import { FormsModule } from '@angular/forms';
+
 
 @Component({
   selector: 'app-navbar',
-  imports: [MatToolbarModule, MatIconModule, MatButtonModule, CommonModule, MatMenuModule, MatDialogModule],
+  imports: [MatToolbarModule, MatIconModule, MatButtonModule, CommonModule, MatMenuModule, MatDialogModule, FormsModule],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.css'
 })
@@ -21,12 +24,18 @@ export class NavbarComponent implements OnInit {
   fullName: string = '';
   photoUrl: string | null = null;
   themeMode: 'light' | 'dark' = 'light';
+  searchText: string = '';
 
   constructor(
     private authService: AuthService,
     private router: Router,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private globalFilter: GlobalFilterStateService
   ){}
+
+  onSearchChange(): void {
+    this.globalFilter.setQuery(this.searchText, this.router.url);
+  }
 
   ngOnInit(): void {
     // Obtener usuario desde localStorage en lugar de hacer petición al backend

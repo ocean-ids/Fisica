@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,6 +13,9 @@ import { PersonaFormComponent } from './persona-form/persona-form.component';
 import Swal from 'sweetalert2';
 import { ViewChild, ElementRef } from '@angular/core';
 import { saveAs } from 'file-saver';
+import { Subscription } from 'rxjs';
+import { Router } from '@angular/router';
+import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 
 @Component({
   selector: 'app-personas',
@@ -21,23 +24,35 @@ import { saveAs } from 'file-saver';
   templateUrl: './personas.component.html',
   styleUrl: './personas.component.css'
 })
-export class PersonasComponent implements OnInit {
+export class PersonasComponent implements OnInit, OnDestroy {
   personas: Persona[] = [];
 
   isImporting = false;
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
   filtroTexto = '';
+  private filterSub?: Subscription;
   filtroTipo = '';
   tipos = [ 'FIJOS', 'RETENES', 'CUSTODIO', 'EVENTUALES', 'SACAFRANCO', 'SACAVACACIONES', 'SUPERVISOR ZONAL', 'SUPERVISOR MOTORIZADO', 'SUPERVISOR DE ACOMPAÑAMIENTO' ];
 
   constructor(
     private personaService: PersonaService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private globalFilter: GlobalFilterStateService,
+    private router: Router
   ){}
 
   ngOnInit(): void {
    this.cargarPersonas();
+   this.filterSub = this.globalFilter.state$.subscribe(state => {
+    if (!this.router.url.startsWith('/dashboard/personas')) return;
+    this.filtroTexto = state.query || '';
+    this.cargarPersonas();
+   })
+  }
+
+  ngOnDestroy(): void {
+    this.filterSub?.unsubscribe();
   }
 
   cargarPersonas(): void {

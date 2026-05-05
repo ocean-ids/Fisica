@@ -1,7 +1,7 @@
 <div class="container-fluid px-0">
   
+  <h2 class="mb-3">Gestión de Personal</h2>
   <div class="d-flex justify-content-between align-items-center mb-2">
-    <h2 class="m-0">Gestión de Personal</h2>
     <div class="d-flex gap-2">
       <button class="btn btn-outline-primary" (click)="abrirModal()">
         <i class="bi bi-plus-circle"></i> Nueva Persona
@@ -15,25 +15,25 @@
         Descargar
       </button>
     </div>
+    <div class="d-flex justify-content-end">
+        <!--Filtro por texto (cédula, nombre, apellido)-->
+        <!--<div class="input-group" style="max-width: 60%;">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input class="form-control"
+              placeholder="Buscar por cédula, nombre o apellido"
+              [(ngModel)]="filtroTexto" (ngModelChange)="cargarPersonas()">
+        </div>-->
+        <select class="form-select" style="max-width: 50%;"
+                [(ngModel)]="filtroTipo" (ngModelChange)="cargarPersonas()">
+          <option value="">Todos los tipos</option>
+          <option *ngFor="let t of tipos" [value]="t">{{ t }}</option>
+        </select>
+        <button class="btn btn-outline-secondary" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
   </div>
   <input #fileInput type="file"
       accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, .xlsx"
       class="d-none" (change)="onFileSelected($event)">
-
-  <div class="d-flex justify-content-center gap-2 pt-2 mb-3">
-    <div class="input-group" style="max-width: 60%;">
-      <span class="input-group-text"><i class="bi bi-search"></i></span>
-      <input class="form-control"
-           placeholder="Buscar por cédula, nombre o apellido"
-           [(ngModel)]="filtroTexto" (ngModelChange)="cargarPersonas()">
-    </div>
-    <select class="form-select" style="max-width: 20%;"
-            [(ngModel)]="filtroTipo" (ngModelChange)="cargarPersonas()">
-      <option value="">Todos los tipos</option>
-      <option *ngFor="let t of tipos" [value]="t">{{ t }}</option>
-    </select>
-  <button class="btn btn-outline-secondary" (click)="limpiarFiltros()">Limpiar</button>
-</div>
 
   <div class="card">
     <div class="card-body">
