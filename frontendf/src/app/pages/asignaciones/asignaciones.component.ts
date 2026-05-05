@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ViewChildren, QueryList, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChildren, QueryList, AfterViewInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Cliente, Persona, Instalacion, Puesto, Horario, Asignacion } from '../../models';
 import { PatronAsignacion, SacafrancoFila } from '../../models/asignacion.model';
@@ -27,6 +27,9 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form/asignacion-form.component';
 import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dialogs/reporte-asistencia-color-dialog.component';
+import { Subscription } from 'rxjs';
+import { Router } from '@angular/router';
+import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 
 @Component({
   selector: 'app-asignaciones',
@@ -49,7 +52,9 @@ import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dia
   templateUrl: './asignaciones.component.html',
   styleUrl: './asignaciones.component.css'
 })
-export class AsignacionesComponent implements OnInit {
+export class AsignacionesComponent implements OnInit, OnDestroy {
+
+
 
   @ViewChildren(AsignacionCalendarioComponent)
   calendarios?: QueryList<AsignacionCalendarioComponent>;
@@ -318,6 +323,7 @@ export class AsignacionesComponent implements OnInit {
   dia: string | null = null; 
   monthValue: string = '';
   filtroTexto: string = '';
+  private filterSub?: Subscription;
   columnasOcultas: string[] = [];
 
   clientes: Cliente[] = [];
@@ -343,7 +349,9 @@ export class AsignacionesComponent implements OnInit {
     private asignacionService: AsignacionService,
     private http: HttpClient,
     private patronService: PatronAsignacionService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private globalFilter: GlobalFilterStateService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -354,6 +362,16 @@ export class AsignacionesComponent implements OnInit {
     // inicializar semanas para el mes actual para que el ngFor tenga datos
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
       console.log('weeksForMonth initialized', this.mes, this.anio, this.weeksForMonth);
+
+    this.filterSub = this.globalFilter.state$.subscribe(state => {
+      if (!this.router.url.startsWith('/dashboard/asignaciones')) return;
+      this.filtroTexto = state.query || '';
+      this.onFiltroChange();  
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.filterSub?.unsubscribe();
   }
 
   // onMonthChange se encarga de manejar el cambio de mes en el calendario, actualizando el estado del componente y recargando las asignaciones para reflejar el nuevo mes seleccionado
