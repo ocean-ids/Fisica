@@ -1,16 +1,18 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { ClienteService } from '../../services/cliente.service';
 import { Cliente } from '../../models/cliente.model';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ClienteFormComponent } from './cliente-form/cliente-form.component';
 import Swal from 'sweetalert2';
+import { GlobalFilterStateService } from '../../services/global-filter-state.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-clientes',
@@ -19,11 +21,12 @@ import Swal from 'sweetalert2';
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.css'
 })
-export class ClientesComponent implements OnInit {
+export class ClientesComponent implements OnInit, OnDestroy {
   clientes: Cliente[] = [];
   displayedColumns = ['ruc', 'razon_social', 'nombre_comercial', 'size', 'acciones'];
 
   filtroTexto = '';
+  private filterSub?: Subscription;
   filtroSize = '';
 
   sizeLabels: Record<string, string> = {
@@ -47,11 +50,22 @@ export class ClientesComponent implements OnInit {
 
   constructor(
     private clienteService: ClienteService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private globalFilter: GlobalFilterStateService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
     this.loadClientes();
+    this.filterSub = this.globalFilter.state$.subscribe(state => {
+      if (!this.router.url.startsWith('/dashboard/clientes')) return;
+      this.filtroTexto = state.query || '';
+      this.loadClientes();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.filterSub?.unsubscribe();
   }
 
   loadClientes(): void {
