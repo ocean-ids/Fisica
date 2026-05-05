@@ -8,6 +8,9 @@
       <button class="btn btn-outline-success" (click)="crearSacafrancoFila()" style="width: 175px;">
         <i class="bi bi-plus-square"></i> Fila Sacafranco
       </button>
+      <button class="btn btn-outline-secondary" (click)="toggleColumna('sacafranco')" aria-label="Ocultar filas Sacafranco">
+        <i class="bi" [ngClass]="columnaOculta('sacafranco') ? 'bi-eye-slash' : 'bi-eye'"></i>
+      </button>
     </div>
 
     <!--<section class="d-flex flex-wrap align-items-center gap-2">
