@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django.http import JsonResponse
 from rest_framework import status
-from ..models import Asignacion, AsignacionSemanal, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal
+from ..models import Asignacion, AsignacionSemanal, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal
 from django.db.models import Q, Max
 from django.db import transaction
 from django.utils import timezone
@@ -1074,17 +1074,7 @@ def sacafranco_filas(request):
                 mes_val = int(mes)
                 anio_val = int(anio)
                 qs = qs.filter(Q(anio__lt=anio_val) | Q(anio=anio_val, mes__lte=mes_val))
-                # Mostrar filas sacafranco solo si hay datos semanales en el mes.
-                first_day = datetime.date(anio_val, mes_val, 1)
-                cursor = first_day
-                week_starts = []
-                while cursor.month == mes_val:
-                    week_starts.append(cursor)
-                    cursor += datetime.timedelta(days=7)
-                fila_ids = SacafrancoFilaSemanal.objects.filter(
-                    week_start__in=week_starts
-                ).values_list('sacafranco_fila_id', flat=True)
-                qs = qs.filter(id__in=list(fila_ids))
+                # Mostrar todas las filas del mes (no filtrar por semanales).
             except (TypeError, ValueError):
                 pass
         qs = qs.order_by('orden', 'id')
@@ -1104,24 +1094,62 @@ def sacafranco_filas(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['DELETE'])
+@api_view(['DELETE', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def eliminar_sacafranco_fila(request, id):
+    if request.method == 'PATCH':
+        if not request.user.has_perm('CoreFisica.change_asignacion'):
+            return JsonResponse({'error': 'No autorizado'}, status=403)
+        try:
+            fila = SacafrancoFila.objects.get(id=id)
+        except SacafrancoFila.DoesNotExist:
+            return Response({'error': 'Fila no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+        update_fields = []
+
+        provincia_id = request.data.get('provincia', None)
+        if provincia_id not in ['', None]:
+            try:
+                provincia_id = int(provincia_id)
+            except (TypeError, ValueError):
+                return Response({'error': 'Provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            provincia_id = None
+        if fila.provincia_id != provincia_id:
+            fila.provincia_id = provincia_id
+            update_fields.append('provincia')
+
+        persona_id = request.data.get('persona', None)
+        if persona_id not in ['', None]:
+            try:
+                persona_id = int(persona_id)
+            except (TypeError, ValueError):
+                return Response({'error': 'Persona invalida'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                persona = Persona.objects.get(id=persona_id)
+            except Persona.DoesNotExist:
+                return Response({'error': 'Persona no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+            if (persona.tipo or '').upper() != 'SACAFRANCO':
+                return Response({'error': 'La persona no es SACAFRANCO'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            persona = None
+        if fila.persona_id != (persona.id if persona else None):
+            fila.persona = persona
+            update_fields.append('persona')
+
+        if update_fields:
+            fila.save(update_fields=update_fields)
+        return Response(SacafrancoFilaSerializer(fila).data)
+
     if not request.user.has_perm('CoreFisica.delete_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
         fila = SacafrancoFila.objects.get(id=id)
     except SacafrancoFila.DoesNotExist:
         return Response({'error': 'Fila no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-    today = datetime.date.today()
-    if (fila.anio, fila.mes) < (today.year, today.month):
-        return Response({'error': 'No se puede eliminar filas de meses pasados'}, status=status.HTTP_400_BAD_REQUEST)
-
-    qs = SacafrancoFila.objects.filter(
-        Q(anio__gt=fila.anio) | Q(anio=fila.anio, mes__gte=fila.mes)
-    )
-    deleted_count, _ = qs.delete()
-    return Response({'mensaje': 'Fila sacafranco eliminada', 'eliminadas': deleted_count})
+    SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id=fila.id).delete()
+    fila.delete()
+    return Response({'mensaje': 'Fila sacafranco eliminada', 'eliminadas': 1})
 
 
 @api_view(['GET'])

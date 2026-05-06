@@ -32,6 +32,8 @@ export interface SacafrancoFila {
     mes: number;
     anio: number;
     orden?: number;
+    provincia?: number | null;
+    provincia_nombre?: string | null;
     persona: number | null;
     persona_detalle?: Persona | null;
 }

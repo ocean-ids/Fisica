@@ -52,5 +52,9 @@ export class AsignacionService {
   eliminarSacafrancoFila(id: number): Observable<any> {
     return this.apiService.delete<any>(`/sacafranco-filas/${id}/`);
   }
+
+  actualizarSacafrancoFila(id: number, payload: Partial<SacafrancoFila>): Observable<SacafrancoFila> {
+    return this.apiService.patch<SacafrancoFila>(`/sacafranco-filas/${id}/`, payload);
+  }
   
 }

@@ -219,6 +219,13 @@
                         (click)="eliminarSacafrancoFila(row.fila)">
                         <i class="bi bi-trash"></i>
                       </button>
+                      <button
+                        class="btn btn-sm btn-outline-danger"
+                        [title]="canDeleteSacafrancoFila(row.fila) ? 'Eliminar fila sacafranco' : 'No se puede eliminar meses pasados'"
+                        [disabled]="!canDeleteSacafrancoFila(row.fila)"
+                        (click)="eliminarSacafrancoFila(row.fila)">
+                        <i class="bi bi-trash"></i>
+                      </button>
                     </div>
                   </td>
                 </tr>

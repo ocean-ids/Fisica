@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.db import transaction
 from django.core.validators import RegexValidator
 from .utils import parse_input
-from .models import Asignacion, AsignacionSemanal, Instalacion, Puesto, PuestoHorario, PatronAsignacion, SacafrancoFila, SacafrancoFilaSemanal
+from .models import Asignacion, AsignacionSemanal, Instalacion, Persona, Provincia, Puesto, PuestoHorario, PatronAsignacion, SacafrancoFila, SacafrancoFilaSemanal
 
 
 class PatronAsignacionSerializer(serializers.ModelSerializer):
@@ -72,6 +72,7 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'codigo': getattr(inst, 'codigo', '') or '',
             'canton_id': inst.canton_id,
             'canton_nombre': getattr(inst.canton, 'nombre', ''),
+            'provincia_id': getattr(inst.canton, 'provincia_id', None),
             'provincia_nombre': getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
             'direccion': getattr(inst, 'direccion', '') or ''
         }
@@ -127,8 +128,13 @@ class AsignacionSemanalSerializer(serializers.ModelSerializer):
 
 
 class SacafrancoFilaSerializer(serializers.ModelSerializer):
+    provincia = serializers.PrimaryKeyRelatedField(queryset=Provincia.objects.all(), allow_null=True, required=False)
+    provincia_nombre = serializers.SerializerMethodField(read_only=True)
     persona_detalle = serializers.SerializerMethodField(read_only=True)
-    persona = serializers.PrimaryKeyRelatedField(read_only=True)
+    persona = serializers.PrimaryKeyRelatedField(queryset=Persona.objects.all(), allow_null=True, required=False)
+
+    def get_provincia_nombre(self, obj):
+        return obj.provincia.nombre if obj.provincia else None
 
     def get_persona_detalle(self, obj):
         if not obj.persona:
@@ -145,7 +151,7 @@ class SacafrancoFilaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SacafrancoFila
-        fields = ['id', 'mes', 'anio', 'orden', 'persona', 'persona_detalle', 'created_at', 'updated_at']
+        fields = ['id', 'mes', 'anio', 'orden', 'provincia', 'provincia_nombre', 'persona', 'persona_detalle', 'created_at', 'updated_at']
 
 
 class SacafrancoFilaSemanalSerializer(serializers.ModelSerializer):

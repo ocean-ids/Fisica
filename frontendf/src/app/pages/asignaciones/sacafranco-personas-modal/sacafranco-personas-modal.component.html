@@ -1,6 +1,15 @@
 <h2 mat-dialog-title class="text-center">Seleccionar Persona Sacafranco</h2>
 
 <mat-dialog-content>
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+        <mat-label>Provincia</mat-label>
+        <mat-select [(ngModel)]="selectedProvinciaId">
+            <mat-option [value]="null" >SIN PROVINCIA</mat-option>
+            <mat-option *ngFor="let prov of provincias" [value]="prov.id">
+                {{prov.nombre}}
+            </mat-option>
+        </mat-select>
+    </mat-form-field>
     <div class="list-group" style="max-height: 320px; overflow: auto;">
         <button
             type="button"

@@ -30,6 +30,7 @@ import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dia
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
+import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
 
 @Component({
   selector: 'app-asignaciones',
@@ -462,10 +463,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   //canDeleteSacafrancoFila se encarga de determinar si una fila de sacafranco puede ser eliminada, verificando si la fila pertenece al mes y año actuales o posteriores, devolviendo un booleano para indicar si se permite la eliminación
   canDeleteSacafrancoFila(fila?: SacafrancoFila | null): boolean {
-    if (!fila) return false;
-    if (fila.anio < this.anio) return false;
-    if (fila.anio === this.anio && fila.mes < this.mes) return false;
-    return true;
+    return !!fila;
   }
   
   // formatDateLocal se encarga de formatear un objeto Date en un string con formato YYYY-MM-DD, utilizando métodos de la clase Date para obtener el año, mes y día, y asegurándose de que el mes y día tengan dos dígitos mediante el uso de padStart, lo que facilita la manipulación de fechas en el componente
@@ -512,6 +510,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   // cargarAsignaciones se encarga de cargar las asignaciones y filas de sacafranco para el mes y año seleccionados, realizando llamadas a los servicios correspondientes para obtener esta información, aplicando filtros si es necesario, y luego actualizando la vista con los datos obtenidos, además de manejar los errores que puedan ocurrir durante la carga para asegurar que la información mostrada sea precisa y actualizada
   cargarAsignaciones(): void {
+    
     const params: any = {};
     if (this.filtroTexto && this.filtroTexto.trim()) {
       params.q = this.filtroTexto.trim();
@@ -521,6 +520,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         this.asignaciones = data || [];
         this.buildDisplayRows();
         this.updateCalendarOrder();
+        this.provinciasDisponibles = this.computeProvinciaOptions();
       },
       error: err => console.error('Error al cargar asignaciones', err)
     });
@@ -537,22 +537,57 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   //crearSacafrancoFila crea una fila de sacafranco vacía para el mes y año seleccionados
   crearSacafrancoFila(): void {
-    const payload: SacafrancoFila = {
-      mes: this.mes,
-      anio: this.anio,
-      orden: (this.sacafrancoRows || []).length,
-      persona: null
-    };
+    const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
+      width: '520px',
+      maxHeight: '70vh',
+      data: {
+        assignedPersonaIds: this.getAssignedSacafrancoPersonaIds(),
+        provincias: this.provinciasDisponibles,
+        provinciaId: null
+      }
+    });
 
-    this.asignacionService.crearSacafrancoFila(payload).subscribe({
-      next: fila => {
-        this.sacafrancoRows = [...(this.sacafrancoRows || []), fila].filter(f => f && f.id);
-        this.buildDisplayRows();
-        this.updateCalendarOrder();
-      },
-      error: err => console.error('Error al crear fila sacafranco', err)
+    ref.afterClosed().subscribe(result => {
+      if (!result?.personaId) return;
+      const payload: SacafrancoFila = {
+        mes: this.mes,
+        anio: this.anio,
+        orden: (this.sacafrancoRows || []).length,
+        persona: result.personaId,
+        provincia: result.provinciaId ?? null
+      };
+
+      this.asignacionService.crearSacafrancoFila(payload).subscribe({
+        next: fila => {
+          this.sacafrancoRows = [...(this.sacafrancoRows || []), fila].filter(f => f && f.id);
+          this.buildDisplayRows();
+          this.updateCalendarOrder();
+        },
+        error: err => console.error('Error al crear fila sacafranco', err)
+      });
     });
   }
+
+provinciasDisponibles: Array<{ id: number; nombre: string }> = [];
+
+private computeProvinciaOptions(): Array<{ id: number; nombre: string }> {
+  const map = new Map<number, string>();
+  (this.asignaciones || []).forEach(asig => {
+    const id = asig?.instalacion_detalle?.provincia_id;
+    const nombre = (asig?.instalacion_detalle?.provincia_nombre || '').trim();
+    if (!id || !nombre) return;
+    if (!map.has(id)) map.set(id, nombre);
+  });
+  return Array.from(map.entries())
+    .map(([id, nombre]) => ({ id, nombre }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+private getAssignedSacafrancoPersonaIds(): number[] {
+  return (this.sacafrancoRows || [])
+    .map(r => r?.persona || r?.persona_detalle?.id)
+    .filter((id): id is number => !!id);
+}
 
   //editarSacafrancoFila queda sin lógica de selección de persona
   editarSacafrancoFila(_fila: SacafrancoFila): void {
@@ -599,6 +634,32 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     moveItemInArray(this.displayRows, event.previousIndex, event.currentIndex);
 
+    const provinciaIdByLabel = this.getProvinciaIdMap();
+    let currentProvinciaLabel: string | null = null;
+    const sacProvinciaUpdates: Array<{ id: number; provincia: number | null }> = [];
+
+    (this.displayRows || []).forEach(row => {
+      if (row?.type === 'provincia') {
+        currentProvinciaLabel = row.label || null;
+        return;
+      }
+      if (row?.type === 'sacafranco' && row.fila) {
+        const desiredLabel = currentProvinciaLabel && currentProvinciaLabel !== 'SIN PROVINCIA'
+          ? currentProvinciaLabel
+          : null;
+        const desiredId = desiredLabel ? (provinciaIdByLabel[desiredLabel] ?? null) : null;
+        const currentId = row.fila.provincia ?? null;
+        const currentLabel = row.fila.provincia_nombre ?? null;
+        if (currentId !== desiredId || currentLabel !== desiredLabel) {
+          row.fila.provincia = desiredId;
+          row.fila.provincia_nombre = desiredLabel;
+          if (row.fila.id) {
+            sacProvinciaUpdates.push({ id: row.fila.id, provincia: desiredId });
+          }
+        }
+      }
+    });
+
     const orderableRows = (this.displayRows || []).filter(r =>
       r?.type === 'sacafranco' || r?.type === 'asignacion'
     );
@@ -632,6 +693,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.updateCalendarOrder();
     this.persistOrder(ordenAsignaciones);
     this.persistSacafrancoOrder(ordenSacafranco);
+    sacProvinciaUpdates.forEach(update => {
+      this.asignacionService.actualizarSacafrancoFila(update.id, { provincia: update.provincia }).subscribe({
+        next: () => {},
+        error: err => console.error('Error al actualizar provincia sacafranco', err)
+      });
+    });
     this.lastDragPoint = null;
   }
 
@@ -691,11 +758,14 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
             rows.push({ type: 'provincia', label: provincia });
             lastProvincia = provincia;
           }
-        }
-        if (item.kind === 'asignacion') {
           rows.push({ type: 'asignacion', asig: item.asig, isGroupedChild: false });
           displayAssignments.push(item.asig);
           return;
+        }
+        const sacProvincia = this.getSacafrancoProvinciaLabel(item.fila);
+        if (sacProvincia !== lastProvincia) {
+          rows.push({ type: 'provincia', label: sacProvincia });
+          lastProvincia = sacProvincia;
         }
         rows.push({ type: 'sacafranco', id: item.fila.id as number, fila: item.fila });
       });
@@ -775,6 +845,22 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   private getProvinciaLabel(asig: Asignacion): string {
     const label = (asig?.instalacion_detalle?.provincia_nombre || '').trim();
     return label || 'SIN PROVINCIA';
+  }
+
+  private getSacafrancoProvinciaLabel(fila: SacafrancoFila): string {
+    const label = (fila?.provincia_nombre || '').trim();
+    return label || 'SIN PROVINCIA';
+  }
+
+  private getProvinciaIdMap(): Record<string, number> {
+    const map: Record<string, number> = {};
+    (this.asignaciones || []).forEach(asig => {
+      const label = (asig?.instalacion_detalle?.provincia_nombre || '').trim();
+      const id = asig?.instalacion_detalle?.provincia_id;
+      if (!label || id == null) return;
+      if (map[label] == null) map[label] = id;
+    });
+    return map;
   }
 
   //prevWeekAndPage se encarga de navegar a la semana anterior en el calendario y actualizar la vista para reflejar los cambios, iterando sobre los componentes de calendario disponibles y llamando a su método para cargar la semana anterior, lo que permite al usuario ver las asignaciones correspondientes a esa semana
