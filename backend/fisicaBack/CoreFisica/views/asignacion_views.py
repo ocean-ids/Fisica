@@ -5,7 +5,8 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from rest_framework import status
 from ..models import Asignacion, AsignacionSemanal, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal
-from django.db.models import Q, Max
+from django.db.models import Q, Max, Value
+from django.db.models.functions import Coalesce
 from django.db import transaction
 from django.utils import timezone
 from ..serializers import AsignacionSerializer, SacafrancoFilaSerializer
@@ -272,11 +273,19 @@ def obtener_asignaciones(request, mes=None, anio=None):
         ).exclude(persona__tipo='SACAFRANCO').filter(
             Q(mes=mes, anio=anio) |
             (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
-        ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').order_by('instalacion__canton__provincia_id', 'orden', 'id')
+        ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').order_by(
+            Coalesce('instalacion__canton__provincia_id', Value(999999)),
+            'orden',
+            'id'
+        )
     else:
         asignaciones = Asignacion.objects.filter(
             estado='ACTIVO'
-        ).exclude(persona__tipo='SACAFRANCO').select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').order_by('instalacion__canton__provincia_id', 'orden', 'id')
+        ).exclude(persona__tipo='SACAFRANCO').select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').order_by(
+            Coalesce('instalacion__canton__provincia_id', Value(999999)),
+            'orden',
+            'id'
+        )
     # si se proporciona cliente_id, filtrar por cliente_id despues de filtrar por mes/año para optimizar la consulta y evitar crear filas semanales innecesarias para clientes no relacionados. Si se proporciona instalacion_id, filtrar por instalacion_id después de filtrar por mes/año para optimizar la consulta y evitar crear filas semanales innecesarias para instalaciones no relacionadas. Si se proporciona un término de búsqueda q, aplicarlo a campos relevantes de asignación, persona y puesto para facilitar búsqueda rápida. Esto se hace después de filtrar por mes/año para optimizar la consulta y evitar aplicar filtros de texto a asignaciones que no corresponden al periodo seleccionado.
     if cliente_id:
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
@@ -1077,7 +1086,7 @@ def sacafranco_filas(request):
                 # Mostrar todas las filas del mes (no filtrar por semanales).
             except (TypeError, ValueError):
                 pass
-        qs = qs.order_by('provincia_id', 'orden', 'id')
+        qs = qs.order_by(Coalesce('provincia_id', Value(999999)), 'orden', 'id')
         serializer = SacafrancoFilaSerializer(qs, many=True)
         return Response(serializer.data)
 
