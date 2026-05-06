@@ -65,10 +65,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   displayRows: Array<
     { type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } |
     { type: 'sacafranco'; id: number; fila: SacafrancoFila } |
-    { type: 'provincia'; label: string }
+    { type: 'provincia'; key: string; label: string }
   > = [];
   displayAssignmentRows: Asignacion[] = [];
   sacafrancoRows: SacafrancoFila[] = [];
+  provinciaSortOrder: Record<string, number> = {};
   draggingAsignacionId: number | null = null;
   private lastDragPoint: { x: number; y: number } | null = null;
   private pendingPatronId: number | null = null;
@@ -528,6 +529,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.asignacionService.obtenerSacafrancoFilas(this.mes, this.anio).subscribe({
       next: data => {
         this.sacafrancoRows = data || [];
+        this.provinciasDisponibles = this.computeProvinciaOptions();
         this.buildDisplayRows();
         this.updateCalendarOrder();
       },
@@ -578,6 +580,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       if (!id || !nombre) return;
       if (!map.has(id)) map.set(id, nombre);
     });
+    (this.sacafrancoRows || []).forEach(fila => {
+      const id = fila?.provincia ?? null;
+      const nombre = (fila?.provincia_nombre || '').trim();
+      if (!id || !nombre) return;
+      if (!map.has(id)) map.set(id, nombre);
+    });
     return Array.from(map.entries())
       .map(([id, nombre]) => ({ id, nombre }))
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -587,6 +595,20 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return (this.sacafrancoRows || [])
       .map(r => r?.persona || r?.persona_detalle?.id)
       .filter((id): id is number => !!id);
+  }
+
+  private buildProvinciaSortOrderFromRows(rows: Array<any>): void {
+    const order: Record<string, number> = {};
+    let idx = 0;
+    rows.forEach(row => {
+      if (row?.type !== 'provincia') return;
+      const key = row.key || 'provincia-none';
+      if (order[key] == null) {
+        order[key] = idx;
+        idx += 1;
+      }
+    });
+    this.provinciaSortOrder = order;
   }
 
   //editarSacafrancoFila queda sin lógica de selección de persona
@@ -632,42 +654,62 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     if (event.previousIndex === event.currentIndex) return;
     if (!this.displayRows || !this.displayRows.length) return;
 
-    moveItemInArray(this.displayRows, event.previousIndex, event.currentIndex);
-
-    const provinciaIdByLabel = this.getProvinciaIdMap();
-    let currentProvinciaLabel: string | null = null;
-    const sacProvinciaUpdates: Array<{ id: number; provincia: number | null }> = [];
-
-    (this.displayRows || []).forEach(row => {
-      if (row?.type === 'provincia') {
-        currentProvinciaLabel = row.label || null;
-        return;
+    const getHeaderKeyAbove = (rows: any[], index: number): string | null => {
+      if (rows[index]?.type === 'provincia') return rows[index].key || null;
+      for (let i = index; i >= 0; i -= 1) {
+        const row = rows[i];
+        if (row?.type === 'provincia') return row.key || null;
       }
-      if (row?.type === 'sacafranco' && row.fila) {
-        const desiredLabel = currentProvinciaLabel && currentProvinciaLabel !== 'SIN PROVINCIA'
-          ? currentProvinciaLabel
-          : null;
-        const desiredId = desiredLabel ? (provinciaIdByLabel[desiredLabel] ?? null) : null;
-        const currentId = row.fila.provincia ?? null;
-        const currentLabel = row.fila.provincia_nombre ?? null;
-        if (currentId !== desiredId || currentLabel !== desiredLabel) {
-          row.fila.provincia = desiredId;
-          row.fila.provincia_nombre = desiredLabel;
-          if (row.fila.id) {
-            sacProvinciaUpdates.push({ id: row.fila.id, provincia: desiredId });
-          }
-        }
+      return null;
+    };
+
+    const getRowProvinciaKey = (row: any): string | null => {
+      if (!row) return null;
+      if (row.type === 'provincia') return row.key || null;
+      if (row.type === 'asignacion') return this.getProvinciaKeyFromAsignacion(row.asig);
+      if (row.type === 'sacafranco') return this.getProvinciaKeyFromSacafranco(row.fila);
+      return null;
+    };
+
+    const sourceKey = getRowProvinciaKey(draggedRow) || getHeaderKeyAbove(this.displayRows || [], event.previousIndex);
+    const orderableRows = (this.displayRows || []).filter(r => r?.type === 'asignacion' || r?.type === 'sacafranco');
+    const targetRowPre = orderableRows[event.currentIndex] || null;
+    const targetKey = getRowProvinciaKey(targetRowPre);
+    if (!sourceKey || !targetKey || sourceKey !== targetKey) {
+      return;
+    }
+
+    moveItemInArray(orderableRows, event.previousIndex, event.currentIndex);
+
+    const rebuiltRows: Array<any> = [];
+    let lastKey: string | null = null;
+    orderableRows.forEach(row => {
+      const key = getRowProvinciaKey(row) || 'provincia-none';
+      if (key !== lastKey) {
+        const label = row.type === 'asignacion'
+          ? this.getProvinciaLabel(row.asig)
+          : this.getSacafrancoProvinciaLabel(row.fila);
+        rebuiltRows.push({ type: 'provincia', key, label });
+        lastKey = key;
       }
+      rebuiltRows.push(row);
     });
+    this.displayRows = rebuiltRows as any;
 
-    const orderableRows = (this.displayRows || []).filter(r =>
-      r?.type === 'sacafranco' || r?.type === 'asignacion'
-    );
+    this.buildProvinciaSortOrderFromRows(this.displayRows || []);
+
 
     const ordenAsignaciones: { id: number; orden: number }[] = [];
     const ordenSacafranco: { id: number; orden: number }[] = [];
 
-    orderableRows.forEach((row, idx) => {
+    const provinceKey = sourceKey;
+    const blockRows = orderableRows.filter(r => {
+      if (!r || (r.type !== 'asignacion' && r.type !== 'sacafranco')) return false;
+      return (getRowProvinciaKey(r) || '') === provinceKey;
+    });
+
+    // Reasignar orden solo dentro del bloque de la provincia
+    blockRows.forEach((row, idx) => {
       if (row.type === 'asignacion' && row.asig?.id) {
         row.asig.orden = idx;
         ordenAsignaciones.push({ id: row.asig.id, orden: idx });
@@ -689,16 +731,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       .map(r => r.fila)
       .filter(f => !!f);
 
-    this.buildDisplayRows();
     this.updateCalendarOrder();
     this.persistOrder(ordenAsignaciones);
     this.persistSacafrancoOrder(ordenSacafranco);
-    sacProvinciaUpdates.forEach(update => {
-      this.asignacionService.actualizarSacafrancoFila(update.id, { provincia: update.provincia }).subscribe({
-        next: () => {},
-        error: err => console.error('Error al actualizar provincia sacafranco', err)
-      });
-    });
     this.lastDragPoint = null;
   }
 
@@ -730,11 +765,15 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   private buildDisplayRows(): void {
     const asignaciones = this.asignaciones || [];
     const sacRows = this.sacafrancoRows || [];
+    const previousRows = this.displayRows || [];
+    if (!Object.keys(this.provinciaSortOrder || {}).length && previousRows.length) {
+      this.buildProvinciaSortOrderFromRows(previousRows);
+    }
 
     const rows: Array<
       { type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } |
       { type: 'sacafranco'; id: number; fila: SacafrancoFila } |
-      { type: 'provincia'; label: string }
+      { type: 'provincia'; key: string; label: string }
     > = [];
     const displayAssignments: Asignacion[] = [];
 
@@ -747,25 +786,36 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     orderables
       .sort((a, b) => {
+        const aKey = a.kind === 'asignacion'
+          ? this.getProvinciaKeyFromAsignacion(a.asig)
+          : this.getProvinciaKeyFromSacafranco(a.fila);
+        const bKey = b.kind === 'asignacion'
+          ? this.getProvinciaKeyFromAsignacion(b.asig)
+          : this.getProvinciaKeyFromSacafranco(b.fila);
+        const aGroup = this.provinciaSortOrder[aKey] ?? 0;
+        const bGroup = this.provinciaSortOrder[bKey] ?? 0;
+        if (aGroup !== bGroup) return aGroup - bGroup;
         const aOrd = a.kind === 'asignacion' ? (a.asig.orden ?? 0) : (a.fila.orden ?? 0);
         const bOrd = b.kind === 'asignacion' ? (b.asig.orden ?? 0) : (b.fila.orden ?? 0);
         return aOrd - bOrd;
       })
       .forEach(item => {
         if (item.kind === 'asignacion') {
-          const provincia = this.getProvinciaLabel(item.asig);
-          if (provincia !== lastProvincia) {
-            rows.push({ type: 'provincia', label: provincia });
-            lastProvincia = provincia;
+          const provinciaKey = this.getProvinciaKeyFromAsignacion(item.asig);
+          const provinciaLabel = this.getProvinciaLabel(item.asig);
+          if (provinciaKey !== lastProvincia) {
+            rows.push({ type: 'provincia', key: provinciaKey, label: provinciaLabel });
+            lastProvincia = provinciaKey;
           }
           rows.push({ type: 'asignacion', asig: item.asig, isGroupedChild: false });
           displayAssignments.push(item.asig);
           return;
         }
-        const sacProvincia = this.getSacafrancoProvinciaLabel(item.fila);
-        if (sacProvincia !== lastProvincia) {
-          rows.push({ type: 'provincia', label: sacProvincia });
-          lastProvincia = sacProvincia;
+        const sacProvinciaKey = this.getProvinciaKeyFromSacafranco(item.fila);
+        const sacProvinciaLabel = this.getSacafrancoProvinciaLabel(item.fila);
+        if (sacProvinciaKey !== lastProvincia) {
+          rows.push({ type: 'provincia', key: sacProvinciaKey, label: sacProvinciaLabel });
+          lastProvincia = sacProvinciaKey;
         }
         rows.push({ type: 'sacafranco', id: item.fila.id as number, fila: item.fila });
       });
@@ -838,7 +888,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   //trackByDisplayRow se encarga de proporcionar una función de seguimiento para las filas de la vista, utilizando el identificador único de cada fila o su índice como clave, lo que ayuda a Angular a optimizar la renderización de la lista y mejorar el rendimiento
   trackByDisplayRow(index: number, row: any): string | number {
     if (row?.type === 'sacafranco') return `sacafranco-${row.id ?? index}`;
-    if (row?.type === 'provincia') return `provincia-${row.label ?? index}`;
+    if (row?.type === 'provincia') return `provincia-${row.key ?? index}`;
     return row?.asig?.id ?? index;
   }
 
@@ -849,11 +899,40 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   private getSacafrancoProvinciaLabel(fila: SacafrancoFila): string {
     const label = (fila?.provincia_nombre || '').trim();
-    return label || 'SIN PROVINCIA';
+    if (label) return label;
+    const id = (fila?.provincia ?? fila?.persona_detalle?.provincia) ?? null;
+    if (id == null) return 'SIN PROVINCIA';
+    const fromList = (this.provinciasDisponibles || []).find(p => p.id === id)?.nombre || '';
+    return fromList.trim() || 'SIN PROVINCIA';
+  }
+
+  private getProvinciaKeyFromAsignacion(asig: Asignacion): string {
+    const id = asig?.instalacion_detalle?.provincia_id ?? null;
+    if (id != null) return `provincia-${id}`;
+    const label = this.getProvinciaLabel(asig);
+    return label ? `provincia-label-${label}` : 'provincia-none';
+  }
+
+  private getProvinciaKeyFromSacafranco(fila: SacafrancoFila): string {
+    const id = (fila?.provincia ?? fila?.persona_detalle?.provincia) ?? null;
+    if (id != null) return `provincia-${id}`;
+    const label = this.getSacafrancoProvinciaLabel(fila);
+    return label ? `provincia-label-${label}` : 'provincia-none';
   }
 
   private getProvinciaIdMap(): Record<string, number> {
     const map: Record<string, number> = {};
+    (this.provinciasDisponibles || []).forEach(p => {
+      const label = (p?.nombre || '').trim();
+      if (!label || p?.id == null) return;
+      if (map[label] == null) map[label] = p.id;
+    });
+    (this.sacafrancoRows || []).forEach(fila => {
+      const label = (fila?.provincia_nombre || '').trim();
+      const id = fila?.provincia ?? null;
+      if (!label || id == null) return;
+      if (map[label] == null) map[label] = id;
+    });
     (this.asignaciones || []).forEach(asig => {
       const label = (asig?.instalacion_detalle?.provincia_nombre || '').trim();
       const id = asig?.instalacion_detalle?.provincia_id;
