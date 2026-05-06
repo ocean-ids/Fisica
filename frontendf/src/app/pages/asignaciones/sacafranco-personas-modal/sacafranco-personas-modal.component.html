@@ -3,14 +3,14 @@
 <mat-dialog-content>
     <mat-form-field appearance="outline" class="w-100 mb-3">
         <mat-label>Provincia</mat-label>
-        <mat-select [(ngModel)]="selectedProvinciaId">
+        <mat-select [(ngModel)]="selectedProvinciaId" (selectionChange)="onProvinciaChange()">
             <mat-option [value]="null" >SIN PROVINCIA</mat-option>
             <mat-option *ngFor="let prov of provincias" [value]="prov.id">
                 {{prov.nombre}}
             </mat-option>
         </mat-select>
     </mat-form-field>
-    <div class="list-group" style="max-height: 320px; overflow: auto;">
+    <div class="list-group" style="max-height: 320px; overflow: auto;" *ngIf="selectedProvinciaId; else noProvincia">
         <button
             type="button"
             class="list-group-item list-group-item-action"
@@ -35,6 +35,9 @@
             No hay personas sacafranco para mostrar.
         </div>
     </div>
+    <ng-template #noProvincia>
+        <div class="text-muted p-2">Seleccione una provincia para ver sacafrancos.</div>
+    </ng-template>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">

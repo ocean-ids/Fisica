@@ -31,6 +31,20 @@ export class SacafrancoPersonasModalComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: { personas?: Persona[]; assignedPersonaIds?: number[]; provincias?: Array<{ id: number; nombre: string }>; provinciaId?: number | null } | null
   ) {}
 
+  private applyProvinciaFilter(): void {
+    if (!this.selectedProvinciaId){
+      this.personas = [];
+      return;
+    }
+    this.personas = (this.personasAll || [])
+      .filter(p => p.provincia === this.selectedProvinciaId);
+  }
+
+  onProvinciaChange(): void {
+    this.selectedId = null;
+    this.applyProvinciaFilter();
+  }
+
   ngOnInit(): void {
     if (this.data?.assignedPersonaIds?.length) {
       this.assignedIds = new Set(this.data.assignedPersonaIds);
@@ -43,19 +57,23 @@ export class SacafrancoPersonasModalComponent implements OnInit {
     }
     if (this.data?.personas && this.data.personas.length) {
       this.personas = this.data.personas.filter(p => (p.tipo || '').toString().toUpperCase() === 'SACAFRANCO');
+      this.applyProvinciaFilter();
       return;
     }
     
 
     this.personaService.getPersonas({ tipo: 'SACAFRANCO' }).subscribe({
       next: list => {
-        this.personas = list || [];
+        this.personasAll = list || [];
+        this.applyProvinciaFilter();
       },
       error: () => {
-        this.personas = [];
+        this.personasAll = [];
+        this.applyProvinciaFilter();
       }
     });
   }
+
 
   selectPersona(id: number | null | undefined): void {
     if (!id) return;

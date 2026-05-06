@@ -568,26 +568,26 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
   }
 
-provinciasDisponibles: Array<{ id: number; nombre: string }> = [];
+  provinciasDisponibles: Array<{ id: number; nombre: string }> = [];
 
-private computeProvinciaOptions(): Array<{ id: number; nombre: string }> {
-  const map = new Map<number, string>();
-  (this.asignaciones || []).forEach(asig => {
-    const id = asig?.instalacion_detalle?.provincia_id;
-    const nombre = (asig?.instalacion_detalle?.provincia_nombre || '').trim();
-    if (!id || !nombre) return;
-    if (!map.has(id)) map.set(id, nombre);
-  });
-  return Array.from(map.entries())
-    .map(([id, nombre]) => ({ id, nombre }))
-    .sort((a, b) => a.nombre.localeCompare(b.nombre));
-}
+  private computeProvinciaOptions(): Array<{ id: number; nombre: string }> {
+    const map = new Map<number, string>();
+    (this.asignaciones || []).forEach(asig => {
+      const id = asig?.instalacion_detalle?.provincia_id;
+      const nombre = (asig?.instalacion_detalle?.provincia_nombre || '').trim();
+      if (!id || !nombre) return;
+      if (!map.has(id)) map.set(id, nombre);
+    });
+    return Array.from(map.entries())
+      .map(([id, nombre]) => ({ id, nombre }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
 
-private getAssignedSacafrancoPersonaIds(): number[] {
-  return (this.sacafrancoRows || [])
-    .map(r => r?.persona || r?.persona_detalle?.id)
-    .filter((id): id is number => !!id);
-}
+  private getAssignedSacafrancoPersonaIds(): number[] {
+    return (this.sacafrancoRows || [])
+      .map(r => r?.persona || r?.persona_detalle?.id)
+      .filter((id): id is number => !!id);
+  }
 
   //editarSacafrancoFila queda sin lógica de selección de persona
   editarSacafrancoFila(_fila: SacafrancoFila): void {
@@ -1005,7 +1005,7 @@ private getAssignedSacafrancoPersonaIds(): number[] {
   }
 
   //openSacafrancosModal se encarga de abrir un diálogo para mostrar los sacafrancos asociados a una semana, día, puesto y patrón específicos, permitiendo al usuario gestionar las asignaciones de sacafranco para esa combinación de parámetros, y luego actualizando la vista con los cambios realizados después de cerrar el diálogo, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
-  openSacafrancosModal(weekStart: string, day: string, puestoId?: number, manage: boolean = false){
+ openSacafrancosModal(weekStart: string, day: string, puestoId?: number, manage: boolean = false){
     this.patronService.getSacafrancos(weekStart, day, puestoId).subscribe(list => {
       const ref = this.dialog.open(PatronSacafrancosModalComponent, {
         data: { lista: list, weekStart, day, puestoId, manage },
@@ -1015,12 +1015,39 @@ private getAssignedSacafrancoPersonaIds(): number[] {
       });
       ref.afterClosed().subscribe(result => {
         if (result?.action === 'assigned' || result?.action === 'unassigned') {
-          
           this.cargarAsignaciones();
           if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
         }
-      })
-    
+      });
+    });
+  }
+
+  openSacafrancoFilaModal(fila: SacafrancoFila): void {
+    if (!fila?.id) return;
+    const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
+      width: '520px',
+      maxHeight: '70vh',
+      data: {
+        assignedPersonaIds: this.getAssignedSacafrancoPersonaIds(),
+        provincias: this.provinciasDisponibles,
+        provinciaId: fila.provincia ?? null
+      }
+    });
+
+    ref.afterClosed().subscribe(result => {
+      if (!result?.personaId) return;
+      this.asignacionService.actualizarSacafrancoFila(fila.id as number, {
+        persona: result.personaId,
+        provincia: result.provinciaId ?? null
+      }).subscribe({
+        next: updated => {
+          const idx = (this.sacafrancoRows || []).findIndex(f => f?.id === updated.id);
+          if (idx >= 0) this.sacafrancoRows[idx] = updated;
+          this.buildDisplayRows();
+          this.updateCalendarOrder();
+        },
+        error: err => console.error('Error al actualizar fila sacafranco', err)
+      });
     });
   }
 
