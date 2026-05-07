@@ -43,10 +43,11 @@ def get_or_create_provincia(provincia_token):
             return provincia_obj
     except Exception:
         pass
-    provincia_obj = Provincia.objects.filter(nombre__iexact=str(provincia_token)).first()
+    nombre = str(provincia_token).strip()
+    provincia_obj = Provincia.objects.filter(nombre__iexact=nombre).first()
     if provincia_obj:
         return provincia_obj
-    return Provincia.objects.create(nombre=str(provincia_token).strip())
+    return Provincia.objects.create(nombre=nombre.upper())
 
 
 def get_or_create_canton(canton_token, provincia_token=None):
@@ -65,11 +66,12 @@ def get_or_create_canton(canton_token, provincia_token=None):
     qs = Canton.objects.all()
     if provincia_obj:
         qs = qs.filter(provincia=provincia_obj)
-    canton_obj = qs.filter(nombre__iexact=str(canton_token)).first()
+    nombre = str(canton_token).strip()
+    canton_obj = qs.filter(nombre__iexact=nombre).first()
     if canton_obj:
         return canton_obj
     if provincia_obj:
-        return Canton.objects.create(nombre=str(canton_token).strip(), provincia=provincia_obj)
+        return Canton.objects.create(nombre=nombre.upper(), provincia=provincia_obj)
     return None
 
 

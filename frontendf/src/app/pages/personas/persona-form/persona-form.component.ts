@@ -85,28 +85,17 @@ export class PersonaFormComponent implements OnInit {
   }
 
   private loadProvincias(): void {
-    this.ubicacionService.getProvincias().subscribe({
-      next: (p) => {
-        this.provincias = p || [];
-        this.useStaticProvincias = !p || !Array.isArray(p) || p.length === 0;
-        if (this.useStaticProvincias) {
-          this.provincias = this.provinciasService.getProvinciasSync();
-        }
-        this.initialCanton = (this.persona?.canton as any) ?? null;
-        const storedProv = this.persona?.provincia ?? null;
-        if (storedProv) {
-          const provFound = this.provincias.find((x: any) => x.id === storedProv);
-          if (provFound) {
-            this.personaForm.get('provincia')?.setValue(provFound.id);
-            this.onProvinciaChange();
-          }
-        }
-      },
-      error: () => {
-        this.useStaticProvincias = true;
-        this.provincias = this.provinciasService.getProvinciasSync();
+    this.useStaticProvincias = true;
+    this.provincias = this.provinciasService.getProvinciasSync();
+    this.initialCanton = (this.persona?.canton as any) ?? null;
+    const storedProv = this.persona?.provincia ?? null;
+    if (storedProv) {
+      const provFound = this.provincias.find((x: any) => x.id === storedProv);
+      if (provFound) {
+        this.personaForm.get('provincia')?.setValue(provFound.id);
+        this.onProvinciaChange();
       }
-    });
+    }
   }
 
   private afterCantonesLoaded(): void {

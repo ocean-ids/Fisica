@@ -230,8 +230,12 @@ def _resolve_provincia_id(token):
     except (TypeError, ValueError):
         pass
     try:
-        prov = Provincia.objects.filter(nombre__iexact=str(token).strip()).first()
-        return prov.id if prov else None
+        name = str(token).strip()
+        prov = Provincia.objects.filter(nombre__iexact=name).first()
+        if prov:
+            return prov.id
+        prov = Provincia.objects.create(nombre=name.upper())
+        return prov.id
     except Exception:
         return None
 
@@ -247,8 +251,14 @@ def _resolve_canton_id(token, provincia_id=None):
         qs = Canton.objects.all()
         if provincia_id:
             qs = qs.filter(provincia_id=provincia_id)
-        canton = qs.filter(nombre__iexact=str(token).strip()).first()
-        return canton.id if canton else None
+        name = str(token).strip()
+        canton = qs.filter(nombre__iexact=name).first()
+        if canton:
+            return canton.id
+        if not provincia_id:
+            return None
+        canton = Canton.objects.create(nombre=name.upper(), provincia_id=provincia_id)
+        return canton.id
     except Exception:
         return None
 

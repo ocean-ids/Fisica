@@ -36,6 +36,8 @@ export class InstalacionFormComponent implements OnInit {
   private zonaTitles = ['Zona 1', 'Zona 2', 'Zona 3'];
   
   private initialCanton: string | null = null;
+  private initialCantonName: string | null = null;
+  private initialProvinciaName: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -108,39 +110,43 @@ export class InstalacionFormComponent implements OnInit {
   }
 
   private loadProvincias(instalacion: any): void {
-    this.ubicacionService.getProvincias().subscribe({
-      next: (p) => {
-        this.provincias = p || [];
-        this.useStaticProvincias = !p || !Array.isArray(p) || p.length === 0;
-        if (this.useStaticProvincias) {
-          this.provincias = this.provinciasService.getProvinciasSync();
-        }
-        this.initialCanton = instalacion.canton_id || null;
-        const storedProv = instalacion.provincia_id;
-        if (storedProv) {
-          const provFound = this.provincias.find((x: any) => x.id === storedProv);
-          if (provFound) {
-            this.instalacionForm.get('provincia_id')?.setValue(provFound.id);
-            this.onProvinciaChange();
-          }
-        }
-      },
-      error: () => {
-        this.useStaticProvincias = true;
-        this.provincias = this.provinciasService.getProvinciasSync();
-      }
-    });
+    this.useStaticProvincias = true;
+    this.provincias = this.provinciasService.getProvinciasSync();
+    this.initialCanton = instalacion.canton_id || null;
+    this.initialCantonName = (instalacion.canton_nombre || '').trim().toUpperCase() || null;
+    this.initialProvinciaName = (instalacion.provincia_nombre || '').trim().toUpperCase() || null;
+
+    const storedProvId = instalacion.provincia_id;
+    const provFoundById = storedProvId
+      ? this.provincias.find((x: any) => x.id === storedProvId)
+      : null;
+    const provFoundByName = this.initialProvinciaName
+      ? this.provincias.find((x: any) => (x.nombre || '').toUpperCase() === this.initialProvinciaName)
+      : null;
+    const provFound = provFoundById || provFoundByName;
+    if (provFound) {
+      this.instalacionForm.get('provincia_id')?.setValue(provFound.id);
+      this.onProvinciaChange();
+    }
   }
 
   private afterCantonesLoaded(): void {
-    if (this.initialCanton) {
-      const found = this.cantones.find((x: any) => x.id === this.initialCanton);
+    if (this.initialCanton || this.initialCantonName) {
+      const foundById = this.initialCanton
+        ? this.cantones.find((x: any) => x.id === this.initialCanton)
+        : null;
+      const foundByName = this.initialCantonName
+        ? this.cantones.find((x: any) => (x.nombre || '').toUpperCase() === this.initialCantonName)
+        : null;
+      const found = foundById || foundByName;
       if (found) {
         this.instalacionForm.get('canton_id')?.setValue(found.id);
         this.initialCanton = null;
+        this.initialCantonName = null;
         return;
       }
       this.initialCanton = null;
+      this.initialCantonName = null;
     }
     const current = this.instalacionForm.get('canton_id')?.value;
     if (current && this.cantones.find((x: any) => x.id === current)) {

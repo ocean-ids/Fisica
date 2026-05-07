@@ -6,7 +6,7 @@ export interface Province {
   ciudades: City[];
 }
 
-export const PROVINCIAS: Province[] = [
+const RAW_PROVINCIAS: Province[] = [
   // SIERRA
   { id: 'azuay', nombre: 'Azuay', region: 'Sierra', ciudades: [
     { id: 'sevilla-de-oro', nombre: 'Sevilla de Oro' },
@@ -285,3 +285,12 @@ export const PROVINCIAS: Province[] = [
     { id: 'santa-cruz', nombre: 'Santa Cruz' },
   ] },
 ];
+
+export const PROVINCIAS: Province[] = RAW_PROVINCIAS.map((prov) => ({
+  ...prov,
+  nombre: (prov.nombre || '').toUpperCase(),
+  ciudades: (prov.ciudades || []).map((c) => ({
+    ...c,
+    nombre: (c.nombre || '').toUpperCase(),
+  })),
+}));
