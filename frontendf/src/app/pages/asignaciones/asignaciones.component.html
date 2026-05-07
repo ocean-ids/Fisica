@@ -8,11 +8,8 @@
       <button class="btn btn-outline-success" (click)="crearSacafrancoFila()" style="width: 175px;">
         <i class="bi bi-plus-square"></i> Fila Sacafranco
       </button>
-      <button class="btn btn-outline-secondary" (click)="toggleColumna('sacafranco')" aria-label="Ocultar filas Sacafranco">
-        <i class="bi" [ngClass]="columnaOculta('sacafranco') ? 'bi-eye-slash' : 'bi-eye'"></i>
-      </button>
     </div>
-
+    <!--Queda Obsoleto se mejoro-->
     <!--<section class="d-flex flex-wrap align-items-center gap-2">
       <mat-button-toggle-group
         name="columnas"
@@ -32,6 +29,9 @@
         <mat-button-toggle class="col-sm" value="accion">Accion</mat-button-toggle>
       </mat-button-toggle-group>
     </section>-->
+    <div class="d-flex justify-content-center col-12 col-md-4">
+      <input type="month" class="form-control" [(ngModel)]="monthValue" (change)="onMonthChange()" style="max-width: 190px;"/>
+    </div>
 
     
 
@@ -61,10 +61,6 @@
       </div>
     </div>
   </div>-->
-
-  <div class="col-12 col-md-4">
-      <input type="month" class="form-control" [(ngModel)]="monthValue" (change)="onMonthChange()" style="max-width: 190px;"/>
-  </div>
   <div class="row asig-row g-0">
     <div class="col-lg-auto pe-0">
       <div class="card asig-table-card">
