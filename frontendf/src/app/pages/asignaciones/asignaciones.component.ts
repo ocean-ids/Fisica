@@ -27,7 +27,8 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form/asignacion-form.component';
 import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dialogs/reporte-asistencia-color-dialog.component';
-import { Subscription } from 'rxjs';
+import { Subscription, forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
@@ -511,29 +512,41 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   // cargarAsignaciones se encarga de cargar las asignaciones y filas de sacafranco para el mes y año seleccionados, realizando llamadas a los servicios correspondientes para obtener esta información, aplicando filtros si es necesario, y luego actualizando la vista con los datos obtenidos, además de manejar los errores que puedan ocurrir durante la carga para asegurar que la información mostrada sea precisa y actualizada
   cargarAsignaciones(): void {
-    
     const params: any = {};
     if (this.filtroTexto && this.filtroTexto.trim()) {
       params.q = this.filtroTexto.trim();
     }
-    this.asignacionService.obtenerAsignaciones(this.mes, this.anio, params).subscribe({
-      next: data => {
-        this.asignaciones = data || [];
-        this.buildDisplayRows();
-        this.updateCalendarOrder();
-        this.provinciasDisponibles = this.computeProvinciaOptions();
-      },
-      error: err => console.error('Error al cargar asignaciones', err)
-    });
 
-    this.asignacionService.obtenerSacafrancoFilas(this.mes, this.anio).subscribe({
-      next: data => {
-        this.sacafrancoRows = data || [];
+    const asignaciones$ = this.asignacionService
+      .obtenerAsignaciones(this.mes, this.anio, params)
+      .pipe(
+        catchError(err => {
+          console.error('Error al cargar asignaciones', err);
+          return of([] as Asignacion[]);
+        })
+      );
+
+    const sacafranco$ = this.asignacionService
+      .obtenerSacafrancoFilas(this.mes, this.anio)
+      .pipe(
+        catchError(err => {
+          console.error('Error al cargar filas sacafranco', err);
+          return of([] as SacafrancoFila[]);
+        })
+      );
+
+    forkJoin({
+      asignaciones: asignaciones$,
+      sacafranco: sacafranco$
+    }).subscribe({
+      next: ({ asignaciones, sacafranco }) => {
+        this.asignaciones = asignaciones || [];
+        this.sacafrancoRows = sacafranco || [];
         this.provinciasDisponibles = this.computeProvinciaOptions();
         this.buildDisplayRows();
         this.updateCalendarOrder();
       },
-      error: err => console.error('Error al cargar filas sacafranco', err)
+      error: err => console.error('Error al cargar asignaciones/sacafranco', err)
     });
   }
 
