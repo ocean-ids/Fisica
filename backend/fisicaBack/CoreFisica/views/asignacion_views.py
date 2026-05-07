@@ -1205,6 +1205,7 @@ def exportar_asignaciones_excel(request):
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
     celeste_fill = PatternFill(fill_type='solid', fgColor='B1C2CC')
+    sacafranco_fill = PatternFill(fill_type='solid', fgColor='FFF3CD')
 
     ws.merge_cells('A1:A3')
     ws.merge_cells('B1:E2')
@@ -1385,167 +1386,181 @@ def exportar_asignaciones_excel(request):
             return body
         except Exception:
             return ''
-    # itera sobre las asignaciones y para cada una rellena una fila con sus datos y luego rellena las celdas de cada día con los datos de AsignacionSemanal correspondientes, aplicando la lógica de prioridad entre filas ligadas a la asignación y filas generales por puesto, y también aplicando el formato de celda para marcar días 'F' con fondo celeste.
-    for asignacion in asignaciones:
-        row_idx = start_row
-        # datos izquierdos
-        horario_txt = ''
-        try:
-            horario_txt = f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}"
-        except Exception:
-            horario_txt = ''
-        inst_codigo = getattr(getattr(asignacion, 'instalacion', None), 'codigo', '') or ''
-        puesto_obj = getattr(asignacion, 'puesto', None)
-        # Forzamos a usar la lógica compacta (coincide con la vista). Si falla, caemos al campo almacenado.
-        resumen_val = build_resumen(puesto_obj) or getattr(puesto_obj, 'resumen', '')
-        vals = [
-            horario_txt,
-            inst_codigo,
-            getattr(asignacion.cliente, 'nombre_comercial', ''),
-            getattr(puesto_obj, 'nombre', ''),
-            resumen_val,
-            getattr(getattr(asignacion, 'persona', None), 'cedula', ''),
-            f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}",
-            getattr(getattr(asignacion, 'persona', None), 'tipo', '')
-        ]
-        for ci, v in enumerate(vals, start=1):
-            cell = ws.cell(row=row_idx, column=ci)
-            cell.value = v
-            cell.border = border
+    sacafranco_rows = SacafrancoFila.objects.filter(
+        Q(anio__lt=year) | Q(anio=year, mes__lte=month)
+    ).select_related('persona').order_by(Coalesce('provincia_id', Value(999999)), 'orden', 'id')
 
-        # rellenar las celdas de cada día con datos de AsignacionSemanal (priorizando filas ligadas a la Asignacion)
-        for di, d in enumerate(dates):
-            col = date_start_col + di
-            # calcular week_start usando bloques del mes (1, 8, 15, 22, 29),
-            # consistente con la creación de AsignacionSemanal en el sistema.
-            week_index = (d.day - 1) // 7
-            week_start = first_day + datetime.timedelta(days=week_index * 7)
-            legacy_week_start = d - datetime.timedelta(days=d.weekday())
-            puesto_id = getattr(asignacion.puesto, 'id', getattr(asignacion, 'puesto_id', None))
-            semanal = None
-            # Primero intentamos encontrar una fila ligada específicamente a la asignación
-            asign_key = ('a', getattr(asignacion, 'id', None), week_start)
-            if asign_key in semanal_cache:
-                semanal = semanal_cache[asign_key]
-            else:
-                try:
-                    if getattr(asignacion, 'id', None):
-                        semanal = AsignacionSemanal.objects.filter(asignacion_id=asignacion.id, week_start=week_start).first()
-                        # Compatibilidad con filas antiguas guardadas por semana-lunes.
-                        if not semanal:
-                            legacy_asign_key = ('a', getattr(asignacion, 'id', None), legacy_week_start)
-                            if legacy_asign_key in semanal_cache:
-                                semanal = semanal_cache[legacy_asign_key]
-                            else:
-                                semanal = AsignacionSemanal.objects.filter(
-                                    asignacion_id=asignacion.id,
-                                    week_start=legacy_week_start
-                                ).first()
-                                semanal_cache[legacy_asign_key] = semanal
-                    else:
-                        semanal = None
-                except Exception:
-                    semanal = None
-                semanal_cache[asign_key] = semanal
-
-            # Si no hay fila ligada a la asignación, usamos la fila general por puesto (compatibilidad hacia atrás)
-            if not semanal:
-                puesto_key = ('p', puesto_id, week_start)
-                if puesto_key in semanal_cache:
-                    semanal = semanal_cache[puesto_key]
-                else:
-                    try:
-                        semanal = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start).first()
-                        # Compatibilidad con filas antiguas guardadas por semana-lunes.
-                        if not semanal:
-                            legacy_puesto_key = ('p', puesto_id, legacy_week_start)
-                            if legacy_puesto_key in semanal_cache:
-                                semanal = semanal_cache[legacy_puesto_key]
-                            else:
-                                semanal = AsignacionSemanal.objects.filter(
-                                    puesto_id=puesto_id,
-                                    week_start=legacy_week_start
-                                ).first()
-                                semanal_cache[legacy_puesto_key] = semanal
-                    except Exception:
-                        semanal = None
-                    semanal_cache[puesto_key] = semanal
-
-            val = ''
-            if semanal:
-                day_field = ['mon','tue','wed','thu','fri','sat','sun'][d.weekday()]
-                try:
-                    val = getattr(semanal, day_field, '') or ''
-                except Exception:
-                    val = ''
-
-            cell = ws.cell(row=row_idx, column=col)
-            cell.value = val
-            cell.alignment = Alignment(horizontal='center')
-            cell.border = border
-            if str(val).strip().upper() == 'F':
-                cell.fill = celeste_fill
-
-        start_row += 1
-
-    sacafranco_sem_qs = SacafrancoFilaSemanal.objects.filter(
+    sac_week_rows = SacafrancoFilaSemanal.objects.filter(
+        sacafranco_fila_id__in=list(sacafranco_rows.values_list('id', flat=True)),
         week_start__gte=month_start,
         week_start__lte=month_end
-    ).filter(
-        Q(mon__gt='') | Q(tue__gt='') | Q(wed__gt='') | Q(thu__gt='') | Q(fri__gt='') | Q(sat__gt='') | Q(sun__gt='')
     )
-    sacafranco_ids = list(sacafranco_sem_qs.values_list('sacafranco_fila_id', flat=True).distinct())
-    sacafranco_rows = SacafrancoFila.objects.filter(
-        id__in=sacafranco_ids
-    ).order_by('orden', 'id')
-    sac_sem_cache = {}
+    sac_sem_cache = {(r.sacafranco_fila_id, r.week_start): r for r in sac_week_rows}
+
+    def get_asignacion_provincia_id(item: Asignacion) -> int:
+        return getattr(getattr(getattr(item, 'instalacion', None), 'canton', None), 'provincia_id', None) or 999999
+
+    def get_sacafranco_provincia_id(item: SacafrancoFila) -> int:
+        return getattr(item, 'provincia_id', None) or 999999
+
+    combined_rows = []
+    for asignacion in asignaciones:
+        combined_rows.append({
+            'kind': 'asignacion',
+            'provincia': get_asignacion_provincia_id(asignacion),
+            'orden': getattr(asignacion, 'orden', 0) or 0,
+            'id': getattr(asignacion, 'id', 0) or 0,
+            'item': asignacion
+        })
     for fila in sacafranco_rows:
+        combined_rows.append({
+            'kind': 'sacafranco',
+            'provincia': get_sacafranco_provincia_id(fila),
+            'orden': getattr(fila, 'orden', 0) or 0,
+            'id': getattr(fila, 'id', 0) or 0,
+            'item': fila
+        })
+
+    combined_rows.sort(key=lambda r: (
+        r['provincia'],
+        r['orden'],
+        0 if r['kind'] == 'asignacion' else 1,
+        r['id']
+    ))
+
+    for entry in combined_rows:
         row_idx = start_row
-        vals = [
-            '',
-            '',
-            '',
-            'SACAFRANCO',
-            '',
-            '',
-            '',
-            ''
-        ]
-        for ci, v in enumerate(vals, start=1):
-            cell = ws.cell(row=row_idx, column=ci)
-            cell.value = v
-            cell.border = border
+        if entry['kind'] == 'asignacion':
+            asignacion = entry['item']
+            horario_txt = ''
+            try:
+                horario_txt = f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}"
+            except Exception:
+                horario_txt = ''
+            inst_codigo = getattr(getattr(asignacion, 'instalacion', None), 'codigo', '') or ''
+            puesto_obj = getattr(asignacion, 'puesto', None)
+            # Forzamos a usar la lógica compacta (coincide con la vista). Si falla, caemos al campo almacenado.
+            resumen_val = build_resumen(puesto_obj) or getattr(puesto_obj, 'resumen', '')
+            vals = [
+                horario_txt,
+                inst_codigo,
+                getattr(asignacion.cliente, 'nombre_comercial', ''),
+                getattr(puesto_obj, 'nombre', ''),
+                resumen_val,
+                getattr(getattr(asignacion, 'persona', None), 'cedula', ''),
+                f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}",
+                getattr(getattr(asignacion, 'persona', None), 'tipo', '')
+            ]
+            for ci, v in enumerate(vals, start=1):
+                cell = ws.cell(row=row_idx, column=ci)
+                cell.value = v
+                cell.border = border
 
-        for di, d in enumerate(dates):
-            col = date_start_col + di
-            week_index = (d.day - 1) // 7
-            week_start = first_day + datetime.timedelta(days=week_index * 7)
-            sac_key = (fila.id, week_start)
-            semanal = sac_sem_cache.get(sac_key)
-            if semanal is None:
-                try:
-                    semanal = SacafrancoFilaSemanal.objects.filter(
-                        sacafranco_fila_id=fila.id,
-                        week_start=week_start
-                    ).first()
-                except Exception:
-                    semanal = None
-                sac_sem_cache[sac_key] = semanal
+            for di, d in enumerate(dates):
+                col = date_start_col + di
+                week_index = (d.day - 1) // 7
+                week_start = first_day + datetime.timedelta(days=week_index * 7)
+                legacy_week_start = d - datetime.timedelta(days=d.weekday())
+                puesto_id = getattr(asignacion.puesto, 'id', getattr(asignacion, 'puesto_id', None))
+                semanal = None
+                asign_key = ('a', getattr(asignacion, 'id', None), week_start)
+                if asign_key in semanal_cache:
+                    semanal = semanal_cache[asign_key]
+                else:
+                    try:
+                        if getattr(asignacion, 'id', None):
+                            semanal = AsignacionSemanal.objects.filter(asignacion_id=asignacion.id, week_start=week_start).first()
+                            if not semanal:
+                                legacy_asign_key = ('a', getattr(asignacion, 'id', None), legacy_week_start)
+                                if legacy_asign_key in semanal_cache:
+                                    semanal = semanal_cache[legacy_asign_key]
+                                else:
+                                    semanal = AsignacionSemanal.objects.filter(
+                                        asignacion_id=asignacion.id,
+                                        week_start=legacy_week_start
+                                    ).first()
+                                    semanal_cache[legacy_asign_key] = semanal
+                        else:
+                            semanal = None
+                    except Exception:
+                        semanal = None
+                    semanal_cache[asign_key] = semanal
 
-            val = ''
-            if semanal:
-                day_field = ['mon','tue','wed','thu','fri','sat','sun'][d.weekday()]
-                try:
-                    val = getattr(semanal, day_field, '') or ''
-                except Exception:
-                    val = ''
+                if not semanal:
+                    puesto_key = ('p', puesto_id, week_start)
+                    if puesto_key in semanal_cache:
+                        semanal = semanal_cache[puesto_key]
+                    else:
+                        try:
+                            semanal = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start).first()
+                            if not semanal:
+                                legacy_puesto_key = ('p', puesto_id, legacy_week_start)
+                                if legacy_puesto_key in semanal_cache:
+                                    semanal = semanal_cache[legacy_puesto_key]
+                                else:
+                                    semanal = AsignacionSemanal.objects.filter(
+                                        puesto_id=puesto_id,
+                                        week_start=legacy_week_start
+                                    ).first()
+                                    semanal_cache[legacy_puesto_key] = semanal
+                        except Exception:
+                            semanal = None
+                        semanal_cache[puesto_key] = semanal
 
-            cell = ws.cell(row=row_idx, column=col)
-            cell.value = val
-            cell.alignment = Alignment(horizontal='center')
-            cell.border = border
-            if str(val).strip().upper() == 'F':
-                cell.fill = celeste_fill
+                val = ''
+                if semanal:
+                    day_field = ['mon','tue','wed','thu','fri','sat','sun'][d.weekday()]
+                    try:
+                        val = getattr(semanal, day_field, '') or ''
+                    except Exception:
+                        val = ''
+
+                cell = ws.cell(row=row_idx, column=col)
+                cell.value = val
+                cell.alignment = Alignment(horizontal='center')
+                cell.border = border
+                if str(val).strip().upper() == 'F':
+                    cell.fill = celeste_fill
+        else:
+            fila = entry['item']
+            persona = getattr(fila, 'persona', None)
+            vals = [
+                '',
+                '',
+                '',
+                'SACAFRANCO',
+                '',
+                getattr(persona, 'cedula', '') if persona else '',
+                f"{getattr(persona, 'apellidos', '')} {getattr(persona, 'nombres', '')}".strip(),
+                getattr(persona, 'tipo', '') if persona else ''
+            ]
+            for ci, v in enumerate(vals, start=1):
+                cell = ws.cell(row=row_idx, column=ci)
+                cell.value = v
+                cell.border = border
+                cell.fill = sacafranco_fill
+
+            for di, d in enumerate(dates):
+                col = date_start_col + di
+                week_index = (d.day - 1) // 7
+                week_start = first_day + datetime.timedelta(days=week_index * 7)
+                sac_key = (fila.id, week_start)
+                semanal = sac_sem_cache.get(sac_key)
+
+                val = ''
+                if semanal:
+                    day_field = ['mon','tue','wed','thu','fri','sat','sun'][d.weekday()]
+                    try:
+                        val = getattr(semanal, day_field, '') or ''
+                    except Exception:
+                        val = ''
+
+                cell = ws.cell(row=row_idx, column=col)
+                cell.value = val
+                cell.alignment = Alignment(horizontal='center')
+                cell.border = border
+                if str(val).strip().upper() == 'F':
+                    cell.fill = celeste_fill
 
         start_row += 1
 
