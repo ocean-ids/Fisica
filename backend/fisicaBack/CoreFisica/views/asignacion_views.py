@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django.http import JsonResponse
 from rest_framework import status
-from ..models import Asignacion, AsignacionSemanal, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal
+from ..models import Asignacion, AsignacionSemanal, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, Provincia
 from django.db.models import Q, Max, Value
 from django.db.models.functions import Coalesce
 from django.db import transaction
@@ -1280,41 +1280,6 @@ def exportar_asignaciones_excel(request):
         except Exception:
             pass
 
-    month_row = 5
-    dow_row = 6
-    header_row = 7
-    data_start_row = 8
-
-    # Row 1: nombre del mes (merge sobre las columnas de días)
-    month_name = first_day.strftime('%B').upper()
-    if num_days > 0:
-        ws.merge_cells(start_row=month_row, start_column=date_start_col, end_row=month_row, end_column=date_start_col + num_days - 1)
-        cell = ws.cell(row=month_row, column=date_start_col)
-        cell.value = f"{month_name} {year}"
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal='center', vertical='center')
-
-    # Row 2: día de la semana (abreviado)
-    dow_names = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-    for i, d in enumerate(dates):
-        c = ws.cell(row=dow_row, column=date_start_col + i)
-        c.value = dow_names[d.weekday()]
-        c.alignment = Alignment(horizontal='center')
-
-    # Row 3: número de día. También aquí colocamos los encabezados izquierdos
-    for idx, h in enumerate(left_headers, start=1):
-        ch = ws.cell(row=header_row, column=idx)
-        ch.value = h
-        ch.font = Font(bold=True)
-        ch.alignment = Alignment(horizontal='left')
-    for i, d in enumerate(dates):
-        c = ws.cell(row=header_row, column=date_start_col + i)
-        c.value = d.day
-        c.alignment = Alignment(horizontal='center')
-
-    # Freeze panes (congelar columnas de datos y filas superiores)
-    ws.freeze_panes = ws.cell(row=data_start_row, column=date_start_col)
-
     # Rellenar filas: una fila por Asignacion activa para el mes solicitado
     # Aplicar la misma lógica que en obtener_asignaciones: incluir recurrentes que aplican al mes
     month_start = first_day
@@ -1327,7 +1292,6 @@ def exportar_asignaciones_excel(request):
         Q(mes=month, anio=year) |
         (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
     ).select_related('horario', 'cliente', 'puesto', 'persona', 'instalacion').prefetch_related('puesto__horarios')
-    start_row = data_start_row
     # Precachear AsignacionSemanal por puesto y week_start para eficiencia
     semanal_cache = {}
 
@@ -1428,150 +1392,291 @@ def exportar_asignaciones_excel(request):
         r['id']
     ))
 
-    for entry in combined_rows:
-        row_idx = start_row
-        if entry['kind'] == 'asignacion':
-            asignacion = entry['item']
-            horario_txt = ''
+    def safe_sheet_title(name: str) -> str:
+        title = (name or '').strip().upper() or 'SIN PROVINCIA'
+        for ch in ['\\', '/', '?', '*', '[', ']', ':']:
+            title = title.replace(ch, ' ')
+        title = title.strip() or 'SIN PROVINCIA'
+        return title[:31]
+
+    def unique_sheet_title(base: str) -> str:
+        title = base
+        idx = 2
+        while title in wb.sheetnames:
+            suffix = f" {idx}"
+            title = f"{base[:31 - len(suffix)]}{suffix}"
+            idx += 1
+        return title
+
+    def build_sheet(target_ws, title: str, rows: list) -> None:
+        target_ws.title = title
+        # Encabezado institucional con logo (igual a la hoja general)
+        target_ws.merge_cells('A1:A3')
+        target_ws.merge_cells('B1:E2')
+        target_ws.merge_cells('B3:E3')
+        target_ws.merge_cells('G1:H1')
+        target_ws.merge_cells('G2:H2')
+        target_ws.merge_cells('G3:H3')
+
+        target_ws['B1'] = 'REPORTE DE HORARIOS DE PERSONAL'
+        target_ws['B3'] = 'SEGURIDAD FÍSICA'
+        target_ws['F1'] = 'Código:'
+        target_ws['F2'] = 'Versión:'
+        target_ws['F3'] = 'Fecha:'
+        target_ws['G1'] = 'FOR-SF-001'
+        target_ws['G2'] = '02'
+        target_ws['G3'] = datetime.date.today().strftime('%d/%m/%Y')
+
+        target_ws['B1'].font = Font(bold=True, size=18)
+        target_ws['B3'].font = Font(bold=True, size=14)
+        target_ws['F1'].font = target_ws['F2'].font = target_ws['F3'].font = Font(bold=True, size=11)
+        target_ws['G1'].font = target_ws['G2'].font = target_ws['G3'].font = Font(bold=True, size=11)
+
+        for row in range(1, 4):
+            for col in range(1, 9):
+                c = target_ws.cell(row=row, column=col)
+                c.border = border
+                c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+        target_ws['F1'].alignment = target_ws['F2'].alignment = target_ws['F3'].alignment = Alignment(horizontal='left', vertical='center')
+        target_ws['G1'].alignment = target_ws['G2'].alignment = target_ws['G3'].alignment = Alignment(horizontal='left', vertical='center')
+
+        target_ws.row_dimensions[1].height = 42
+        target_ws.row_dimensions[2].height = 34
+        target_ws.row_dimensions[3].height = 34
+
+        if logo_path:
             try:
-                horario_txt = f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}"
+                img = XLImage(str(logo_path))
+
+                max_w = 80
+                max_h = 80
+                orig_w = max(float(img.width), 1.0)
+                orig_h = max(float(img.height), 1.0)
+                scale = min(max_w / orig_w, max_h / orig_h)
+                final_w = int(orig_w * scale)
+                final_h = int(orig_h * scale)
+                img.width = final_w
+                img.height = final_h
+
+                box_w_px = 126
+                box_h_px = 110
+                x_offset_px = int((box_w_px - final_w) / 2)
+                y_offset_px = int((box_h_px - final_h) / 2)
+                y_offset_px += 16
+
+                img.anchor = OneCellAnchor(
+                    _from=AnchorMarker(
+                        col=0,
+                        row=0,
+                        colOff=pixels_to_EMU(max(x_offset_px, 0)),
+                        rowOff=pixels_to_EMU(max(y_offset_px, 0)),
+                    ),
+                    ext=XDRPositiveSize2D(
+                        cx=pixels_to_EMU(final_w),
+                        cy=pixels_to_EMU(final_h),
+                    ),
+                )
+                target_ws.add_image(img)
             except Exception:
+                pass
+
+        month_row = 5
+        dow_row = 6
+        header_row = 7
+        data_start_row = 8
+
+        month_name = first_day.strftime('%B').upper()
+        if num_days > 0:
+            target_ws.merge_cells(
+                start_row=month_row,
+                start_column=date_start_col,
+                end_row=month_row,
+                end_column=date_start_col + num_days - 1
+            )
+            cell = target_ws.cell(row=month_row, column=date_start_col)
+            cell.value = f"{month_name} {year}"
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        dow_names = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+        for i, d in enumerate(dates):
+            c = target_ws.cell(row=dow_row, column=date_start_col + i)
+            c.value = dow_names[d.weekday()]
+            c.alignment = Alignment(horizontal='center')
+
+        for idx, h in enumerate(left_headers, start=1):
+            ch = target_ws.cell(row=header_row, column=idx)
+            ch.value = h
+            ch.font = Font(bold=True)
+            ch.alignment = Alignment(horizontal='left')
+        for i, d in enumerate(dates):
+            c = target_ws.cell(row=header_row, column=date_start_col + i)
+            c.value = d.day
+            c.alignment = Alignment(horizontal='center')
+
+        target_ws.freeze_panes = target_ws.cell(row=data_start_row, column=date_start_col)
+
+        start_row = data_start_row
+        for entry in rows:
+            row_idx = start_row
+            if entry['kind'] == 'asignacion':
+                asignacion = entry['item']
                 horario_txt = ''
-            inst_codigo = getattr(getattr(asignacion, 'instalacion', None), 'codigo', '') or ''
-            puesto_obj = getattr(asignacion, 'puesto', None)
-            # Forzamos a usar la lógica compacta (coincide con la vista). Si falla, caemos al campo almacenado.
-            resumen_val = build_resumen(puesto_obj) or getattr(puesto_obj, 'resumen', '')
-            vals = [
-                horario_txt,
-                inst_codigo,
-                getattr(asignacion.cliente, 'nombre_comercial', ''),
-                getattr(puesto_obj, 'nombre', ''),
-                resumen_val,
-                getattr(getattr(asignacion, 'persona', None), 'cedula', ''),
-                f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}",
-                getattr(getattr(asignacion, 'persona', None), 'tipo', '')
-            ]
-            for ci, v in enumerate(vals, start=1):
-                cell = ws.cell(row=row_idx, column=ci)
-                cell.value = v
-                cell.border = border
+                try:
+                    horario_txt = f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}"
+                except Exception:
+                    horario_txt = ''
+                inst_codigo = getattr(getattr(asignacion, 'instalacion', None), 'codigo', '') or ''
+                puesto_obj = getattr(asignacion, 'puesto', None)
+                resumen_val = build_resumen(puesto_obj) or getattr(puesto_obj, 'resumen', '')
+                vals = [
+                    horario_txt,
+                    inst_codigo,
+                    getattr(asignacion.cliente, 'nombre_comercial', ''),
+                    getattr(puesto_obj, 'nombre', ''),
+                    resumen_val,
+                    getattr(getattr(asignacion, 'persona', None), 'cedula', ''),
+                    f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}",
+                    getattr(getattr(asignacion, 'persona', None), 'tipo', '')
+                ]
+                for ci, v in enumerate(vals, start=1):
+                    cell = target_ws.cell(row=row_idx, column=ci)
+                    cell.value = v
+                    cell.border = border
 
-            for di, d in enumerate(dates):
-                col = date_start_col + di
-                week_index = (d.day - 1) // 7
-                week_start = first_day + datetime.timedelta(days=week_index * 7)
-                legacy_week_start = d - datetime.timedelta(days=d.weekday())
-                puesto_id = getattr(asignacion.puesto, 'id', getattr(asignacion, 'puesto_id', None))
-                semanal = None
-                asign_key = ('a', getattr(asignacion, 'id', None), week_start)
-                if asign_key in semanal_cache:
-                    semanal = semanal_cache[asign_key]
-                else:
-                    try:
-                        if getattr(asignacion, 'id', None):
-                            semanal = AsignacionSemanal.objects.filter(asignacion_id=asignacion.id, week_start=week_start).first()
-                            if not semanal:
-                                legacy_asign_key = ('a', getattr(asignacion, 'id', None), legacy_week_start)
-                                if legacy_asign_key in semanal_cache:
-                                    semanal = semanal_cache[legacy_asign_key]
-                                else:
-                                    semanal = AsignacionSemanal.objects.filter(
-                                        asignacion_id=asignacion.id,
-                                        week_start=legacy_week_start
-                                    ).first()
-                                    semanal_cache[legacy_asign_key] = semanal
-                        else:
-                            semanal = None
-                    except Exception:
-                        semanal = None
-                    semanal_cache[asign_key] = semanal
-
-                if not semanal:
-                    puesto_key = ('p', puesto_id, week_start)
-                    if puesto_key in semanal_cache:
-                        semanal = semanal_cache[puesto_key]
+                for di, d in enumerate(dates):
+                    col = date_start_col + di
+                    week_index = (d.day - 1) // 7
+                    week_start = first_day + datetime.timedelta(days=week_index * 7)
+                    legacy_week_start = d - datetime.timedelta(days=d.weekday())
+                    puesto_id = getattr(asignacion.puesto, 'id', getattr(asignacion, 'puesto_id', None))
+                    semanal = None
+                    asign_key = ('a', getattr(asignacion, 'id', None), week_start)
+                    if asign_key in semanal_cache:
+                        semanal = semanal_cache[asign_key]
                     else:
                         try:
-                            semanal = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start).first()
-                            if not semanal:
-                                legacy_puesto_key = ('p', puesto_id, legacy_week_start)
-                                if legacy_puesto_key in semanal_cache:
-                                    semanal = semanal_cache[legacy_puesto_key]
-                                else:
-                                    semanal = AsignacionSemanal.objects.filter(
-                                        puesto_id=puesto_id,
-                                        week_start=legacy_week_start
-                                    ).first()
-                                    semanal_cache[legacy_puesto_key] = semanal
+                            if getattr(asignacion, 'id', None):
+                                semanal = AsignacionSemanal.objects.filter(asignacion_id=asignacion.id, week_start=week_start).first()
+                                if not semanal:
+                                    legacy_asign_key = ('a', getattr(asignacion, 'id', None), legacy_week_start)
+                                    if legacy_asign_key in semanal_cache:
+                                        semanal = semanal_cache[legacy_asign_key]
+                                    else:
+                                        semanal = AsignacionSemanal.objects.filter(
+                                            asignacion_id=asignacion.id,
+                                            week_start=legacy_week_start
+                                        ).first()
+                                        semanal_cache[legacy_asign_key] = semanal
+                            else:
+                                semanal = None
                         except Exception:
                             semanal = None
-                        semanal_cache[puesto_key] = semanal
+                        semanal_cache[asign_key] = semanal
 
-                val = ''
-                if semanal:
-                    day_field = ['mon','tue','wed','thu','fri','sat','sun'][d.weekday()]
-                    try:
-                        val = getattr(semanal, day_field, '') or ''
-                    except Exception:
-                        val = ''
+                    if not semanal:
+                        puesto_key = ('p', puesto_id, week_start)
+                        if puesto_key in semanal_cache:
+                            semanal = semanal_cache[puesto_key]
+                        else:
+                            try:
+                                semanal = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start).first()
+                                if not semanal:
+                                    legacy_puesto_key = ('p', puesto_id, legacy_week_start)
+                                    if legacy_puesto_key in semanal_cache:
+                                        semanal = semanal_cache[legacy_puesto_key]
+                                    else:
+                                        semanal = AsignacionSemanal.objects.filter(
+                                            puesto_id=puesto_id,
+                                            week_start=legacy_week_start
+                                        ).first()
+                                        semanal_cache[legacy_puesto_key] = semanal
+                            except Exception:
+                                semanal = None
+                            semanal_cache[puesto_key] = semanal
 
-                cell = ws.cell(row=row_idx, column=col)
-                cell.value = val
-                cell.alignment = Alignment(horizontal='center')
-                cell.border = border
-                if str(val).strip().upper() == 'F':
-                    cell.fill = celeste_fill
-        else:
-            fila = entry['item']
-            persona = getattr(fila, 'persona', None)
-            vals = [
-                '',
-                '',
-                '',
-                'SACAFRANCO',
-                '',
-                getattr(persona, 'cedula', '') if persona else '',
-                f"{getattr(persona, 'apellidos', '')} {getattr(persona, 'nombres', '')}".strip(),
-                getattr(persona, 'tipo', '') if persona else ''
-            ]
-            for ci, v in enumerate(vals, start=1):
-                cell = ws.cell(row=row_idx, column=ci)
-                cell.value = v
-                cell.border = border
-                cell.fill = sacafranco_fill
+                    val = ''
+                    if semanal:
+                        day_field = ['mon','tue','wed','thu','fri','sat','sun'][d.weekday()]
+                        try:
+                            val = getattr(semanal, day_field, '') or ''
+                        except Exception:
+                            val = ''
 
-            for di, d in enumerate(dates):
-                col = date_start_col + di
-                week_index = (d.day - 1) // 7
-                week_start = first_day + datetime.timedelta(days=week_index * 7)
-                sac_key = (fila.id, week_start)
-                semanal = sac_sem_cache.get(sac_key)
+                    cell = target_ws.cell(row=row_idx, column=col)
+                    cell.value = val
+                    cell.alignment = Alignment(horizontal='center')
+                    cell.border = border
+                    if str(val).strip().upper() == 'F':
+                        cell.fill = celeste_fill
+            else:
+                fila = entry['item']
+                persona = getattr(fila, 'persona', None)
+                vals = [
+                    '',
+                    '',
+                    '',
+                    'SACAFRANCO',
+                    '',
+                    getattr(persona, 'cedula', '') if persona else '',
+                    f"{getattr(persona, 'apellidos', '')} {getattr(persona, 'nombres', '')}".strip(),
+                    getattr(persona, 'tipo', '') if persona else ''
+                ]
+                for ci, v in enumerate(vals, start=1):
+                    cell = target_ws.cell(row=row_idx, column=ci)
+                    cell.value = v
+                    cell.border = border
+                    cell.fill = sacafranco_fill
 
-                val = ''
-                if semanal:
-                    day_field = ['mon','tue','wed','thu','fri','sat','sun'][d.weekday()]
-                    try:
-                        val = getattr(semanal, day_field, '') or ''
-                    except Exception:
-                        val = ''
+                for di, d in enumerate(dates):
+                    col = date_start_col + di
+                    week_index = (d.day - 1) // 7
+                    week_start = first_day + datetime.timedelta(days=week_index * 7)
+                    sac_key = (fila.id, week_start)
+                    semanal = sac_sem_cache.get(sac_key)
 
-                cell = ws.cell(row=row_idx, column=col)
-                cell.value = val
-                cell.alignment = Alignment(horizontal='center')
-                cell.border = border
-                if str(val).strip().upper() == 'F':
-                    cell.fill = celeste_fill
+                    val = ''
+                    if semanal:
+                        day_field = ['mon','tue','wed','thu','fri','sat','sun'][d.weekday()]
+                        try:
+                            val = getattr(semanal, day_field, '') or ''
+                        except Exception:
+                            val = ''
 
-        start_row += 1
+                    cell = target_ws.cell(row=row_idx, column=col)
+                    cell.value = val
+                    cell.alignment = Alignment(horizontal='center')
+                    cell.border = border
+                    if str(val).strip().upper() == 'F':
+                        cell.fill = celeste_fill
 
-    # Ajustes de anchos de columna
-    for i in range(1, left_cols + 1):
-        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 18
-    # Nombre Puesto (columna 4) y Persona (columna 7) con mayor ancho
-    ws.column_dimensions[openpyxl.utils.get_column_letter(4)].width = 28
-    ws.column_dimensions[openpyxl.utils.get_column_letter(7)].width = 38
-    for i in range(date_start_col, date_start_col + num_days):
-        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 5
+            start_row += 1
+
+        for i in range(1, left_cols + 1):
+            target_ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 18
+        target_ws.column_dimensions[openpyxl.utils.get_column_letter(4)].width = 28
+        target_ws.column_dimensions[openpyxl.utils.get_column_letter(7)].width = 38
+        for i in range(date_start_col, date_start_col + num_days):
+            target_ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 5
+
+    build_sheet(ws, 'Asignaciones y Calendario', combined_rows)
+
+    prov_ids = sorted({r['provincia'] for r in combined_rows})
+    prov_lookup = {}
+    prov_db_ids = [pid for pid in prov_ids if pid != 999999]
+    if prov_db_ids:
+        prov_lookup = {p.id: p.nombre for p in Provincia.objects.filter(id__in=prov_db_ids)}
+
+    for prov_id in prov_ids:
+        prov_name = prov_lookup.get(prov_id)
+        if not prov_name:
+            prov_name = 'SIN PROVINCIA' if prov_id == 999999 else f"PROVINCIA {prov_id}"
+        base_title = safe_sheet_title(prov_name)
+        sheet_title = unique_sheet_title(base_title)
+        prov_rows = [r for r in combined_rows if r['provincia'] == prov_id]
+        ws_prov = wb.create_sheet(title=sheet_title)
+        build_sheet(ws_prov, sheet_title, prov_rows)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename=reporte_asignaciones_calendario_{year}_{month}.xlsx'
