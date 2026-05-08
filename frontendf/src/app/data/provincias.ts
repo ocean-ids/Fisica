@@ -118,6 +118,8 @@ const RAW_PROVINCIAS: Province[] = [
     { id: 'cevallos', nombre: 'Cevallos' },
     { id: 'tisaleo', nombre: 'Tisaleo' },
     { id: 'mocha', nombre: 'Mocha' },
+    { id: 'pelileo', nombre: 'Pelileo' },
+    { id: 'pillaro', nombre: 'Píllaro' },
     { id: 'quero', nombre: 'Quero' },
   ] },
 
