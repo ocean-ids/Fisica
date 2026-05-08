@@ -52,7 +52,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="text-center" *ngFor="let persona of personas" [class.inactive-row]="persona.is_active === false">
+            <tr class="text-center align-middle" *ngFor="let persona of personas" [class.inactive-row]="persona.is_active === false">
               <td>{{ persona.cedula }}</td>
               <td >{{ persona.apellidos }}</td>
               <td >{{ persona.nombres }}</td>
