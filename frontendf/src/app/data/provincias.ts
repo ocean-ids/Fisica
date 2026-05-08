@@ -99,11 +99,12 @@ const RAW_PROVINCIAS: Province[] = [
     { id: 'espindola', nombre: 'Espíndola' },
   ] },
   { id: 'pichincha', nombre: 'Pichincha', region: 'Sierra', ciudades: [
-    { id: 'puerto-quito', nombre: 'Puerto Quito' },
+    { id: 'quito', nombre: 'Quito' },
     { id: 'pedro-vicente-maldonado', nombre: 'Pedro Vicente Maldonado' },
     { id: 'san-miguel-de-los-bancos', nombre: 'San Miguel de Los Bancos' },
     { id: 'distrito-metropolitano-de-quito', nombre: 'Distrito Metropolitano de Quito' },
     { id: 'pedro-moncayo', nombre: 'Pedro Moncayo' },
+    { id: 'carapungo', nombre: 'Carapungo' },
     { id: 'cayambe', nombre: 'Cayambe' },
     { id: 'ruminahui', nombre: 'Rumiñahui' },
     { id: 'mejia', nombre: 'Mejía' },

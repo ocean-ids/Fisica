@@ -32,6 +32,8 @@ export class PersonaFormComponent implements OnInit {
   cantones: (any | City)[] = [];
   private useStaticProvincias = false;
   private initialCanton: string | null = null;
+  private initialCantonName: string | null = null;
+  private initialProvinciaName: string | null = null;
   tipos: Persona['tipo'][] = [
     'FIJOS',
     'RETENES',
@@ -88,25 +90,40 @@ export class PersonaFormComponent implements OnInit {
     this.useStaticProvincias = true;
     this.provincias = this.provinciasService.getProvinciasSync();
     this.initialCanton = (this.persona?.canton as any) ?? null;
-    const storedProv = this.persona?.provincia ?? null;
-    if (storedProv) {
-      const provFound = this.provincias.find((x: any) => x.id === storedProv);
-      if (provFound) {
-        this.personaForm.get('provincia')?.setValue(provFound.id);
-        this.onProvinciaChange();
-      }
+    this.initialCantonName = (this.persona?.canton_nombre || '').trim().toUpperCase() || null;
+    this.initialProvinciaName = (this.persona?.provincia_nombre || '').trim().toUpperCase() || null;
+
+    const storedProvId = this.persona?.provincia ?? null;
+    const provFoundById = storedProvId
+      ? this.provincias.find((x: any) => x.id === storedProvId)
+      : null;
+    const provFoundByName = this.initialProvinciaName
+      ? this.provincias.find((x: any) => (x.nombre || '').toUpperCase() === this.initialProvinciaName)
+      : null;
+    const provFound = provFoundById || provFoundByName;
+    if (provFound) {
+      this.personaForm.get('provincia')?.setValue(provFound.id);
+      this.onProvinciaChange();
     }
   }
 
   private afterCantonesLoaded(): void {
-    if (this.initialCanton) {
-      const found = this.cantones.find((x: any) => x.id === this.initialCanton);
+    if (this.initialCanton || this.initialCantonName) {
+      const foundById = this.initialCanton
+        ? this.cantones.find((x: any) => x.id === this.initialCanton)
+        : null;
+      const foundByName = this.initialCantonName
+        ? this.cantones.find((x: any) => (x.nombre || '').toUpperCase() === this.initialCantonName)
+        : null;
+      const found = foundById || foundByName;
       if (found) {
         this.personaForm.get('canton')?.setValue(found.id);
         this.initialCanton = null;
+        this.initialCantonName = null;
         return;
       }
       this.initialCanton = null;
+      this.initialCantonName = null;
     }
     const current = this.personaForm.get('canton')?.value;
     if (current && this.cantones.find((x: any) => x.id === current)) {
