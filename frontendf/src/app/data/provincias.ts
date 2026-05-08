@@ -111,7 +111,7 @@ const RAW_PROVINCIAS: Province[] = [
   ] },
   { id: 'tungurahua', nombre: 'Tungurahua', region: 'Sierra', ciudades: [
     { id: 'ambato', nombre: 'Ambato' },
-    { id: 'santiago-de-pillaro', nombre: 'Santiago de Píllaro' },
+    { id: 'pillaro', nombre: 'Píllaro' },
     { id: 'patate', nombre: 'Patate' },
     { id: 'banos-de-agua-santa', nombre: 'Baños de Agua Santa' },
     { id: 'san-pedro-de-pelileo', nombre: 'San Pedro de Pelileo' },
@@ -119,7 +119,6 @@ const RAW_PROVINCIAS: Province[] = [
     { id: 'tisaleo', nombre: 'Tisaleo' },
     { id: 'mocha', nombre: 'Mocha' },
     { id: 'pelileo', nombre: 'Pelileo' },
-    { id: 'pillaro', nombre: 'Píllaro' },
     { id: 'quero', nombre: 'Quero' },
   ] },
 
