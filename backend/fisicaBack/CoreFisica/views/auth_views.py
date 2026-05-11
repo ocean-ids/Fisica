@@ -19,7 +19,7 @@ from ..models import UserProfile
 
 logger = logging.getLogger(__name__)
 
-
+# funcion get_photo_url que recibe un request y un profile, devuelve la url absoluta de la foto del perfil o None si no tiene foto
 def _get_photo_url(request, profile: UserProfile | None):
     if not profile or not profile.photo:
         return None
@@ -28,7 +28,7 @@ def _get_photo_url(request, profile: UserProfile | None):
     except Exception:
         return profile.photo.url
 
-
+#funcion serialize_user que recibe un request y un ser y devuelve un diccionario con la informacion del usuario, incluyendo la url de la foto del perfil y los permisos
 def _serialize_user(request, user: User):
     profile, _ = UserProfile.objects.get_or_create(user=user)
     first = user.first_name or ''
@@ -48,15 +48,16 @@ def _serialize_user(request, user: User):
         "permissions": sorted(list(user.get_all_permissions())),
     }
 
-
+#funcion get_client_ip que recibe un request y devuelve la ip del cliente, teniendo en cuenta posibles proxies
 def _get_client_ip(request):
     forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if forwarded_for:
         return forwarded_for.split(',')[0].strip()
     return request.META.get('REMOTE_ADDR', '')
 
-
+#csrf_exempt para permitir peticiones sin token csrf, recibe un request con username y password en el body, intenta autenticar al usuario y devuelve un token de acceso y refresh si es exitoso, o un error si no lo es
 @csrf_exempt
+#login_view que recibe un request con username y password en el body, intenta autenticar al usuario y devuelve un token de acceso y refresh si es exitoso, o un error si no lo es
 def login_view(request):
     if request.method == 'POST':
         try:
@@ -66,6 +67,7 @@ def login_view(request):
         except Exception:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+        # si el usuario o la contraseña no se proporcionan, devolver error 400
         if not username or not password:
             return JsonResponse({"error": "Username and password required."}, status=400)
 
@@ -85,6 +87,7 @@ def login_view(request):
             return JsonResponse({"error": "Credenciales inválidas."}, status=400)
 
 @csrf_exempt
+#logout_view que recibe un request con un refresh token en el body, intenta invalidar el token y devuelve un mensaje de éxito o error  
 def logout_view(request):
     if request.method == 'POST':
         try:
@@ -118,20 +121,20 @@ def logout_view(request):
             status=405
         )
 
-
+#funcion user_view que recibe un request con un token de acceso valido, devuelve la información del usuario autenticado, incluyendo la url de la foto del perfil y los permisos
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_view(request):
     user = request.user
     return Response(_serialize_user(request, user))
 
-
+#funcion user_profile_view que recibe un request con un token de acceso valido, permite actualizar la foto del perfil si se envía una nueva foto o se indica que se debe eliminar la foto actual, devuelve la información del usuario autenticado, incluyendo la url de la foto del perfil y los permisos
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def user_profile_view(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
-
+    #si el metodo es PUT, revisar si se debe eliminar la foto actual o actualizarla con una nueva foto enviada en el request, luego devolver la informacion del usuario autenticado, incluyendo la url de la foto del perfil y los permisos
     if request.method == 'PUT':
         remove = str(request.data.get('remove') or '').strip() == '1'
         if remove and profile.photo:
@@ -152,7 +155,7 @@ def user_profile_view(request):
         'cargo': profile.cargo,
     })
 
-
+# funcion solicitar_reset_password que recibe un request con un email en el body, si el email existe en el sistema, envía un correo con un enlace para restablecer la contraseña, el enlace incluye un token de seguridad que expira en 24 horas, devuelve un mensaje indicando que se ha enviado el correo si el email existe, o simplemente un mensaje genérico si no existe para evitar revelar información sobre los usuarios registrados
 @api_view(['POST'])
 def solicitar_reset_password(request):
     email = (request.data.get('email') or '').strip().lower()
@@ -164,14 +167,14 @@ def solicitar_reset_password(request):
     max_per_hour = getattr(settings, 'RESET_PASSWORD_MAX_PER_HOUR', 5)
     cooldown_key = f"reset:cooldown:{email}:{ip}"
     hour_key = f"reset:hour:{email}:{ip}"
-
+    # si el usuario ha solicitado un reset de contraseña recientemente, devolver un mensaje generico
     if cache.get(cooldown_key):
         return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
-
+    # limitar a un maximo de solicitudes por hora por email e ip para evitar abuso, si se supera el limite devolver un mensaje generico
     count = cache.get(hour_key, 0)
     if count >= max_per_hour:
         return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
-
+    # cachear la solicitud para evitar multiples solicitudes en un corto periodo de tiempo, y contar el numero de solicitudes por hora
     cache.set(cooldown_key, 1, timeout=cooldown_seconds)
     cache.set(hour_key, count + 1, timeout=3600)
     
@@ -181,15 +184,15 @@ def solicitar_reset_password(request):
         
         return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
     
-    
+    # generar token de restablecimiento de contraseña y uid para el usuario
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     
-   
+   #
     base_url = getattr(settings, 'PASSWORD_RESET_BASE_URL', 'http://localhost:4200').rstrip('/')
     reset_link = f"{base_url}/reset-password/{uid}/{token}"
     
-    
+    # enviar correo con el enlace de restablecimiento de contraseña, si hay un error al enviar el correo, registrar el error y devolver un mensaje generico si estamos en produccion, o el error detallado si estamos en modo debug para facilitar la depuración
     try:
         send_mail(
             subject='Restablecer contraseña - Sistema Física',
@@ -207,7 +210,7 @@ def solicitar_reset_password(request):
     
     return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
 
-
+# funcion reset_password que recibe un request con un nuevo password en el body, junto con el uid y token en la url, verifica que el token sea válido para el usuario correspondiente al uid, si es válido actualiza la contraseña del usuario y devuelve un mensaje de éxito, si no es válido devuelve un error indicando que el token es inválido o ha expirado
 @api_view(['POST'])
 def reset_password(request, uidb64, token):
    
