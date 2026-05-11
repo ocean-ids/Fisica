@@ -1,7 +1,10 @@
 .login-page{
-  background:
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  /*background:
     linear-gradient(rgba(15,31,68,0.20), rgba(15,31,68,0.20)),
-    url('/assets/images/fondo.png') center/cover no-repeat;
+    url('/assets/images/fondo.png') center/cover no-repeat; */
 }
 
 .login-card {
