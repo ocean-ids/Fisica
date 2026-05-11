@@ -321,7 +321,9 @@ def obtener_personas(request):
             personas = personas.filter(
                 Q(nombres__icontains=q) |
                 Q(apellidos__icontains=q) |
-                Q(cedula__icontains=q)
+                Q(cedula__icontains=q) |
+                Q(provincia__nombre__icontains=q) |
+                Q(canton__nombre__icontains=q)
             )
 
         if tipo:
