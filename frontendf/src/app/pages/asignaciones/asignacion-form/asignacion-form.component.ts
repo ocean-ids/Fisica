@@ -166,12 +166,14 @@ export class AsignacionFormComponent implements OnInit {
 
   getPersonasActivas(): Persona[] {
     const provinciaId = this.getProvinciaIdFromInstalacion();
+    const cantonId = this.getCantonIdFromInstalacion();
 
     return this.personas.filter(persona => {
       const tipo = (persona.tipo || '').toString().toUpperCase();
       if (persona.is_active === false || tipo !== 'FIJOS') return false;
 
-      if (provinciaId && persona.provincia !== provinciaId) return false;
+      if (provinciaId && persona.provincia  && persona.provincia!== provinciaId) return false;
+      if (cantonId && persona.canton && persona.canton !== cantonId) return false;
 
       return true;
     });
