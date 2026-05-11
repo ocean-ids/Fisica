@@ -41,10 +41,14 @@ export class LoginComponent implements OnInit {
 
     this.authService.login(this.username, this.password).subscribe({
       next: (response) =>  {
-        console.log('Acceso Exitoso', response);
+        console.log(`Acceso Exitoso`, response);
+        const displayName = (response?.user?.full_name ||
+          `${response?.user?.first_name ?? ''} ${response?.user?.last_name ?? ''}`
+        ).trim() || this.username;
         Swal.fire({
           icon: 'success',
           title: 'Acceso exitoso',
+          text: `Bienvenido ${displayName}`,
           timer: 1200,
           showConfirmButton: false
         }).then(() => {
