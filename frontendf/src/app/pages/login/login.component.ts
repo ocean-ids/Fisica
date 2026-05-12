@@ -15,20 +15,28 @@ export class LoginComponent implements OnInit, OnDestroy {
   username: string = '';
   password: string = '';
   isLoading: boolean = false;
+  currentImageIndex = 0;
+  previousImageIndex = 0;
+  isTransitioning = false;
+  private carouselTimer: any = null;
+  private transitionTimer: any = null;
 
   images: string[] = [
     'assets/images/fondo.png',
     'assets/images/fondo2.png',
     'assets/images/fondo3.png',
     'assets/images/fondo4.png'
-  ]
+  ];
 
-  currentImageIndex = 0;
-  private carouselTimer : any = null;
-
-  get backgroundStyle(): string {
+  get currentBackground(): string {
     const url = this.images[this.currentImageIndex] || this.images[0];
-    return `linear-gradient(rgba(15,31,68,0.20), rgba(15,31,68,0.20)), url('${url}')`;
+    return `url('${url}')`;
+  }
+
+  get previousBackground(): string {
+    const url = this.images[this.previousImageIndex] || this.images[0];
+    return `url('${url}')`;
+
   }
 
   constructor(
@@ -51,7 +59,15 @@ export class LoginComponent implements OnInit, OnDestroy {
   private startCarousel(): void {
     if (!this.images.length) return;
     this.carouselTimer = setInterval(() => {
+      this.previousImageIndex = this.currentImageIndex;
       this.currentImageIndex = (this.currentImageIndex + 1) % this.images.length;
+      this.isTransitioning = true;
+      if (this.transitionTimer) {
+        clearTimeout(this.transitionTimer);
+      }
+      this.transitionTimer = setTimeout(() => {
+        this.isTransitioning = false;
+      }, 1200);
     }, 5000);
   }
 
@@ -59,6 +75,10 @@ export class LoginComponent implements OnInit, OnDestroy {
     if (this.carouselTimer){
       clearInterval(this.carouselTimer);
       this.carouselTimer = null;
+    }
+    if (this.transitionTimer) {
+      clearTimeout(this.transitionTimer);
+      this.transitionTimer = null;
     }
   }
 

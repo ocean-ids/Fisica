@@ -1,4 +1,6 @@
-<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center login-page" [ngStyle]="{'background-image': backgroundStyle}">
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center login-page">
+  <div class="login-bg login-bg-prev" [ngStyle]="{ 'background-image': previousBackground }"></div>
+  <div class="login-bg login-bg-current" [ngClass]="{ 'is-active': isTransitioning }" [ngStyle]="{ 'background-image': currentBackground }"></div>
   <div class="card shadow-lg border-0 p-4 login-card w-100">
     <div class="text-center mb-4">
       <img ngSrc="assets/images/logo.png" alt="Logo" width="280" height="80" class="img-fluid" priority>

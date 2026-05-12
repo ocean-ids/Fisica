@@ -1,16 +1,43 @@
 .login-page{
+  position: relative;
+  overflow: hidden;
+}
+
+.login-bg {
+  position: absolute;
+  inset: 0;
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
-  /*background:
-    linear-gradient(rgba(15,31,68,0.20), rgba(15,31,68,0.20)),
-    url('/assets/images/fondo.png') center/cover no-repeat; */
+  transition: opacity 1.2s ease;
+}
+
+.login-bg-prev {
+  opacity: 1;
+}
+
+.login-bg-current {
+  opacity: 0;
+}
+
+.login-bg-current.is-active {
+  opacity: 1;
+}
+
+.login-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 31, 68, 0.20);
+  z-index: 1;
 }
 
 .login-card {
   max-width: 420px;
   border-radius: 0.75rem;
   background: rgba(250, 247, 247, 0.92);
+  position: relative;
+  z-index: 2;
 }
 
 .btn-personalizado {
