@@ -67,8 +67,8 @@ export class LoginComponent implements OnInit, OnDestroy {
       }
       this.transitionTimer = setTimeout(() => {
         this.isTransitioning = false;
-      }, 1200);
-    }, 5000);
+      }, 2200);
+    }, 6000);
   }
 
   private stopCarousel(): void {
