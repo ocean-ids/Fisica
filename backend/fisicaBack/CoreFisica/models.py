@@ -299,7 +299,7 @@ class PatronAsignacion(models.Model):
         max_length=4,
         unique=True,
         db_index=True,
-        validators=[RegexValidator(regex=r'^\d{3,4}$', message='Use 3 o 4 dígitos')],
+        validators=[RegexValidator(regex=r'^\d{2,4}$', message='Use 2 a 4 dígitos')],
     )
     secuencia = models.JSONField(help_text="Ciclo ordenado (D/N/F/-)")
     created_at = models.DateTimeField(auto_now_add=True)

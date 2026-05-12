@@ -8,7 +8,7 @@ from .models import Asignacion, AsignacionSemanal, Instalacion, Persona, Provinc
 class PatronAsignacionSerializer(serializers.ModelSerializer):
     codigo = serializers.CharField(
         max_length=4,
-        validators=[RegexValidator(regex=r'^\d{3,4}$', message='Use 3 o 4 dígitos')]
+        validators=[RegexValidator(regex=r'^\d{2,4}$', message='Use 2 a 4 dígitos')]
     )
 
     def validate_secuencia(self, value):
