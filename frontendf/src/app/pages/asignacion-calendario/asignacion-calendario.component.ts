@@ -25,6 +25,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   @Input() filterText: string = '';
   @Input() rowOrder: Array<number | string> = [];
   @Input() sacafrancoRows: SacafrancoFila[] = [];
+  @Input() showProvinciaSpacer: boolean = true;
   @Output() sacafrancoClick: EventEmitter<any> = new EventEmitter<any>();
   @Output() rangeApplied: EventEmitter<void> = new EventEmitter<void>();
     ngOnChanges(changes: SimpleChanges): void {

@@ -116,7 +116,7 @@
             </thead>
             <tbody cdkDropList [cdkDropListData]="displayRows" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropAsignaciones($event)">
               <ng-container *ngFor="let row of displayRows; trackBy: trackByDisplayRow">
-                <tr *ngIf="row.type === 'provincia'" class="provincia-row">
+                <tr *ngIf="row.type === 'provincia' && !columnaOculta('horario')" class="provincia-row">
                   <td [attr.colspan]="totalColumns()">{{ row.label }}</td>
                 </tr>
                 <tr 
@@ -236,6 +236,7 @@
                     [filterText]="filtroTexto"
                     [sacafrancoRows]="sacafrancoRows"
                     [rowOrder]="calendarRowOrder"
+                    [showProvinciaSpacer]="!columnaOculta('horario')"
                     (sacafrancoClick)="openSacafrancosModal($event.weekStart, $event.day, $event.puestoId, $event.manage)"
                     (rangeApplied)="onRangeApplied()"></app-asignacion-calendario>
                   <!--<div class="text-center"><strong>Semana: {{ ws }}</strong></div>-->
