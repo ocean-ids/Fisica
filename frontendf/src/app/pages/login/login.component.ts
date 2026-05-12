@@ -15,11 +15,12 @@ export class LoginComponent implements OnInit, OnDestroy {
   username: string = '';
   password: string = '';
   isLoading: boolean = false;
-  currentImageIndex = 0;
-  previousImageIndex = 0;
-  isTransitioning = false;
+  activeImageIndex = 0;
+  isFading = false;
   private carouselTimer: any = null;
   private transitionTimer: any = null;
+  private readonly fadeDurationMs = 1200;
+  private readonly intervalMs = 6000;
 
   images: string[] = [
     'assets/images/fondo.png',
@@ -29,15 +30,10 @@ export class LoginComponent implements OnInit, OnDestroy {
   ];
 
   get currentBackground(): string {
-    const url = this.images[this.currentImageIndex] || this.images[0];
+    const url = this.images[this.activeImageIndex] || this.images[0];
     return `url('${url}')`;
   }
 
-  get previousBackground(): string {
-    const url = this.images[this.previousImageIndex] || this.images[0];
-    return `url('${url}')`;
-
-  }
 
   constructor(
     private authService: AuthService,
@@ -57,18 +53,28 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   private startCarousel(): void {
-    if (!this.images.length) return;
+    if (this.images.length < 2) return;
     this.carouselTimer = setInterval(() => {
-      this.previousImageIndex = this.currentImageIndex;
-      this.currentImageIndex = (this.currentImageIndex + 1) % this.images.length;
-      this.isTransitioning = true;
-      if (this.transitionTimer) {
-        clearTimeout(this.transitionTimer);
-      }
-      this.transitionTimer = setTimeout(() => {
-        this.isTransitioning = false;
-      }, 2200);
-    }, 6000);
+      this.beginFade();
+    }, this.intervalMs);
+  }
+
+  private beginFade(): void {
+    if (this.images.length < 2) return;
+    this.isFading = true;
+    if (this.transitionTimer) {
+      clearTimeout(this.transitionTimer);
+    }
+    this.transitionTimer = setTimeout(() => {
+      this.activeImageIndex = this.getNextIndex(this.activeImageIndex);
+      requestAnimationFrame(() => {
+        this.isFading = false;
+      });
+    }, this.fadeDurationMs);
+  }
+
+  private getNextIndex(index: number): number {
+    return (index + 1) % this.images.length;
   }
 
   private stopCarousel(): void {
