@@ -181,7 +181,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
   //Construye el arreglo displayRows combinando las filas regulares y las filas de sacafranco, y aplicando el orden personalizado si se proporciona rowOrder. Las filas de sacafranco se identifican con la propiedad _sacafranco para diferenciarlas de las filas regulares.
   private buildDisplayRows(): void {
     const sacafrancoRows = this.buildSacafrancoRows();
-    const combined = [...(this.rows || []), ...sacafrancoRows];
+    let combined = [...(this.rows || []), ...sacafrancoRows];
     if (!combined.length) {
       this.displayRows = [];
       return;
@@ -190,6 +190,7 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
     if (this.rowOrder && this.rowOrder.length) {
       const orderMap = new Map<string, number>();
       this.rowOrder.forEach((id, idx) => orderMap.set(String(id), idx));
+      combined = combined.filter(r => orderMap.has(this.getRowOrderKey(r)));
       const existingKeys = new Set(combined.map(r => this.getRowOrderKey(r)));
       const placeholders = this.rowOrder
         .map(id => String(id))

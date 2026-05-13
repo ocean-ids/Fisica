@@ -779,7 +779,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   // buildDisplayRows se encarga de construir el arreglo de filas que se mostrarán en la vista combinando las asignaciones y filas de sacafranco, ordenándolas según su propiedad de orden, y luego actualizando las propiedades que controlan la visualización de las filas en la tabla y el calendario, lo que permite mostrar la información de manera organizada y coherente para el usuario
   private buildDisplayRows(): void {
-    const asignaciones = this.asignaciones || [];
+    const asignaciones = (this.asignaciones || [])
+      .filter(a => a?.persona_detalle?.is_active !== false);
     const sacRows = this.sacafrancoRows || [];
     const previousRows = this.displayRows || [];
     if (!Object.keys(this.provinciaSortOrder || {}).length && previousRows.length) {

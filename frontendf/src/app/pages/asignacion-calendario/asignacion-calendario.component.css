@@ -35,6 +35,8 @@ table.table td { vertical-align: middle; }
   overflow: hidden;
   text-overflow: ellipsis;
   padding: 0 !important;
+  max-height: 70px;
+  height: 70px;
 }
 
 /* Stronger rules to eliminate leftover gaps */
@@ -145,6 +147,16 @@ button.info-btn .form-control-sm {
   background-color: #ffffff !important;
   color: #6b7280 !important;
   height: 35px !important;
+}
+
+.sacafranco-cell {
+  height: 45px !important;
+  max-height: 45px !important;
+  overflow: hidden;
+}
+
+.sacafranco-cell .sacafranco-input {
+  height: 45px !important;
 }
 
 .sacafranco-input.sacafranco-input-fq {

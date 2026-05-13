@@ -120,6 +120,17 @@ table tbody td{
   box-shadow: inset 0 0 0 2px #198754;
 }
 
+.shared-row {
+  height: 70px;
+}
+
+.shared-row > td {
+  height: 70px;
+  max-height: 70px;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
 .provincia-row td {
   font-weight: 600;
   text-align: left;

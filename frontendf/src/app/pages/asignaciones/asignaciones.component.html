@@ -131,11 +131,13 @@
                   (cdkDragEnded)="onDragEnded()"
                   class="text-center align-middle shared-row"
                   style="height: 70px;">
-                  <td *ngIf="!columnaOculta('horario')">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
-                  <td *ngIf="!columnaOculta('codigo')">{{ getCodigoInstalacionAsignacion(row.asig) }}</td>
-                  <td *ngIf="!columnaOculta('cliente')" class="text-wrap" style="max-width: 150px;">{{ row.asig.cliente_detalle?.nombre_comercial }}</td>
-                  <td *ngIf="mostrarPuesto()" class="text-wrap" style="max-width: 150px;">{{ row.asig.puesto_detalle?.nombre }}</td>
-                  <td *ngIf="mostrarPuesto()">
+                  <td *ngIf="!columnaOculta('horario')" class="align-middle overflow-hidden" style="height: 70px;">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
+                  <td *ngIf="!columnaOculta('codigo')" class="align-middle overflow-hidden" style="height: 70px;">{{ getCodigoInstalacionAsignacion(row.asig) }}</td>
+                  <td *ngIf="!columnaOculta('cliente')" class="align-middle text-wrap overflow-hidden" style="max-width: 150px; height: 70px;">{{ row.asig.cliente_detalle?.nombre_comercial }}</td>
+                    <td *ngIf="mostrarPuesto()" class="align-middle text-wrap overflow-hidden" style="max-width: 220px; height: 70px;">
+                      {{ row.asig.puesto_detalle?.nombre }}
+                    </td>
+                  <td *ngIf="mostrarPuesto()" class="align-middle overflow-hidden" style="height: 70px;">
                     <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
                       {{ getResumenPuestoCompacto(row.asig.puesto_detalle) }}
                     </span>
@@ -148,13 +150,13 @@
                       </div>
                     </mat-menu>
                   </td>
-                  <td *ngIf="!columnaOculta('cedula')"
+                    <td *ngIf="!columnaOculta('cedula')" class="align-middle overflow-hidden" style="height: 70px;"
                       [ngStyle]="{ 'background-color': row.asig.cedula_color || 'transparent' }"
                       (dblclick)="abrirColorCedula(row.asig)"
                       style="cursor: pointer;">
                     {{ row.asig.persona_detalle?.cedula }}
                   </td>
-                  <td *ngIf="!columnaOculta('persona')" class="persona-cell" style="min-width: 200px;">
+                  <td *ngIf="!columnaOculta('persona')" class="text-wrap align-middle overflow-hidden" style="min-width: 180px; height: 70px;">
                       <div>
                         {{ row.asig.persona_detalle?.apellidos }}
                       </div>
@@ -168,7 +170,7 @@
                         </span>
                       </div>
                     </td>
-                  <td *ngIf="!columnaOculta('accion')" class="p-0 align-middle">
+                  <td *ngIf="!columnaOculta('accion')" class="p-0 align-middle overflow-hidden" style="height: 70px;">
                     <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">
                       <button class="btn btn-sm btn-outline-primary " (click)="abrirModalEditar(row.asig)">
                         <i class="bi bi-pencil"></i>
