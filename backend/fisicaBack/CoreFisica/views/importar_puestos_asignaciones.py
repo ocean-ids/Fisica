@@ -264,6 +264,48 @@ def parse_dias_groups(value):
     return groups
 
 
+def _expand_compact_dias(token: str):
+    if not token:
+        return []
+    token = re.sub(r'[^A-Z]', '', token.upper())
+    mapping = {'L': 1, 'M': 2, 'X': 3, 'J': 4, 'V': 5, 'S': 6, 'D': 7}
+    if len(token) == 2 and token[0] in mapping and token[1] in mapping and token[0] != token[1]:
+        start = mapping[token[0]]
+        end = mapping[token[1]]
+        if start <= end:
+            return list(range(start, end + 1))
+        return list(range(start, 8)) + list(range(1, end + 1))
+    days = []
+    for ch in token:
+        if ch in mapping:
+            days.append(mapping[ch])
+    return sorted(set(days))
+
+
+def parse_compact_horas_turno_dias(value):
+    if value is None:
+        return []
+    text = str(value).strip().upper()
+    if not text:
+        return []
+    parts = [p.strip() for p in text.split('/') if p.strip()]
+    groups = []
+    for part in parts:
+        part = re.sub(r'\s+', '', part)
+        match = re.match(r'^(\d{1,2})H([DN])?([A-Z]+)?$', part)
+        if not match:
+            continue
+        hours_val = int(match.group(1))
+        turno_token = match.group(2) or ''
+        dias_token = match.group(3) or ''
+        groups.append({
+            'hours': hours_val,
+            'turno': parse_turno(turno_token) if turno_token else None,
+            'dias': _expand_compact_dias(dias_token)
+        })
+    return groups
+
+
 def parse_calendar_value(val):
     if val is None:
         return ''
@@ -359,15 +401,18 @@ def importar_puestos_asignaciones(request):
         candidate_headers = [normalize_header(h) for h in row]
         tmp_idx = {HEADER_MAP[h]: i for i, h in enumerate(candidate_headers) if h in HEADER_MAP}
         headers_raw = candidate_headers
-        required = {'instalacion', 'puesto', 'cedula', 'hora_ingreso', 'hora_salida', 'dias'}
+        required = {'puesto', 'cedula', 'hora_ingreso', 'hora_salida'}
+        alt_required = {'dias', 'horas'}
         if required.issubset(set(tmp_idx.keys())):
+            if not alt_required.intersection(set(tmp_idx.keys())):
+                continue
             header_idx = tmp_idx
             header_row_num = ridx
             break
     # si no se encuentran todas las columnas obligatorias, retorna un jsonresponse con error 400 indicando las columnas faltantes y los encabezados detectados
     if header_idx is None:
         return JsonResponse({
-            'error': 'Faltan columnas obligatorias: INSTALACION, PUESTO, CEDULA, HORA INGRESO, HORA SALIDA, DIAS',
+            'error': 'Faltan columnas obligatorias: PUESTO, CEDULA, HORA INGRESO, HORA SALIDA y (DIAS o HORAS)',
             'headers_detectados': headers_raw
         }, status=400)
     sheet_year, sheet_month = _detect_month_year_from_sheet(rows)
@@ -415,6 +460,19 @@ def importar_puestos_asignaciones(request):
                 cedula = normalize_cedula(col('cedula'))
                 apellidos = col('apellidos')
                 nombres = col('nombres')
+                if not apellidos and not nombres:
+                    full_name = col('apellidos_nombres')
+                    if full_name:
+                        tokens = [t for t in re.split(r'\s+', full_name.strip()) if t]
+                        if len(tokens) >= 3:
+                            apellidos = ' '.join(tokens[:2])
+                            nombres = ' '.join(tokens[2:])
+                        elif len(tokens) == 2:
+                            apellidos = tokens[0]
+                            nombres = tokens[1]
+                        elif len(tokens) == 1:
+                            apellidos = tokens[0]
+                            nombres = tokens[0]
                 persona_tipo = col('tipo')
 
                 hora_ingreso = parse_excel_time(col_raw('hora_ingreso'))
@@ -422,6 +480,11 @@ def importar_puestos_asignaciones(request):
                 horas_raw = col('horas')
                 turno = parse_turno(col('turno'))
                 dias_groups = parse_dias_groups(col('dias'))
+                compact_groups = []
+                if horas_raw and re.search(r'[A-Z]', str(horas_raw).upper()):
+                    compact_groups = parse_compact_horas_turno_dias(horas_raw)
+                    if compact_groups and not dias_groups:
+                        dias_groups = [g['dias'] for g in compact_groups if g.get('dias')]
                 fecha = None
                 # si el puesto_nombre se agrega un mensaje de error al resumen indicando que el puesto esta vacio y se continua con la siguiente fila sin procesar la fila actual, ya que el puesto es un campo obligatorio para crear o actualizar una asignacion
                 if not puesto_nombre:
@@ -453,8 +516,13 @@ def importar_puestos_asignaciones(request):
                 else:
                     # si el nombre de la instalcion est avacio se agrega un mensaje de error el resumen indicando que la instalacion esta vacia y se continua con la siguiente fila sin procesar la fila actual, ya que la instalacion es un campo obligatorio para crear o actualizar un puesto y asignacion
                     if not instalacion_nombre:
-                        resumen['errores'].append(f'Fila {i}: instalacion vacia')
-                        continue
+                        # intentar inferir instalacion desde un puesto existente
+                        existing_puestos = Puesto.objects.filter(nombre__iexact=puesto_nombre)
+                        if existing_puestos.count() == 1:
+                            instalacion = existing_puestos.first().instalacion
+                        else:
+                            resumen['errores'].append(f'Fila {i}: instalacion vacia, use INSTALACION o instale puesto existente')
+                            continue
                     # se busca la instalacion usando el nombre de la instalacion
                     inst_qs = Instalacion.objects.filter(nombre__iexact=instalacion_nombre)
                     # si el cliente_id se proporciona, se filtra la instalacion por cliente_id
@@ -534,10 +602,15 @@ def importar_puestos_asignaciones(request):
                 # se actualizan o crean los puestos horarios para el puesto usando la lista de dias, hora_ingreso, hora_salida y turno proporcionados, ya que los puestos horarios son necesarios para crear o actualizar una asignacion y se asume que el horario y turno proporcionados aplican para todos los dias indicados
                 horas_groups = parse_hours_groups(horas_raw)
                 turnos_groups = parse_turno_groups(col('turno'))
+                if compact_groups:
+                    horas_groups = [g['hours'] for g in compact_groups]
+                    turnos_groups = [g['turno'] for g in compact_groups]
                 default_horas = compute_horas(hora_ingreso, hora_salida)
                 for idx, dias in enumerate(dias_groups):
                     horas = horas_groups[idx] if idx < len(horas_groups) else default_horas
                     turno_val = turnos_groups[idx] if idx < len(turnos_groups) else turno
+                    if not turno_val:
+                        turno_val = turno
                     for dia in dias:
                         PuestoHorario.objects.update_or_create(
                             puesto=puesto,

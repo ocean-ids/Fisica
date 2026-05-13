@@ -230,7 +230,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
       const parts = Object.values(groups)
         .map(g => {
-          const diasStr = g.dias.sort((a: number, b: number) => a - b).map(d => dayMap[d] || '').join('');
+          const ordered = g.dias.sort((a: number, b: number) => a - b);
+          const first = ordered.length ? (dayMap[ordered[0]] || '') : '';
+          const last = ordered.length ? (dayMap[ordered[ordered.length - 1]] || '') : '';
+          const diasStr = ordered.length <= 1 ? first : `${first}${last}`;
           const base = `${g.horas}${letter(g.turno)}`.trim();
           return diasStr ? `${base} ${diasStr}` : base;
         })

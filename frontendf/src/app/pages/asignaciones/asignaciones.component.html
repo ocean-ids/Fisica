@@ -103,7 +103,7 @@
               <tr class="text-center align-middle m-0" style="max-height: 36px">
                 <th *ngIf="!columnaOculta('horario')" [attr.rowspan]="headerRowspan()">Horario</th>
                 <th *ngIf="!columnaOculta('codigo')" [attr.rowspan]="headerRowspan()" style="width: 50px;">Nominativo</th>
-                <th *ngIf="!columnaOculta('cliente')" [attr.rowspan]="headerRowspan()" style="width: 200px; height: 30px;">Cliente</th>
+                <th *ngIf="!columnaOculta('cliente')" [attr.rowspan]="headerRowspan()" style="width: 150px; height: 30px;">Cliente</th>
                 <th *ngIf="mostrarPuesto()" style="width: 50px;" [attr.colspan]="2">Puesto</th>
                 <th *ngIf="!columnaOculta('cedula')" [attr.rowspan]="headerRowspan()">Cedula</th>
                 <th *ngIf="!columnaOculta('persona')" [attr.rowspan]="headerRowspan()">Persona</th>
@@ -133,8 +133,8 @@
                   style="height: 70px;">
                   <td *ngIf="!columnaOculta('horario')">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                   <td *ngIf="!columnaOculta('codigo')">{{ getCodigoInstalacionAsignacion(row.asig) }}</td>
-                  <td *ngIf="!columnaOculta('cliente')" style="max-width: 200px;">{{ row.asig.cliente_detalle?.nombre_comercial }}</td>
-                  <td *ngIf="mostrarPuesto()">{{ row.asig.puesto_detalle?.nombre }}</td>
+                  <td *ngIf="!columnaOculta('cliente')" class="text-wrap" style="max-width: 150px;">{{ row.asig.cliente_detalle?.nombre_comercial }}</td>
+                  <td *ngIf="mostrarPuesto()" class="text-wrap" style="max-width: 150px;">{{ row.asig.puesto_detalle?.nombre }}</td>
                   <td *ngIf="mostrarPuesto()">
                     <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
                       {{ getResumenPuestoCompacto(row.asig.puesto_detalle) }}

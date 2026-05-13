@@ -95,6 +95,17 @@ class Puesto(models.Model):
     
     resumen = models.CharField(max_length=50, blank=True, editable=False)  
 
+    def _format_dias_range(self, dias_nums):
+        if not dias_nums:
+            return ''
+        day_map = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'}
+        ordered = sorted(set(dias_nums))
+        if len(ordered) == 1:
+            return day_map.get(ordered[0], '')
+        first = day_map.get(ordered[0], '')
+        last = day_map.get(ordered[-1], '')
+        return f"{first}{last}" if first or last else ''
+
     def save(self, *args, **kwargs):
         
         try:
@@ -112,8 +123,7 @@ class Puesto(models.Model):
                         if len(unique) == 1:
                             horas = int(unique.pop())
                     if dias_nums:
-                        day_map = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'}
-                        dias_code = ''.join([day_map.get(d, '') for d in sorted(set(dias_nums))])
+                        dias_code = self._format_dias_range(dias_nums)
             except Exception:
                 horas = 0
                 dias_code = ''
@@ -161,8 +171,7 @@ class Puesto(models.Model):
                 if len(unique) == 1:
                     horas = int(unique.pop())
             if dias_nums:
-                day_map = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'}
-                dias_code = ''.join([day_map.get(d, '') for d in sorted(set(dias_nums))])
+                dias_code = self._format_dias_range(dias_nums)
 
             turno_letter = 'M'
             try:
