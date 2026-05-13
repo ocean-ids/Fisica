@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ViewChildren, QueryList, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Cliente, Persona, Instalacion, Puesto, Horario, Asignacion } from '../../models';
 import { PatronAsignacion, SacafrancoFila } from '../../models/asignacion.model';
@@ -14,7 +14,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
-import { AsignacionCalendarioComponent } from '../asignacion-calendario/asignacion-calendario.component';
+import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
+import { AsignacionCalendarioRangeModalComponent, AsignacionRangeModalResult } from '../asignacion-calendario/asignacion-calendario-range-modal.component';
 import { HttpClient } from '@angular/common/http';
 import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
@@ -48,19 +49,13 @@ import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sa
     MatButtonModule,
     MatButtonToggleModule,
     DragDropModule,
-    AsignacionCalendarioComponent,
+    
     
   ],
   templateUrl: './asignaciones.component.html',
   styleUrl: './asignaciones.component.css'
 })
 export class AsignacionesComponent implements OnInit, OnDestroy {
-
-
-
-  @ViewChildren(AsignacionCalendarioComponent)
-  calendarios?: QueryList<AsignacionCalendarioComponent>;
-
   weeksForMonth: string[] = [];
   calendarRowOrder: Array<number | string> = [];
   displayRows: Array<
@@ -70,6 +65,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   > = [];
   displayAssignmentRows: Asignacion[] = [];
   sacafrancoRows: SacafrancoFila[] = [];
+  calendarDayKeys: string[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  calendarWeekDayKeys: Record<string, string[]> = {};
+  calendarData: Record<string, Record<string, any>> = {};
   provinciaSortOrder: Record<string, number> = {};
   draggingAsignacionId: number | null = null;
   private lastDragPoint: { x: number; y: number } | null = null;
@@ -99,44 +97,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     { name: 'Salmón', value: '#fa8072' },
     { name: 'Blanco', value: '#ffffff' },
   ];
-
-  // Obtiene la fecha de inicio del mes actual como un string en formato YYYY-MM-DD para inicializar el calendario
-  private monthStartToday(): string {
-    const t = new Date();
-    const y = t.getFullYear();
-    const m = String(t.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}-01`;
-  }
-
-  ngAfterViewInit(): void {
-    setTimeout(() => {
-        if (this.calendarios && this.calendarios.length) {
-          this.calendarios.forEach(c => {
-            try { c.weekStartChange.subscribe((ws: string) => {
-              if (!ws) return;
-              this.dia = ws;
-              const parts = ws.split('-');
-              if (parts.length === 3) {
-                this.anio = Number(parts[0]);
-                this.mes = Number(parts[1]);
-                this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
-              }
-              this.cargarAsignaciones();
-            }); } catch(e){}
-          });
-
-          const ws = this.monthStartToday();
-          this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
-          this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
-        }
-    }, 0);
-  }
-
-  onRangeApplied(): void {
-    if (this.calendarios && this.calendarios.length) {
-      this.calendarios.forEach(c => c.loadWeek());
-    }
-  }
 
   // Obtiene las horas de un puesto como un string formateado
   getHorasPuesto(puesto: any): string {
@@ -297,29 +257,36 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       return '-';
     }
   }
-  
-  // Maneja el cambio de fecha compartida, actualizando el estado del componente y recargando las asignaciones para reflejar la nueva fecha seleccionada
-  onSharedDateChange(): void {
-    if (!this.dia) {
-      this.cargarAsignaciones();
-      return;
+
+  getDayInitial(dayKey: string): string {
+    switch (dayKey) {
+      case 'mon': return 'L';
+      case 'tue': return 'M';
+      case 'wed': return 'X';
+      case 'thu': return 'J';
+      case 'fri': return 'V';
+      case 'sat': return 'S';
+      case 'sun': return 'D';
+      default: return '';
     }
-    // dia formato YYYY-MM-DD
-    const parts = this.dia.split('-');
-    if (parts.length === 3) {
-      this.anio = Number(parts[0]);
-      this.mes = Number(parts[1]);
-    }
-    // sincronizar calendario con la fecha seleccionada
-    if (this.calendarios && this.calendarios.length) {
-      this.calendarios.forEach(c => {
-        c.weekStart = this.dia || '';
-        try { c.loadWeek(); } catch(e){}
-      });
-    }
-    this.cargarAsignaciones();
   }
 
+  getDayNumber(weekStart: string, dayKey: string): string {
+    if (!weekStart || !dayKey) return '';
+    const parts = weekStart.split('-').map(Number);
+    if (parts.length !== 3) return '';
+    const base = new Date(parts[0], parts[1] - 1, parts[2]);
+    for (let i = 0; i < 7; i += 1) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      const key = this.dayKeyFromDate(this.formatDateLocal(d));
+      if (key === dayKey) {
+        return String(d.getDate());
+      }
+    }
+    return '';
+  }
+  
   textoBotonAsignacion: string = 'Guardar';
 
   asignaciones: Asignacion[] = [];
@@ -353,6 +320,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     private personaService: PersonaService,
     private horarioService: HorarioService,
     private asignacionService: AsignacionService,
+    private asignacionCalendarioService: AsignacionCalendarioService,
     private http: HttpClient,
     private patronService: PatronAsignacionService,
     private dialog: MatDialog,
@@ -364,10 +332,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.cargarCatalogos();
     
     this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
-    this.cargarAsignaciones();
     // inicializar semanas para el mes actual para que el ngFor tenga datos
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
-      console.log('weeksForMonth initialized', this.mes, this.anio, this.weeksForMonth);
+    this.buildCalendarWeekDayKeys();
+    this.cargarAsignaciones();
 
     this.filterSub = this.globalFilter.state$.subscribe(state => {
       if (!this.router.url.startsWith('/dashboard/asignaciones')) return;
@@ -389,17 +357,17 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.mes = Number(parts[1]);
     this.dia = null;
     this.filtroTexto = '';
-    this.cargarAsignaciones();
     // sincronizar lista de semanas para el mes elegido
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
+    this.buildCalendarWeekDayKeys();
+    this.cargarAsignaciones();
+    this.loadCalendarWeeks();
   }
 
   //onFiltroChange se encarga de manejar el cambio en el filtro de texto, recargando las asignaciones para reflejar el nuevo filtro aplicado y actualizando los calendarios para mostrar la información filtrada correctamente
   onFiltroChange(): void {
     this.cargarAsignaciones();
-    if (this.calendarios && this.calendarios.length) {
-      this.calendarios.forEach(c => c.loadWeek());
-    }
+    this.loadCalendarWeeks();
   }
 
   // hideMultipleSelectionIndicator se utiliza para ocultar el indicador de selección múltiple en la vista, devolviendo siempre true para indicar que no se deben mostrar indicadores adicionales incluso si hay múltiples elementos seleccionados
@@ -458,6 +426,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     let count = 0;
     if (!this.columnaOculta('horario')) count += 1;
     if (!this.columnaOculta('codigo')) count += 1;
+    count += 1;
     if (!this.columnaOculta('cliente')) count += 1;
     if (this.mostrarPuesto()) count += 2;
     if (!this.columnaOculta('cedula')) count += 1;
@@ -488,6 +457,24 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       d.setDate(d.getDate() + 7);
     }
     return weeksLocal;
+  }
+
+  private buildCalendarWeekDayKeys(): void {
+    const map: Record<string, string[]> = {};
+    const dowMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    (this.weeksForMonth || []).forEach(ws => {
+      const parts = ws.split('-').map(Number);
+      if (parts.length !== 3) return;
+      const base = new Date(parts[0], parts[1] - 1, parts[2]);
+      const keys: string[] = [];
+      for (let i = 0; i < 7; i += 1) {
+        const d = new Date(base);
+        d.setDate(base.getDate() + i);
+        keys.push(dowMap[d.getDay()]);
+      }
+      map[ws] = keys;
+    });
+    this.calendarWeekDayKeys = map;
   }
 
   // cargarCatalogos se encarga de cargar los datos necesarios para los catálogos utilizados en el componente, realizando llamadas a los servicios correspondientes para obtener la información de clientes, personas, horarios e instalaciones, y manejando los errores que puedan ocurrir durante la carga de estos datos para asegurar que la vista tenga la información actualizada y disponible para su uso
@@ -548,8 +535,257 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         this.provinciasDisponibles = this.computeProvinciaOptions();
         this.buildDisplayRows();
         this.updateCalendarOrder();
+        this.loadCalendarWeeks();
       },
       error: err => console.error('Error al cargar asignaciones/sacafranco', err)
+    });
+  }
+
+  private loadCalendarWeeks(): void {
+    if (!this.weeksForMonth || !this.weeksForMonth.length) {
+      this.calendarData = {};
+      return;
+    }
+    const paramsBase: any = { auto_create: true };
+    if (this.filtroTexto && this.filtroTexto.trim()) {
+      paramsBase.q = this.filtroTexto.trim();
+    }
+    const requests = this.weeksForMonth.map(ws =>
+      forkJoin({
+        asignaciones: this.asignacionCalendarioService.obtenerAsignacionesCalendario({ ...paramsBase, week_start: ws }),
+        sacafranco: this.asignacionCalendarioService.obtenerSacafrancoFilaSemanal({ week_start: ws })
+      })
+    );
+    forkJoin(requests).subscribe({
+      next: results => {
+        const map: Record<string, Record<string, any>> = {};
+        results.forEach((res: any, idx: number) => {
+          const ws = this.weeksForMonth[idx];
+          const asigRows = Array.isArray(res?.asignaciones)
+            ? res.asignaciones
+            : (res?.asignaciones?.results || []);
+          const sacRows = Array.isArray(res?.sacafranco) ? res.sacafranco : [];
+          const weekMap: Record<string, any> = {};
+          asigRows.forEach((r: any) => {
+            const asigKey = String(r?.asignacion ?? r?.asignacion_id ?? '');
+            if (asigKey) weekMap[asigKey] = r;
+            const puestoKey = String(r?.puesto ?? r?.puesto_id ?? '');
+            if (puestoKey && !weekMap[puestoKey]) weekMap[puestoKey] = r;
+          });
+          sacRows.forEach((r: any) => {
+            const filaKey = r?.sacafranco_fila ?? r?.sacafranco_fila_id ?? r?.sacafrancoFila ?? null;
+            if (filaKey != null) {
+              weekMap[`sacafranco-${filaKey}`] = r;
+            }
+          });
+          map[ws] = weekMap;
+        });
+        this.calendarData = map;
+      },
+      error: () => {
+        this.calendarData = {};
+      }
+    });
+  }
+
+  private getCalendarRowKey(row: any): string | null {
+    if (!row) return null;
+    if (row.type === 'sacafranco') return `sacafranco-${row.id}`;
+    if (row.type !== 'asignacion') return null;
+    return String(row.asig?.id ?? row.asig?.puesto_detalle?.id ?? row.asig?.puesto ?? '');
+  }
+
+  getCalendarRow(row: any, weekStart: string): any {
+    if (!row || !weekStart) return null;
+    const key = this.getCalendarRowKey(row);
+    if (!key) return null;
+    if (!this.calendarData[weekStart]) this.calendarData[weekStart] = {};
+    const weekMap = this.calendarData[weekStart];
+    if (!weekMap[key]) {
+      weekMap[key] = { mon: '', tue: '', wed: '', thu: '', fri: '', sat: '', sun: '' };
+    }
+    return weekMap[key];
+  }
+
+  onCalendarCellChange(row: any, weekStart: string, dayKey: string, value: any): void {
+    if (!row || row.type !== 'asignacion') return;
+    const calRow = this.getCalendarRow(row, weekStart);
+    if (!calRow) return;
+    const v = value ? String(value).toUpperCase().slice(0, 4) : '';
+    calRow[dayKey] = v;
+    const asignacionId = row.asig?.id ?? null;
+    if (!asignacionId) return;
+    const payload: any = {
+      asignacion_id: asignacionId,
+      puesto: row.asig?.puesto ?? row.asig?.puesto_detalle?.id,
+      week_start: weekStart,
+      mon: calRow.mon || '',
+      tue: calRow.tue || '',
+      wed: calRow.wed || '',
+      thu: calRow.thu || '',
+      fri: calRow.fri || '',
+      sat: calRow.sat || '',
+      sun: calRow.sun || ''
+    };
+    this.asignacionCalendarioService.crearAsignacionCalendario(payload).subscribe({
+      next: () => {},
+      error: () => {}
+    });
+  }
+
+  onSacafrancoCalendarCellChange(row: any, weekStart: string, dayKey: string, value: any): void {
+    if (!row || row.type !== 'sacafranco') return;
+    const calRow = this.getCalendarRow(row, weekStart);
+    if (!calRow) return;
+    const v = value ? String(value).toUpperCase().slice(0, 5) : '';
+    calRow[dayKey] = v;
+    const payload: any = {
+      sacafranco_fila: row.id,
+      week_start: weekStart
+    };
+    payload[dayKey] = v;
+    this.asignacionCalendarioService.crearSacafrancoFilaSemanal(payload).subscribe({
+      next: () => {},
+      error: () => {}
+    });
+  }
+
+  openRangeModal(row: any, weekStart: string, dayKey: string, isSacafranco: boolean): void {
+    const clickedDate = this.getDateForDayKey(weekStart, dayKey);
+    if (!clickedDate) return;
+    const startDefault = this.formatDateLocal(clickedDate);
+    const endDefault = this.formatDateLocal(clickedDate);
+    const calRow = this.getCalendarRow(row, weekStart);
+    const ref = this.dialog.open(AsignacionCalendarioRangeModalComponent, {
+      width: '420px',
+      data: {
+        start: startDefault,
+        end: endDefault,
+        seq: '',
+        isSacafranco,
+        weekStart,
+        row: calRow
+      }
+    });
+
+    ref.afterClosed().subscribe((result?: AsignacionRangeModalResult) => {
+      if (!result) return;
+      const { start, end, seq } = result;
+      if (!start || !end || !seq) return;
+      const startDate = new Date(start + 'T00:00:00');
+      const endDate = new Date(end + 'T00:00:00');
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
+      const tokens = this.parseSequence(seq, isSacafranco);
+      if (!tokens.length) return;
+      const anchor = this.parseWeekStart(weekStart);
+      const rangeMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
+      this.applyRangeToBackend(row, rangeMap, isSacafranco);
+      this.applyRangeToCurrentWeek(row, weekStart, rangeMap);
+    });
+  }
+
+  private parseSequence(seq: string, isSacafranco: boolean): string[] {
+    const raw = (seq || '').trim().toUpperCase();
+    if (!raw) return [];
+    if (!isSacafranco) {
+      const letters = raw.match(/[FDN]/g) || [];
+      return letters;
+    }
+    const parts = raw.split(/[,\s]+/).filter(Boolean);
+    return parts.length ? parts : [raw];
+  }
+
+  private buildRangeMap(startDate: Date, endDate: Date, tokens: string[], anchorWeekStart?: Date | null): Record<string, Record<string, string>> {
+    const map: Record<string, Record<string, string>> = {};
+    let idx = 0;
+    const d = new Date(startDate);
+    const anchorStart = anchorWeekStart ? new Date(anchorWeekStart) : null;
+    const anchorEnd = anchorStart ? new Date(anchorStart) : null;
+    if (anchorEnd) anchorEnd.setDate(anchorEnd.getDate() + 6);
+    while (d <= endDate) {
+      const weekStart = (anchorStart && anchorEnd && d >= anchorStart && d <= anchorEnd)
+        ? anchorStart
+        : this.getWeekStartForDate(d);
+      const weekKey = this.formatDateLocal(weekStart);
+      const dayKey = this.dayKeyFromDate(this.formatDateLocal(d));
+      if (!map[weekKey]) map[weekKey] = {};
+      map[weekKey][dayKey] = tokens[idx % tokens.length];
+      idx += 1;
+      d.setDate(d.getDate() + 1);
+    }
+    return map;
+  }
+
+  private parseWeekStart(weekStartStr: string): Date | null {
+    if (!weekStartStr) return null;
+    const parts = weekStartStr.split('-').map(Number);
+    if (parts.length !== 3) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+
+  private getWeekStartForDate(d: Date): Date {
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const day = d.getDate();
+    const startDay = 1 + Math.floor((day - 1) / 7) * 7;
+    return new Date(y, m, startDay);
+  }
+
+  private getDateForDayKey(weekStartStr: string, dayKey: string): Date | null {
+    if (!weekStartStr || !dayKey) return null;
+    const parts = weekStartStr.split('-').map(Number);
+    if (parts.length !== 3) return null;
+    const base = new Date(parts[0], parts[1] - 1, parts[2]);
+    for (let i = 0; i < 7; i += 1) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      if (this.dayKeyFromDate(this.formatDateLocal(d)) === dayKey) return d;
+    }
+    return null;
+  }
+
+  private dayKeyFromDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length !== 3) return '';
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const map = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    return map[d.getDay()];
+  }
+
+  private applyRangeToBackend(row: any, rangeMap: Record<string, Record<string, string>>, isSacafranco: boolean): void {
+    const requests: any[] = [];
+    Object.keys(rangeMap).forEach(weekStart => {
+      const days = rangeMap[weekStart] || {};
+      if (!Object.keys(days).length) return;
+      if (isSacafranco) {
+        const filaId = row?.id;
+        if (!filaId) return;
+        const payload: any = { sacafranco_fila: filaId, week_start: weekStart };
+        Object.keys(days).forEach(k => payload[k] = days[k]);
+        requests.push(this.asignacionCalendarioService.crearSacafrancoFilaSemanal(payload));
+      } else {
+        const asignacionId = row?.asig?.id;
+        if (!asignacionId) return;
+        const payload: any = {
+          asignacion_id: asignacionId,
+          puesto: row.asig?.puesto ?? row.asig?.puesto_detalle?.id,
+          week_start: weekStart
+        };
+        Object.keys(days).forEach(k => payload[k] = days[k]);
+        requests.push(this.asignacionCalendarioService.crearAsignacionCalendario(payload));
+      }
+    });
+    if (!requests.length) return;
+    forkJoin(requests).subscribe({ next: () => {}, error: () => {} });
+  }
+
+  private applyRangeToCurrentWeek(row: any, weekStart: string, rangeMap: Record<string, Record<string, string>>): void {
+    const weekDays = rangeMap[weekStart] || {};
+    const calRow = this.getCalendarRow(row, weekStart);
+    if (!calRow) return;
+    Object.keys(weekDays).forEach(k => {
+      calRow[k] = weekDays[k];
     });
   }
 
@@ -959,16 +1195,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return map;
   }
 
-  //prevWeekAndPage se encarga de navegar a la semana anterior en el calendario y actualizar la vista para reflejar los cambios, iterando sobre los componentes de calendario disponibles y llamando a su método para cargar la semana anterior, lo que permite al usuario ver las asignaciones correspondientes a esa semana
-  prevWeekAndPage(): void {
-    if (this.calendarios) this.calendarios.forEach(c => { try { c.prevWeek(); } catch(e){} });
-  }
-
-  //nextWeekAndPage se encarga de navegar a la semana siguiente en el calendario y actualizar la vista para reflejar los cambios, iterando sobre los componentes de calendario disponibles y llamando a su método para cargar la semana siguiente, lo que permite al usuario ver las asignaciones correspondientes a esa semana
-  nextWeekAndPage(): void {
-    if (this.calendarios) this.calendarios.forEach(c => { try { c.nextWeek(); } catch(e){} });
-  }
-
   //abrirNuevoPatron se encarga de abrir un diálogo para crear un nuevo patrón de asignación, permitiendo al usuario ingresar la información necesaria para el patrón, y luego actualizando la vista con el nuevo patrón creado, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   abrirNuevoPatron(): void {
     const ref = this.dialog.open(PatronFormComponent, {
@@ -1112,7 +1338,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       ref.afterClosed().subscribe(result => {
         if (result?.action === 'assigned' || result?.action === 'unassigned') {
           this.cargarAsignaciones();
-          if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
+          this.loadCalendarWeeks();
         }
       });
     });
@@ -1276,7 +1502,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           Swal.fire({ icon: 'success', title: 'Asignación actualizada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
           this.resetAsignacionState();
-          if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
+          this.loadCalendarWeeks();
           this.isSaving = false;
         },
         error: err => {
@@ -1302,7 +1528,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           Swal.fire({ icon: 'success', title: 'Asignación creada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
           this.resetAsignacionState();
-          if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
+          this.loadCalendarWeeks();
           this.isSaving = false;
         },
         error: err => {
@@ -1363,7 +1589,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         next: () => {
           Swal.fire({ icon: 'success', title: 'Asignación eliminada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
-          if (this.calendarios) this.calendarios.forEach(c => c.loadWeek());
+          this.loadCalendarWeeks();
         },
         error: err => {
           console.error(err);

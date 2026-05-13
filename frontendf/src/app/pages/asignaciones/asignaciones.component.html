@@ -1,4 +1,4 @@
-<div class="container-fluid px-0 px-md-2">
+<div class="container-fluid  px-0 px-md-2">
   <h2 class="mb-2 mt-2 text-center">Gestión de Asignaciones</h2>
   <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-3">
     <div class="d-flex flex-wrap align-items-start gap-2 mt-2 abs">
@@ -57,8 +57,8 @@
       </div>
     </div>
   </div>-->
-  <div class="row asig-row g-0">
-    <div class="col-lg-auto pe-0">
+  <div class="row asig-row g-0" [ngClass]="{ 'justify-content-center': !displayRows.length }">
+    <div class="col-lg-auto pe-0" [ngClass]="{ 'mx-auto': !displayRows.length, 'w-100': !displayRows.length }">
       <div class="card asig-table-card">
         <div class="card-body table-responsive overflow-auto"> 
           <table class="table table-hover table-bordered mb-2 w-100">
@@ -99,6 +99,7 @@
                     <i class="bi" [ngClass]="columnaOculta('accion') ? 'bi-eye-slash' : 'bi-eye'"></i>
                   </button>
                 </th>
+                <th></th>
               </tr>
               <tr class="text-center align-middle m-0" style="max-height: 36px">
                 <th *ngIf="!columnaOculta('horario')" [attr.rowspan]="headerRowspan()">Horario</th>
@@ -108,6 +109,7 @@
                 <th *ngIf="!columnaOculta('cedula')" [attr.rowspan]="headerRowspan()">Cedula</th>
                 <th *ngIf="!columnaOculta('persona')" [attr.rowspan]="headerRowspan()">Persona</th>
                 <th *ngIf="!columnaOculta('accion')" [attr.rowspan]="headerRowspan()">Accion</th>
+                <th class="calendar-col" [attr.rowspan]="headerRowspan()">Calendario</th>
               </tr>
               <tr *ngIf="mostrarPuesto()">
                 <th >Nombre</th>
@@ -180,6 +182,33 @@
                       </button>
                     </div>
                   </td>
+                  <td class="calendar-cell calendar-col align-middle overflow-hidden" style="height: 70px;">
+                    <div class="calendar-weeks">
+                      <div class="calendar-week" *ngFor="let ws of weeksForMonth">
+                        <div class="calendar-week-label">{{ ws }}</div>
+                        <div class="calendar-week-days">
+                          <div class="calendar-day-label" *ngFor="let dayKey of (calendarWeekDayKeys[ws] || calendarDayKeys)">
+                            <div class="calendar-day-initial">{{ getDayInitial(dayKey) }}</div>
+                            <div class="calendar-day-num">{{ getDayNumber(ws, dayKey) }}</div>
+                          </div>
+                        </div>
+                        <div class="calendar-week-grid">
+                          <ng-container *ngIf="getCalendarRow(row, ws) as calRow">
+                            <div class="calendar-day" *ngFor="let dayKey of (calendarWeekDayKeys[ws] || calendarDayKeys)">
+                              <input
+                                type="text"
+                                maxlength="4"
+                                class="calendar-input"
+                                [(ngModel)]="calRow[dayKey]"
+                                (input)="onCalendarCellChange(row, ws, dayKey, $any($event.target).value)"
+                                (dblclick)="openRangeModal(row, ws, dayKey, false)"
+                                [ngModelOptions]="{standalone:true}">
+                            </div>
+                          </ng-container>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
                 </tr>
                 <tr
                   *ngIf="row.type === 'sacafranco' && !columnaOculta('sacafranco')"
@@ -219,36 +248,37 @@
                       </button>
                     </div>
                   </td>
+                  <td class="calendar-cell calendar-col align-middle bg-warning-subtle">
+                    <div class="calendar-weeks">
+                      <div class="calendar-week" *ngFor="let ws of weeksForMonth">
+                        <div class="calendar-week-label">{{ ws }}</div>
+                        <div class="calendar-week-days">
+                          <div class="calendar-day-label" *ngFor="let dayKey of (calendarWeekDayKeys[ws] || calendarDayKeys)">
+                            <div class="calendar-day-initial">{{ getDayInitial(dayKey) }}</div>
+                            <div class="calendar-day-num">{{ getDayNumber(ws, dayKey) }}</div>
+                          </div>
+                        </div>
+                        <div class="calendar-week-grid">
+                          <ng-container *ngIf="getCalendarRow(row, ws) as calRow">
+                            <div class="calendar-day" *ngFor="let dayKey of (calendarWeekDayKeys[ws] || calendarDayKeys)">
+                              <input
+                                type="text"
+                                maxlength="5"
+                                class="calendar-input"
+                                [(ngModel)]="calRow[dayKey]"
+                                (input)="onSacafrancoCalendarCellChange(row, ws, dayKey, $any($event.target).value)"
+                                (dblclick)="openRangeModal(row, ws, dayKey, true)"
+                                [ngModelOptions]="{standalone:true}">
+                            </div>
+                          </ng-container>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
                 </tr>
               </ng-container>
             </tbody>
           </table>
-        </div>
-      </div>
-    </div>
-    <div class="col ps-1">      
-      <div class="card">
-        <div class="card-body ">
-          <div class="vertical-scroll-calendars">
-            <ng-container *ngIf="weeksForMonth && weeksForMonth.length; else noWeeks">
-              <ng-container *ngFor="let ws of weeksForMonth">
-                <div class="week-card ">
-                  <app-asignacion-calendario
-                    [weekStart]="ws"
-                    [filterText]="filtroTexto"
-                    [sacafrancoRows]="sacafrancoRows"
-                    [rowOrder]="calendarRowOrder"
-                    [showProvinciaSpacer]="!columnaOculta('horario')"
-                    (sacafrancoClick)="openSacafrancosModal($event.weekStart, $event.day, $event.puestoId, $event.manage)"
-                    (rangeApplied)="onRangeApplied()"></app-asignacion-calendario>
-                  <!--<div class="text-center"><strong>Semana: {{ ws }}</strong></div>-->
-                </div>
-              </ng-container>
-            </ng-container>
-            <ng-template #noWeeks>
-              <div class="p-3 text-center text-muted">No se encontraron semanas para el mes seleccionado.</div>
-            </ng-template>
-          </div>
         </div>
       </div>
     </div>
