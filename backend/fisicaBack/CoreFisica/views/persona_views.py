@@ -490,7 +490,7 @@ def importar_personas(request):
 
     # El parámetro dry_run permite validar el archivo sin realizar cambios en la base de datos. Si dry_run es true, se procesará el archivo y se devolverá un resumen de validación sin crear ni actualizar registros. Esto es útil para verificar que el formato y los datos del archivo son correctos antes de hacer la importación real.
     dry_run = str(request.GET.get('dry_run', 'false')).lower() in ['1', 'true', 'yes']
-    fullname_headers = ['APELLIDOS Y NOMBRES', 'APELLIDOS Y NOMBRE', 'NOMBRES Y APELLIDOS']
+    fullname_headers = ['APELLIDOS Y NOMBRES', 'APELLIDOS Y NOMBRE', 'NOMBRES Y APELLIDOS', 'APELLIDOS/NOMBRES']
     allowed_tipos = {choice[0] for choice in Persona.TIPO_CHOICES}
 
     # Función para normalizar encabezados, convirtiendo a mayúsculas, quitando espacios y acentos para facilitar la detección de columnas relevantes sin importar variaciones comunes en los nombres de las columnas.
@@ -507,7 +507,13 @@ def importar_personas(request):
     def normalize_cedula(value):
         if value is None:
             return ''
+        if isinstance(value, (int, float)):
+            if isinstance(value, float) and not value.is_integer():
+                return None
+            value = int(value)
         raw = str(value).strip()
+        if re.match(r'^\d+\.0+$', raw):
+            raw = raw.split('.', 1)[0]
         compact = re.sub(r'[\s\-]', '', raw)
         if not compact:
             return ''
@@ -638,6 +644,7 @@ def importar_personas(request):
         if not tipo:
             tipo = None
         is_active = parse_bool(raw.get('IS_ACTIVE'))
+        provincia_token = raw.get('PROVINCIA')
 
         # obtener apellidos/nombres, permitiendo columna combinada
         apellidos = str(raw.get('APELLIDOS') or '').strip()
@@ -684,6 +691,7 @@ def importar_personas(request):
             'nombres': nombres,
             'tipo': tipo or None,
             'is_active': bool(is_active),
+            'provincia': provincia_token,
         })
     # Se construye un resumen del proceso de validación, incluyendo el total de filas procesadas, cuántas son válidas, cuántas se crearían o actualizarían (inicialmente 0 en este caso) y los errores encontrados. Este resumen se devuelve al cliente para proporcionar retroalimentación sobre el resultado de la validación, especialmente útil cuando se utiliza el modo dry_run para verificar el archivo sin realizar cambios en la base de datos.
     resumen = {
@@ -691,6 +699,7 @@ def importar_personas(request):
         'filas_validas': len(filas_limpias),
         'creadas': 0,
         'actualizadas': 0,
+        'omitidas': 0,
         'errores': errores,
     }
 
@@ -717,21 +726,23 @@ def importar_personas(request):
                 norm = normalize_cedula(p.cedula)
                 if norm:
                     existentes[norm] = p
-            procesadas = set(existentes.keys())
+            procesadas = set()
 
             for fila in filas_limpias:
                 cedula = fila['cedula']
                 if cedula in procesadas:
                     # Evitar duplicados en el mismo archivo y existentes en BD.
                     continue
-                Persona.objects.create(
-                    nombres=fila['nombres'],
-                    apellidos=fila['apellidos'],
-                    cedula=cedula,
-                    tipo=fila['tipo'],
-                    is_active=fila['is_active'],
-                )
-                resumen['creadas'] += 1
+                persona = existentes.get(cedula)
+                if not persona:
+                    resumen['omitidas'] += 1
+                    procesadas.add(cedula)
+                    continue
+                provincia_id = _resolve_provincia_id(fila.get('provincia'))
+                if provincia_id and persona.provincia_id != provincia_id:
+                    persona.provincia_id = provincia_id
+                    persona.save(update_fields=['provincia'])
+                    resumen['actualizadas'] += 1
                 procesadas.add(cedula)
         resumen['mensaje'] = 'Importación completada'
         return JsonResponse(resumen, status=200)
