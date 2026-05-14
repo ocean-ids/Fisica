@@ -64,9 +64,14 @@ def listar_asignacion_semanal(request):
     cliente_id = request.GET.get('cliente')
     turno = request.GET.get('turno')
     q = (request.GET.get('q') or '').strip()
-    auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
+    lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
+    auto_create = str(request.GET.get('auto_create', 'false')).lower() in ['true', '1', 'yes']
 
-    qs = AsignacionSemanal.objects.select_related('puesto', 'asignacion__persona').all()
+    qs = AsignacionSemanal.objects.select_related(
+        'puesto',
+        'puesto__zona',
+        'asignacion__persona'
+    ).prefetch_related('puesto__horarios')
     if week_start:
         try:
             ws = datetime.fromisoformat(week_start).date()
@@ -254,15 +259,12 @@ def listar_asignacion_semanal(request):
                             # Intentar obtener/crear por puesto+week_start (único). Si ya existe pero no tiene
                             # asignacion vinculada, ligar la asignación; si existe y ya tiene asignacion, no crear duplicado.
                             try:
-                                print(f"DEBUG: asegurando AsignacionSemanal para asignacion={getattr(asign,'id',None)} puesto={pid} week_start={ws} defaults={defaults}")
                                 obj, created = AsignacionSemanal.objects.get_or_create(
                                     asignacion_id=asign.id,
                                     week_start=ws,
                                     defaults={**defaults, 'asignacion': asign, 'puesto_id': pid}
                                 )
-                                if created:
-                                    print(f"DEBUG: creada AsignacionSemanal id={obj.id} for puesto={pid} week_start={ws} asignacion={getattr(asign,'id',None)}")
-                                else:
+                                if not created:
                                     changed = False
                                     # solo enlazar asignación si no hay una ya ligada (no pisar sacafranco u otras)
                                     if getattr(obj, 'asignacion_id', None) is None:
@@ -280,7 +282,6 @@ def listar_asignacion_semanal(request):
                                             changed = True
                                     if changed:
                                         obj.save()
-                                    print(f"DEBUG: AsignacionSemanal conservada id={obj.id} puesto={pid} week_start={ws} asignacion={getattr(obj,'asignacion_id',None)}")
                             except Exception as e:
                                 # imprimir el error y continuar
                                 print(f"⚠️ Error creando/actualizando AsignacionSemanal (puesto {pid}, week_start {ws}): {e}")
@@ -329,8 +330,17 @@ def listar_asignacion_semanal(request):
     if turno in ['Diurno', 'Nocturno']:
         qs = qs.filter(puesto__horarios__turno=turno).distinct()
     #serializa y devuelve los resultados, si se proporciono week_start, aplicar overlay de coberturas sacafranco para marcar días con cobertura aunque no tengan asignación activa.
-    serializer = AsignacionSemanalSerializer(qs, many=True)
-    rows = list(serializer.data)
+    if lite:
+        rows = list(qs.values(
+            'id',
+            'asignacion_id',
+            'puesto_id',
+            'week_start',
+            'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'
+        ))
+    else:
+        serializer = AsignacionSemanalSerializer(qs, many=True)
+        rows = list(serializer.data)
     if week_start:
         rows = _overlay_coberturas_sacafranco(rows, ws)
     return Response(rows)

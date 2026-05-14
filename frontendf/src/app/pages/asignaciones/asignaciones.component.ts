@@ -546,16 +546,20 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.calendarData = {};
       return;
     }
-    const paramsBase: any = { auto_create: true };
+    const paramsBase: any = {};
     if (this.filtroTexto && this.filtroTexto.trim()) {
       paramsBase.q = this.filtroTexto.trim();
     }
-    const requests = this.weeksForMonth.map(ws =>
-      forkJoin({
-        asignaciones: this.asignacionCalendarioService.obtenerAsignacionesCalendario({ ...paramsBase, week_start: ws }),
-        sacafranco: this.asignacionCalendarioService.obtenerSacafrancoFilaSemanal({ week_start: ws })
-      })
-    );
+    const hasSacafranco = (this.sacafrancoRows || []).length > 0;
+    const requests = this.weeksForMonth.map(ws => {
+      const reqs: any = {
+        asignaciones: this.asignacionCalendarioService.obtenerAsignacionesCalendario({ ...paramsBase, week_start: ws, lite: true })
+      };
+      if (hasSacafranco) {
+        reqs.sacafranco = this.asignacionCalendarioService.obtenerSacafrancoFilaSemanal({ week_start: ws });
+      }
+      return forkJoin(reqs);
+    });
     forkJoin(requests).subscribe({
       next: results => {
         const map: Record<string, Record<string, any>> = {};
