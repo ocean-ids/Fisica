@@ -645,6 +645,7 @@ def importar_personas(request):
             tipo = None
         is_active = parse_bool(raw.get('IS_ACTIVE'))
         provincia_token = raw.get('PROVINCIA')
+        canton_token = raw.get('CANTON')
 
         # obtener apellidos/nombres, permitiendo columna combinada
         apellidos = str(raw.get('APELLIDOS') or '').strip()
@@ -692,6 +693,7 @@ def importar_personas(request):
             'tipo': tipo or None,
             'is_active': bool(is_active),
             'provincia': provincia_token,
+            'canton': canton_token,
         })
     # Se construye un resumen del proceso de validación, incluyendo el total de filas procesadas, cuántas son válidas, cuántas se crearían o actualizarían (inicialmente 0 en este caso) y los errores encontrados. Este resumen se devuelve al cliente para proporcionar retroalimentación sobre el resultado de la validación, especialmente útil cuando se utiliza el modo dry_run para verificar el archivo sin realizar cambios en la base de datos.
     resumen = {
@@ -739,9 +741,16 @@ def importar_personas(request):
                     procesadas.add(cedula)
                     continue
                 provincia_id = _resolve_provincia_id(fila.get('provincia'))
+                canton_id = _resolve_canton_id(fila.get('canton'), provincia_id)
+                update_fields = []
                 if provincia_id and persona.provincia_id != provincia_id:
                     persona.provincia_id = provincia_id
-                    persona.save(update_fields=['provincia'])
+                    update_fields.append('provincia')
+                if canton_id and persona.canton_id != canton_id:
+                    persona.canton_id = canton_id
+                    update_fields.append('canton')
+                if update_fields:
+                    persona.save(update_fields=update_fields)
                     resumen['actualizadas'] += 1
                 procesadas.add(cedula)
         resumen['mensaje'] = 'Importación completada'
