@@ -246,6 +246,10 @@ table.table {
   height: 32px;
 }
 
+.provincia-label {
+  cursor: pointer;
+}
+
 :host-context(body.theme-dark) .provincia-row td {
   background-color: #1f2937;
   color: #ffffff;

@@ -258,9 +258,14 @@ def obtener_asignaciones(request, mes=None, anio=None):
     instalacion_id = request.GET.get('instalacion_id')
     #cliente_id se puede recibir como query param o como parte de la ruta (en este caso se prioriza el query param para mantener consistencia con otros filtros)
     cliente_id = request.GET.get('cliente_id')
+    provincia_id = request.GET.get('provincia_id')
     #q es un texto libre q se busca
     q = (request.GET.get('q') or '').strip()
     # si se proporcionan mes y año, filtrar asignaciones activas que correspondan al mes/año o que sean recurrentes y tengan rango de fechas que incluya el mes/año. Si no se proporcionan mes/año, devolver todas las asignaciones activas. En ambos casos, excluir personas de tipo SACAFRANCO y ordenar por orden y id para mantener un orden consistente.   
+    base_qs = Asignacion.objects.filter(
+        estado='ACTIVO'
+    ).exclude(persona__tipo='SACAFRANCO')
+
     if mes and anio:
         month_start = datetime.date(int(anio), int(mes), 1)
         if int(mes) == 12:
@@ -268,29 +273,38 @@ def obtener_asignaciones(request, mes=None, anio=None):
         else:
             month_end = datetime.date(int(anio), int(mes) + 1, 1) - datetime.timedelta(days=1)
 
-        asignaciones = Asignacion.objects.filter(
-            estado='ACTIVO'
-        ).exclude(persona__tipo='SACAFRANCO').filter(
+        base_qs = base_qs.filter(
             Q(mes=mes, anio=anio) |
             (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
-        ).select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').order_by(
-            Coalesce('instalacion__canton__provincia_id', Value(999999)),
-            'orden',
-            'id'
         )
-    else:
-        asignaciones = Asignacion.objects.filter(
-            estado='ACTIVO'
-        ).exclude(persona__tipo='SACAFRANCO').select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').order_by(
-            Coalesce('instalacion__canton__provincia_id', Value(999999)),
-            'orden',
-            'id'
-        )
+
+    asignaciones = base_qs.select_related(
+        'persona',
+        'cliente',
+        'instalacion',
+        'instalacion__canton',
+        'instalacion__canton__provincia',
+        'puesto',
+        'puesto__zona',
+        'horario'
+    ).prefetch_related(
+        'puesto__horarios'
+    ).order_by(
+        Coalesce('instalacion__canton__provincia_id', Value(999999)),
+        'orden',
+        'id'
+    )
     # si se proporciona cliente_id, filtrar por cliente_id despues de filtrar por mes/año para optimizar la consulta y evitar crear filas semanales innecesarias para clientes no relacionados. Si se proporciona instalacion_id, filtrar por instalacion_id después de filtrar por mes/año para optimizar la consulta y evitar crear filas semanales innecesarias para instalaciones no relacionadas. Si se proporciona un término de búsqueda q, aplicarlo a campos relevantes de asignación, persona y puesto para facilitar búsqueda rápida. Esto se hace después de filtrar por mes/año para optimizar la consulta y evitar aplicar filtros de texto a asignaciones que no corresponden al periodo seleccionado.
     if cliente_id:
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
     if instalacion_id:
         asignaciones = asignaciones.filter(instalacion_id=instalacion_id)
+    if provincia_id:
+        try:
+            provincia_val = int(provincia_id)
+            asignaciones = asignaciones.filter(instalacion__canton__provincia_id=provincia_val)
+        except (TypeError, ValueError):
+            return Response({'error': 'Provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
     if q:
         filtros = (
             Q(cliente__nombre_comercial__icontains=q) |
@@ -304,6 +318,95 @@ def obtener_asignaciones(request, mes=None, anio=None):
             filtros = filtros | Q(semanales__id=int(q))
         asignaciones = asignaciones.filter(filtros).distinct()
     
+    provincia_page = request.GET.get('provincia_page')
+    if provincia_page:
+        try:
+            prov_page = int(provincia_page)
+            if prov_page < 1:
+                raise ValueError
+        except ValueError:
+            return Response({'error': 'Pagina de provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
+
+        provincia_ids = list(
+            asignaciones
+            .order_by('instalacion__canton__provincia_id')
+            .values_list('instalacion__canton__provincia_id', flat=True)
+            .distinct()
+        )
+        sac_qs = SacafrancoFila.objects.all()
+        if mes and anio:
+            try:
+                mes_val = int(mes)
+                anio_val = int(anio)
+                sac_qs = sac_qs.filter(Q(anio__lt=anio_val) | Q(anio=anio_val, mes__lte=mes_val))
+            except (TypeError, ValueError):
+                pass
+        provincia_ids += list(
+            sac_qs.order_by('provincia_id').values_list('provincia_id', flat=True).distinct()
+        )
+        provincia_ids += list(
+            sac_qs.order_by('persona__provincia_id').values_list('persona__provincia_id', flat=True).distinct()
+        )
+
+        seen = set()
+        ordered: list = []
+        for pid in provincia_ids:
+            if pid in seen:
+                continue
+            seen.add(pid)
+            ordered.append(pid)
+        ordered.sort(key=lambda v: (v is None, v if v is not None else 999999))
+
+        total_provincias = len(ordered)
+        if total_provincias == 0:
+            serializer = AsignacionSerializer(asignaciones.none(), many=True)
+            return Response({
+                'results': serializer.data,
+                'provincia_page': 1,
+                'provincia_total': 0,
+                'provincia_id': None
+            })
+
+        if prov_page > total_provincias:
+            prov_page = total_provincias
+        provincia_id = ordered[prov_page - 1]
+
+        if provincia_id is None:
+            asignaciones = asignaciones.filter(instalacion__canton__provincia_id__isnull=True)
+        else:
+            asignaciones = asignaciones.filter(instalacion__canton__provincia_id=provincia_id)
+
+        serializer = AsignacionSerializer(asignaciones, many=True)
+        return Response({
+            'results': serializer.data,
+            'provincia_page': prov_page,
+            'provincia_total': total_provincias,
+            'provincia_id': provincia_id
+        })
+
+    page_param = request.GET.get('page')
+    size_param = request.GET.get('size')
+    if page_param is not None or size_param is not None:
+        try:
+            page = int(page_param or 1)
+            size = int(size_param or 100)
+            if page < 1 or size < 1:
+                raise ValueError
+        except ValueError:
+            return Response({'error': 'Parametros de paginacion invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+        total = asignaciones.count()
+        start = (page - 1) * size
+        end = start + size
+        asignaciones = asignaciones[start:end]
+        serializer = AsignacionSerializer(asignaciones, many=True)
+        return Response({
+            'total': total,
+            'page': page,
+            'size': size,
+            'results': serializer.data
+        })
+
     serializer = AsignacionSerializer(asignaciones, many=True)
     return Response(serializer.data)
 
@@ -1076,6 +1179,7 @@ def sacafranco_filas(request):
         # Obtener mes y año desde los parámetros de la solicitud
         mes = request.GET.get('mes')
         anio = request.GET.get('anio')
+        provincia_id = request.GET.get('provincia_id')
         # se obtiene las filas de sacafranco
         qs = SacafrancoFila.objects.all()
         if mes and anio:
@@ -1086,7 +1190,37 @@ def sacafranco_filas(request):
                 # Mostrar todas las filas del mes (no filtrar por semanales).
             except (TypeError, ValueError):
                 pass
+        if provincia_id:
+            try:
+                provincia_val = int(provincia_id)
+            except (TypeError, ValueError):
+                return Response({'error': 'Provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
+            qs = qs.filter(Q(provincia_id=provincia_val) | Q(persona__provincia_id=provincia_val))
         qs = qs.order_by(Coalesce('provincia_id', Value(999999)), 'orden', 'id')
+
+        page_param = request.GET.get('page')
+        size_param = request.GET.get('size')
+        if page_param is not None or size_param is not None:
+            try:
+                page = int(page_param or 1)
+                size = int(size_param or 100)
+                if page < 1 or size < 1:
+                    raise ValueError
+            except ValueError:
+                return Response({'error': 'Parametros de paginacion invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+            total = qs.count()
+            start = (page - 1) * size
+            end = start + size
+            qs = qs[start:end]
+            serializer = SacafrancoFilaSerializer(qs, many=True)
+            return Response({
+                'total': total,
+                'page': page,
+                'size': size,
+                'results': serializer.data
+            })
+
         serializer = SacafrancoFilaSerializer(qs, many=True)
         return Response(serializer.data)
 

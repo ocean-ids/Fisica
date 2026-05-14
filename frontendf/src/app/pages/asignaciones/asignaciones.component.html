@@ -57,6 +57,15 @@
       </div>
     </div>
   </div>-->
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+    <div class="text-muted" *ngIf="getTotalPages()">
+      Provincia {{ provinciaPage }} de {{ getTotalPages() }}
+    </div>
+    <div class="btn-group" role="group" aria-label="Pagination">
+      <button class="btn btn-outline-secondary btn-sm" (click)="prevPage()" [disabled]="provinciaPage <= 1">&#x2039;</button>
+      <button class="btn btn-outline-secondary btn-sm" (click)="nextPage()" [disabled]="provinciaPage >= getTotalPages()">&#x203A;</button>
+    </div>
+  </div>
   <div class="row asig-row g-0" [ngClass]="{ 'justify-content-center': !displayRows.length }">
     <div class="col-lg-auto pe-0" [ngClass]="{ 'mx-auto': !displayRows.length, 'w-100': !displayRows.length }">
       <div class="card asig-table-card">
@@ -119,7 +128,11 @@
             <tbody cdkDropList [cdkDropListData]="displayRows" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropAsignaciones($event)">
               <ng-container *ngFor="let row of displayRows; trackBy: trackByDisplayRow">
                 <tr *ngIf="row.type === 'provincia' && !columnaOculta('horario')" class="provincia-row">
-                  <td [attr.colspan]="totalColumns()">{{ row.label }}</td>
+                  <td [attr.colspan]="totalColumns()">
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                      <span class="provincia-label">{{ row.label }}</span>
+                    </div>
+                  </td>
                 </tr>
                 <tr 
                   *ngIf="row.type === 'asignacion' && row.asig.persona_detalle?.is_active !== false"

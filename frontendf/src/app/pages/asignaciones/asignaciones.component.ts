@@ -307,6 +307,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   filtroTexto: string = '';
   private filterSub?: Subscription;
   columnasOcultas: string[] = [];
+  provinciaPage = 1;
+  provinciaTotal = 0;
+  activeProvinciaId: number | null = null;
 
   clientes: Cliente[] = [];
   personas: Persona[] = [];
@@ -366,6 +369,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.mes = Number(parts[1]);
     this.dia = null;
     this.filtroTexto = '';
+    this.provinciaPage = 1;
+    this.activeProvinciaId = null;
     // sincronizar lista de semanas para el mes elegido
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
     this.buildCalendarWeekDayKeys();
@@ -375,8 +380,41 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   //onFiltroChange se encarga de manejar el cambio en el filtro de texto, recargando las asignaciones para reflejar el nuevo filtro aplicado y actualizando los calendarios para mostrar la información filtrada correctamente
   onFiltroChange(): void {
+    this.provinciaPage = 1;
+    this.activeProvinciaId = null;
     this.cargarAsignaciones();
     this.loadCalendarWeeks();
+  }
+
+  setProvinciaFilter(key: string, label?: string): void {
+    const id = this.getProvinciaIdFromKey(key, label);
+    if (id == null) return;
+    this.activeProvinciaId = id;
+    this.provinciaPage = 1;
+    this.cargarAsignaciones();
+  }
+
+  clearProvinciaFilter(): void {
+    if (this.activeProvinciaId == null) return;
+    this.activeProvinciaId = null;
+    this.provinciaPage = 1;
+    this.cargarAsignaciones();
+  }
+
+  getTotalPages(): number {
+    return this.provinciaTotal || 1;
+  }
+
+  prevPage(): void {
+    if (this.provinciaPage <= 1) return;
+    this.provinciaPage -= 1;
+    this.cargarAsignaciones();
+  }
+
+  nextPage(): void {
+    if (this.provinciaPage >= this.getTotalPages()) return;
+    this.provinciaPage += 1;
+    this.cargarAsignaciones();
   }
 
   // hideMultipleSelectionIndicator se utiliza para ocultar el indicador de selección múltiple en la vista, devolviendo siempre true para indicar que no se deben mostrar indicadores adicionales incluso si hay múltiples elementos seleccionados
@@ -515,18 +553,29 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     if (this.filtroTexto && this.filtroTexto.trim()) {
       params.q = this.filtroTexto.trim();
     }
+    params.provincia_page = this.provinciaPage;
 
     const asignaciones$ = this.asignacionService
-      .obtenerAsignaciones(this.mes, this.anio, params)
+      .obtenerAsignacionesPaginadas(this.mes, this.anio, params)
       .pipe(
         catchError(err => {
           console.error('Error al cargar asignaciones', err);
-          return of([] as Asignacion[]);
+          return of({
+            results: [] as Asignacion[],
+            total: 0,
+            page: 1,
+            size: 0,
+            provinciaTotal: 0,
+            provinciaPage: this.provinciaPage,
+            provinciaId: this.activeProvinciaId
+          });
         })
       );
 
     const sacafranco$ = this.asignacionService
-      .obtenerSacafrancoFilas(this.mes, this.anio)
+      .obtenerSacafrancoFilas(this.mes, this.anio, {
+        ...(this.activeProvinciaId != null ? { provincia_id: this.activeProvinciaId } : {})
+      })
       .pipe(
         catchError(err => {
           console.error('Error al cargar filas sacafranco', err);
@@ -539,7 +588,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       sacafranco: sacafranco$
     }).subscribe({
       next: ({ asignaciones, sacafranco }) => {
-        this.asignaciones = asignaciones || [];
+        this.asignaciones = asignaciones?.results || [];
+        this.provinciaTotal = asignaciones?.provinciaTotal ?? this.provinciaTotal;
+        this.provinciaPage = asignaciones?.provinciaPage ?? this.provinciaPage;
+        this.activeProvinciaId = asignaciones?.provinciaId ?? this.activeProvinciaId;
         this.sacafrancoRows = sacafranco || [];
         this.provinciasDisponibles = this.computeProvinciaOptions();
         this.buildDisplayRows();
@@ -1200,6 +1252,20 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       if (map[label] == null) map[label] = id;
     });
     return map;
+  }
+
+  private getProvinciaIdFromKey(key: string, label?: string): number | null {
+    if (!key) return null;
+    if (key.startsWith('provincia-')) {
+      const raw = key.replace('provincia-', '').trim();
+      const id = Number(raw);
+      return Number.isFinite(id) ? id : null;
+    }
+    const map = this.getProvinciaIdMap();
+    const labelKey = (label || '').trim();
+    if (labelKey && map[labelKey] != null) return map[labelKey];
+    const fallback = key.replace('provincia-label-', '').trim();
+    return map[fallback] ?? null;
   }
 
   //abrirNuevoPatron se encarga de abrir un diálogo para crear un nuevo patrón de asignación, permitiendo al usuario ingresar la información necesaria para el patrón, y luego actualizando la vista con el nuevo patrón creado, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
