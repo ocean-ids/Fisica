@@ -235,6 +235,10 @@ table.table {
   outline: none;
 }
 
+.calendar-input.cell-franco {
+  background: #cfe8ff;
+}
+
 .provincia-row td {
   font-weight: 600;
   text-align: left;
