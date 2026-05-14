@@ -13,6 +13,10 @@ export class AsignacionCalendarioService {
     return this.apiService.get<any>('/asignacion-semanal/', params);
   }
 
+  obtenerAsignacionesCalendarioMes(mes: number, anio: number, params?: any): Observable<any>{
+    return this.apiService.get<any>('/asignacion-semanal/mes/', { mes, anio, ...(params || {}) });
+  }
+
   obtenerSemanas(mes: number, anio: number): Observable<any>{
     return this.apiService.get<any>('/semanas/', { mes, anio });
   }

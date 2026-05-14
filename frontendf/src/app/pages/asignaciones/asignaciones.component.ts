@@ -551,24 +551,18 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       paramsBase.q = this.filtroTexto.trim();
     }
     const hasSacafranco = (this.sacafrancoRows || []).length > 0;
-    const requests = this.weeksForMonth.map(ws => {
-      const reqs: any = {
-        asignaciones: this.asignacionCalendarioService.obtenerAsignacionesCalendario({ ...paramsBase, week_start: ws, lite: true })
-      };
-      if (hasSacafranco) {
-        reqs.sacafranco = this.asignacionCalendarioService.obtenerSacafrancoFilaSemanal({ week_start: ws });
-      }
-      return forkJoin(reqs);
-    });
-    forkJoin(requests).subscribe({
-      next: results => {
+    this.asignacionCalendarioService.obtenerAsignacionesCalendarioMes(
+      this.mes,
+      this.anio,
+      { ...paramsBase, lite: true, include_sacafranco: hasSacafranco }
+    ).subscribe({
+      next: res => {
+        const weeksMap = res?.weeks || {};
         const map: Record<string, Record<string, any>> = {};
-        results.forEach((res: any, idx: number) => {
-          const ws = this.weeksForMonth[idx];
-          const asigRows = Array.isArray(res?.asignaciones)
-            ? res.asignaciones
-            : (res?.asignaciones?.results || []);
-          const sacRows = Array.isArray(res?.sacafranco) ? res.sacafranco : [];
+        this.weeksForMonth.forEach(ws => {
+          const bucket = weeksMap[ws] || {};
+          const asigRows = Array.isArray(bucket?.asignaciones) ? bucket.asignaciones : [];
+          const sacRows = Array.isArray(bucket?.sacafranco) ? bucket.sacafranco : [];
           const weekMap: Record<string, any> = {};
           asigRows.forEach((r: any) => {
             const asigKey = String(r?.asignacion ?? r?.asignacion_id ?? '');

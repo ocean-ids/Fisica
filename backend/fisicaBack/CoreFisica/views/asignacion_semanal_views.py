@@ -345,6 +345,133 @@ def listar_asignacion_semanal(request):
         rows = _overlay_coberturas_sacafranco(rows, ws)
     return Response(rows)
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def listar_asignacion_semanal_mes(request):
+    """Listar asignaciones semanales para todo un mes en una sola respuesta."""
+    if not request.user.has_perm('CoreFisica.view_asignacionsemanal'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    mes = request.GET.get('mes')
+    anio = request.GET.get('anio')
+    cliente_id = request.GET.get('cliente')
+    turno = request.GET.get('turno')
+    q = (request.GET.get('q') or '').strip()
+    lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
+    include_sacafranco = str(request.GET.get('include_sacafranco', 'true')).lower() in ['true', '1', 'yes']
+
+    if not mes or not anio:
+        return Response({'error': 'mes y año invalidos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        mes = int(mes)
+        anio = int(anio)
+        if not (1 <= mes <= 12):
+            raise ValueError
+    except ValueError:
+        return Response({'error': 'mes o anio inválidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    first_day = date(anio, mes, 1)
+    last_day = date(anio, mes + 1, 1) - timedelta(days=1) if mes < 12 else date(anio, 12, 31)
+
+    weeks = []
+    current = first_day
+    while current.month == mes:
+        weeks.append(current)
+        current += timedelta(days=7)
+
+    qs = AsignacionSemanal.objects.select_related(
+        'puesto',
+        'puesto__zona',
+        'asignacion__persona'
+    ).prefetch_related('puesto__horarios')
+    qs = qs.filter(week_start__in=weeks)
+    if cliente_id:
+        qs = qs.filter(puesto__instalacion__cliente_id=cliente_id)
+    if q:
+        filtros = (
+            Q(asignacion__cliente__nombre_comercial__icontains=q) |
+            Q(asignacion__cliente__razon_social__icontains=q) |
+            Q(asignacion__persona__cedula__icontains=q) |
+            Q(asignacion__persona__nombres__icontains=q) |
+            Q(asignacion__persona__apellidos__icontains=q) |
+            Q(puesto__nombre__icontains=q)
+        )
+        if q.isdigit():
+            filtros = filtros | Q(id=int(q)) | Q(asignacion_id=int(q))
+        qs = qs.filter(filtros).distinct()
+    if turno in ['Diurno', 'Nocturno']:
+        qs = qs.filter(puesto__horarios__turno=turno).distinct()
+    qs = qs.order_by('asignacion_id', 'week_start')
+
+    if lite:
+        rows = list(qs.values(
+            'id',
+            'asignacion',
+            'puesto',
+            'week_start',
+            'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'
+        ))
+    else:
+        serializer = AsignacionSemanalSerializer(qs, many=True)
+        rows = list(serializer.data)
+
+    active_ids_by_week = {}
+    try:
+        from ..models import Asignacion
+        assigns = list(
+            Asignacion.objects.filter(estado='ACTIVO')
+            .exclude(persona__tipo='SACAFRANCO')
+            .filter(
+                Q(mes=mes, anio=anio) |
+                (Q(recurring=True) & Q(start_date__lte=last_day) & (Q(end_date__isnull=True) | Q(end_date__gte=first_day)))
+            )
+        )
+        for ws in weeks:
+            ids = set()
+            for asign in assigns:
+                if asign.recurring:
+                    if asign.start_date and ws < asign.start_date:
+                        continue
+                    if asign.end_date and ws > asign.end_date:
+                        continue
+                    ids.add(asign.id)
+                else:
+                    if asign.mes == ws.month and asign.anio == ws.year:
+                        ids.add(asign.id)
+            active_ids_by_week[ws.isoformat()] = ids
+    except Exception:
+        active_ids_by_week = {}
+
+    weeks_map = {ws.isoformat(): {'asignaciones': [], 'sacafranco': []} for ws in weeks}
+    for row in rows:
+        ws = row.get('week_start')
+        ws_key = ws.isoformat() if isinstance(ws, date) else str(ws)
+        if ws_key not in weeks_map:
+            continue
+        if active_ids_by_week:
+            asig_id = row.get('asignacion') or row.get('asignacion_id')
+            if asig_id not in active_ids_by_week.get(ws_key, set()):
+                continue
+        weeks_map[ws_key]['asignaciones'].append(row)
+
+    if include_sacafranco and weeks:
+        sac_qs = SacafrancoFilaSemanal.objects.filter(week_start__in=weeks)
+        sac_rows = list(SacafrancoFilaSemanalSerializer(sac_qs, many=True).data)
+        for row in sac_rows:
+            ws_key = str(row.get('week_start'))
+            if ws_key in weeks_map:
+                weeks_map[ws_key]['sacafranco'].append(row)
+
+    for ws_key, bucket in weeks_map.items():
+        try:
+            ws_date = datetime.fromisoformat(ws_key).date()
+            bucket['asignaciones'] = _overlay_coberturas_sacafranco(bucket['asignaciones'], ws_date)
+        except Exception:
+            continue
+
+    return Response({'weeks': weeks_map})
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def semanas_del_mes(request):
