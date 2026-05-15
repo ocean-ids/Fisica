@@ -29,9 +29,6 @@
         <mat-button-toggle class="col-sm" value="accion">Accion</mat-button-toggle>
       </mat-button-toggle-group>
     </section>-->
-    <div class="d-flex justify-content-center col-12 col-md-4">
-      <input type="month" class="form-control" [(ngModel)]="monthValue" (change)="onMonthChange()" style="max-width: 190px;"/>
-    </div>
 
     <div class="d-flex justify-content-md-end gap-2">
       <button class="btn btn-outline-secondary" (click)="abrirNuevoPatron()" >
@@ -118,7 +115,11 @@
                 <th *ngIf="!columnaOculta('cedula')" [attr.rowspan]="headerRowspan()">Cedula</th>
                 <th *ngIf="!columnaOculta('persona')" [attr.rowspan]="headerRowspan()">Persona</th>
                 <th *ngIf="!columnaOculta('accion')" [attr.rowspan]="headerRowspan()">Accion</th>
-                <th class="calendar-col" [attr.rowspan]="headerRowspan()">Calendario</th>
+                <th class="calendar-col" [attr.rowspan]="headerRowspan()">
+                   <div class="d-flex justify-content-center">
+                    <input type="month" class="form-control" [(ngModel)]="monthValue" (change)="onMonthChange()" style="max-width: 190px;"/>
+                  </div>
+                </th>
               </tr>
               <tr *ngIf="mostrarPuesto()">
                 <th >Nombre</th>
