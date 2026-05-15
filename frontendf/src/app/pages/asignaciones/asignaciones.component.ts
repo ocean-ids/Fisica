@@ -29,7 +29,7 @@ import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form
 import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dialogs/reporte-asistencia-color-dialog.component';
 import { Subscription, forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, switchMap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
@@ -556,7 +556,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     params.lite = true;
     params.provincia_page = this.provinciaPage;
 
-    const asignaciones$ = this.asignacionService
+    this.asignacionService
       .obtenerAsignacionesPaginadas(this.mes, this.anio, params)
       .pipe(
         catchError(err => {
@@ -570,37 +570,34 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
             provinciaPage: this.provinciaPage,
             provinciaId: this.activeProvinciaId
           });
+        }),
+        switchMap(asignaciones => {
+          const provinciaId = asignaciones?.provinciaId ?? null;
+          const sacafrancoParams = provinciaId != null ? { provincia_id: provinciaId } : {};
+          return this.asignacionService
+            .obtenerSacafrancoFilas(this.mes, this.anio, sacafrancoParams)
+            .pipe(
+              catchError(err => {
+                console.error('Error al cargar filas sacafranco', err);
+                return of([] as SacafrancoFila[]);
+              }),
+              switchMap(sacafranco => of({ asignaciones, sacafranco }))
+            );
         })
-      );
-
-    const sacafranco$ = this.asignacionService
-      .obtenerSacafrancoFilas(this.mes, this.anio, {
-        ...(this.activeProvinciaId != null ? { provincia_id: this.activeProvinciaId } : {})
-      })
-      .pipe(
-        catchError(err => {
-          console.error('Error al cargar filas sacafranco', err);
-          return of([] as SacafrancoFila[]);
-        })
-      );
-
-    forkJoin({
-      asignaciones: asignaciones$,
-      sacafranco: sacafranco$
-    }).subscribe({
-      next: ({ asignaciones, sacafranco }) => {
-        this.asignaciones = asignaciones?.results || [];
-        this.provinciaTotal = asignaciones?.provinciaTotal ?? this.provinciaTotal;
-        this.provinciaPage = asignaciones?.provinciaPage ?? this.provinciaPage;
-        this.activeProvinciaId = asignaciones?.provinciaId ?? this.activeProvinciaId;
-        this.sacafrancoRows = sacafranco || [];
-        this.provinciasDisponibles = this.computeProvinciaOptions();
-        this.buildDisplayRows();
-        this.updateCalendarOrder();
-        this.loadCalendarWeeks();
-      },
-      error: err => console.error('Error al cargar asignaciones/sacafranco', err)
-    });
+      ).subscribe({
+        next: ({ asignaciones, sacafranco }) => {
+          this.asignaciones = asignaciones?.results || [];
+          this.provinciaTotal = asignaciones?.provinciaTotal ?? this.provinciaTotal;
+          this.provinciaPage = asignaciones?.provinciaPage ?? this.provinciaPage;
+          this.activeProvinciaId = asignaciones?.provinciaId ?? this.activeProvinciaId;
+          this.sacafrancoRows = sacafranco || [];
+          this.provinciasDisponibles = this.computeProvinciaOptions();
+          this.buildDisplayRows();
+          this.updateCalendarOrder();
+          this.loadCalendarWeeks();
+        },
+        error: err => console.error('Error al cargar asignaciones/sacafranco', err)
+      });
   }
 
   private loadCalendarWeeks(): void {
