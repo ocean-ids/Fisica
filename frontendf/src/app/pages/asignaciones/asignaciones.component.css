@@ -239,6 +239,30 @@ table.table {
   background: #cfe8ff;
 }
 
+.sacafranco-row {
+  height: 45px;
+}
+
+.sacafranco-row > td {
+  height: 45px;
+  max-height: 45px;
+  vertical-align: middle;
+}
+
+.sacafranco-row .calendar-cell {
+  height: 45px;
+  max-height: 45px;
+  padding: 2px !important;
+}
+
+.sacafranco-row .calendar-day {
+  height: 16px;
+}
+
+.sacafranco-row .calendar-input {
+  font-size: 10px;
+}
+
 .provincia-row td {
   font-weight: 600;
   text-align: left;
@@ -259,4 +283,17 @@ table.table {
 .cdk-drag-preview,
 .cdk-drag-placeholder {
   pointer-events: none;
+}
+
+.cdk-drag-preview {
+  display: table;
+  table-layout: fixed;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+.cdk-drag-preview td {
+  width: auto;
+  height: inherit;
 }
