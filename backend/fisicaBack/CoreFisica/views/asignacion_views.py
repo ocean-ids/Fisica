@@ -1464,7 +1464,10 @@ def exportar_asignaciones_excel(request):
 
             parts = []
             for g in groups.values():
-                dias_str = ''.join([day_map.get(d, '') for d in sorted(g['dias'])]) if g['dias'] else ''
+                ordered = sorted(g['dias']) if g['dias'] else []
+                first = day_map.get(ordered[0], '') if ordered else ''
+                last = day_map.get(ordered[-1], '') if ordered else ''
+                dias_str = first if len(ordered) <= 1 else f"{first}{last}"
                 base = f"{g['horas']}{turno_letter(g['turno'])}".strip()
                 parts.append(f"{base} {dias_str}".strip())
 
