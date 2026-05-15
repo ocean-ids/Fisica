@@ -53,13 +53,15 @@ def _overlay_coberturas_sacafranco(rows, week_start_date):
     return rows
 
 
-def _auto_create_asignacion_semanal_for_week(week_start_date):
+def _auto_create_asignacion_semanal_for_week(week_start_date, provincia_id=None):
     try:
         from ..models import Asignacion, Puesto
         asigns = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').filter(
             Q(mes=week_start_date.month, anio=week_start_date.year) |
             (Q(recurring=True) & Q(start_date__lte=week_start_date) & (Q(end_date__isnull=True) | Q(end_date__gte=week_start_date)))
         ).select_related('puesto', 'patronAsignacion')
+        if provincia_id is not None:
+            asigns = asigns.filter(instalacion__canton__provincia_id=provincia_id)
 
         weekday_names = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
 
@@ -256,6 +258,7 @@ def listar_asignacion_semanal(request):
 
     week_start = request.GET.get('week_start')
     cliente_id = request.GET.get('cliente')
+    provincia_id = request.GET.get('provincia_id')
     turno = request.GET.get('turno')
     q = (request.GET.get('q') or '').strip()
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
@@ -550,11 +553,12 @@ def listar_asignacion_semanal_mes(request):
     mes = request.GET.get('mes')
     anio = request.GET.get('anio')
     cliente_id = request.GET.get('cliente')
+    provincia_id = request.GET.get('provincia_id')
     turno = request.GET.get('turno')
     q = (request.GET.get('q') or '').strip()
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
     include_sacafranco = str(request.GET.get('include_sacafranco', 'true')).lower() in ['true', '1', 'yes']
-    auto_create = str(request.GET.get('auto_create', 'false')).lower() in ['true', '1', 'yes']
+    auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
 
     if not mes or not anio:
         return Response({'error': 'mes y año invalidos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
@@ -575,11 +579,21 @@ def listar_asignacion_semanal_mes(request):
         weeks.append(current)
         current += timedelta(days=7)
 
+    prov_id = None
+    if provincia_id:
+        try:
+            prov_id = int(provincia_id)
+        except (TypeError, ValueError):
+            return Response({'error': 'Provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
+
     if auto_create:
         for ws in weeks:
-            if AsignacionSemanal.objects.filter(week_start=ws).exists():
+            base_qs = AsignacionSemanal.objects.filter(week_start=ws)
+            if prov_id is not None:
+                base_qs = base_qs.filter(puesto__instalacion__canton__provincia_id=prov_id)
+            if base_qs.exists():
                 continue
-            _auto_create_asignacion_semanal_for_week(ws)
+            _auto_create_asignacion_semanal_for_week(ws, provincia_id=prov_id)
 
     qs = AsignacionSemanal.objects.select_related(
         'puesto',
@@ -589,6 +603,8 @@ def listar_asignacion_semanal_mes(request):
     qs = qs.filter(week_start__in=weeks)
     if cliente_id:
         qs = qs.filter(puesto__instalacion__cliente_id=cliente_id)
+    if prov_id is not None:
+        qs = qs.filter(puesto__instalacion__canton__provincia_id=prov_id)
     if q:
         filtros = (
             Q(asignacion__cliente__nombre_comercial__icontains=q) |

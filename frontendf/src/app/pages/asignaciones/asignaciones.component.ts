@@ -609,10 +609,17 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       paramsBase.q = this.filtroTexto.trim();
     }
     const hasSacafranco = (this.sacafrancoRows || []).length > 0;
+    const provinciaId = this.activeProvinciaId != null ? this.activeProvinciaId : null;
     this.asignacionCalendarioService.obtenerAsignacionesCalendarioMes(
       this.mes,
       this.anio,
-      { ...paramsBase, lite: true, include_sacafranco: hasSacafranco, auto_create: true }
+      {
+        ...paramsBase,
+        lite: true,
+        include_sacafranco: hasSacafranco,
+        auto_create: true,
+        ...(provinciaId != null ? { provincia_id: provinciaId } : {})
+      }
     ).subscribe({
       next: res => {
         const weeksMap = res?.weeks || {};
