@@ -104,6 +104,94 @@ class AsignacionSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class AsignacionLiteSerializer(serializers.ModelSerializer):
+    persona_detalle = serializers.SerializerMethodField(read_only=True)
+    cliente_detalle = serializers.SerializerMethodField(read_only=True)
+    instalacion_detalle = serializers.SerializerMethodField(read_only=True)
+    puesto_detalle = serializers.SerializerMethodField(read_only=True)
+    horario_detalle = serializers.SerializerMethodField(read_only=True)
+    fecha = serializers.DateField(required=False, allow_null=True)
+    recurring = serializers.BooleanField(required=False)
+    start_date = serializers.DateField(required=False, allow_null=True)
+    end_date = serializers.DateField(required=False, allow_null=True)
+    cedula_color = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+
+    def get_persona_detalle(self, obj):
+        return {
+            'id': obj.persona.id,
+            'nombres': obj.persona.nombres,
+            'apellidos': obj.persona.apellidos,
+            'cedula': obj.persona.cedula,
+            'tipo': obj.persona.tipo,
+            'provincia': obj.persona.provincia_id,
+            'canton': obj.persona.canton_id,
+            'is_active': getattr(obj.persona, 'is_active', True)
+        }
+
+    def get_cliente_detalle(self, obj):
+        return {
+            'id': obj.cliente.id,
+            'nombre_comercial': obj.cliente.nombre_comercial,
+        }
+
+    def get_instalacion_detalle(self, obj):
+        inst = obj.instalacion
+        return {
+            'id': inst.id,
+            'codigo': getattr(inst, 'codigo', '') or '',
+            'provincia_id': getattr(inst.canton, 'provincia_id', None),
+            'provincia_nombre': getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
+        }
+
+    def get_puesto_detalle(self, obj):
+        return {
+            'id': obj.puesto.id,
+            'nombre': obj.puesto.nombre,
+            'cantidad_puestos': obj.puesto.cantidad_puestos,
+            'zona_id': getattr(obj.puesto, 'zona_id', None),
+            'zona_titulo': getattr(getattr(obj.puesto, 'zona', None), 'titulo', ''),
+            'turno': obj.puesto.get_turno(),
+            'turno_display': obj.puesto.get_turno_display(),
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in obj.puesto.horarios.all()],
+            'resumen': obj.puesto.resumen
+        }
+
+    def get_horario_detalle(self, obj):
+        return {
+            'id': obj.horario.id,
+            'hora_ingreso': str(obj.horario.hora_ingreso),
+            'hora_salida': str(obj.horario.hora_salida),
+        }
+
+    class Meta:
+        model = Asignacion
+        fields = [
+            'id',
+            'persona',
+            'cliente',
+            'instalacion',
+            'puesto',
+            'horario',
+            'mes',
+            'anio',
+            'estado',
+            'orden',
+            'patronAsignacion',
+            'recurring',
+            'start_date',
+            'end_date',
+            'agregar_sacafranco',
+            'sacafranco_grupo',
+            'cedula_color',
+            'fecha',
+            'persona_detalle',
+            'cliente_detalle',
+            'instalacion_detalle',
+            'puesto_detalle',
+            'horario_detalle'
+        ]
+
+
 class AsignacionSemanalSerializer(serializers.ModelSerializer):
     puesto_detalle = serializers.SerializerMethodField(read_only=True)
     asignacion_sacafranco = serializers.BooleanField(source='asignacion.agregar_sacafranco', read_only=True)

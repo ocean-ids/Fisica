@@ -553,6 +553,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     if (this.filtroTexto && this.filtroTexto.trim()) {
       params.q = this.filtroTexto.trim();
     }
+    params.lite = true;
     params.provincia_page = this.provinciaPage;
 
     const asignaciones$ = this.asignacionService

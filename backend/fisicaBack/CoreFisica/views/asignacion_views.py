@@ -9,7 +9,7 @@ from django.db.models import Q, Max, Value
 from django.db.models.functions import Coalesce
 from django.db import transaction
 from django.utils import timezone
-from ..serializers import AsignacionSerializer, SacafrancoFilaSerializer
+from ..serializers import AsignacionSerializer, AsignacionLiteSerializer, SacafrancoFilaSerializer
 import openpyxl
 import datetime
 from pathlib import Path
@@ -259,6 +259,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
     #cliente_id se puede recibir como query param o como parte de la ruta (en este caso se prioriza el query param para mantener consistencia con otros filtros)
     cliente_id = request.GET.get('cliente_id')
     provincia_id = request.GET.get('provincia_id')
+    lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
     #q es un texto libre q se busca
     q = (request.GET.get('q') or '').strip()
     # si se proporcionan mes y año, filtrar asignaciones activas que correspondan al mes/año o que sean recurrentes y tengan rango de fechas que incluya el mes/año. Si no se proporcionan mes/año, devolver todas las asignaciones activas. En ambos casos, excluir personas de tipo SACAFRANCO y ordenar por orden y id para mantener un orden consistente.   
@@ -376,7 +377,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
         else:
             asignaciones = asignaciones.filter(instalacion__canton__provincia_id=provincia_id)
 
-        serializer = AsignacionSerializer(asignaciones, many=True)
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
         return Response({
             'results': serializer.data,
             'provincia_page': prov_page,
@@ -399,7 +400,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
         start = (page - 1) * size
         end = start + size
         asignaciones = asignaciones[start:end]
-        serializer = AsignacionSerializer(asignaciones, many=True)
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
         return Response({
             'total': total,
             'page': page,
@@ -407,7 +408,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
             'results': serializer.data
         })
 
-    serializer = AsignacionSerializer(asignaciones, many=True)
+    serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
     return Response(serializer.data)
 
 
