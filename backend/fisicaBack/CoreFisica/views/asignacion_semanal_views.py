@@ -264,6 +264,13 @@ def listar_asignacion_semanal(request):
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
     auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
 
+    prov_id = None
+    if provincia_id:
+        try:
+            prov_id = int(provincia_id)
+        except (TypeError, ValueError):
+            return Response({'error': 'Provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
+
     qs = AsignacionSemanal.objects.select_related(
         'puesto',
         'puesto__zona',
@@ -283,6 +290,8 @@ def listar_asignacion_semanal(request):
                         Q(mes=ws.month, anio=ws.year) |
                         (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
                     ).select_related('puesto', 'patronAsignacion')
+                    if prov_id is not None:
+                        asigns = asigns.filter(instalacion__canton__provincia_id=prov_id)
                     active_asign_ids = set(asigns.values_list('id', flat=True))
                     # weekday_names para normalizar tokens de días y compararlos con días del puesto o patrón sin depender de idioma o formato exacto.
                     weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
@@ -507,6 +516,8 @@ def listar_asignacion_semanal(request):
     #si el cliente_id se proporciona como filtro, aplicarlo al queryset después de filtrar por semana para optimizar la consulta y evitar crear filas semanales innecesarias para clientes no relacionados.
     if cliente_id:
         qs = qs.filter(puesto__instalacion__cliente_id=cliente_id)
+    if prov_id is not None:
+        qs = qs.filter(puesto__instalacion__canton__provincia_id=prov_id)
     # si se proporciona un término de búsqueda, aplicarlo a campos relevantes de asignación, persona y puesto. Esto se hace después de filtrar por semana para optimizar la consulta.
     if q:
         filtros = (
