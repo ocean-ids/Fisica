@@ -266,7 +266,7 @@ class ActiveManager(models.Manager):
 class Persona(models.Model):
     TIPO_CHOICES = [
         ('FIJOS', 'FIJOS'),
-        ('RETENES', 'RETENES'),
+        ('RETEN', 'RETEN'),
         ('CUSTODIO', 'CUSTODIO'),
         ('EVENTUALES', 'EVENTUALES'),
         ('SACAFRANCO', 'SACAFRANCO'),
@@ -515,7 +515,7 @@ class ReporteAsistencia(models.Model):
     TIPOS_REEMPLAZO = [
         'FIJOS',
         'SACAFRANCO',
-        'RETENES',
+        'RETEN',
         'SACAVACACIONES',
         'EVENTUALES',
         'SUPERVISOR ZONAL',

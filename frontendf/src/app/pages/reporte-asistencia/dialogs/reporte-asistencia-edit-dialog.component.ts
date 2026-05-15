@@ -32,7 +32,7 @@ export class ReporteAsistenciaEditDialogComponent {
   readonly tiposReemplazoPermitidos = new Set([
     'FIJOS',
     'SACAFRANCO',
-    'RETENES',
+    'RETEN',
     'EVENTUALES',
     'SACAVACACIONES',
     'SUPERVISOR MOTORIZADO',

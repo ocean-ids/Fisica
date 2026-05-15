@@ -36,7 +36,7 @@ export class PersonaFormComponent implements OnInit {
   private initialProvinciaName: string | null = null;
   tipos: Persona['tipo'][] = [
     'FIJOS',
-    'RETENES',
+    'RETEN',
     'CUSTODIO',
     'EVENTUALES',
     'SACAFRANCO',
