@@ -288,7 +288,9 @@ def parse_compact_horas_turno_dias(value):
     text = str(value).strip().upper()
     if not text:
         return []
-    parts = [p.strip() for p in text.split('/') if p.strip()]
+    parts = [m.group(0) for m in re.finditer(r'\d{1,2}H[DN]?[A-Z]*', text)]
+    if not parts:
+        parts = [p.strip() for p in text.split('/') if p.strip()]
     groups = []
     for part in parts:
         part = re.sub(r'\s+', '', part)
