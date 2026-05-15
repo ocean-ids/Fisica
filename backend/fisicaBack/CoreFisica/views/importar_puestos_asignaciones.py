@@ -650,11 +650,12 @@ def importar_puestos_asignaciones(request):
                     'patronAsignacion': patron_obj,
                     'estado': 'ACTIVO',
                     'publicada_calendario': True,
+                    'recurring': True,
+                    'start_date': date(ref_date.year, ref_date.month, 1),
+                    'end_date': None,
                 }
-                if patron_obj:
-                    defaults['recurring'] = True
-                    defaults['start_date'] = date(ref_date.year, ref_date.month, 1)
-                    defaults['end_date'] = None
+                if not patron_obj:
+                    defaults['patronAsignacion'] = None
 
                 asig, created_asig = Asignacion.objects.update_or_create(
                     persona=persona,

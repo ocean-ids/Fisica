@@ -612,7 +612,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.asignacionCalendarioService.obtenerAsignacionesCalendarioMes(
       this.mes,
       this.anio,
-      { ...paramsBase, lite: true, include_sacafranco: hasSacafranco }
+      { ...paramsBase, lite: true, include_sacafranco: hasSacafranco, auto_create: true }
     ).subscribe({
       next: res => {
         const weeksMap = res?.weeks || {};

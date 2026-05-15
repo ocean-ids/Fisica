@@ -52,6 +52,200 @@ def _overlay_coberturas_sacafranco(rows, week_start_date):
 
     return rows
 
+
+def _auto_create_asignacion_semanal_for_week(week_start_date):
+    try:
+        from ..models import Asignacion, Puesto
+        asigns = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').filter(
+            Q(mes=week_start_date.month, anio=week_start_date.year) |
+            (Q(recurring=True) & Q(start_date__lte=week_start_date) & (Q(end_date__isnull=True) | Q(end_date__gte=week_start_date)))
+        ).select_related('puesto', 'patronAsignacion')
+
+        weekday_names = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+
+        def normalize_day_token(tok: str) -> str:
+            t = str(tok).strip().lower()
+            if not t:
+                return ''
+            map_short = {
+                'l': 'lunes', 'lu': 'lunes', 'lun': 'lunes', 'lunes': 'lunes',
+                'm': 'martes', 'ma': 'martes', 'mar': 'martes', 'martes': 'martes',
+                'mi': 'miercoles', 'mie': 'miercoles', 'miercoles': 'miercoles', 'miércoles': 'miercoles',
+                'j': 'jueves', 'ju': 'jueves', 'jue': 'jueves', 'jueves': 'jueves',
+                'v': 'viernes', 'vi': 'viernes', 'vie': 'viernes', 'viernes': 'viernes',
+                's': 'sabado', 'sa': 'sabado', 'sab': 'sabado', 'sabado': 'sabado', 'sábado': 'sabado',
+                'd': 'domingo', 'do': 'domingo', 'dom': 'domingo', 'domingo': 'domingo'
+            }
+            return map_short.get(t, t)
+
+        for asign in asigns:
+            puesto_obj = getattr(asign, 'puesto', None)
+            if not puesto_obj:
+                try:
+                    puesto_obj = Puesto.objects.get(id=asign.puesto_id)
+                except Exception:
+                    puesto_obj = None
+
+            dias_puesto = []
+            if puesto_obj:
+                try:
+                    if hasattr(puesto_obj, 'dias') and getattr(puesto_obj, 'dias'):
+                        dias_puesto = puesto_obj.dias or []
+                    else:
+                        horarios_qs = getattr(puesto_obj, 'horarios', None)
+                        if horarios_qs is not None:
+                            dias_nums = list(horarios_qs.values_list('dia', flat=True))
+                            day_map = {1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado', 7: 'domingo'}
+                            dias_puesto = [day_map.get(n, '') for n in dias_nums if n]
+                except Exception:
+                    dias_puesto = []
+
+            dias_norm = [normalize_day_token(d) for d in dias_puesto if d]
+            dias_nums = []
+            try:
+                if puesto_obj is not None:
+                    horarios_qs = getattr(puesto_obj, 'horarios', None)
+                    if horarios_qs is not None:
+                        try:
+                            dias_nums = [int(n) for n in horarios_qs.values_list('dia', flat=True) if n is not None]
+                        except Exception:
+                            dias_nums = list(horarios_qs.values_list('dia', flat=True))
+            except Exception:
+                dias_nums = []
+
+            turno_val = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
+            default_code = 'N' if turno_val.startswith('n') else 'D'
+
+            patron = getattr(asign, 'patronAsignacion', None)
+            seq = None
+            if patron and getattr(patron, 'secuencia', None):
+                try:
+                    seq = [str(x).strip().upper() for x in patron.secuencia if x]
+                except Exception:
+                    seq = None
+
+            defaults = {}
+            for idx in range(7):
+                day_date = week_start_date + timedelta(days=idx)
+                name = weekday_names[day_date.weekday()]
+                weekday_keys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+                key = weekday_keys[day_date.weekday()]
+
+                if seq:
+                    applies_by_puesto = True
+                elif dias_nums:
+                    applies_by_puesto = (day_date.isoweekday() in dias_nums)
+                else:
+                    applies_by_puesto = any(name == d or d in name or name in d for d in dias_norm)
+
+                value = ''
+                if seq:
+                    ref_date = None
+                    if asign.start_date:
+                        ref_date = asign.start_date
+                    elif getattr(asign, 'fecha', None):
+                        ref_date = asign.fecha
+                    else:
+                        try:
+                            ref_date = date(asign.anio, asign.mes, 1)
+                        except Exception:
+                            ref_date = week_start_date
+
+                    active = True
+                    if asign.recurring:
+                        if asign.start_date and day_date < asign.start_date:
+                            active = False
+                        if asign.end_date and day_date > asign.end_date:
+                            active = False
+                    else:
+                        if getattr(asign, 'fecha', None):
+                            active = (day_date == asign.fecha)
+                        else:
+                            active = (day_date.month == asign.mes and day_date.year == asign.anio)
+
+                    if active and applies_by_puesto:
+                        try:
+                            days_diff = (day_date - ref_date).days
+                            offset = 0
+                            try:
+                                is_24h = False
+                                try:
+                                    if getattr(asign, 'horario', None):
+                                        hi = asign.horario.hora_ingreso
+                                        ho = asign.horario.hora_salida
+                                        dt1 = datetime.combine(date(1, 1, 1), hi)
+                                        dt2 = datetime.combine(date(1, 1, 1), ho)
+                                        if dt2 <= dt1:
+                                            dt2 += timedelta(days=1)
+                                        dur = (dt2 - dt1).total_seconds() / 3600.0
+                                        is_24h = dur >= 23.5
+                                except Exception:
+                                    is_24h = False
+                                if not is_24h and puesto_obj is not None:
+                                    horarios_qs = getattr(puesto_obj, 'horarios', None)
+                                    if horarios_qs is not None:
+                                        try:
+                                            dia_num = day_date.isoweekday()
+                                            horas_por_dia = list(horarios_qs.filter(dia=dia_num).values_list('horas', flat=True))
+                                            if horas_por_dia:
+                                                is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_por_dia)
+                                            else:
+                                                horas_list = list(horarios_qs.values_list('horas', flat=True))
+                                                is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_list)
+                                        except Exception:
+                                            horas_list = list(horarios_qs.values_list('horas', flat=True))
+                                            is_24h = any((int(h) if h is not None else 0) == 24 for h in horas_list)
+                                if is_24h and seq:
+                                    first = seq[0]
+                                    cnt = 0
+                                    for s in seq:
+                                        if s == first:
+                                            cnt += 1
+                                        else:
+                                            break
+                                    offset = cnt
+                            except Exception:
+                                offset = 0
+
+                            idx_seq = (days_diff + offset) % len(seq)
+                            value = seq[idx_seq]
+                        except Exception:
+                            value = ''
+                else:
+                    if applies_by_puesto:
+                        value = default_code
+
+                defaults[key] = value
+
+            if puesto_obj:
+                pid = puesto_obj.id if hasattr(puesto_obj, 'id') else puesto_obj
+                try:
+                    obj, created = AsignacionSemanal.objects.get_or_create(
+                        asignacion_id=asign.id,
+                        week_start=week_start_date,
+                        defaults={**defaults, 'asignacion': asign, 'puesto_id': pid}
+                    )
+                    if not created:
+                        changed = False
+                        if getattr(obj, 'asignacion_id', None) is None:
+                            obj.asignacion = asign
+                            changed = True
+                        for k, v in defaults.items():
+                            try:
+                                cur = getattr(obj, k, '')
+                            except Exception:
+                                cur = ''
+                            cur_str = str(cur or '').strip()
+                            if (cur_str == '' or cur is None) and v:
+                                setattr(obj, k, v)
+                                changed = True
+                        if changed:
+                            obj.save()
+                except Exception as e:
+                    print(f"⚠️ Error creando/actualizando AsignacionSemanal (puesto {pid}, week_start {week_start_date}): {e}")
+    except Exception as e:
+        print(f"⚠️ Error asegurando AsignacionSemanal para week_start {week_start_date}: {e}")
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def listar_asignacion_semanal(request):
@@ -65,7 +259,7 @@ def listar_asignacion_semanal(request):
     turno = request.GET.get('turno')
     q = (request.GET.get('q') or '').strip()
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
-    auto_create = str(request.GET.get('auto_create', 'false')).lower() in ['true', '1', 'yes']
+    auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
 
     qs = AsignacionSemanal.objects.select_related(
         'puesto',
@@ -360,6 +554,7 @@ def listar_asignacion_semanal_mes(request):
     q = (request.GET.get('q') or '').strip()
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
     include_sacafranco = str(request.GET.get('include_sacafranco', 'true')).lower() in ['true', '1', 'yes']
+    auto_create = str(request.GET.get('auto_create', 'false')).lower() in ['true', '1', 'yes']
 
     if not mes or not anio:
         return Response({'error': 'mes y año invalidos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
@@ -379,6 +574,12 @@ def listar_asignacion_semanal_mes(request):
     while current.month == mes:
         weeks.append(current)
         current += timedelta(days=7)
+
+    if auto_create:
+        for ws in weeks:
+            if AsignacionSemanal.objects.filter(week_start=ws).exists():
+                continue
+            _auto_create_asignacion_semanal_for_week(ws)
 
     qs = AsignacionSemanal.objects.select_related(
         'puesto',
