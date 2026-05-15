@@ -118,6 +118,26 @@ def _auto_create_asignacion_semanal_for_week(week_start_date, provincia_id=None)
             turno_val = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
             default_code = 'N' if turno_val.startswith('n') else 'D'
 
+            def resolve_day_code(day_date):
+                try:
+                    horarios_qs = getattr(puesto_obj, 'horarios', None)
+                    if horarios_qs is None:
+                        return default_code
+                    dia_num = day_date.isoweekday()
+                    turnos = list(horarios_qs.filter(dia=dia_num).values_list('turno', flat=True))
+                    if not turnos:
+                        turnos = list(horarios_qs.values_list('turno', flat=True))
+                    tokens = [str(t).strip().lower() for t in turnos if t]
+                    if any(t.startswith('n') for t in tokens):
+                        return 'N'
+                    if any(t.startswith('d') for t in tokens):
+                        return 'D'
+                    if any(t.startswith('a') for t in tokens):
+                        return 'D'
+                except Exception:
+                    return default_code
+                return default_code
+
             patron = getattr(asign, 'patronAsignacion', None)
             seq = None
             if patron and getattr(patron, 'secuencia', None):
@@ -215,7 +235,7 @@ def _auto_create_asignacion_semanal_for_week(week_start_date, provincia_id=None)
                             value = ''
                 else:
                     if applies_by_puesto:
-                        value = default_code
+                        value = resolve_day_code(day_date)
 
                 defaults[key] = value
 
@@ -349,6 +369,26 @@ def listar_asignacion_semanal(request):
                         turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
                         default_code = 'N' if turno.startswith('n') else 'D'
 
+                        def resolve_day_code(day_date):
+                            try:
+                                horarios_qs = getattr(puesto_obj, 'horarios', None)
+                                if horarios_qs is None:
+                                    return default_code
+                                dia_num = day_date.isoweekday()
+                                turnos = list(horarios_qs.filter(dia=dia_num).values_list('turno', flat=True))
+                                if not turnos:
+                                    turnos = list(horarios_qs.values_list('turno', flat=True))
+                                tokens = [str(t).strip().lower() for t in turnos if t]
+                                if any(t.startswith('n') for t in tokens):
+                                    return 'N'
+                                if any(t.startswith('d') for t in tokens):
+                                    return 'D'
+                                if any(t.startswith('a') for t in tokens):
+                                    return 'D'
+                            except Exception:
+                                return default_code
+                            return default_code
+
                         # Si la asignación tiene un patrón definido, construir la secuencia continua
                         patron = getattr(asign, 'patronAsignacion', None)
                         seq = None
@@ -456,7 +496,7 @@ def listar_asignacion_semanal(request):
                             else:
                                 # sin patrón, usar comportamiento previo (turno por puesto)
                                 if applies_by_puesto:
-                                    value = default_code
+                                    value = resolve_day_code(day_date)
 
                             defaults[key] = value
 

@@ -114,6 +114,26 @@ def _rebuild_asignacion_semanal(asignacion, force_all: bool = False):
     weekday_names = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
     # hoy es la fecha actual, se utiliza para evitar modificar dias pasados 
     hoy = timezone.localdate()
+
+    def resolve_day_code(day_date):
+        try:
+            horarios_qs = getattr(puesto_obj, 'horarios', None)
+            if horarios_qs is None:
+                return default_code
+            dia_num = day_date.isoweekday()
+            turnos = list(horarios_qs.filter(dia=dia_num).values_list('turno', flat=True))
+            if not turnos:
+                turnos = list(horarios_qs.values_list('turno', flat=True))
+            tokens = [str(t).strip().lower() for t in turnos if t]
+            if any(t.startswith('n') for t in tokens):
+                return 'N'
+            if any(t.startswith('d') for t in tokens):
+                return 'D'
+            if any(t.startswith('a') for t in tokens):
+                return 'D'
+        except Exception:
+            return default_code
+        return default_code
     #mientras la fecha actual este dentro del mes de la asignacion
     while current <= last_day:
         existing = AsignacionSemanal.objects.filter(
@@ -228,7 +248,7 @@ def _rebuild_asignacion_semanal(asignacion, force_all: bool = False):
                         value = ''
             else:
                 if applies_by_puesto:
-                    value = default_code
+                    value = resolve_day_code(day_date)
 
             defaults[key] = value
 
