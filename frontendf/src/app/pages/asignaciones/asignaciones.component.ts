@@ -70,7 +70,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   calendarData: Record<string, Record<string, any>> = {};
   provinciaSortOrder: Record<string, number> = {};
   draggingAsignacionId: number | null = null;
-  private lastDragPoint: { x: number; y: number } | null = null;
   private pendingPatronId: number | null = null;
   isSaving = false;
 
@@ -1043,7 +1042,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.updateCalendarOrder();
     this.persistOrder(ordenAsignaciones);
     this.persistSacafrancoOrder(ordenSacafranco);
-    this.lastDragPoint = null;
   }
 
   // trackByAsignacion se utiliza como función de seguimiento para optimizar la renderización de la lista de asignaciones en la vista, devolviendo un identificador único para cada asignación basado en su id, el id del puesto detalle o el índice como último recurso, lo que permite a Angular identificar correctamente los elementos y evitar renderizaciones innecesarias al actualizar la lista
@@ -1142,16 +1140,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   // onDragEnded se encarga de manejar el evento de finalización de arrastre para una asignación, restableciendo el estado del componente para indicar que ya no se está arrastrando ninguna asignación, y luego utilizando un temporizador para limpiar cualquier punto de referencia relacionado con el arrastre después de un breve retraso, lo que ayuda a evitar problemas de renderización o lógica relacionada con el arrastre en la vista
   onDragEnded(): void {
     this.draggingAsignacionId = null;
-    setTimeout(() => {
-      this.lastDragPoint = null;
-    }, 0);
-  }
-
-  //onDragMoved se encarga de manejar el evento de movimiento durante el arrastre de una asignación, actualizando las coordenadas del último punto de arrastre para mantener un seguimiento de la posición del cursor mientras se realiza el arrastre, lo que puede ser útil para mostrar indicadores visuales o realizar cálculos relacionados con la posición durante el proceso de arrastre
-  onDragMoved(event: CdkDragMove): void {
-    const point = event?.pointerPosition;
-    if (!point) return;
-    this.lastDragPoint = { x: point.x, y: point.y };
   }
 
   //persistOrder se encarga de persistir el orden de las asignaciones en el backend, tomando un arreglo opcional de ordenes que contiene los identificadores y el nuevo orden de las asignaciones, y luego realizando una llamada al servicio correspondiente para guardar esta información, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente

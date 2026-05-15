@@ -286,14 +286,11 @@ table.table {
 }
 
 .cdk-drag-preview {
-  display: table;
-  table-layout: fixed;
-  width: 100%;
   box-sizing: border-box;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
 }
 
-.cdk-drag-preview td {
-  width: auto;
-  height: inherit;
+.cdk-drag-preview {
+  display: none;
 }
+
