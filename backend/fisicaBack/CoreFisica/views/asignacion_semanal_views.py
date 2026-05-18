@@ -731,6 +731,110 @@ def listar_asignacion_semanal_mes(request):
             if ws_key in weeks_map:
                 weeks_map[ws_key]['sacafranco'].append(row)
 
+    # Completar dias del siguiente mes en la ultima semana del mes actual.
+    if weeks:
+        last_week_start = weeks[-1]
+        spill_keys = []
+        weekday_keys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+        for idx in range(7):
+            day_date = last_week_start + timedelta(days=idx)
+            if day_date.month != mes:
+                spill_keys.append(weekday_keys[day_date.weekday()])
+
+        if spill_keys:
+            if mes == 12:
+                next_ws = date(anio + 1, 1, 1)
+            else:
+                next_ws = date(anio, mes + 1, 1)
+
+            next_qs = AsignacionSemanal.objects.select_related(
+                'puesto',
+                'puesto__zona',
+                'asignacion__persona'
+            ).prefetch_related('puesto__horarios').filter(week_start=next_ws)
+
+            if cliente_id:
+                next_qs = next_qs.filter(puesto__instalacion__cliente_id=cliente_id)
+            if prov_id is not None:
+                next_qs = next_qs.filter(puesto__instalacion__canton__provincia_id=prov_id)
+            if q:
+                filtros = (
+                    Q(asignacion__cliente__nombre_comercial__icontains=q) |
+                    Q(asignacion__cliente__razon_social__icontains=q) |
+                    Q(asignacion__persona__cedula__icontains=q) |
+                    Q(asignacion__persona__nombres__icontains=q) |
+                    Q(asignacion__persona__apellidos__icontains=q) |
+                    Q(puesto__nombre__icontains=q)
+                )
+                if q.isdigit():
+                    filtros = filtros | Q(id=int(q)) | Q(asignacion_id=int(q))
+                next_qs = next_qs.filter(filtros).distinct()
+            if turno in ['Diurno', 'Nocturno']:
+                next_qs = next_qs.filter(puesto__horarios__turno=turno).distinct()
+
+            if lite:
+                next_rows = list(next_qs.values(
+                    'id',
+                    'asignacion',
+                    'puesto',
+                    'week_start',
+                    'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'
+                ))
+            else:
+                next_rows = list(AsignacionSemanalSerializer(next_qs, many=True).data)
+
+            last_key = last_week_start.isoformat()
+            last_bucket = weeks_map.get(last_key, {})
+            last_asig_rows = last_bucket.get('asignaciones', [])
+
+            next_by_asig = {}
+            next_by_puesto = {}
+            for row in next_rows:
+                asig_id = row.get('asignacion') or row.get('asignacion_id')
+                if asig_id is not None:
+                    next_by_asig[str(asig_id)] = row
+                puesto_id = row.get('puesto') or row.get('puesto_id')
+                if puesto_id is not None:
+                    next_by_puesto[str(puesto_id)] = row
+
+            for row in last_asig_rows:
+                asig_id = row.get('asignacion') or row.get('asignacion_id')
+                puesto_id = row.get('puesto') or row.get('puesto_id')
+                src = None
+                if asig_id is not None:
+                    src = next_by_asig.get(str(asig_id))
+                if src is None and puesto_id is not None:
+                    src = next_by_puesto.get(str(puesto_id))
+                if not src:
+                    continue
+                for key in spill_keys:
+                    if row.get(key):
+                        continue
+                    if src.get(key):
+                        row[key] = src.get(key)
+
+            if include_sacafranco:
+                sac_next_qs = SacafrancoFilaSemanal.objects.filter(week_start=next_ws)
+                sac_next_rows = list(SacafrancoFilaSemanalSerializer(sac_next_qs, many=True).data)
+                sac_next_by_id = {}
+                for row in sac_next_rows:
+                    fila_id = row.get('sacafranco_fila') or row.get('sacafranco_fila_id')
+                    if fila_id is not None:
+                        sac_next_by_id[str(fila_id)] = row
+                last_sac_rows = last_bucket.get('sacafranco', [])
+                for row in last_sac_rows:
+                    fila_id = row.get('sacafranco_fila') or row.get('sacafranco_fila_id')
+                    if fila_id is None:
+                        continue
+                    src = sac_next_by_id.get(str(fila_id))
+                    if not src:
+                        continue
+                    for key in spill_keys:
+                        if row.get(key):
+                            continue
+                        if src.get(key):
+                            row[key] = src.get(key)
+
     for ws_key, bucket in weeks_map.items():
         try:
             ws_date = datetime.fromisoformat(ws_key).date()

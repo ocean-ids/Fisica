@@ -35,7 +35,7 @@ def _normalize_day(tok):
     return mapping.get(t, '')
 
 
-def _iter_future_week_starts(start_date, years=5):
+def _iter_future_week_starts(start_date, years=3):
     weeks = []
     year_cursor = start_date.year
     month_cursor = start_date.month
@@ -1067,7 +1067,7 @@ def asignar_sacafranco(request):
             weeks = []
             year_cursor = prop_start.year
             month_cursor = prop_start.month
-            end_year = prop_start.year + 5
+            end_year = prop_start.year + 3
             while (year_cursor < end_year) or (year_cursor == end_year and month_cursor <= 12):
                 base = datetime.date(year_cursor, month_cursor, 1)
                 cursor = base

@@ -879,6 +879,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           this.sacafrancoRows = [...(this.sacafrancoRows || []), fila].filter(f => f && f.id);
           this.buildDisplayRows();
           this.updateCalendarOrder();
+          this.loadCalendarWeeks();
         },
         error: err => console.error('Error al crear fila sacafranco', err)
       });
