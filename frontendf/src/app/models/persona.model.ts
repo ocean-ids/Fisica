@@ -1,6 +1,6 @@
 export interface Persona {
   id?: number;
-  tipo: 'FIJOS' | 'RETEN' | 'CUSTODIO' | 'EVENTUALES' | 'SACAFRANCO' | 'SACAVACACIONES' | 'SUPERVISOR ZONAL' | 'SUPERVISOR MOTORIZADO' | 'SUPERVISOR DE ACOMPAÑAMIENTO' | null;
+  tipo: 'FIJOS' | 'RETEN' | 'CUSTODIO' | 'EVENTUAL' | 'SACAFRANCO' | 'SACAVACACIONES' | 'SUPERVISOR ZONAL' | 'SUPERVISOR MOTORIZADO' | 'SUPERVISOR DE ACOMPAÑAMIENTO' | null;
   nombres: string;
   apellidos: string;
   cedula: string;

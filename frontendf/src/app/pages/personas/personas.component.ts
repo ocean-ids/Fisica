@@ -33,7 +33,7 @@ export class PersonasComponent implements OnInit, OnDestroy {
   filtroTexto = '';
   private filterSub?: Subscription;
   filtroTipo = '';
-  tipos = [ 'FIJOS', 'RETEN', 'CUSTODIO', 'EVENTUALES', 'SACAFRANCO', 'SACAVACACIONES', 'SUPERVISOR ZONAL', 'SUPERVISOR MOTORIZADO', 'SUPERVISOR DE ACOMPAÑAMIENTO' ];
+  tipos = [ 'FIJOS', 'RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAFRANCO', 'SACAVACACIONES', 'SUPERVISOR ZONAL', 'SUPERVISOR MOTORIZADO', 'SUPERVISOR DE ACOMPAÑAMIENTO' ];
 
   constructor(
     private personaService: PersonaService,

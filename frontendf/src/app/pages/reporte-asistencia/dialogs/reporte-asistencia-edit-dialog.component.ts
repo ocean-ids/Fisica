@@ -33,7 +33,7 @@ export class ReporteAsistenciaEditDialogComponent {
     'FIJOS',
     'SACAFRANCO',
     'RETEN',
-    'EVENTUALES',
+    'EVENTUAL',
     'SACAVACACIONES',
     'SUPERVISOR MOTORIZADO',
     'SUPERVISOR ZONAL'

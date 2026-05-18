@@ -38,7 +38,7 @@ export class PersonaFormComponent implements OnInit {
     'FIJOS',
     'RETEN',
     'CUSTODIO',
-    'EVENTUALES',
+    'EVENTUAL',
     'SACAFRANCO',
     'SACAVACACIONES',
     'SUPERVISOR ZONAL',
