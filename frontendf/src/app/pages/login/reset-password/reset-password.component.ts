@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-reset-password',
@@ -51,11 +52,22 @@ export class ResetPasswordComponent implements OnInit {
     this.guardando = true;
     this.authService.resetPassword(this.uidb64, this.token, this.password).subscribe({
       next: () => {
-        alert('Contraseña actualizada correctamente');
-        this.router.navigate(['/login']);
+        Swal.fire({
+          icon: 'success',
+          title: 'Contraseña actualizada',
+          text: 'Ya puedes iniciar sesion con tu nueva clave.',
+          confirmButtonText: 'Ir al login'
+        }).then(() => {
+          this.router.navigate(['/login']);
+        });
       },
       error: (err) => {
         this.error = 'Token inválido o expirado. Solicita un nuevo enlace.';
+        Swal.fire({
+          icon: 'error',
+          title: 'No se pudo restablecer',
+          text: this.error
+        });
         this.guardando = false;
       }
     });
