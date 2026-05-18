@@ -19,6 +19,7 @@ services:
       SECRET_KEY: "uU9mQ4wz6Qy8tKf2G1xv7Nn3aL5pR0sVjHcE2dZbY6mT8qWf"
       ALLOWED_HOSTS: "89.117.146.163"
       CORS_ALLOWED_ORIGINS: "http://89.117.146.163"
+      PASSWORD_RESET_BASE_URL: "http://89.117.146.163"
       DB_NAME: sf_bd
       DB_USER: postgres
       DB_PASSWORD: root
