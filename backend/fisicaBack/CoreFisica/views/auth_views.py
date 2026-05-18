@@ -189,7 +189,7 @@ def solicitar_reset_password(request):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     
    #
-    base_url = getattr(settings, 'PASSWORD_RESET_BASE_URL', 'http://localhost:4200').rstrip('/')
+    base_url = getattr(settings, 'PASSWORD_RESET_BASE_URL', 'http://89.117.146.163').rstrip('/')
     reset_link = f"{base_url}/reset-password/{uid}/{token}"
     
     # enviar correo con el enlace de restablecimiento de contraseña, si hay un error al enviar el correo, registrar el error y devolver un mensaje generico si estamos en produccion, o el error detallado si estamos en modo debug para facilitar la depuración
