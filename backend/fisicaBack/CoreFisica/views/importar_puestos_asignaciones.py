@@ -697,6 +697,11 @@ def importar_puestos_asignaciones(request):
                     calendar_updates.setdefault(week_start, {})[day_field] = val
 
                 if has_calendar_values:
+                    try:
+                        from .asignacion_views import _rebuild_asignacion_semanal
+                        _rebuild_asignacion_semanal(asig, force_all=True)
+                    except Exception:
+                        logger.exception('Error reconstruyendo asignacion semanal')
                     for ws, day_map in calendar_updates.items():
                         defaults = {**day_map, 'puesto_id': puesto.id}
                         obj, created = AsignacionSemanal.objects.get_or_create(
