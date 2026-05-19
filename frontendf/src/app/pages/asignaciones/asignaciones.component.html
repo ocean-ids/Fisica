@@ -189,7 +189,6 @@
                   <td class="calendar-cell calendar-col align-middle overflow-hidden" style="height: 70px;">
                     <div class="calendar-weeks">
                       <div class="calendar-week" *ngFor="let ws of weeksForMonth">
-                        <div class="calendar-week-label">{{ ws }}</div>
                         <div class="calendar-week-days">
                           <div class="calendar-day-label" *ngFor="let dayKey of (calendarWeekDayKeys[ws] || calendarDayKeys)">
                             <div class="calendar-day-initial">{{ getDayInitial(dayKey) }}</div>
@@ -254,7 +253,6 @@
                   <td class="calendar-cell calendar-col align-middle bg-warning-subtle">
                     <div class="calendar-weeks">
                       <div class="calendar-week" *ngFor="let ws of weeksForMonth">
-                        <div class="calendar-week-label">{{ ws }}</div>
                         <div class="calendar-week-days">
                           <div class="calendar-day-label" *ngFor="let dayKey of (calendarWeekDayKeys[ws] || calendarDayKeys)">
                             <div class="calendar-day-initial">{{ getDayInitial(dayKey) }}</div>
