@@ -740,9 +740,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       const tokens = this.parseSequence(seq, isSacafranco);
       if (!tokens.length) return;
       const anchor = this.parseWeekStart(weekStart);
-      const rangeMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
-      this.applyRangeToBackend(row, rangeMap, isSacafranco);
-      this.applyRangeToCurrentWeek(row, weekStart, rangeMap);
+      const backendMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
+      const uiMap = isSacafranco
+        ? this.buildRangeMap(startDate, endDate, tokens, anchor, true)
+        : backendMap;
+      this.applyRangeToBackend(row, backendMap, isSacafranco);
+      this.applyRangeToCurrentWeek(row, weekStart, uiMap);
     });
   }
 
@@ -757,18 +760,32 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return parts.length ? parts : [raw];
   }
 
-  private buildRangeMap(startDate: Date, endDate: Date, tokens: string[], anchorWeekStart?: Date | null): Record<string, Record<string, string>> {
+  private buildRangeMap(startDate: Date, endDate: Date, tokens: string[], anchorWeekStart?: Date | null, clampToView: boolean = false): Record<string, Record<string, string>> {
     const map: Record<string, Record<string, string>> = {};
     let idx = 0;
     const d = new Date(startDate);
     const anchorStart = anchorWeekStart ? new Date(anchorWeekStart) : null;
     const anchorEnd = anchorStart ? new Date(anchorStart) : null;
     if (anchorEnd) anchorEnd.setDate(anchorEnd.getDate() + 6);
+    const viewStart = clampToView ? new Date(this.anio, this.mes - 1, 1) : null;
+    const viewEnd = clampToView ? new Date(this.anio, this.mes, 0) : null;
+    const lastWeekKey = clampToView && this.weeksForMonth && this.weeksForMonth.length
+      ? this.weeksForMonth[this.weeksForMonth.length - 1]
+      : null;
+    const lastWeekStart = lastWeekKey ? this.parseWeekStart(lastWeekKey) : null;
+    const lastWeekEnd = lastWeekStart ? new Date(lastWeekStart) : null;
+    if (lastWeekEnd) lastWeekEnd.setDate(lastWeekEnd.getDate() + 6);
     while (d <= endDate) {
       const weekStart = (anchorStart && anchorEnd && d >= anchorStart && d <= anchorEnd)
         ? anchorStart
         : this.getWeekStartForDate(d);
-      const weekKey = this.formatDateLocal(weekStart);
+      let resolvedWeekStart = weekStart;
+      if (clampToView && viewEnd && lastWeekStart && lastWeekEnd) {
+        if (d > viewEnd && d <= lastWeekEnd) {
+          resolvedWeekStart = lastWeekStart;
+        }
+      }
+      const weekKey = this.formatDateLocal(resolvedWeekStart);
       const dayKey = this.dayKeyFromDate(this.formatDateLocal(d));
       if (!map[weekKey]) map[weekKey] = {};
       map[weekKey][dayKey] = tokens[idx % tokens.length];
@@ -839,7 +856,14 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       }
     });
     if (!requests.length) return;
-    forkJoin(requests).subscribe({ next: () => {}, error: () => {} });
+    forkJoin(requests).subscribe({
+      next: () => {
+        if (isSacafranco) {
+          this.loadCalendarWeeks();
+        }
+      },
+      error: () => {}
+    });
   }
 
   private applyRangeToCurrentWeek(row: any, weekStart: string, rangeMap: Record<string, Record<string, string>>): void {
@@ -894,9 +918,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       const tokens = this.parseSequence(seq, true);
       if (!tokens.length) return;
       const anchor = this.parseWeekStart(weekStart);
-      const rangeMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
-      this.applyRangeToBackend(row, rangeMap, true);
-      this.applyRangeToCalendarData(row, rangeMap);
+      const backendMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
+      const uiMap = this.buildRangeMap(startDate, endDate, tokens, anchor, true);
+      this.applyRangeToBackend(row, backendMap, true);
+      this.applyRangeToCalendarData(row, uiMap);
     });
   }
 
