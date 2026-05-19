@@ -56,11 +56,16 @@
   </div>-->
   <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
     <div class="text-muted" *ngIf="getTotalPages()">
-      Provincia {{ provinciaPage }} de {{ getTotalPages() }}
+      Canton o Ciudad {{ provinciaPage }} de {{ getTotalPages() }}
     </div>
-    <div class="btn-group" role="group" aria-label="Pagination">
-      <button class="btn btn-outline-secondary btn-sm" (click)="prevPage()" [disabled]="provinciaPage <= 1">&#x2039;</button>
-      <button class="btn btn-outline-secondary btn-sm" (click)="nextPage()" [disabled]="provinciaPage >= getTotalPages()">&#x203A;</button>
+    <div class="d-flex align-items-center gap-2">
+      <select class="form-select form-select-sm" [(ngModel)]="selectedCantonId" (change)="onCantonSelect()" [ngModelOptions]="{standalone:true}">
+        <option *ngFor="let c of cantonesDisponibles" [ngValue]="c.id">{{ c.nombre }}</option>
+      </select>
+      <div class="btn-group" role="group" aria-label="Pagination">
+        <button class="btn btn-outline-secondary btn-sm" (click)="prevPage()" [disabled]="provinciaPage <= 1">&#x2039;</button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="nextPage()" [disabled]="provinciaPage >= getTotalPages()">&#x203A;</button>
+      </div>
     </div>
   </div>
   <div class="row asig-row g-0" [ngClass]="{ 'justify-content-center': !displayRows.length }">

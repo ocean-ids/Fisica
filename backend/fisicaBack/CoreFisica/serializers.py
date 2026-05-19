@@ -139,6 +139,8 @@ class AsignacionLiteSerializer(serializers.ModelSerializer):
         return {
             'id': inst.id,
             'codigo': getattr(inst, 'codigo', '') or '',
+            'canton_id': getattr(inst, 'canton_id', None),
+            'canton_nombre': getattr(getattr(inst, 'canton', None), 'nombre', ''),
             'provincia_id': getattr(inst.canton, 'provincia_id', None),
             'provincia_nombre': getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
         }

@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django.http import JsonResponse
 from rest_framework import status
-from ..models import Asignacion, AsignacionSemanal, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, Provincia
+from ..models import Asignacion, AsignacionSemanal, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, Provincia, Canton
 from django.db.models import Q, Max, Value
 from django.db.models.functions import Coalesce
 from django.db import transaction
@@ -279,6 +279,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
     #cliente_id se puede recibir como query param o como parte de la ruta (en este caso se prioriza el query param para mantener consistencia con otros filtros)
     cliente_id = request.GET.get('cliente_id')
     provincia_id = request.GET.get('provincia_id')
+    canton_id = request.GET.get('canton_id')
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
     #q es un texto libre q se busca
     q = (request.GET.get('q') or '').strip()
@@ -320,6 +321,12 @@ def obtener_asignaciones(request, mes=None, anio=None):
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
     if instalacion_id:
         asignaciones = asignaciones.filter(instalacion_id=instalacion_id)
+    if canton_id:
+        try:
+            canton_val = int(canton_id)
+            asignaciones = asignaciones.filter(instalacion__canton_id=canton_val)
+        except (TypeError, ValueError):
+            return Response({'error': 'Canton invalido'}, status=status.HTTP_400_BAD_REQUEST)
     if provincia_id:
         try:
             provincia_val = int(provincia_id)
@@ -339,19 +346,19 @@ def obtener_asignaciones(request, mes=None, anio=None):
             filtros = filtros | Q(semanales__id=int(q))
         asignaciones = asignaciones.filter(filtros).distinct()
     
-    provincia_page = request.GET.get('provincia_page')
-    if provincia_page:
+    canton_page = request.GET.get('canton_page')
+    if canton_page:
         try:
-            prov_page = int(provincia_page)
-            if prov_page < 1:
+            cant_page = int(canton_page)
+            if cant_page < 1:
                 raise ValueError
         except ValueError:
-            return Response({'error': 'Pagina de provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Pagina de canton invalida'}, status=status.HTTP_400_BAD_REQUEST)
 
-        provincia_ids = list(
+        canton_ids = list(
             asignaciones
-            .order_by('instalacion__canton__provincia_id')
-            .values_list('instalacion__canton__provincia_id', flat=True)
+            .order_by('instalacion__canton_id')
+            .values_list('instalacion__canton_id', flat=True)
             .distinct()
         )
         sac_qs = SacafrancoFila.objects.all()
@@ -362,47 +369,66 @@ def obtener_asignaciones(request, mes=None, anio=None):
                 sac_qs = sac_qs.filter(Q(anio__lt=anio_val) | Q(anio=anio_val, mes__lte=mes_val))
             except (TypeError, ValueError):
                 pass
-        provincia_ids += list(
-            sac_qs.order_by('provincia_id').values_list('provincia_id', flat=True).distinct()
-        )
-        provincia_ids += list(
-            sac_qs.order_by('persona__provincia_id').values_list('persona__provincia_id', flat=True).distinct()
+        canton_ids += list(
+            sac_qs.order_by('persona__canton_id').values_list('persona__canton_id', flat=True).distinct()
         )
 
         seen = set()
         ordered: list = []
-        for pid in provincia_ids:
-            if pid in seen:
+        for cid in canton_ids:
+            if cid in seen:
                 continue
-            seen.add(pid)
-            ordered.append(pid)
+            seen.add(cid)
+            ordered.append(cid)
         ordered.sort(key=lambda v: (v is None, v if v is not None else 999999))
 
-        total_provincias = len(ordered)
-        if total_provincias == 0:
+        total_cantones = len(ordered)
+        if total_cantones == 0:
             serializer = AsignacionSerializer(asignaciones.none(), many=True)
             return Response({
                 'results': serializer.data,
+                'canton_page': 1,
+                'canton_total': 0,
+                'canton_id': None,
+                'canton_options': [],
                 'provincia_page': 1,
                 'provincia_total': 0,
                 'provincia_id': None
             })
 
-        if prov_page > total_provincias:
-            prov_page = total_provincias
-        provincia_id = ordered[prov_page - 1]
+        if cant_page > total_cantones:
+            cant_page = total_cantones
+        canton_id = ordered[cant_page - 1]
 
-        if provincia_id is None:
-            asignaciones = asignaciones.filter(instalacion__canton__provincia_id__isnull=True)
+        canton_ids = [cid for cid in ordered if cid is not None]
+        canton_map = {}
+        if canton_ids:
+            canton_map = {
+                c.id: c.nombre for c in Canton.objects.filter(id__in=canton_ids)
+            }
+        canton_options = []
+        for cid in ordered:
+            if cid is None:
+                canton_options.append({'id': None, 'nombre': 'SIN CANTON'})
+                continue
+            nombre = (canton_map.get(cid) or '').strip()
+            canton_options.append({'id': cid, 'nombre': nombre or f'CANTON {cid}'})
+
+        if canton_id is None:
+            asignaciones = asignaciones.filter(instalacion__canton_id__isnull=True)
         else:
-            asignaciones = asignaciones.filter(instalacion__canton__provincia_id=provincia_id)
+            asignaciones = asignaciones.filter(instalacion__canton_id=canton_id)
 
         serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
         return Response({
             'results': serializer.data,
-            'provincia_page': prov_page,
-            'provincia_total': total_provincias,
-            'provincia_id': provincia_id
+            'canton_page': cant_page,
+            'canton_total': total_cantones,
+            'canton_id': canton_id,
+            'canton_options': canton_options,
+            'provincia_page': cant_page,
+            'provincia_total': total_cantones,
+            'provincia_id': canton_id
         })
 
     page_param = request.GET.get('page')
@@ -1201,6 +1227,7 @@ def sacafranco_filas(request):
         mes = request.GET.get('mes')
         anio = request.GET.get('anio')
         provincia_id = request.GET.get('provincia_id')
+        canton_id = request.GET.get('canton_id')
         # se obtiene las filas de sacafranco
         qs = SacafrancoFila.objects.all()
         if mes and anio:
@@ -1211,7 +1238,13 @@ def sacafranco_filas(request):
                 # Mostrar todas las filas del mes (no filtrar por semanales).
             except (TypeError, ValueError):
                 pass
-        if provincia_id:
+        if canton_id:
+            try:
+                canton_val = int(canton_id)
+            except (TypeError, ValueError):
+                return Response({'error': 'Canton invalido'}, status=status.HTTP_400_BAD_REQUEST)
+            qs = qs.filter(persona__canton_id=canton_val)
+        elif provincia_id:
             try:
                 provincia_val = int(provincia_id)
             except (TypeError, ValueError):

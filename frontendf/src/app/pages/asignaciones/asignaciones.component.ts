@@ -552,7 +552,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       params.q = this.filtroTexto.trim();
     }
     params.lite = true;
-    params.provincia_page = this.provinciaPage;
+    params.canton_page = this.provinciaPage;
 
     this.asignacionService
       .obtenerAsignacionesPaginadas(this.mes, this.anio, params)
@@ -566,12 +566,16 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
             size: 0,
             provinciaTotal: 0,
             provinciaPage: this.provinciaPage,
-            provinciaId: this.activeProvinciaId
+            provinciaId: this.activeProvinciaId,
+            cantonTotal: 0,
+            cantonPage: this.provinciaPage,
+            cantonId: this.activeProvinciaId,
+            cantonOptions: [] as Array<{ id: number | null; nombre: string }>
           });
         }),
         switchMap(asignaciones => {
-          const provinciaId = asignaciones?.provinciaId ?? null;
-          const sacafrancoParams = provinciaId != null ? { provincia_id: provinciaId } : {};
+          const cantonId = asignaciones?.cantonId ?? asignaciones?.provinciaId ?? null;
+          const sacafrancoParams = cantonId != null ? { canton_id: cantonId } : {};
           return this.asignacionService
             .obtenerSacafrancoFilas(this.mes, this.anio, sacafrancoParams)
             .pipe(
@@ -585,11 +589,15 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       ).subscribe({
         next: ({ asignaciones, sacafranco }) => {
           this.asignaciones = asignaciones?.results || [];
-          this.provinciaTotal = asignaciones?.provinciaTotal ?? this.provinciaTotal;
-          this.provinciaPage = asignaciones?.provinciaPage ?? this.provinciaPage;
-          this.activeProvinciaId = asignaciones?.provinciaId ?? this.activeProvinciaId;
+          this.provinciaTotal = asignaciones?.cantonTotal ?? asignaciones?.provinciaTotal ?? this.provinciaTotal;
+          this.provinciaPage = asignaciones?.cantonPage ?? asignaciones?.provinciaPage ?? this.provinciaPage;
+          this.activeProvinciaId = asignaciones?.cantonId ?? asignaciones?.provinciaId ?? this.activeProvinciaId;
           this.sacafrancoRows = sacafranco || [];
           this.provinciasDisponibles = this.computeProvinciaOptions();
+          this.cantonesDisponibles = (asignaciones?.cantonOptions && asignaciones.cantonOptions.length)
+            ? asignaciones.cantonOptions
+            : this.computeCantonOptions();
+          this.selectedCantonId = this.activeProvinciaId ?? null;
           this.buildDisplayRows();
           this.updateCalendarOrder();
           this.loadCalendarWeeks();
@@ -608,7 +616,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       paramsBase.q = this.filtroTexto.trim();
     }
     const hasSacafranco = (this.sacafrancoRows || []).length > 0;
-    const provinciaId = this.activeProvinciaId != null ? this.activeProvinciaId : null;
+    const cantonId = this.activeProvinciaId != null ? this.activeProvinciaId : null;
     this.asignacionCalendarioService.obtenerAsignacionesCalendarioMes(
       this.mes,
       this.anio,
@@ -617,7 +625,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         lite: true,
         include_sacafranco: hasSacafranco,
         auto_create: true,
-        ...(provinciaId != null ? { provincia_id: provinciaId } : {})
+        ...(cantonId != null ? { canton_id: cantonId } : {})
       }
     ).subscribe({
       next: res => {
@@ -961,6 +969,19 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   provinciasDisponibles: Array<{ id: number; nombre: string }> = [];
+  cantonesDisponibles: Array<{ id: number | null; nombre: string }> = [];
+  selectedCantonId: number | null = null;
+
+  onCantonSelect(): void {
+    if (!this.cantonesDisponibles || !this.cantonesDisponibles.length) return;
+    const targetId = this.selectedCantonId;
+    if (targetId == null) return;
+    const idx = this.cantonesDisponibles.findIndex(c => c.id === targetId);
+    if (idx < 0) return;
+    this.provinciaPage = idx + 1;
+    this.activeProvinciaId = targetId;
+    this.cargarAsignaciones();
+  }
 
   private computeProvinciaOptions(): Array<{ id: number; nombre: string }> {
     const map = new Map<number, string>();
@@ -979,6 +1000,25 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return Array.from(map.entries())
       .map(([id, nombre]) => ({ id, nombre }))
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  private computeCantonOptions(): Array<{ id: number | null; nombre: string }> {
+    const map = new Map<number | null, string>();
+    (this.asignaciones || []).forEach(asig => {
+      const id = asig?.instalacion_detalle?.canton_id ?? null;
+      const nombre = (asig?.instalacion_detalle?.canton_nombre || '').trim();
+      if (id == null && !nombre) return;
+      if (!map.has(id)) map.set(id, nombre || 'SIN CANTON');
+    });
+    (this.sacafrancoRows || []).forEach(fila => {
+      const id = fila?.persona_detalle?.canton ?? null;
+      const nombre = (fila?.persona_detalle?.canton_nombre || '').trim();
+      if (id == null && !nombre) return;
+      if (!map.has(id)) map.set(id, nombre || 'SIN CANTON');
+    });
+    return Array.from(map.entries())
+      .map(([id, nombre]) => ({ id, nombre }))
+      .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
   }
 
   private getAssignedSacafrancoPersonaIds(): number[] {
@@ -1273,28 +1313,28 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   private getProvinciaLabel(asig: Asignacion): string {
-    const label = (asig?.instalacion_detalle?.provincia_nombre || '').trim();
-    return label || 'SIN PROVINCIA';
+    const label = (asig?.instalacion_detalle?.canton_nombre || '').trim();
+    return label || 'SIN CANTON';
   }
 
   private getSacafrancoProvinciaLabel(fila: SacafrancoFila): string {
-    const label = (fila?.provincia_nombre || '').trim();
+    const label = (fila?.persona_detalle?.canton_nombre || '').trim();
     if (label) return label;
-    const id = (fila?.provincia ?? fila?.persona_detalle?.provincia) ?? null;
-    if (id == null) return 'SIN PROVINCIA';
-    const fromList = (this.provinciasDisponibles || []).find(p => p.id === id)?.nombre || '';
-    return fromList.trim() || 'SIN PROVINCIA';
+    const id = (fila?.persona_detalle?.canton) ?? null;
+    if (id == null) return 'SIN CANTON';
+    const fromList = (this.cantonesDisponibles || []).find(p => p.id === id)?.nombre || '';
+    return fromList.trim() || 'SIN CANTON';
   }
 
   private getProvinciaKeyFromAsignacion(asig: Asignacion): string {
-    const id = asig?.instalacion_detalle?.provincia_id ?? null;
+    const id = asig?.instalacion_detalle?.canton_id ?? null;
     if (id != null) return `provincia-${id}`;
     const label = this.getProvinciaLabel(asig);
     return label ? `provincia-label-${label}` : 'provincia-none';
   }
 
   private getProvinciaKeyFromSacafranco(fila: SacafrancoFila): string {
-    const id = (fila?.provincia ?? fila?.persona_detalle?.provincia) ?? null;
+    const id = (fila?.persona_detalle?.canton) ?? null;
     if (id != null) return `provincia-${id}`;
     const label = this.getSacafrancoProvinciaLabel(fila);
     return label ? `provincia-label-${label}` : 'provincia-none';
@@ -1302,20 +1342,20 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   private getProvinciaIdMap(): Record<string, number> {
     const map: Record<string, number> = {};
-    (this.provinciasDisponibles || []).forEach(p => {
+    (this.cantonesDisponibles || []).forEach(p => {
       const label = (p?.nombre || '').trim();
       if (!label || p?.id == null) return;
       if (map[label] == null) map[label] = p.id;
     });
     (this.sacafrancoRows || []).forEach(fila => {
-      const label = (fila?.provincia_nombre || '').trim();
-      const id = fila?.provincia ?? null;
+      const label = (fila?.persona_detalle?.canton_nombre || '').trim();
+      const id = fila?.persona_detalle?.canton ?? null;
       if (!label || id == null) return;
       if (map[label] == null) map[label] = id;
     });
     (this.asignaciones || []).forEach(asig => {
-      const label = (asig?.instalacion_detalle?.provincia_nombre || '').trim();
-      const id = asig?.instalacion_detalle?.provincia_id;
+      const label = (asig?.instalacion_detalle?.canton_nombre || '').trim();
+      const id = asig?.instalacion_detalle?.canton_id;
       if (!label || id == null) return;
       if (map[label] == null) map[label] = id;
     });

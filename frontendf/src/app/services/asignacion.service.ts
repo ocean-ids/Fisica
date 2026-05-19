@@ -24,7 +24,7 @@ export class AsignacionService {
     );
   }
 
-  obtenerAsignacionesPaginadas(mes: number, anio: number, params?: any): Observable<{ results: Asignacion[]; total: number; page: number; size: number; provinciaTotal?: number; provinciaPage?: number; provinciaId?: number | null }> {
+  obtenerAsignacionesPaginadas(mes: number, anio: number, params?: any): Observable<{ results: Asignacion[]; total: number; page: number; size: number; provinciaTotal?: number; provinciaPage?: number; provinciaId?: number | null; cantonTotal?: number; cantonPage?: number; cantonId?: number | null; cantonOptions?: Array<{ id: number | null; nombre: string }> }> {
     return this.apiService.get<any>(`/asignaciones/${mes}/${anio}/`, params).pipe(
       map(response => {
         const raw = Array.isArray(response) ? response : (response?.results || []);
@@ -32,15 +32,22 @@ export class AsignacionService {
           ...asig,
           instalacionCodigo: asig.instalacionCodigo || (asig.instalacion_detalle ? asig.instalacion_detalle.codigo : '')
         }));
+        const cantonTotal = response?.canton_total ?? response?.provincia_total;
+        const cantonPage = response?.canton_page ?? response?.provincia_page;
+        const cantonId = response?.canton_id ?? response?.provincia_id;
         return {
           results,
           total: Array.isArray(response) ? results.length : (response?.total ?? results.length),
-          page: Array.isArray(response) ? 1 : (response?.page ?? response?.provincia_page ?? 1),
+          page: Array.isArray(response) ? 1 : (response?.page ?? cantonPage ?? 1),
           size: Array.isArray(response) ? results.length : (response?.size ?? results.length)
         ,
-          provinciaTotal: response?.provincia_total,
-          provinciaPage: response?.provincia_page,
-          provinciaId: response?.provincia_id
+          provinciaTotal: cantonTotal,
+          provinciaPage: cantonPage,
+          provinciaId: cantonId,
+          cantonTotal,
+          cantonPage,
+          cantonId,
+          cantonOptions: response?.canton_options
         };
       })
     );

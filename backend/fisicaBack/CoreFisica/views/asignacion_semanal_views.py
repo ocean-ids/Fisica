@@ -53,14 +53,16 @@ def _overlay_coberturas_sacafranco(rows, week_start_date):
     return rows
 
 
-def _auto_create_asignacion_semanal_for_week(week_start_date, provincia_id=None):
+def _auto_create_asignacion_semanal_for_week(week_start_date, provincia_id=None, canton_id=None):
     try:
         from ..models import Asignacion, Puesto
         asigns = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').filter(
             Q(mes=week_start_date.month, anio=week_start_date.year) |
             (Q(recurring=True) & Q(start_date__lte=week_start_date) & (Q(end_date__isnull=True) | Q(end_date__gte=week_start_date)))
         ).select_related('puesto', 'patronAsignacion')
-        if provincia_id is not None:
+        if canton_id is not None:
+            asigns = asigns.filter(instalacion__canton_id=canton_id)
+        elif provincia_id is not None:
             asigns = asigns.filter(instalacion__canton__provincia_id=provincia_id)
 
         weekday_names = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
@@ -279,12 +281,19 @@ def listar_asignacion_semanal(request):
     week_start = request.GET.get('week_start')
     cliente_id = request.GET.get('cliente')
     provincia_id = request.GET.get('provincia_id')
+    canton_id = request.GET.get('canton_id')
     turno = request.GET.get('turno')
     q = (request.GET.get('q') or '').strip()
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
     auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
 
     prov_id = None
+    cant_id = None
+    if canton_id:
+        try:
+            cant_id = int(canton_id)
+        except (TypeError, ValueError):
+            return Response({'error': 'Canton invalido'}, status=status.HTTP_400_BAD_REQUEST)
     if provincia_id:
         try:
             prov_id = int(provincia_id)
@@ -310,7 +319,9 @@ def listar_asignacion_semanal(request):
                         Q(mes=ws.month, anio=ws.year) |
                         (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
                     ).select_related('puesto', 'patronAsignacion')
-                    if prov_id is not None:
+                    if cant_id is not None:
+                        asigns = asigns.filter(instalacion__canton_id=cant_id)
+                    elif prov_id is not None:
                         asigns = asigns.filter(instalacion__canton__provincia_id=prov_id)
                     active_asign_ids = set(asigns.values_list('id', flat=True))
                     # weekday_names para normalizar tokens de días y compararlos con días del puesto o patrón sin depender de idioma o formato exacto.
@@ -605,6 +616,7 @@ def listar_asignacion_semanal_mes(request):
     anio = request.GET.get('anio')
     cliente_id = request.GET.get('cliente')
     provincia_id = request.GET.get('provincia_id')
+    canton_id = request.GET.get('canton_id')
     turno = request.GET.get('turno')
     q = (request.GET.get('q') or '').strip()
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
@@ -631,6 +643,12 @@ def listar_asignacion_semanal_mes(request):
         current += timedelta(days=7)
 
     prov_id = None
+    cant_id = None
+    if canton_id:
+        try:
+            cant_id = int(canton_id)
+        except (TypeError, ValueError):
+            return Response({'error': 'Canton invalido'}, status=status.HTTP_400_BAD_REQUEST)
     if provincia_id:
         try:
             prov_id = int(provincia_id)
@@ -640,11 +658,13 @@ def listar_asignacion_semanal_mes(request):
     if auto_create:
         for ws in weeks:
             base_qs = AsignacionSemanal.objects.filter(week_start=ws)
-            if prov_id is not None:
+            if cant_id is not None:
+                base_qs = base_qs.filter(puesto__instalacion__canton_id=cant_id)
+            elif prov_id is not None:
                 base_qs = base_qs.filter(puesto__instalacion__canton__provincia_id=prov_id)
             if base_qs.exists():
                 continue
-            _auto_create_asignacion_semanal_for_week(ws, provincia_id=prov_id)
+            _auto_create_asignacion_semanal_for_week(ws, provincia_id=prov_id, canton_id=cant_id)
 
     qs = AsignacionSemanal.objects.select_related(
         'puesto',
@@ -654,7 +674,9 @@ def listar_asignacion_semanal_mes(request):
     qs = qs.filter(week_start__in=weeks)
     if cliente_id:
         qs = qs.filter(puesto__instalacion__cliente_id=cliente_id)
-    if prov_id is not None:
+    if cant_id is not None:
+        qs = qs.filter(puesto__instalacion__canton_id=cant_id)
+    elif prov_id is not None:
         qs = qs.filter(puesto__instalacion__canton__provincia_id=prov_id)
     if q:
         filtros = (
