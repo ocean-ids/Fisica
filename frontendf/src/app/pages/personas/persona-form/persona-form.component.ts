@@ -88,24 +88,37 @@ export class PersonaFormComponent implements OnInit {
   }
 
   private loadProvincias(): void {
-    this.useStaticProvincias = true;
-    this.provincias = this.provinciasService.getProvinciasSync();
     this.initialCanton = (this.persona?.canton as any) ?? null;
     this.initialCantonName = (this.persona?.canton_nombre || '').trim().toUpperCase() || null;
     this.initialProvinciaName = (this.persona?.provincia_nombre || '').trim().toUpperCase() || null;
 
-    const storedProvId = this.persona?.provincia ?? null;
-    const provFoundById = storedProvId
-      ? this.provincias.find((x: any) => x.id === storedProvId)
-      : null;
-    const provFoundByName = this.initialProvinciaName
-      ? this.provincias.find((x: any) => (x.nombre || '').toUpperCase() === this.initialProvinciaName)
-      : null;
-    const provFound = provFoundById || provFoundByName;
-    if (provFound) {
-      this.personaForm.get('provincia')?.setValue(provFound.id);
-      this.onProvinciaChange();
-    }
+    const applyInitialProvincia = () => {
+      const storedProvId = this.persona?.provincia ?? null;
+      const provFoundById = storedProvId
+        ? this.provincias.find((x: any) => x.id === storedProvId)
+        : null;
+      const provFoundByName = this.initialProvinciaName
+        ? this.provincias.find((x: any) => (x.nombre || '').toUpperCase() === this.initialProvinciaName)
+        : null;
+      const provFound = provFoundById || provFoundByName;
+      if (provFound) {
+        this.personaForm.get('provincia')?.setValue(provFound.id);
+        this.onProvinciaChange();
+      }
+    };
+
+    this.useStaticProvincias = false;
+    this.ubicacionService.getProvincias().subscribe({
+      next: (list) => {
+        this.provincias = list || [];
+        applyInitialProvincia();
+      },
+      error: () => {
+        this.useStaticProvincias = true;
+        this.provincias = this.provinciasService.getProvinciasSync();
+        applyInitialProvincia();
+      }
+    });
   }
 
   private afterCantonesLoaded(): void {

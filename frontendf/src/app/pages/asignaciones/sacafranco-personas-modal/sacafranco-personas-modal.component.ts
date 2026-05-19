@@ -36,8 +36,23 @@ export class SacafrancoPersonasModalComponent implements OnInit {
       this.personas = [];
       return;
     }
-    this.personas = (this.personasAll || [])
-      .filter(p => p.provincia === this.selectedProvinciaId);
+    const normalizeName = (value: string | null | undefined): string => {
+      if (!value) return '';
+      return value
+        .toString()
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '');
+    };
+    const selectedProv = (this.provincias || []).find(p => p.id === this.selectedProvinciaId);
+    const selectedName = normalizeName(selectedProv?.nombre || '');
+    this.personas = (this.personasAll || []).filter(p => {
+      const personaProvId = (p as any).provincia;
+      if (personaProvId === this.selectedProvinciaId) return true;
+      if (!selectedName) return false;
+      const personaProvName = normalizeName((p as any).provincia_nombre || '');
+      return personaProvName && personaProvName === selectedName;
+    });
   }
 
   onProvinciaChange(): void {
