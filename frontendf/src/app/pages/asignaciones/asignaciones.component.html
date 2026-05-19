@@ -90,11 +90,6 @@
                     <i class="bi" [ngClass]="columnaOculta('puesto') ? 'bi-eye-slash' : 'bi-eye'"></i>
                   </button>
                 </th>
-                <th *ngIf="!columnaOculta('cedula')">
-                  <button type="button" class="header-eye-btn" (click)="toggleColumna('cedula')" aria-label="Ocultar columna Cedula">
-                    <i class="bi" [ngClass]="columnaOculta('cedula') ? 'bi-eye-slash' : 'bi-eye'"></i>
-                  </button>
-                </th>
                 <th *ngIf="!columnaOculta('persona')">
                   <button type="button" class="header-eye-btn" (click)="toggleColumna('persona')" aria-label="Ocultar columna Persona">
                     <i class="bi" [ngClass]="columnaOculta('persona') ? 'bi-eye-slash' : 'bi-eye'"></i>
@@ -112,7 +107,6 @@
                 <th *ngIf="!columnaOculta('codigo')" [attr.rowspan]="headerRowspan()" style="width: 50px;">Nominativo</th>
                 <th *ngIf="!columnaOculta('cliente')" [attr.rowspan]="headerRowspan()" style="width: 150px; height: 30px;">Cliente</th>
                 <th *ngIf="mostrarPuesto()" style="width: 50px;" [attr.colspan]="2">Puesto</th>
-                <th *ngIf="!columnaOculta('cedula')" [attr.rowspan]="headerRowspan()">Cedula</th>
                 <th *ngIf="!columnaOculta('persona')" [attr.rowspan]="headerRowspan()">Persona</th>
                 <th *ngIf="!columnaOculta('accion')" [attr.rowspan]="headerRowspan()">Accion</th>
                 <th class="calendar-col" [attr.rowspan]="headerRowspan()">
@@ -165,12 +159,6 @@
                       </div>
                     </mat-menu>
                   </td>
-                    <td *ngIf="!columnaOculta('cedula')" class="align-middle overflow-hidden" style="height: 70px;"
-                      [ngStyle]="{ 'background-color': row.asig.cedula_color || 'transparent' }"
-                      (dblclick)="abrirColorCedula(row.asig)"
-                      style="cursor: pointer;">
-                    {{ row.asig.persona_detalle?.cedula }}
-                  </td>
                   <td *ngIf="!columnaOculta('persona')" class="text-wrap align-middle overflow-hidden" style="min-width: 180px; height: 70px;">
                       <div>
                         {{ row.asig.persona_detalle?.apellidos }}
@@ -178,6 +166,9 @@
                       <div>
                         {{ row.asig.persona_detalle?.nombres }}
                       </div>
+                        <div class="text-muted">
+                          {{ row.asig.persona_detalle?.cedula }}
+                        </div>
                       <div>
                         <span class="badge"
                           [ngClass]="row.asig.persona_detalle?.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
@@ -238,12 +229,10 @@
                   <td *ngIf="!columnaOculta('cliente')" class="bg-warning-subtle"></td>
                   <td *ngIf="mostrarPuesto()" class="bg-warning-subtle text-center">SACAFRANCO</td>
                   <td *ngIf="mostrarPuesto()" class="bg-warning-subtle"></td>
-                  <td *ngIf="!columnaOculta('cedula')" class="text-center align-middle bg-warning-subtle">
-                    {{ row.fila.persona_detalle?.cedula || '-' }}
-                  </td>
                   <td *ngIf="!columnaOculta('persona')" class="text-center align-middle bg-warning-subtle">
                     <div>{{ row.fila.persona_detalle?.apellidos || '' }}</div>
                     <div>{{ row.fila.persona_detalle?.nombres || '' }}</div>
+                    <div class="text-muted">{{ row.fila.persona_detalle?.cedula || '-' }}</div>
                   </td>
                   <td *ngIf="!columnaOculta('accion')" class="text-center align-middle bg-warning-subtle">
                     <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">

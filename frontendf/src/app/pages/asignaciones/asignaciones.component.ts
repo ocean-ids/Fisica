@@ -475,7 +475,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     count += 1;
     if (!this.columnaOculta('cliente')) count += 1;
     if (this.mostrarPuesto()) count += 2;
-    if (!this.columnaOculta('cedula')) count += 1;
     if (!this.columnaOculta('persona')) count += 1;
     if (!this.columnaOculta('accion')) count += 1;
     return count || 1;
