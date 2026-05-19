@@ -851,6 +851,17 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
   }
 
+  private applyRangeToCalendarData(row: any, rangeMap: Record<string, Record<string, string>>): void {
+    Object.keys(rangeMap).forEach(weekStart => {
+      const weekDays = rangeMap[weekStart] || {};
+      const calRow = this.getCalendarRow(row, weekStart);
+      if (!calRow) return;
+      Object.keys(weekDays).forEach(k => {
+        calRow[k] = weekDays[k];
+      });
+    });
+  }
+
   private openSacafrancoSequenceModal(fila: SacafrancoFila): void {
     if (!fila?.id) return;
     const weekStart = (this.weeksForMonth && this.weeksForMonth.length)
@@ -885,7 +896,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       const anchor = this.parseWeekStart(weekStart);
       const rangeMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
       this.applyRangeToBackend(row, rangeMap, true);
-      this.applyRangeToCurrentWeek(row, weekStart, rangeMap);
+      this.applyRangeToCalendarData(row, rangeMap);
     });
   }
 
