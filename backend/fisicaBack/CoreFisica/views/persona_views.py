@@ -641,6 +641,8 @@ def importar_personas(request):
         row_has_fullname = item.get('has_fullname_header', False)
         cedula = normalize_cedula(raw.get('CEDULA'))
         tipo = str(raw.get('TIPO') or '').strip().upper()
+        if tipo == 'EVENTUALES':
+            tipo = 'EVENTUAL'
         if not tipo:
             tipo = None
         is_active = parse_bool(raw.get('IS_ACTIVE'))
@@ -737,7 +739,18 @@ def importar_personas(request):
                     continue
                 persona = existentes.get(cedula)
                 if not persona:
-                    resumen['omitidas'] += 1
+                    provincia_id = _resolve_provincia_id(fila.get('provincia'))
+                    canton_id = _resolve_canton_id(fila.get('canton'), provincia_id)
+                    Persona.objects.create(
+                        nombres=str(fila.get('nombres') or '').strip().upper(),
+                        apellidos=str(fila.get('apellidos') or '').strip().upper(),
+                        cedula=cedula,
+                        tipo=fila.get('tipo') or None,
+                        is_active=bool(fila.get('is_active')),
+                        provincia_id=provincia_id,
+                        canton_id=canton_id,
+                    )
+                    resumen['creadas'] += 1
                     procesadas.add(cedula)
                     continue
                 provincia_id = _resolve_provincia_id(fila.get('provincia'))
