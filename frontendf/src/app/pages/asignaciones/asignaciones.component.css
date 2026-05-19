@@ -1,3 +1,9 @@
+/* Use full width inside dashboard main-content padding. */
+:host {
+  display: block;
+  margin: -20px;
+}
+
 /* Scroll horizontal para los calendarios semanales */
 .vertical-scroll-calendars {
   display: flex;
