@@ -851,6 +851,44 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
   }
 
+  private openSacafrancoSequenceModal(fila: SacafrancoFila): void {
+    if (!fila?.id) return;
+    const weekStart = (this.weeksForMonth && this.weeksForMonth.length)
+      ? this.weeksForMonth[0]
+      : this.formatDateLocal(new Date(this.anio, this.mes - 1, 1));
+    if (!weekStart) return;
+    const startDefault = this.formatDateLocal(new Date(this.anio, this.mes - 1, 1));
+    const endDefault = this.formatDateLocal(new Date(this.anio, this.mes, 0));
+    const row = { type: 'sacafranco', id: fila.id } as any;
+    const calRow = this.getCalendarRow(row, weekStart);
+    const ref = this.dialog.open(AsignacionCalendarioRangeModalComponent, {
+      width: '420px',
+      data: {
+        start: startDefault,
+        end: endDefault,
+        seq: '',
+        isSacafranco: true,
+        weekStart,
+        row: calRow
+      }
+    });
+
+    ref.afterClosed().subscribe((result?: AsignacionRangeModalResult) => {
+      if (!result) return;
+      const { start, end, seq } = result;
+      if (!start || !end || !seq) return;
+      const startDate = new Date(start + 'T00:00:00');
+      const endDate = new Date(end + 'T00:00:00');
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
+      const tokens = this.parseSequence(seq, true);
+      if (!tokens.length) return;
+      const anchor = this.parseWeekStart(weekStart);
+      const rangeMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
+      this.applyRangeToBackend(row, rangeMap, true);
+      this.applyRangeToCurrentWeek(row, weekStart, rangeMap);
+    });
+  }
+
   //crearSacafrancoFila crea una fila de sacafranco vacía para el mes y año seleccionados
   crearSacafrancoFila(): void {
     const ref = this.dialog.open(SacafrancoPersonasModalComponent, {
@@ -879,6 +917,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           this.buildDisplayRows();
           this.updateCalendarOrder();
           this.loadCalendarWeeks();
+          this.openSacafrancoSequenceModal(fila);
         },
         error: err => console.error('Error al crear fila sacafranco', err)
       });
