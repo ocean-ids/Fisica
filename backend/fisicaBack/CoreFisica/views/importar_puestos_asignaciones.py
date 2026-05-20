@@ -334,7 +334,7 @@ def _detect_month_year_from_sheet(rows):
         'NOVIEMBRE': 11,
         'DICIEMBRE': 12,
     }
-    for row in rows[:10]:
+    for row in rows[:30]:
         for cell in row:
             if not cell:
                 continue
@@ -417,7 +417,33 @@ def importar_puestos_asignaciones(request):
             'error': 'Faltan columnas obligatorias: PUESTO, CEDULA, HORA INGRESO, HORA SALIDA y (DIAS o HORAS)',
             'headers_detectados': headers_raw
         }, status=400)
+    # detectar si la fila siguiente contiene los numeros de dias (1..31) para el calendario
+    day_header_row_num = None
+    if header_row_num is not None and (header_row_num + 1) < len(rows):
+        candidate = rows[header_row_num + 1]
+        candidate_headers = [normalize_header(h) for h in candidate]
+        day_idx = {HEADER_MAP[h]: i for i, h in enumerate(candidate_headers) if h in HEADER_MAP and h.startswith(tuple(str(d) for d in range(1, 32)))}
+        # si hay suficientes columnas de dias, usar esta fila como encabezado de calendario
+        if len(day_idx) >= 10:
+            day_header_row_num = header_row_num + 1
+            for key, idx in day_idx.items():
+                if key not in header_idx:
+                    header_idx[key] = idx
     sheet_year, sheet_month = _detect_month_year_from_sheet(rows)
+    req_month = request.GET.get('mes') or request.POST.get('mes')
+    req_year = request.GET.get('anio') or request.POST.get('anio')
+    try:
+        req_month = int(req_month) if req_month is not None else None
+    except (TypeError, ValueError):
+        req_month = None
+    try:
+        req_year = int(req_year) if req_year is not None else None
+    except (TypeError, ValueError):
+        req_year = None
+    if req_month is not None and not (1 <= req_month <= 12):
+        req_month = None
+    if req_year is not None and req_year < 1:
+        req_year = None
     # se inicializa un diccionario de resumen para llevar conteo de filas procesadas, personas/puestos/horarios/asignaciones creadas o actualizadas, y errores encontrados durante el proceso de importacion
     resumen = {
         'total_filas': 0,
@@ -431,6 +457,8 @@ def importar_puestos_asignaciones(request):
     }
     # start_row se establece como la fila siguiente a la fila de encabezado encontrada, para comenzar a procesar los datos desde esa fila en adelante
     start_row = (header_row_num or 0) + 1
+    if day_header_row_num is not None and day_header_row_num >= start_row:
+        start_row = day_header_row_num + 1
 
     try:
         touched_asig_ids = set()
@@ -487,7 +515,7 @@ def importar_puestos_asignaciones(request):
                     compact_groups = parse_compact_horas_turno_dias(horas_raw)
                     if compact_groups and not dias_groups:
                         dias_groups = [g['dias'] for g in compact_groups if g.get('dias')]
-                fecha = None
+                fecha = parse_excel_date(col_raw('fecha')) if header_idx.get('fecha') is not None else None
                 # si el puesto_nombre se agrega un mensaje de error al resumen indicando que el puesto esta vacio y se continua con la siguiente fila sin procesar la fila actual, ya que el puesto es un campo obligatorio para crear o actualizar una asignacion
                 if not puesto_nombre:
                     resumen['errores'].append(f'Fila {i}: puesto vacio')
@@ -628,7 +656,14 @@ def importar_puestos_asignaciones(request):
                     pass
                 
                 # se actualizan o crean las asignaciones para la persona, puesto, instalacion, horario
-                ref_date = fecha or (date(sheet_year, sheet_month, 1) if sheet_year and sheet_month else date.today())
+                if fecha:
+                    ref_date = fecha
+                elif req_year and req_month:
+                    ref_date = date(req_year, req_month, 1)
+                elif sheet_year and sheet_month:
+                    ref_date = date(sheet_year, sheet_month, 1)
+                else:
+                    ref_date = date.today()
                 mes = ref_date.month
                 anio = ref_date.year
                 patron_obj = None
@@ -676,6 +711,7 @@ def importar_puestos_asignaciones(request):
 
                 # aplicar calendario manual desde columnas 1..31 si existen
                 calendar_updates = {}
+                seq_values = []
                 days_in_month = (date(ref_date.year, ref_date.month + 1, 1) - timedelta(days=1)).day if ref_date.month < 12 else 31
                 has_calendar_values = False
                 for day_num in range(1, 32):
@@ -690,11 +726,31 @@ def importar_puestos_asignaciones(request):
                     if not val:
                         continue
                     has_calendar_values = True
+                    seq_values.append(val)
                     day_date = date(ref_date.year, ref_date.month, day_num)
                     week_index = (day_num - 1) // 7
                     week_start = date(ref_date.year, ref_date.month, 1) + timedelta(days=week_index * 7)
                     day_field = ['mon','tue','wed','thu','fri','sat','sun'][day_date.weekday()]
                     calendar_updates.setdefault(week_start, {})[day_field] = val
+
+                if has_calendar_values and seq_values:
+                    # Continue the personalized sequence into the overflow days of the last week.
+                    last_day = date(ref_date.year, ref_date.month, days_in_month)
+                    last_week_start = date(ref_date.year, ref_date.month, 1) + timedelta(days=((days_in_month - 1) // 7) * 7)
+                    last_week_end = last_week_start + timedelta(days=6)
+                    overflow = (last_week_end - last_day).days
+                    if overflow > 0:
+                        # Detect the smallest repeating cycle; fallback to full sequence.
+                        cycle = seq_values
+                        for size in range(1, len(seq_values) + 1):
+                            if all(seq_values[i] == seq_values[i % size] for i in range(len(seq_values))):
+                                cycle = seq_values[:size]
+                                break
+                        for offset in range(1, overflow + 1):
+                            day_date = last_day + timedelta(days=offset)
+                            day_field = ['mon','tue','wed','thu','fri','sat','sun'][day_date.weekday()]
+                            next_val = cycle[(len(seq_values) + offset - 1) % len(cycle)]
+                            calendar_updates.setdefault(last_week_start, {})[day_field] = next_val
 
                 if has_calendar_values:
                     try:
