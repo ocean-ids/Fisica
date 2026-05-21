@@ -280,10 +280,29 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       d.setDate(base.getDate() + i);
       const key = this.dayKeyFromDate(this.formatDateLocal(d));
       if (key === dayKey) {
+        if (d.getMonth() + 1 !== this.mes || d.getFullYear() !== this.anio) {
+          return '';
+        }
         return String(d.getDate());
       }
     }
     return '';
+  }
+
+  isDayInCurrentMonth(weekStart: string, dayKey: string): boolean {
+    if (!weekStart || !dayKey) return false;
+    const parts = weekStart.split('-').map(Number);
+    if (parts.length !== 3) return false;
+    const base = new Date(parts[0], parts[1] - 1, parts[2]);
+    for (let i = 0; i < 7; i += 1) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      const key = this.dayKeyFromDate(this.formatDateLocal(d));
+      if (key === dayKey) {
+        return (d.getMonth() + 1) === this.mes && d.getFullYear() === this.anio;
+      }
+    }
+    return false;
   }
 
   getCalendarCellClass(value: any): string {
@@ -678,6 +697,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   onCalendarCellChange(row: any, weekStart: string, dayKey: string, value: any): void {
+    if (!this.isDayInCurrentMonth(weekStart, dayKey)) return;
     if (!row || row.type !== 'asignacion') return;
     const calRow = this.getCalendarRow(row, weekStart);
     if (!calRow) return;
@@ -704,6 +724,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   onSacafrancoCalendarCellChange(row: any, weekStart: string, dayKey: string, value: any): void {
+    if (!this.isDayInCurrentMonth(weekStart, dayKey)) return;
     if (!row || row.type !== 'sacafranco') return;
     const calRow = this.getCalendarRow(row, weekStart);
     if (!calRow) return;

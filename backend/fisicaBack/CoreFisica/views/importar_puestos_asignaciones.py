@@ -463,6 +463,7 @@ def importar_puestos_asignaciones(request):
     try:
         touched_asig_ids = set()
         touched_dates = set()
+        regenerated_future_signatures = {}
         with transaction.atomic():
             for i, row in enumerate(rows[start_row:], start=start_row + 1):
                 if not row or all(v is None or str(v).strip() == '' for v in row):
@@ -696,7 +697,6 @@ def importar_puestos_asignaciones(request):
 
                 asig, created_asig = Asignacion.objects.update_or_create(
                     persona=persona,
-                    puesto=puesto,
                     mes=mes,
                     anio=anio,
                     defaults=defaults,
@@ -711,7 +711,7 @@ def importar_puestos_asignaciones(request):
 
                 # aplicar calendario manual desde columnas 1..31 si existen
                 calendar_updates = {}
-                seq_values = []
+                raw_month_values = []
                 days_in_month = (date(ref_date.year, ref_date.month + 1, 1) - timedelta(days=1)).day if ref_date.month < 12 else 31
                 has_calendar_values = False
                 for day_num in range(1, 32):
@@ -719,45 +719,46 @@ def importar_puestos_asignaciones(request):
                         continue
                     key = f'day_{day_num}'
                     idx = header_idx.get(key)
-                    if idx is None or idx >= len(row):
-                        continue
-                    raw_val = row[idx]
+                    raw_val = row[idx] if (idx is not None and idx < len(row)) else None
                     val = parse_calendar_value(raw_val)
+                    raw_month_values.append(val)
                     if not val:
                         continue
                     has_calendar_values = True
-                    seq_values.append(val)
-                    day_date = date(ref_date.year, ref_date.month, day_num)
-                    week_index = (day_num - 1) // 7
-                    week_start = date(ref_date.year, ref_date.month, 1) + timedelta(days=week_index * 7)
-                    day_field = ['mon','tue','wed','thu','fri','sat','sun'][day_date.weekday()]
-                    calendar_updates.setdefault(week_start, {})[day_field] = val
-
-                if has_calendar_values and seq_values:
-                    # Continue the personalized sequence into the overflow days of the last week.
-                    last_day = date(ref_date.year, ref_date.month, days_in_month)
-                    last_week_start = date(ref_date.year, ref_date.month, 1) + timedelta(days=((days_in_month - 1) // 7) * 7)
-                    last_week_end = last_week_start + timedelta(days=6)
-                    overflow = (last_week_end - last_day).days
-                    if overflow > 0:
-                        # Detect the smallest repeating cycle; fallback to full sequence.
-                        cycle = seq_values
-                        for size in range(1, len(seq_values) + 1):
-                            if all(seq_values[i] == seq_values[i % size] for i in range(len(seq_values))):
-                                cycle = seq_values[:size]
-                                break
-                        for offset in range(1, overflow + 1):
-                            day_date = last_day + timedelta(days=offset)
-                            day_field = ['mon','tue','wed','thu','fri','sat','sun'][day_date.weekday()]
-                            next_val = cycle[(len(seq_values) + offset - 1) % len(cycle)]
-                            calendar_updates.setdefault(last_week_start, {})[day_field] = next_val
 
                 if has_calendar_values:
-                    try:
-                        from .asignacion_views import _rebuild_asignacion_semanal
-                        _rebuild_asignacion_semanal(asig, force_all=True)
-                    except Exception:
-                        logger.exception('Error reconstruyendo asignacion semanal')
+                    # Tomar solo valores no vacios como ciclo base y completar todo el primer mes.
+                    seq_values_future = [v for v in raw_month_values if str(v or '').strip()]
+                    cycle_len = len(seq_values_future)
+                    if cycle_len <= 0:
+                        raise ValueError('Secuencia vacia')
+
+                    filled_month_values = []
+                    sequence_index = 0
+                    for day_num in range(1, days_in_month + 1):
+                        explicit = raw_month_values[day_num - 1] if (day_num - 1) < len(raw_month_values) else ''
+                        if str(explicit or '').strip():
+                            val = explicit
+                        else:
+                            val = seq_values_future[sequence_index % cycle_len]
+                        filled_month_values.append(val)
+                        sequence_index += 1
+
+                    for day_num, val in enumerate(filled_month_values, start=1):
+                        day_date = date(ref_date.year, ref_date.month, day_num)
+                        week_index = (day_num - 1) // 7
+                        week_start = date(ref_date.year, ref_date.month, 1) + timedelta(days=week_index * 7)
+                        day_field = ['mon','tue','wed','thu','fri','sat','sun'][day_date.weekday()]
+                        calendar_updates.setdefault(week_start, {})[day_field] = val
+
+                    week_count = ((days_in_month - 1) // 7) + 1
+                    month_start = date(ref_date.year, ref_date.month, 1)
+                    target_week_starts = [month_start + timedelta(days=7 * i) for i in range(week_count)]
+                    if target_week_starts:
+                        AsignacionSemanal.objects.filter(
+                            asignacion_id=asig.id,
+                            week_start__in=target_week_starts,
+                        ).delete()
                     for ws, day_map in calendar_updates.items():
                         defaults = {**day_map, 'puesto_id': puesto.id}
                         obj, created = AsignacionSemanal.objects.get_or_create(
@@ -775,6 +776,84 @@ def importar_puestos_asignaciones(request):
                                 changed = True
                             if changed:
                                 obj.save()
+                    # Regenerar los proximos 24 meses para continuar la secuencia.
+                    regen_key = (persona.id, puesto.id, ref_date.year, ref_date.month)
+                    seq_signature = tuple(filled_month_values)
+                    if regenerated_future_signatures.get(regen_key) == seq_signature:
+                        resumen['filas_validas'] += 1
+                        continue
+                    regenerated_future_signatures[regen_key] = seq_signature
+                    try:
+                        def add_months(d, months):
+                            year = d.year + (d.month - 1 + months) // 12
+                            month = (d.month - 1 + months) % 12 + 1
+                            return date(year, month, 1)
+
+                        # Continuar en el mes siguiente justo donde terminó el primer mes completado.
+                        base_month_start = date(ref_date.year, ref_date.month, 1)
+                        for offset in range(1, 25):
+                            target_start = add_months(base_month_start, offset)
+                            target_year = target_start.year
+                            target_month = target_start.month
+                            if target_month == 12:
+                                target_end = date(target_year + 1, 1, 1) - timedelta(days=1)
+                            else:
+                                target_end = date(target_year, target_month + 1, 1) - timedelta(days=1)
+                            target_asig, _ = Asignacion.objects.update_or_create(
+                                persona=persona,
+                                mes=target_month,
+                                anio=target_year,
+                                defaults={
+                                    'cliente': instalacion.cliente,
+                                    'instalacion': instalacion,
+                                    'puesto': puesto,
+                                    'horario': horario,
+                                    'fecha': None,
+                                    'patronAsignacion': patron_obj,
+                                    'estado': 'ACTIVO',
+                                    'publicada_calendario': True,
+                                    'recurring': True,
+                                    'start_date': date(target_year, target_month, 1),
+                                    'end_date': None,
+                                }
+                            )
+                            days_in_target = target_end.day
+                            weekly_payload = {}
+                            for day_num in range(1, days_in_target + 1):
+                                day_date = date(target_year, target_month, day_num)
+                                week_index = (day_num - 1) // 7
+                                week_start = date(target_year, target_month, 1) + timedelta(days=week_index * 7)
+                                day_field = ['mon','tue','wed','thu','fri','sat','sun'][day_date.weekday()]
+                                val = seq_values_future[sequence_index % cycle_len]
+                                sequence_index += 1
+                                if week_start not in weekly_payload:
+                                    weekly_payload[week_start] = {}
+                                weekly_payload[week_start][day_field] = val
+
+                            if weekly_payload:
+                                target_week_starts = list(weekly_payload.keys())
+                                AsignacionSemanal.objects.filter(
+                                    asignacion_id=target_asig.id,
+                                    week_start__in=target_week_starts
+                                ).delete()
+                                bulk_rows = []
+                                for ws_key, day_map in weekly_payload.items():
+                                    row_data = {
+                                        'asignacion_id': target_asig.id,
+                                        'week_start': ws_key,
+                                        'puesto_id': puesto.id,
+                                        'mon': day_map.get('mon', ''),
+                                        'tue': day_map.get('tue', ''),
+                                        'wed': day_map.get('wed', ''),
+                                        'thu': day_map.get('thu', ''),
+                                        'fri': day_map.get('fri', ''),
+                                        'sat': day_map.get('sat', ''),
+                                        'sun': day_map.get('sun', ''),
+                                    }
+                                    bulk_rows.append(AsignacionSemanal(**row_data))
+                                AsignacionSemanal.objects.bulk_create(bulk_rows)
+                    except Exception:
+                        logger.exception('Error regenerando secuencia de los proximos meses')
                 else:
                     try:
                         from .asignacion_views import _rebuild_asignacion_semanal

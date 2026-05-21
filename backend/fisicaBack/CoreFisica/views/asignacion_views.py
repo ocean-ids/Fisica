@@ -295,9 +295,18 @@ def obtener_asignaciones(request, mes=None, anio=None):
         else:
             month_end = datetime.date(int(anio), int(mes) + 1, 1) - datetime.timedelta(days=1)
 
+        # Evitar duplicados por persona: si ya existe asignacion del mes solicitado,
+        # no incluir para esa misma persona la asignacion recurrente heredada de meses previos.
+        personas_con_mes = base_qs.filter(mes=mes, anio=anio).values('persona_id')
+
         base_qs = base_qs.filter(
             Q(mes=mes, anio=anio) |
-            (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
+            (
+                Q(recurring=True) &
+                Q(start_date__lte=month_end) &
+                (Q(end_date__isnull=True) | Q(end_date__gte=month_start)) &
+                ~Q(persona_id__in=personas_con_mes)
+            )
         )
 
     asignaciones = base_qs.select_related(

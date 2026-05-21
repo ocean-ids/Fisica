@@ -285,7 +285,9 @@ def listar_asignacion_semanal(request):
     turno = request.GET.get('turno')
     q = (request.GET.get('q') or '').strip()
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
-    auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
+    auto_create_requested = str(request.GET.get('auto_create', 'false')).lower() in ['true', '1', 'yes']
+    allow_autofill = str(request.GET.get('allow_autofill', 'false')).lower() in ['true', '1', 'yes']
+    auto_create = auto_create_requested and allow_autofill
 
     prov_id = None
     cant_id = None
@@ -621,7 +623,9 @@ def listar_asignacion_semanal_mes(request):
     q = (request.GET.get('q') or '').strip()
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
     include_sacafranco = str(request.GET.get('include_sacafranco', 'true')).lower() in ['true', '1', 'yes']
-    auto_create = str(request.GET.get('auto_create', 'true')).lower() in ['true', '1', 'yes']
+    auto_create_requested = str(request.GET.get('auto_create', 'false')).lower() in ['true', '1', 'yes']
+    allow_autofill = str(request.GET.get('allow_autofill', 'false')).lower() in ['true', '1', 'yes']
+    auto_create = auto_create_requested and allow_autofill
 
     if not mes or not anio:
         return Response({'error': 'mes y año invalidos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)

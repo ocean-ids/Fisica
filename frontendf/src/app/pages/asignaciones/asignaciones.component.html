@@ -207,10 +207,11 @@
                                 type="text"
                                 maxlength="4"
                                 class="calendar-input"
-                                [ngClass]="getCalendarCellClass(calRow[dayKey])"
-                                [(ngModel)]="calRow[dayKey]"
+                                [ngClass]="isDayInCurrentMonth(ws, dayKey) ? getCalendarCellClass(calRow[dayKey]) : ''"
+                                [ngModel]="isDayInCurrentMonth(ws, dayKey) ? calRow[dayKey] : ''"
                                 (input)="onCalendarCellChange(row, ws, dayKey, $any($event.target).value)"
                                 (dblclick)="openRangeModal(row, ws, dayKey, false)"
+                                [disabled]="!isDayInCurrentMonth(ws, dayKey)"
                                 [ngModelOptions]="{standalone:true}">
                             </div>
                           </ng-container>
@@ -271,10 +272,11 @@
                                 type="text"
                                 maxlength="5"
                                 class="calendar-input"
-                                [ngClass]="getCalendarCellClass(calRow[dayKey])"
-                                [(ngModel)]="calRow[dayKey]"
+                                [ngClass]="isDayInCurrentMonth(ws, dayKey) ? getCalendarCellClass(calRow[dayKey]) : ''"
+                                [ngModel]="isDayInCurrentMonth(ws, dayKey) ? calRow[dayKey] : ''"
                                 (input)="onSacafrancoCalendarCellChange(row, ws, dayKey, $any($event.target).value)"
                                 (dblclick)="openRangeModal(row, ws, dayKey, true)"
+                                [disabled]="!isDayInCurrentMonth(ws, dayKey)"
                                 [ngModelOptions]="{standalone:true}">
                             </div>
                           </ng-container>
