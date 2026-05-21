@@ -21,18 +21,18 @@ export class SacafrancoPersonasModalComponent implements OnInit {
   personas: Persona[] = [];
   personasAll: Persona[] = [];
   selectedId: number | null = null;
-  provincias: Array<{ id: number; nombre: string }> = [];
-  selectedProvinciaId: number | null = null;
+  cantones: Array<{ id: number | null; nombre: string }> = [];
+  selectedCantonId: number | null = null;
   assignedIds = new Set<number>();
 
   constructor(
-    private dialogRef: MatDialogRef<SacafrancoPersonasModalComponent, { personaId: number; provinciaId: number | null } | null>,
+    private dialogRef: MatDialogRef<SacafrancoPersonasModalComponent, { personaId: number; cantonId: number | null } | null>,
     private personaService: PersonaService,
-    @Inject(MAT_DIALOG_DATA) public data: { personas?: Persona[]; assignedPersonaIds?: number[]; provincias?: Array<{ id: number; nombre: string }>; provinciaId?: number | null } | null
+    @Inject(MAT_DIALOG_DATA) public data: { personas?: Persona[]; assignedPersonaIds?: number[]; cantones?: Array<{ id: number | null; nombre: string }>; cantonId?: number | null } | null
   ) {}
 
-  private applyProvinciaFilter(): void {
-    if (!this.selectedProvinciaId){
+  private applyCantonFilter(): void {
+    if (this.selectedCantonId === null){
       this.personas = [];
       return;
     }
@@ -44,35 +44,35 @@ export class SacafrancoPersonasModalComponent implements OnInit {
         .toUpperCase()
         .replace(/[^A-Z0-9]+/g, '');
     };
-    const selectedProv = (this.provincias || []).find(p => p.id === this.selectedProvinciaId);
-    const selectedName = normalizeName(selectedProv?.nombre || '');
+    const selectedCanton = (this.cantones || []).find(c => c.id === this.selectedCantonId);
+    const selectedName = normalizeName(selectedCanton?.nombre || '');
     this.personas = (this.personasAll || []).filter(p => {
-      const personaProvId = (p as any).provincia;
-      if (personaProvId === this.selectedProvinciaId) return true;
+      const personaCantonId = (p as any).canton;
+      if (personaCantonId === this.selectedCantonId) return true;
       if (!selectedName) return false;
-      const personaProvName = normalizeName((p as any).provincia_nombre || '');
-      return personaProvName && personaProvName === selectedName;
+      const personaCantonName = normalizeName((p as any).canton_nombre || '');
+      return personaCantonName && personaCantonName === selectedName;
     });
   }
 
-  onProvinciaChange(): void {
+  onCantonChange(): void {
     this.selectedId = null;
-    this.applyProvinciaFilter();
+    this.applyCantonFilter();
   }
 
   ngOnInit(): void {
     if (this.data?.assignedPersonaIds?.length) {
       this.assignedIds = new Set(this.data.assignedPersonaIds);
     }
-    if (this.data?.provincias?.length) {
-      this.provincias = this.data.provincias;
+    if (this.data?.cantones?.length) {
+      this.cantones = this.data.cantones;
     }
-    if (this.data?.provinciaId !== undefined) {
-      this.selectedProvinciaId = this.data.provinciaId ?? null;
+    if (this.data?.cantonId !== undefined) {
+      this.selectedCantonId = this.data.cantonId ?? null;
     }
     if (this.data?.personas && this.data.personas.length) {
       this.personas = this.data.personas.filter(p => (p.tipo || '').toString().toUpperCase() === 'SACAFRANCO');
-      this.applyProvinciaFilter();
+      this.applyCantonFilter();
       return;
     }
     
@@ -80,11 +80,11 @@ export class SacafrancoPersonasModalComponent implements OnInit {
     this.personaService.getPersonas({ tipo: 'SACAFRANCO' }).subscribe({
       next: list => {
         this.personasAll = list || [];
-        this.applyProvinciaFilter();
+        this.applyCantonFilter();
       },
       error: () => {
         this.personasAll = [];
-        this.applyProvinciaFilter();
+        this.applyCantonFilter();
       }
     });
   }
@@ -102,7 +102,7 @@ export class SacafrancoPersonasModalComponent implements OnInit {
 
   confirm(): void {
     if (!this.selectedId) return;
-    this.dialogRef.close({ personaId: this.selectedId, provinciaId: this.selectedProvinciaId });
+    this.dialogRef.close({ personaId: this.selectedId, cantonId: this.selectedCantonId });
   }
 
   cancel(): void {

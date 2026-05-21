@@ -979,8 +979,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       maxHeight: '70vh',
       data: {
         assignedPersonaIds: this.getAssignedSacafrancoPersonaIds(),
-        provincias: this.provinciasDisponibles,
-        provinciaId: null
+        cantones: this.cantonesDisponibles,
+        cantonId: this.selectedCantonId
       }
     });
 
@@ -990,8 +990,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         mes: this.mes,
         anio: this.anio,
         orden: (this.sacafrancoRows || []).length,
-        persona: result.personaId,
-        provincia: result.provinciaId ?? null
+        persona: result.personaId
       };
 
       this.asignacionService.crearSacafrancoFila(payload).subscribe({
@@ -1571,16 +1570,15 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       maxHeight: '70vh',
       data: {
         assignedPersonaIds: this.getAssignedSacafrancoPersonaIds(),
-        provincias: this.provinciasDisponibles,
-        provinciaId: fila.provincia ?? null
+        cantones: this.cantonesDisponibles,
+        cantonId: fila?.persona_detalle?.canton ?? this.selectedCantonId
       }
     });
 
     ref.afterClosed().subscribe(result => {
       if (!result?.personaId) return;
       this.asignacionService.actualizarSacafrancoFila(fila.id as number, {
-        persona: result.personaId,
-        provincia: result.provinciaId ?? null
+        persona: result.personaId
       }).subscribe({
         next: updated => {
           const idx = (this.sacafrancoRows || []).findIndex(f => f?.id === updated.id);
