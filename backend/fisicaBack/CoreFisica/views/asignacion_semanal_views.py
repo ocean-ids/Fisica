@@ -1,4 +1,4 @@
-from ..models import AsignacionSemanal, SacafrancoFilaSemanal, CoberturaSacafranco
+from ..models import AsignacionSemanal, SacafrancoFilaSemanal, CoberturaSacafranco, Asignacion
 from django.db.models import Q
 from django.http import JsonResponse
 from rest_framework.permissions import IsAuthenticated
@@ -927,22 +927,46 @@ def crear_o_actualizar_asignacion_semanal(request):
 
     try:
         with transaction.atomic():
+            # Si existe una asignación de la misma persona para el mes/año de week_start,
+            # usar ese ID para que la secuencia aplicada por rango continúe en meses siguientes.
+            effective_asignacion_id = asignacion_id
+            effective_puesto_id = puesto_id
+            try:
+                src_asig = Asignacion.objects.select_related('persona').get(id=asignacion_id)
+                target_asig = Asignacion.objects.filter(
+                    persona_id=src_asig.persona_id,
+                    mes=ws.month,
+                    anio=ws.year,
+                    estado='ACTIVO'
+                ).exclude(persona__tipo='SACAFRANCO').order_by('-id').first()
+                if target_asig:
+                    effective_asignacion_id = target_asig.id
+                    effective_puesto_id = target_asig.puesto_id or puesto_id
+            except Exception:
+                pass
+
             # preparar defaults solo con los días que vienen en el payload
             defaults = {}
             for d in ['mon','tue','wed','thu','fri','sat','sun']:
                 if d in data:
                     defaults[d] = data.get(d) or ''
-            defaults['asignacion_id'] = asignacion_id
+            defaults['asignacion_id'] = effective_asignacion_id
 
-            obj, created = AsignacionSemanal.objects.get_or_create(asignacion_id=asignacion_id, week_start=ws, defaults={**defaults, 'puesto_id': puesto_id})
+            obj, created = AsignacionSemanal.objects.get_or_create(
+                asignacion_id=effective_asignacion_id,
+                week_start=ws,
+                defaults={**defaults, 'puesto_id': effective_puesto_id}
+            )
 
             # Si no se creó (existía), actualizar campos proporcionados y ligar asignacion si se indicó
             if not created:
                 for d in ['mon','tue','wed','thu','fri','sat','sun']:
                     if d in data:
                         setattr(obj, d, data.get(d) or '')
-                if getattr(obj, 'asignacion_id', None) != int(asignacion_id):
-                    obj.asignacion_id = asignacion_id
+                if getattr(obj, 'asignacion_id', None) != int(effective_asignacion_id):
+                    obj.asignacion_id = effective_asignacion_id
+                if effective_puesto_id and getattr(obj, 'puesto_id', None) != int(effective_puesto_id):
+                    obj.puesto_id = effective_puesto_id
                 obj.save()
 
             serializer = AsignacionSemanalSerializer(obj)

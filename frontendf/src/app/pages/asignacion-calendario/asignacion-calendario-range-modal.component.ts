@@ -38,7 +38,7 @@ export interface AsignacionRangeModalResult {
   styleUrl: './asignacion-calendario-range-modal.component.css'
 })
 export class AsignacionCalendarioRangeModalComponent {
-  private readonly NO_END_YEARS = 100;
+  private readonly NO_END_MONTHS = 24;
   start: string;
   end: string;
   seq: string;
@@ -138,8 +138,8 @@ export class AsignacionCalendarioRangeModalComponent {
 
     if (this.noEnd) {
       const end = new Date(startDate);
-      // Use a far-future date to simulate no end limit.
-      end.setFullYear(end.getFullYear() + this.NO_END_YEARS);
+      // Keep a finite horizon to avoid flooding the API with thousands of weekly saves.
+      end.setMonth(end.getMonth() + this.NO_END_MONTHS);
       end.setDate(end.getDate() - 1);
       return end;
     }

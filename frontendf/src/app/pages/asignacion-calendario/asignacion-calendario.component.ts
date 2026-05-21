@@ -1,5 +1,6 @@
 import { Component, OnInit, Output, EventEmitter, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { Observable, forkJoin, of } from 'rxjs';
+import { Observable, of, from } from 'rxjs';
+import { concatMap, toArray } from 'rxjs/operators';
 import { AsignacionSemanal, SacafrancoFilaSemanal } from '../../models/asignacion-calendario';
 import { SacafrancoFila } from '../../models/asignacion.model';
 import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
@@ -551,16 +552,45 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       } else {
         const asignacionId = row?.asignacion || row?.asignacion_id;
         if (!asignacionId) return;
+        const baseWeek = this.getExistingWeekForAsignacion(row, weekStart);
         const payload: any = {
           asignacion_id: asignacionId,
           puesto: row.puesto || (row.puesto_detalle && row.puesto_detalle.id),
-          week_start: weekStart
+          week_start: weekStart,
+          mon: baseWeek.mon || '',
+          tue: baseWeek.tue || '',
+          wed: baseWeek.wed || '',
+          thu: baseWeek.thu || '',
+          fri: baseWeek.fri || '',
+          sat: baseWeek.sat || '',
+          sun: baseWeek.sun || ''
         };
         Object.keys(days).forEach(k => payload[k] = days[k]);
         requests.push(this.asignacionCalendarioService.crearAsignacionCalendario(payload));
       }
     });
-    return requests.length ? forkJoin(requests) : of(null);
+    if (!requests.length) return of(null);
+    return from(requests).pipe(
+      concatMap(req => req),
+      toArray()
+    );
+  }
+
+  private getExistingWeekForAsignacion(row: any, weekStart: string): any {
+    if (weekStart === this.weekStart) {
+      return row || {};
+    }
+    const asigId = String(row?.asignacion || row?.asignacion_id || '');
+    const puestoId = String(row?.puesto || row?.puesto_id || row?.puesto_detalle?.id || '');
+    if (asigId) {
+      const foundByAsignacion = (this.rows || []).find(r => String(r?.asignacion || r?.asignacion_id || '') === asigId);
+      if (foundByAsignacion) return foundByAsignacion;
+    }
+    if (puestoId) {
+      const foundByPuesto = (this.rows || []).find(r => String(r?.puesto || r?.puesto_id || '') === puestoId);
+      if (foundByPuesto) return foundByPuesto;
+    }
+    return {};
   }
 
   // Aplica los cambios de la secuencia a la fila actual en la vista previa, actualizando solo los días que fueron modificados para reflejar inmediatamente los cambios sin necesidad de recargar toda la semana

@@ -28,8 +28,8 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form/asignacion-form.component';
 import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dialogs/reporte-asistencia-color-dialog.component';
-import { Subscription, forkJoin, of } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { Subscription, of, from } from 'rxjs';
+import { catchError, switchMap, concatMap, toArray } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
@@ -875,24 +875,42 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       } else {
         const asignacionId = row?.asig?.id;
         if (!asignacionId) return;
+        const baseWeek = this.getExistingWeekForAsignacion(row, weekStart);
         const payload: any = {
           asignacion_id: asignacionId,
           puesto: row.asig?.puesto ?? row.asig?.puesto_detalle?.id,
-          week_start: weekStart
+          week_start: weekStart,
+          mon: baseWeek.mon || '',
+          tue: baseWeek.tue || '',
+          wed: baseWeek.wed || '',
+          thu: baseWeek.thu || '',
+          fri: baseWeek.fri || '',
+          sat: baseWeek.sat || '',
+          sun: baseWeek.sun || ''
         };
         Object.keys(days).forEach(k => payload[k] = days[k]);
         requests.push(this.asignacionCalendarioService.crearAsignacionCalendario(payload));
       }
     });
     if (!requests.length) return;
-    forkJoin(requests).subscribe({
+    from(requests).pipe(
+      concatMap(req => req),
+      toArray()
+    ).subscribe({
       next: () => {
-        if (isSacafranco) {
-          this.loadCalendarWeeks();
-        }
+        this.loadCalendarWeeks();
       },
       error: () => {}
     });
+  }
+
+  private getExistingWeekForAsignacion(row: any, weekStart: string): any {
+    const weekMap = this.calendarData?.[weekStart] || {};
+    const byAsignacion = String(row?.asig?.id ?? '');
+    const byPuesto = String(row?.asig?.puesto ?? row?.asig?.puesto_detalle?.id ?? '');
+    if (byAsignacion && weekMap[byAsignacion]) return weekMap[byAsignacion];
+    if (byPuesto && weekMap[byPuesto]) return weekMap[byPuesto];
+    return {};
   }
 
   private applyRangeToCurrentWeek(row: any, weekStart: string, rangeMap: Record<string, Record<string, string>>): void {
