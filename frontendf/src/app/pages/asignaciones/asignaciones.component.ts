@@ -67,6 +67,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   sacafrancoRows: SacafrancoFila[] = [];
   calendarDayKeys: string[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   calendarWeekDayKeys: Record<string, string[]> = {};
+  calendarMonthDayKeys: Record<string, string[]> = {};
+  calendarWeekDayNumbers: Record<string, Record<string, string>> = {};
+  calendarWeekVisibleCounts: Record<string, number> = {};
   calendarData: Record<string, Record<string, any>> = {};
   provinciaSortOrder: Record<string, number> = {};
   draggingAsignacionId: number | null = null;
@@ -305,6 +308,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return false;
   }
 
+  getMonthDayKeys(weekStart: string): string[] {
+    return this.calendarMonthDayKeys[weekStart] || [];
+  }
+
   getCalendarCellClass(value: any): string {
     const raw = (value || '').toString().trim().toUpperCase();
     if (!raw) return '';
@@ -525,20 +532,37 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   private buildCalendarWeekDayKeys(): void {
     const map: Record<string, string[]> = {};
+    const monthMap: Record<string, string[]> = {};
+    const dayNumbersMap: Record<string, Record<string, string>> = {};
+    const weekSizes: Record<string, number> = {};
     const dowMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
     (this.weeksForMonth || []).forEach(ws => {
       const parts = ws.split('-').map(Number);
       if (parts.length !== 3) return;
       const base = new Date(parts[0], parts[1] - 1, parts[2]);
       const keys: string[] = [];
+      const monthKeys: string[] = [];
+      const dayNums: Record<string, string> = {};
       for (let i = 0; i < 7; i += 1) {
         const d = new Date(base);
         d.setDate(base.getDate() + i);
-        keys.push(dowMap[d.getDay()]);
+        const key = dowMap[d.getDay()];
+        keys.push(key);
+        if ((d.getMonth() + 1) === this.mes && d.getFullYear() === this.anio) {
+          monthKeys.push(key);
+          dayNums[key] = String(d.getDate());
+        }
       }
       map[ws] = keys;
+      monthMap[ws] = monthKeys;
+      dayNumbersMap[ws] = dayNums;
+      weekSizes[ws] = monthKeys.length;
     });
+
     this.calendarWeekDayKeys = map;
+    this.calendarMonthDayKeys = monthMap;
+    this.calendarWeekDayNumbers = dayNumbersMap;
+    this.calendarWeekVisibleCounts = weekSizes;
   }
 
   // cargarCatalogos se encarga de cargar los datos necesarios para los catálogos utilizados en el componente, realizando llamadas a los servicios correspondientes para obtener la información de clientes, personas, horarios e instalaciones, y manejando los errores que puedan ocurrir durante la carga de estos datos para asegurar que la vista tenga la información actualizada y disponible para su uso
