@@ -56,6 +56,7 @@ import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sa
   styleUrl: './asignaciones.component.css'
 })
 export class AsignacionesComponent implements OnInit, OnDestroy {
+  showColumnMenu = false;
   weeksForMonth: string[] = [];
   calendarRowOrder: Array<number | string> = [];
   displayRows: Array<
@@ -445,6 +446,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   // hideMultipleSelectionIndicator se utiliza para ocultar el indicador de selección múltiple en la vista, devolviendo siempre true para indicar que no se deben mostrar indicadores adicionales incluso si hay múltiples elementos seleccionados
   hideMultipleSelectionIndicator(): boolean {
     return true;
+  }
+
+  toggleColumnMenu(): void {
+    this.showColumnMenu = !this.showColumnMenu;
   }
 
   // columnaOculta se encarga de verificar si una columna específica está oculta en la vista, comprobando si la clave de la columna se encuentra en el arreglo de columnas ocultas y devolviendo un booleano para indicar su estado

@@ -1,5 +1,22 @@
 <div class="container-fluid  px-0 m-0">
-  <h2 class="mb-2 mt-2 text-center">Gestión de Asignaciones</h2>
+  <div class="position-relative d-flex justify-content-center align-items-center mb-3">
+    <h2 class="mb-0 mt-2 text-center">Gestión de Asignaciones</h2>
+    <div class="columnas-popover-wrap position-absolute start-0">
+      <button type="button" class="gear-btn" [class.open]="showColumnMenu" (click)="toggleColumnMenu()" aria-label="Configurar columnas">
+        <i class="bi bi-gear-fill gear-icon" [class.open]="showColumnMenu"></i>
+      </button>
+      <section class="columnas-popover" *ngIf="showColumnMenu">
+        <div class="columnas-grid">
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('horario')" (click)="toggleColumna('horario')">Horario</button>
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('codigo')" (click)="toggleColumna('codigo')">Nominativo</button>
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('cliente')" (click)="toggleColumna('cliente')">Cliente</button>
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('puesto')" (click)="toggleColumna('puesto')">Puesto</button>
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('persona')" (click)="toggleColumna('persona')">Persona</button>
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('accion')" (click)="toggleColumna('accion')">Acción</button>
+        </div>
+      </section>
+    </div>
+  </div>
   <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-3">
     <div class="d-flex flex-wrap align-items-start gap-2 mt-2 abs">
       <button class="btn btn-outline-primary" (click)="abrirModalNuevo()" >
@@ -9,26 +26,6 @@
         <i class="bi bi-plus-square"></i> Fila Sacafranco
       </button>
     </div>
-    <!--Queda Obsoleto se mejoro-->
-    <!--<section class="d-flex flex-wrap align-items-center gap-2">
-      <mat-button-toggle-group
-        name="columnas"
-        aria-label="Columnas"
-        [hideMultipleSelectionIndicator]="hideMultipleSelectionIndicator()"
-        multiple
-        [(ngModel)]="columnasOcultas"
-        [ngModelOptions]="{standalone:true}"
-      >
-        <mat-button-toggle class="col-sm" value="horario">Horario</mat-button-toggle>
-        <mat-button-toggle class="col-sm" value="codigo">Nominativo</mat-button-toggle>
-        <mat-button-toggle class="col-sm" value="cliente">Cliente</mat-button-toggle>
-        <mat-button-toggle class="col-sm" value="puesto">Puesto</mat-button-toggle>
-        <mat-button-toggle class="col-sm" value="cedula">Cedula</mat-button-toggle>
-        <mat-button-toggle class="col-sm" value="persona">Persona</mat-button-toggle>
-        <mat-button-toggle class="col-sm" value="sacafranco">SF</mat-button-toggle>
-        <mat-button-toggle class="col-sm" value="accion">Accion</mat-button-toggle>
-      </mat-button-toggle-group>
-    </section>-->
 
     <div class="d-flex justify-content-md-end gap-2">
       <button class="btn btn-outline-secondary" (click)="abrirNuevoPatron()" >
