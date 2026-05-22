@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: sf_bd
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - sf_pgdata:/var/lib/postgresql/data
 
@@ -22,7 +22,7 @@ services:
       PASSWORD_RESET_BASE_URL: "http://89.117.146.163"
       DB_NAME: sf_bd
       DB_USER: postgres
-      DB_PASSWORD: root
+      DB_PASSWORD: ${DB_PASSWORD}
       DB_HOST: db
       DB_PORT: "5432"
     volumes:
