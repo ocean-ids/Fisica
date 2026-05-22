@@ -29,7 +29,7 @@ import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form
 import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dialogs/reporte-asistencia-color-dialog.component';
 import { Subscription, of, from } from 'rxjs';
-import { catchError, switchMap, concatMap, toArray } from 'rxjs/operators';
+import { catchError, switchMap, concatMap, toArray, debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
@@ -375,11 +375,22 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.buildCalendarWeekDayKeys();
     this.cargarAsignaciones();
 
-    this.filterSub = this.globalFilter.state$.subscribe(state => {
-      if (!this.router.url.startsWith('/dashboard/asignaciones')) return;
-      this.filtroTexto = state.query || '';
-      this.onFiltroChange();  
-    });
+    this.filterSub = this.globalFilter.state$
+      .pipe(
+        map(state => {
+          if (!this.router.url.startsWith('/dashboard/asignaciones')) return null;
+          const route = (state?.route || '').toString();
+          if (route && !route.startsWith('/dashboard/asignaciones')) return null;
+          return (state?.query || '').trim();
+        }),
+        distinctUntilChanged(),
+        debounceTime(300)
+      )
+      .subscribe(query => {
+        if (query === null) return;
+        this.filtroTexto = query;
+        this.onFiltroChange();
+      });
   }
 
   ngOnDestroy(): void {
@@ -394,22 +405,16 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.anio = Number(parts[0]);
     this.mes = Number(parts[1]);
     this.dia = null;
-    this.filtroTexto = '';
     this.provinciaPage = 1;
-    this.activeProvinciaId = null;
     // sincronizar lista de semanas para el mes elegido
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
     this.buildCalendarWeekDayKeys();
     this.cargarAsignaciones();
-    this.loadCalendarWeeks();
   }
 
   //onFiltroChange se encarga de manejar el cambio en el filtro de texto, recargando las asignaciones para reflejar el nuevo filtro aplicado y actualizando los calendarios para mostrar la información filtrada correctamente
   onFiltroChange(): void {
-    this.provinciaPage = 1;
-    this.activeProvinciaId = null;
     this.cargarAsignaciones();
-    this.loadCalendarWeeks();
   }
 
   setProvinciaFilter(key: string, label?: string): void {
