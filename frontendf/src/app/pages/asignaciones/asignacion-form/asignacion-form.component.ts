@@ -282,7 +282,6 @@ export class AsignacionFormComponent implements OnInit {
       && !!this.asignacion.puesto
       && !!this.asignacion.persona
       && !!this.asignacion.horario
-      && !!this.asignacion.patronAsignacion
       && !!this.asignacion.start_date;
     }
 

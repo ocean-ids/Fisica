@@ -87,18 +87,6 @@
 
     <div class="col-md-6 mb-3">
       <mat-form-field class="w-100">
-        <mat-label>Patrón</mat-label>
-        <mat-select [(ngModel)]="asignacion.patronAsignacion" [ngModelOptions]="{standalone:true}">
-          <mat-option [value]="0">-- Ninguno --</mat-option>
-          <mat-option *ngFor="let p of patrones" [value]="p.id">
-            {{ p.codigo }} — {{ (p.secuencia || []).join('-') }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-    </div>
-
-    <div class="col-md-6 mb-3">
-      <mat-form-field class="w-100">
         <mat-label>Fecha inicio</mat-label>
         <input matInput type="date"
           [(ngModel)]="asignacion.start_date"

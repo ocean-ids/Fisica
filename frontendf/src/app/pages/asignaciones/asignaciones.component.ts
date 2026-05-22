@@ -1729,16 +1729,13 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     // (this.asignacionActual as any).fecha = this.dia ? this.dia : null;
 
     const patronStart = this.asignacionActual.start_date || null;
-    const resetCalendar = !!this.asignacionActual.patronAsignacion;
 
     if (this.modoEdicion && this.asignacionActual.id) {
       const payload = { 
         ...this.asignacionActual,
-        patronAsignacion: this.asignacionActual.patronAsignacion || null,
         start_date: patronStart,
         recurring: true,
         end_date: null,
-        reset_calendar: resetCalendar
       } as any;
       this.isSaving = true;
       this.asignacionService.actualizarAsignacion(
@@ -1763,7 +1760,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       // Forzar creación de calendario semanal al crear la asignación
       const payload = { 
         ...this.asignacionActual,
-        patronAsignacion: this.asignacionActual.patronAsignacion || null,
+        patronAsignacion: null,
         start_date: patronStart,
         create_calendar: true,
         recurring: true,
