@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { ReporteAsistenciaService } from '../../services/reporte-asistencia.service';
@@ -14,6 +14,9 @@ import { MAT_BOTTOM_SHEET_DATA, MatBottomSheet, MatBottomSheetModule, MatBottomS
 import { ReporteEstadoComponent } from './reporte-estado/reporte-estado.component';
 import { ReporteAsistenciaHistorialDialogComponent } from './dialogs/reporte-asistencia-historial-dialog.component';
 import Swal from 'sweetalert2';
+import { GlobalFilterStateService } from '../../services/global-filter-state.service';
+import { Router } from '@angular/router';
+import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
 
 interface ReporteAsistenciaGrupoProvincia {
   provincia: string;
@@ -32,7 +35,7 @@ interface ReporteAsistenciaGrupoZona {
   templateUrl: './reporte-asistencia.component.html',
   styleUrl: './reporte-asistencia.component.css'
 })
-export class ReporteAsistenciaComponent implements OnInit {
+export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   reporte: ReporteAsistenciaRow[] = [];
   reporteAgrupado: ReporteAsistenciaGrupoZona[] = [];
   resumen: ResumenAsistencia = { total: 0, asistencias: 0, faltas: 0 };
@@ -50,6 +53,8 @@ export class ReporteAsistenciaComponent implements OnInit {
   pageSize = 50;
   totalItems = 0;
   totalPages = 1;
+  filtroTexto = '';
+  private filterSub?: Subscription;
 
 
   readonly colorPalette: {name: string, value: string}[] = [
@@ -79,7 +84,9 @@ export class ReporteAsistenciaComponent implements OnInit {
     private reporteSvc: ReporteAsistenciaService,
     private dialog: MatDialog,
     private personaService: PersonaService,
-    private bottomSheet: MatBottomSheet
+    private bottomSheet: MatBottomSheet,
+    private globalFilter: GlobalFilterStateService,
+    private router: Router
     
   ) {}
 
@@ -87,6 +94,27 @@ export class ReporteAsistenciaComponent implements OnInit {
     this.setHoy();
     this.filtroTurno = 'Diurno';
     this.cargarReporte();
+
+    this.filterSub = this.globalFilter.state$
+      .pipe(
+        map(state => {
+          if (!this.router.url.startsWith('/dashboard/reporte-asistencia')) return null;
+          const route = (state?.route || '').toString();
+          if (route && !route.startsWith('/dashboard/reporte-asistencia')) return null;
+          return (state?.query || '').trim();
+        }),
+        distinctUntilChanged(),
+        debounceTime(300)
+      )
+      .subscribe(query => {
+        if (query === null) return;
+        this.filtroTexto = query;
+        this.cargarReporte(true, false);
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.filterSub?.unsubscribe();
   }
 
   private getZonaOrden(zona: string): number {
@@ -225,6 +253,7 @@ export class ReporteAsistenciaComponent implements OnInit {
 
   descargarExcel(): void {
     const params: any = {};
+    if (this.filtroTexto) params.q = this.filtroTexto;
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
     if (this.filtroZona) params.zona = this.filtroZona;
@@ -237,6 +266,7 @@ export class ReporteAsistenciaComponent implements OnInit {
 
   descargarPdf(): void {
     const params: any = {};
+    if (this.filtroTexto) params.q = this.filtroTexto;
     if(this.filtroFecha) params.fecha = this.filtroFecha;
     if(this.filtroClienteId) params.cliente_id = this.filtroClienteId;
     if(this.filtroZona) params.zona = this.filtroZona;
@@ -264,18 +294,21 @@ export class ReporteAsistenciaComponent implements OnInit {
     window.URL.revokeObjectURL(url);
   }
 
-  cargarReporte(resetPage: boolean = false): void {
+  cargarReporte(resetPage: boolean = false, showLoader: boolean = true): void {
     if (resetPage) {
       this.currentPage = 1;
     }
     const params: any = {};
+    if (this.filtroTexto) params.q = this.filtroTexto;
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
     if (this.filtroZona) params.zona = this.filtroZona;
     if (this.filtroTurno) params.turno = this.filtroTurno;
     params.page = this.currentPage;
     params.page_size = this.pageSize;
-    this.loading = true;
+    if (showLoader) {
+      this.loading = true;
+    }
     this.reporteSvc.getReporteAsistencia(params).subscribe({
       next: data=> {
         this.reporte = data?.results || [];
@@ -287,7 +320,11 @@ export class ReporteAsistenciaComponent implements OnInit {
         this.resumen = this.buildResumenAsistencia();
       },
       error: err => console.error('Error al cargar reporte de asistencia:', err),
-      complete: () => this.loading = false
+      complete: () => {
+        if (showLoader) {
+          this.loading = false;
+        }
+      }
     });
   }
 

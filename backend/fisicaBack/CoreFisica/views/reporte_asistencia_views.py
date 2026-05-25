@@ -439,7 +439,7 @@ def _resolver_reemplazo_desde_request(request):
 
 
 
-def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, exclude_sacafranco=False, zona=''):
+def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, exclude_sacafranco=False, zona='', q=''):
     fecha_obj = None
     if fecha:
         try:
@@ -592,6 +592,27 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
             'zona_titulo': zona_titulo,
             'provincia': provincia_nombre,
         })
+
+    term = (q or '').strip().lower()
+    if term:
+        filtered = []
+        for item in data:
+            haystack = ' '.join([
+                str(item.get('codigo') or ''),
+                str(item.get('cliente') or ''),
+                str(item.get('puesto') or ''),
+                str(item.get('horario') or ''),
+                str(item.get('nombre_apellidos') or ''),
+                str(item.get('estado') or ''),
+                str(item.get('reemplazo') or ''),
+                str(item.get('descripcion') or ''),
+                str(item.get('zona_titulo') or ''),
+                str(item.get('provincia') or ''),
+            ]).lower()
+            if term in haystack:
+                filtered.append(item)
+        data = filtered
+
     return data
 
 @api_view(['GET'])
@@ -603,6 +624,7 @@ def obtener_reporte_asistencia(request):
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
     turno = request.GET.get('turno')
+    q = (request.GET.get('q') or '').strip()
     zona = _normalize_zona_filter(request.GET.get('zona'))
     try:
         page = int(request.GET.get('page', 1))
@@ -622,6 +644,7 @@ def obtener_reporte_asistencia(request):
         turno=turno,
         exclude_sacafranco=exclude_sacafranco,
         zona=zona,
+        q=q,
     )
 
     total = len(data)
@@ -772,6 +795,7 @@ def exportar_reporte_asistencia_excel(request):
 
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
+    q = (request.GET.get('q') or '').strip()
     zona = _normalize_zona_filter(request.GET.get('zona'))
     headers = [
         'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
@@ -781,7 +805,7 @@ def exportar_reporte_asistencia_excel(request):
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     def render_sheet(ws, turno_val):
-        data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno_val, zona=zona)
+        data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno_val, zona=zona, q=q)
         header_ctx = _build_header_context(request, fecha, turno_val)
         asistencias, faltos = _build_resumen_asistencia(data)
         grouped = _group_reporte_por_zona_y_provincia(data)
@@ -916,8 +940,9 @@ def exportar_reporte_asistencia_pdf(request):
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
     turno = request.GET.get('turno')
+    q = (request.GET.get('q') or '').strip()
     zona = _normalize_zona_filter(request.GET.get('zona'))
-    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno, zona=zona)
+    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno, zona=zona, q=q)
     header_ctx = _build_header_context(request, fecha, turno)
     asistencias, faltos = _build_resumen_asistencia(data)
     grouped = _group_reporte_por_zona_y_provincia(data)

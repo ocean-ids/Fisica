@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -10,6 +10,9 @@ import { ConsolidadoService } from '../../services/consolidado.service';
 import { ConsolidadoRow, ConsolidadoResumenEstado, ConsolidadoResumenManual } from '../../models/consolidado.model';
 import { ConsolidadoFormComponent } from './consolidado-form/consolidado-form.component';
 import { ConsolidadoEstadoFormComponent } from './consolidado-estado-form/consolidado-estado-form.component';
+import { GlobalFilterStateService } from '../../services/global-filter-state.service';
+import { Router } from '@angular/router';
+import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
 
 @Component({
   selector: 'app-consolidado',
@@ -18,12 +21,14 @@ import { ConsolidadoEstadoFormComponent } from './consolidado-estado-form/consol
   templateUrl: './consolidado.component.html',
   styleUrl: './consolidado.component.css'
 })
-export class ConsolidadoComponent implements OnInit {
+export class ConsolidadoComponent implements OnInit, OnDestroy {
   lista: ConsolidadoRow[] = [];
   agrupado: { label: string; rows: ConsolidadoRow[] }[] = [];
   filtroFecha = '';
   filtroTurno = '';
+  filtroTexto = '';
   loading = false;
+  private filterSub?: Subscription;
   resumenManual: ConsolidadoResumenManual = {
     faltas: 0,
     huecas: 0,
@@ -48,13 +53,36 @@ export class ConsolidadoComponent implements OnInit {
 
   constructor(
     private svc: ConsolidadoService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private globalFilter: GlobalFilterStateService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
     this.setHoy();
     this.filtroTurno = 'Diurno';
     this.cargar();
+
+    this.filterSub = this.globalFilter.state$
+      .pipe(
+        map(state => {
+          if (!this.router.url.startsWith('/dashboard/consolidado')) return null;
+          const route = (state?.route || '').toString();
+          if (route && !route.startsWith('/dashboard/consolidado')) return null;
+          return (state?.query || '').trim();
+        }),
+        distinctUntilChanged(),
+        debounceTime(300)
+      )
+      .subscribe(query => {
+        if (query === null) return;
+        this.filtroTexto = query;
+        this.cargar(false);
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.filterSub?.unsubscribe();
   }
 
   onFechaChange(event: Event): void {
@@ -63,20 +91,27 @@ export class ConsolidadoComponent implements OnInit {
     this.cargar();
   }
 
-  cargar(): void {
+  cargar(showLoader: boolean = true): void {
     const params: any = {};
+    if (this.filtroTexto) params.q = this.filtroTexto;
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroTurno) params.turno = this.filtroTurno;
-    this.loading = true;
+    if (showLoader) {
+      this.loading = true;
+    }
     this.svc.getConsolidadoArmado(params).subscribe({
       next: data => {
         this.lista = data || [];
         this.agrupado = this.buildAgrupado();
-        this.loading = false;
+        if (showLoader) {
+          this.loading = false;
+        }
       },
       error: err => {
         console.error('Error al cargar consolidado:', err);
-        this.loading = false;
+        if (showLoader) {
+          this.loading = false;
+        }
       }
     });
     this.cargarResumen(params);
@@ -275,6 +310,7 @@ export class ConsolidadoComponent implements OnInit {
 
   descargarExcel(): void {
     const params: any = {};
+    if (this.filtroTexto) params.q = this.filtroTexto;
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroTurno) params.turno = this.filtroTurno;
     this.svc.exportarExcel(params).subscribe({
@@ -285,6 +321,7 @@ export class ConsolidadoComponent implements OnInit {
 
   descargarPdf(): void {
     const params: any = {};
+    if (this.filtroTexto) params.q = this.filtroTexto;
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroTurno) params.turno = this.filtroTurno;
     this.svc.exportarPdf(params).subscribe({
