@@ -45,7 +45,7 @@ export class PuestosComponent implements OnInit {
   clientesFiltrados: Cliente[] = [];
   clienteSeleccionado: number | null = null;
   clienteSeleccionadoNombre = '';
-  clienteFiltro = '';
+  clienteFiltro: string | Cliente = '';
 
   constructor(
     private puestoService: PuestoService,
@@ -68,7 +68,10 @@ export class PuestosComponent implements OnInit {
   }
 
   filtrarClientes(): void {
-    const term = this.clienteFiltro.trim().toLowerCase();
+    const raw = typeof this.clienteFiltro === 'string'
+      ? this.clienteFiltro
+      : (this.clienteFiltro?.nombre_comercial || '');
+    const term = raw.trim().toLowerCase();
     if (!term) {
       this.clientesFiltrados = [...this.clientes];
       this.clienteSeleccionado = null;
@@ -93,6 +96,11 @@ export class PuestosComponent implements OnInit {
     this.clienteFiltro = this.clienteSeleccionadoNombre;
     this.cargarPuestos();
   }
+
+  mostrarCliente = (cliente: Cliente | string | null): string => {
+    if (!cliente) return '';
+    return typeof cliente === 'string' ? cliente : (cliente.nombre_comercial || '');
+  };
 
   cargarPuestos(): void {
     if (this.clienteSeleccionado) {

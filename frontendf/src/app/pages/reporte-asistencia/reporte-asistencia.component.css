@@ -2,6 +2,35 @@
 	font-weight: 700;
 	text-align: left;
 }
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.turno-label-toggle.mat-button-toggle-disabled .mat-button-toggle-label-content,
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.turno-label-toggle.mat-button-toggle-disabled .mdc-button__label {
+	color: #e2e8f0 !important;
+}
+
+/* Check del turno seleccionado (Angular Material) */
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-pseudo-checkbox,
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-pseudo-checkbox::after,
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-pseudo-checkbox-checked,
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-pseudo-checkbox-minimal,
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-pseudo-checkbox-full {
+	color: #ffffff !important;
+	border-color: #ffffff !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-button-toggle-checkbox-wrapper,
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-button-toggle-checkbox,
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-button-toggle-checkbox svg,
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-button-toggle-checkbox path {
+	color: #ffffff !important;
+	fill: #ffffff !important;
+	stroke: #ffffff !important;
+	opacity: 1 !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-pseudo-checkbox,
+:host-context(body.theme-dark) ::ng-deep mat-button-toggle.mat-button-toggle-checked .mat-button-toggle-checkbox {
+	opacity: 1 !important;
+}
 
 .provincia-row td {
 	font-weight: 600;

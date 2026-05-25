@@ -196,11 +196,30 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
       result.push({ label: 'PERSONAL DE CONSOLA Y OFICINAS', rows: consola });
     }
 
-    for (const zona of Object.keys(zonas).sort()) {
-      result.push({ label: zona.toUpperCase(), rows: zonas[zona] });
+    for (const zona of Object.keys(zonas).sort((a, b) => {
+      const diff = this.getZonaOrden(a) - this.getZonaOrden(b);
+      return diff !== 0 ? diff : a.localeCompare(b);
+    })) {
+      result.push({ label: this.getZonaTitulo(zona), rows: zonas[zona] });
     }
 
     return result;
+  }
+
+  private getZonaOrden(zona: string): number {
+    const z = (zona || '').trim().toLowerCase();
+    if (z === 'zona 1') return 0;
+    if (z === 'zona 2') return 1;
+    if (z === 'zona 3') return 2;
+    return 99;
+  }
+
+  private getZonaTitulo(zona: string): string {
+    const normalized = (zona || '').trim().toLowerCase();
+    if (normalized === 'zona 1') return 'ZONA 1 / DAULE - SAMBORONDON';
+    if (normalized === 'zona 2') return 'ZONA 2 / SUR - CENTRO';
+    if (normalized === 'zona 3') return 'ZONA 3 / DAULE - NORTE';
+    return (zona || '').toUpperCase();
   }
 
   abrirObservacion(row: ConsolidadoRow): void {

@@ -125,6 +125,14 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     return 99;
   }
 
+  getZonaTitulo(zona: string): string {
+    const normalized = (zona || '').trim().toLowerCase();
+    if (normalized === 'zona 1') return 'ZONA 1 / DAULE - SAMBORONDON';
+    if (normalized === 'zona 2') return 'ZONA 2 / SUR - CENTRO';
+    if (normalized === 'zona 3') return 'ZONA 3 / DAULE - NORTE';
+    return (zona || '').toUpperCase();
+  }
+
   private buildReporteAgrupado(): ReporteAsistenciaGrupoZona[] {
     const zonas: Record<string, Record<string, ReporteAsistenciaRow[]>> = {};
     for (const row of this.reporte) {

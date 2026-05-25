@@ -15,7 +15,7 @@
           (ngModelChange)="filtrarClientes()"
           [matAutocomplete]="clienteAuto"
         />
-        <mat-autocomplete #clienteAuto="matAutocomplete" (optionSelected)="onClienteSeleccionado($event.option.value)">
+        <mat-autocomplete #clienteAuto="matAutocomplete" [displayWith]="mostrarCliente" (optionSelected)="onClienteSeleccionado($event.option.value)">
           <mat-option *ngFor="let cliente of clientesFiltrados" [value]="cliente">
             {{ cliente.nombre_comercial }}
           </mat-option>
