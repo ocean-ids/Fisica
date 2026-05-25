@@ -50,6 +50,11 @@ class Cliente(models.Model):
 
 class Provincia(models.Model):
     nombre = models.CharField(max_length=50, unique=True)
+
+    def save(self, *args, **kwargs):
+        if self.nombre is not None:
+            self.nombre = str(self.nombre).strip().upper()
+        super().save(*args, **kwargs)
     
     def __str__(self):
         return self.nombre
@@ -57,6 +62,11 @@ class Provincia(models.Model):
 class Canton(models.Model):
     nombre = models.CharField(max_length=50, db_index=True)
     provincia = models.ForeignKey(Provincia, on_delete=models.PROTECT, related_name='cantones')
+
+    def save(self, *args, **kwargs):
+        if self.nombre is not None:
+            self.nombre = str(self.nombre).strip().upper()
+        super().save(*args, **kwargs)
 
     class Meta:
         unique_together = (('provincia', 'nombre'),)
