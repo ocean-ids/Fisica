@@ -8,11 +8,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.core.mail import send_mail
 from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.password_validation import validate_password
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 import logging
 import json
 from ..models import UserProfile
@@ -225,6 +227,14 @@ def reset_password(request, uidb64, token):
         return JsonResponse({'error': 'Token expirado o inválido'}, status=400)
     
     nueva_password = request.data.get('password')
+    if nueva_password is None or str(nueva_password).strip() == '':
+        return JsonResponse({'error': 'La contraseña es obligatoria'}, status=400)
+
+    try:
+        validate_password(nueva_password, user=user)
+    except ValidationError as exc:
+        return JsonResponse({'error': 'Contraseña inválida', 'details': exc.messages}, status=400)
+
     user.set_password(nueva_password)
     user.save()
     
