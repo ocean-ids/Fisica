@@ -42,6 +42,14 @@ export class ReporteAsistenciaComponent implements OnInit {
   filtroClienteId = '';
   filtroFechaDisplay = '';
   filtroTurno = '';
+  filtroZona = '';
+
+  readonly zonaOpciones = ['', 'Zona 1', 'Zona 2', 'Zona 3'];
+  readonly pageSizeOptions = [25, 50, 100];
+  currentPage = 1;
+  pageSize = 50;
+  totalItems = 0;
+  totalPages = 1;
 
 
   readonly colorPalette: {name: string, value: string}[] = [
@@ -219,6 +227,7 @@ export class ReporteAsistenciaComponent implements OnInit {
     const params: any = {};
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
+    if (this.filtroZona) params.zona = this.filtroZona;
     if (this.filtroTurno) params. turno = this.filtroTurno;
     this.reporteSvc.exportarExcel(params).subscribe({
       next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.xlsx`),
@@ -230,6 +239,7 @@ export class ReporteAsistenciaComponent implements OnInit {
     const params: any = {};
     if(this.filtroFecha) params.fecha = this.filtroFecha;
     if(this.filtroClienteId) params.cliente_id = this.filtroClienteId;
+    if(this.filtroZona) params.zona = this.filtroZona;
     if(this.filtroTurno) params.turno = this.filtroTurno;
     this.reporteSvc.exportarPdf(params).subscribe({
       next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.pdf`),
@@ -254,15 +264,25 @@ export class ReporteAsistenciaComponent implements OnInit {
     window.URL.revokeObjectURL(url);
   }
 
-  cargarReporte(): void {
+  cargarReporte(resetPage: boolean = false): void {
+    if (resetPage) {
+      this.currentPage = 1;
+    }
     const params: any = {};
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
+    if (this.filtroZona) params.zona = this.filtroZona;
     if (this.filtroTurno) params.turno = this.filtroTurno;
+    params.page = this.currentPage;
+    params.page_size = this.pageSize;
     this.loading = true;
     this.reporteSvc.getReporteAsistencia(params).subscribe({
       next: data=> {
-        this.reporte = data || [];
+        this.reporte = data?.results || [];
+        this.totalItems = Number(data?.total || 0);
+        this.currentPage = Number(data?.page || this.currentPage);
+        this.pageSize = Number(data?.page_size || this.pageSize);
+        this.totalPages = Math.max(1, Number(data?.total_pages || 1));
         this.reporteAgrupado = this.buildReporteAgrupado();
         this.resumen = this.buildResumenAsistencia();
       },
@@ -310,14 +330,43 @@ export class ReporteAsistenciaComponent implements OnInit {
     this.setHoy();
     this.filtroClienteId = '';
     this.filtroTurno = '';
-    this.cargarReporte();
+    this.filtroZona = '';
+    this.currentPage = 1;
+    this.cargarReporte(true);
   }
 
   onFechaChange(event: Event): void {
     const iso = (event.target as HTMLInputElement).value;
     this.filtroFecha = iso || '';
     this.filtroFechaDisplay = iso ? iso.split('-').reverse().join('/') : '';
+    this.cargarReporte(true);
+  }
+
+  onZonaChange(event: Event): void {
+    const zona = (event.target as HTMLSelectElement).value || '';
+    this.filtroZona = zona;
+    this.cargarReporte(true);
+  }
+
+  onPageSizeChange(event: Event): void {
+    const size = Number((event.target as HTMLSelectElement).value);
+    if (!size || size < 1) return;
+    this.pageSize = size;
+    this.cargarReporte(true);
+  }
+
+  goToPage(page: number): void {
+    if (page < 1 || page > this.totalPages || page === this.currentPage) return;
+    this.currentPage = page;
     this.cargarReporte();
+  }
+
+  prevPage(): void {
+    this.goToPage(this.currentPage - 1);
+  }
+
+  nextPage(): void {
+    this.goToPage(this.currentPage + 1);
   }
   
 

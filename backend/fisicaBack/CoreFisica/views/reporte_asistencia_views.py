@@ -32,6 +32,18 @@ DIAS_SEMANA_ES = [
     'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO', 'DOMINGO'
 ]
 
+ZONAS_VALIDAS = {'ZONA 1', 'ZONA 2', 'ZONA 3'}
+
+
+def _normalize_zona_filter(zona_param):
+    zona_raw = str(zona_param or '').strip()
+    if not zona_raw:
+        return ''
+    zona_upper = zona_raw.upper()
+    if zona_upper in ZONAS_VALIDAS:
+        return f"Zona {zona_upper.split()[-1]}"
+    return ''
+
 
 def _parse_fecha_reporte(fecha_param):
     if fecha_param:
@@ -427,7 +439,7 @@ def _resolver_reemplazo_desde_request(request):
 
 
 
-def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, exclude_sacafranco=False):
+def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, exclude_sacafranco=False, zona=''):
     fecha_obj = None
     if fecha:
         try:
@@ -491,6 +503,8 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
             )
     if cliente_id:
         asig_qs = asig_qs.filter(cliente_id=cliente_id)
+    if zona:
+        asig_qs = asig_qs.filter(instalacion__zonas__titulo__iexact=zona).distinct()
     if turno in ['Diurno', 'Nocturno']:
         asig_qs = asig_qs.filter(
             Q(puesto__horarios__turno=turno) | Q(puesto__horarios__turno='Ambos')
@@ -589,14 +603,41 @@ def obtener_reporte_asistencia(request):
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
     turno = request.GET.get('turno')
+    zona = _normalize_zona_filter(request.GET.get('zona'))
+    try:
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 50))
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 50
+        page_size = min(page_size, 200)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Parámetros de paginación inválidos'}, status=400)
+
     exclude_sacafranco = str(request.GET.get('exclude_sacafranco', '')).strip() == '1'
     data = _build_reporte_asistencia_data(
         fecha=fecha,
         cliente_id=cliente_id,
         turno=turno,
-        exclude_sacafranco=exclude_sacafranco
+        exclude_sacafranco=exclude_sacafranco,
+        zona=zona,
     )
-    return JsonResponse(data, safe=False, status=status.HTTP_200_OK)
+
+    total = len(data)
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_results = data[start:end]
+    total_pages = (total + page_size - 1) // page_size if total else 1
+
+    return JsonResponse({
+        'results': page_results,
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'total_pages': total_pages,
+        'zona': zona or None,
+    }, safe=False, status=status.HTTP_200_OK)
 
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
@@ -731,6 +772,7 @@ def exportar_reporte_asistencia_excel(request):
 
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
+    zona = _normalize_zona_filter(request.GET.get('zona'))
     headers = [
         'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
         'NOMBRE Y APELLIDOS', 'ESTADO', 'REEMPLAZO', 'DESCRIPCIÓN',
@@ -739,7 +781,7 @@ def exportar_reporte_asistencia_excel(request):
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     def render_sheet(ws, turno_val):
-        data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno_val)
+        data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno_val, zona=zona)
         header_ctx = _build_header_context(request, fecha, turno_val)
         asistencias, faltos = _build_resumen_asistencia(data)
         grouped = _group_reporte_por_zona_y_provincia(data)
@@ -874,7 +916,8 @@ def exportar_reporte_asistencia_pdf(request):
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
     turno = request.GET.get('turno')
-    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno)
+    zona = _normalize_zona_filter(request.GET.get('zona'))
+    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno, zona=zona)
     header_ctx = _build_header_context(request, fecha, turno)
     asistencias, faltos = _build_resumen_asistencia(data)
     grouped = _group_reporte_por_zona_y_provincia(data)

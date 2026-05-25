@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { ReporteAsistenciaHistorialItem, ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../models';
+import { ReporteAsistenciaHistorialItem, ReporteAsistenciaListResponse, ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../models';
 
 @Injectable({
   providedIn: 'root'
@@ -10,7 +10,7 @@ export class ReporteAsistenciaService {
   constructor(private apiService: ApiService){}
 
   getReporteAsistencia(params?: any) {
-    return this.apiService.get<ReporteAsistenciaRow[]>('/reporte-asistencia/', params);
+    return this.apiService.get<ReporteAsistenciaListResponse>('/reporte-asistencia/', params);
   }
 
   updateReporteAsistencia(asignacionId: number, payload: UpdateReporteAsistenciaPayload) {

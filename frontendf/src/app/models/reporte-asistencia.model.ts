@@ -49,3 +49,12 @@ export interface ResumenAsistenciaZona {
   asistencias: number;
   faltas: number;
 }
+
+export interface ReporteAsistenciaListResponse {
+  results: ReporteAsistenciaRow[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  zona?: string | null;
+}

@@ -15,7 +15,7 @@
             <mat-button-toggle-group
                 name="turnoFiltro"
                 [(ngModel)]="filtroTurno"
-                (change)="cargarReporte()"
+                (change)="cargarReporte(true)"
                 aria-label="Filtro de turno">
                 <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
                 <mat-button-toggle disabled>Turnos:</mat-button-toggle>
@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-start align-items-center gap-3">
+    <div class="d-flex flex-wrap justify-content-start align-items-center gap-3 mb-2">
             <input
                 type="date"
                 lang="es"
@@ -53,6 +53,20 @@
                 [value]="filtroFecha"
                 (change)="onFechaChange($event)"
                 placeholder="dd/mm/aaaa">
+
+            <select
+                class="form-select form-select-sm w-auto"
+                [ngModel]="filtroZona"
+                (change)="onZonaChange($event)">
+                <option *ngFor="let z of zonaOpciones" [value]="z">{{ z || 'Todas las zonas' }}</option>
+            </select>
+
+            <div class="d-flex align-items-center gap-2">
+                <label class="small text-muted mb-0">Filas</label>
+                <select class="form-select form-select-sm w-auto" [value]="pageSize" (change)="onPageSizeChange($event)">
+                    <option *ngFor="let opt of pageSizeOptions" [value]="opt">{{ opt }}</option>
+                </select>
+            </div>
         </div>
 
     <div *ngIf="loading" class="text-muted">Cargando...</div>
@@ -132,5 +146,17 @@
                 </tr>
             </tbody>
         </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-2" *ngIf="!loading">
+        <div class="small text-muted">
+            Mostrando {{ reporte.length }} de {{ totalItems }} registros
+            <span *ngIf="filtroZona">( {{ filtroZona }} )</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="prevPage()" [disabled]="currentPage <= 1">Anterior</button>
+            <span class="small">Página {{ currentPage }} / {{ totalPages }}</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="nextPage()" [disabled]="currentPage >= totalPages">Siguiente</button>
+        </div>
     </div>
 </div>
