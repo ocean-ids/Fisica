@@ -1,5 +1,5 @@
 from django.http import JsonResponse
-from django.db.models import Q
+from django.db.models import Q, F
 from django.http import HttpResponse
 from django.utils import timezone
 import datetime
@@ -507,7 +507,10 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
         asig_qs = asig_qs.filter(instalacion__zonas__titulo__iexact=zona).distinct()
     if turno in ['Diurno', 'Nocturno']:
         asig_qs = asig_qs.filter(
-            Q(puesto__horarios__turno=turno) | Q(puesto__horarios__turno='Ambos')
+            Q(puesto__horarios__turno=turno)
+            | Q(puesto__horarios__turno='Ambos')
+            # Horario con misma hora de ingreso/salida se interpreta como cobertura 24h
+            | Q(horario__hora_ingreso=F('horario__hora_salida'))
         ).distinct()
 
     if exclude_sacafranco:
