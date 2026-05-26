@@ -41,7 +41,7 @@
 
 .main-content {
   flex: 1;
-  padding: 20px;
+  padding: 0;
   overflow-y: auto;
   background-color: var(--app-bg);
   color: var(--text-primary);

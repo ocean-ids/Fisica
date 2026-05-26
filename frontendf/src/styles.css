@@ -48,6 +48,17 @@ mat-toolbar,
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
+/* Dashboard modules: occupy full available width like Asignaciones. */
+.main-content .container,
+.main-content .container-fluid {
+  width: 100%;
+  max-width: 100% !important;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
 /* Superficies globales */
 body.theme-dark .card,
 body.theme-dark .card-body,
