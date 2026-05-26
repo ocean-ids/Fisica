@@ -45,7 +45,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   filtroClienteId = '';
   filtroFechaDisplay = '';
   filtroTurno = '';
-  filtroZona = '';
+  filtroZona = 'Zona 1';
 
   readonly zonaOpciones = ['', 'Zona 1', 'Zona 2', 'Zona 3'];
   readonly pageSizeOptions = [25, 50, 100];
@@ -375,7 +375,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     this.setHoy();
     this.filtroClienteId = '';
     this.filtroTurno = '';
-    this.filtroZona = '';
+    this.filtroZona = 'Zona 1';
     this.currentPage = 1;
     this.cargarReporte(true);
   }

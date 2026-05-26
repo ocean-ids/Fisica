@@ -30,7 +30,7 @@ def _parse_fecha(fecha_param):
     return timezone.localdate()
 
 
-def _build_consolidado_data(fecha, turno, q=''):
+def _build_consolidado_data(fecha, turno, zona='', q=''):
     fecha_obj = _parse_fecha(fecha)
     turno_val = turno if turno in ALLOWED_TURNOS else None
 
@@ -65,7 +65,7 @@ def _build_consolidado_data(fecha, turno, q=''):
             'zona': 'PERSONAL DE CONSOLA'
         })
 
-    reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val)
+    reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q)
     asig_ids = [r.get('asignacion_id') for r in reporte_rows if r.get('asignacion_id')]
     asig_map = {}
     if asig_ids:
@@ -260,8 +260,9 @@ def obtener_consolidado_armado(request):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
+    zona = (request.GET.get('zona') or '').strip()
     q = (request.GET.get('q') or '').strip()
-    data = _build_consolidado_data(fecha, turno, q=q)
+    data = _build_consolidado_data(fecha, turno, zona=zona, q=q)
     return JsonResponse(data, safe=False)
 
 
@@ -272,12 +273,13 @@ def obtener_consolidado_resumen(request):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
+    zona = (request.GET.get('zona') or '').strip()
     q = (request.GET.get('q') or '').strip()
     turno_val = turno if turno in ALLOWED_TURNOS else None
     if not turno_val:
         return JsonResponse({'error': 'Turno requerido'}, status=400)
     fecha_obj = _parse_fecha(fecha)
-    reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, q=q)
+    reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q)
 
     manual = _build_resumen_manual(fecha_obj, turno_val, reporte_rows)
     estados = _build_estado_agentes_counts(reporte_rows)
@@ -442,7 +444,8 @@ def eliminar_consolidado(request, id):
 def exportar_consolidado_excel(request):
     if not request.user.has_perm('CoreFisica.export_consolidado'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-    fecha = request.GET.get('fecha')
+    fecha = request.GET.get('fecha', None)
+    zona = (request.GET.get('zona') or '').strip()
     q = (request.GET.get('q') or '').strip()
     fecha_obj = _parse_fecha(fecha)
     fecha_label = fecha_obj.strftime('%d/%m/%Y')
@@ -462,8 +465,8 @@ def exportar_consolidado_excel(request):
 
     def render_sheet(ws, turno_val):
         turno_label = (turno_val or 'TODOS').upper()
-        data = _build_consolidado_data(fecha, turno_val, q=q)
-        reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, q=q)
+        data = _build_consolidado_data(fecha, turno_val, zona=zona, q=q)
+        reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q)
         manual = _build_resumen_manual(fecha_obj, turno_val, reporte_rows) if turno_val else None
         estados = _build_estado_agentes_counts(reporte_rows)
 
@@ -524,10 +527,10 @@ def exportar_consolidado_excel(request):
                     cell.alignment = Alignment(horizontal=align, vertical='center')
                 row_idx += 1
 
-        for zona, items in _group_guardias_por_zona(data):
+        for zona_label, items in _group_guardias_por_zona(data):
             ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=5)
             cell = ws.cell(row=row_idx, column=1)
-            cell.value = str(zona).upper()
+            cell.value = str(zona_label).upper()
             cell.font = Font(bold=True)
             cell.alignment = Alignment(horizontal='center', vertical='center')
             cell.fill = header_fill
@@ -633,12 +636,13 @@ def exportar_consolidado_excel(request):
 def exportar_consolidado_pdf(request):
     if not request.user.has_perm('CoreFisica.export_consolidado'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-    fecha = request.GET.get('fecha')
+    fecha = request.GET.get('fecha', None)
     turno = request.GET.get('turno')
+    zona = (request.GET.get('zona') or '').strip()
     q = (request.GET.get('q') or '').strip()
-    data = _build_consolidado_data(fecha, turno, q=q)
+    data = _build_consolidado_data(fecha, turno, zona=zona, q=q)
     turno_val = turno if turno in ALLOWED_TURNOS else None
-    reporte_rows = _build_reporte_asistencia_data(fecha=_parse_fecha(fecha).isoformat(), turno=turno_val, q=q)
+    reporte_rows = _build_reporte_asistencia_data(fecha=_parse_fecha(fecha).isoformat(), turno=turno_val, zona=zona, q=q)
     manual = _build_resumen_manual(_parse_fecha(fecha), turno_val, reporte_rows) if turno_val else None
     estados = _build_estado_agentes_counts(reporte_rows)
 
@@ -718,8 +722,8 @@ def exportar_consolidado_pdf(request):
                 x += col_widths[i]
             y -= 0.18 * inch
 
-    for zona, items in _group_guardias_por_zona(data):
-        y = draw_section(str(zona).upper(), y)
+    for zona_label, items in _group_guardias_por_zona(data):
+        y = draw_section(str(zona_label).upper(), y)
         for item in items:
             y = ensure_space(y)
             nombre = f"{item.get('apellidos', '')} {item.get('nombres', '')}".strip()

@@ -26,6 +26,7 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
   agrupado: { label: string; rows: ConsolidadoRow[] }[] = [];
   filtroFecha = '';
   filtroTurno = '';
+  filtroZona = 'Zona 1';
   filtroTexto = '';
   loading = false;
   private filterSub?: Subscription;
@@ -96,6 +97,7 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
     if (this.filtroTexto) params.q = this.filtroTexto;
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroTurno) params.turno = this.filtroTurno;
+    if (this.filtroZona) params.zona = this.filtroZona;
     if (showLoader) {
       this.loading = true;
     }
@@ -332,6 +334,7 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
     if (this.filtroTexto) params.q = this.filtroTexto;
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroTurno) params.turno = this.filtroTurno;
+    if (this.filtroZona) params.zona = this.filtroZona;
     this.svc.exportarExcel(params).subscribe({
       next: (blob: Blob) => this.descargarArchivo(blob, `consolidado_${this.filtroFecha || 'hoy'}.xlsx`),
       error: (err) => this.handleDownloadError(err, 'Excel')
@@ -343,6 +346,7 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
     if (this.filtroTexto) params.q = this.filtroTexto;
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     if (this.filtroTurno) params.turno = this.filtroTurno;
+    if (this.filtroZona) params.zona = this.filtroZona;
     this.svc.exportarPdf(params).subscribe({
       next: (blob: Blob) => this.descargarArchivo(blob, `consolidado_${this.filtroFecha || 'hoy'}.pdf`),
       error: (err) => this.handleDownloadError(err, 'PDF')
