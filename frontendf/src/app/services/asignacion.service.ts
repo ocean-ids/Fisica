@@ -3,12 +3,13 @@ import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 import { Asignacion, SacafrancoFila } from '../models/asignacion.model';
 import { map } from 'rxjs/operators';
+import { environment } from '@env/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AsignacionService {
-  private apiUrl = 'http://localhost:8000/api';
+  private apiUrl = environment.apiUrl;
 
   constructor(private apiService: ApiService){}
 

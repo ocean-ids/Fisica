@@ -33,6 +33,7 @@ import { catchError, switchMap, concatMap, toArray, debounceTime, distinctUntilC
 import { Router } from '@angular/router';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-asignaciones',
@@ -1628,7 +1629,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   //descargarReporteExcel se encarga de descargar un reporte de asignaciones en formato Excel para el mes y año seleccionados, realizando una llamada al backend para obtener el archivo como un blob, y luego utilizando la biblioteca FileSaver para guardar el archivo en el dispositivo del usuario con un nombre que incluye el mes y año, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   descargarReporteExcel() {
   const mm = String(this.mes).padStart(2, '0');
-  const url = `http://localhost:8000/api/reporte-asignaciones/?mes=${mm}&anio=${this.anio}`;
+  const url = `${environment.apiUrl}/reporte-asignaciones/?mes=${mm}&anio=${this.anio}`;
   this.http.get(url, { responseType: 'blob' })
     .subscribe({
       next: (blob) => {

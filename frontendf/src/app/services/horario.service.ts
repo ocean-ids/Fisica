@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Horario } from '../models/horario.models';
+import { environment } from '@env/environment';
 
 
 
@@ -10,7 +11,7 @@ import { Horario } from '../models/horario.models';
 })
 export class HorarioService {
 
-  private apiUrl = 'http://localhost:8000/api';
+  private apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) { }
 
