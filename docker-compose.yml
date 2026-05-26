@@ -4,7 +4,7 @@ services:
     container_name: sf_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: sf_bd
+      POSTGRES_DB: sf_bd_prueba
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
