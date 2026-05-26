@@ -8,8 +8,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { Cliente } from '../../../models/cliente.model';
 import { UbicacionService } from '../../../services/ubicacion.service';
-import { ProvinciasService } from '../../../services/provincias.service';
-import { Province, City } from '../../../data/provincias';
 
 @Component({
   selector: 'app-instalacion-form',
@@ -28,14 +26,13 @@ import { Province, City } from '../../../data/provincias';
 })
 export class InstalacionFormComponent implements OnInit {
   instalacionForm!: FormGroup;
-  provincias: (any | Province)[] = [];
-  cantones: (any | City)[] = [];
-  private useStaticProvincias = false;
+  provincias: any[] = [];
+  cantones: any[] = [];
   zonaOptions: { id: any; label: string; titulo?: string }[] = [];
   private defaultZonaTitles = ['Zona 1'];
   private zonaTitles = ['Zona 1', 'Zona 2', 'Zona 3'];
   
-  private initialCanton: string | null = null;
+  private initialCanton: any = null;
   private initialCantonName: string | null = null;
   private initialProvinciaName: string | null = null;
 
@@ -43,8 +40,7 @@ export class InstalacionFormComponent implements OnInit {
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<InstalacionFormComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { instalacion: any, clientes: Cliente[] },
-    private ubicacionService: UbicacionService,
-    private provinciasService: ProvinciasService
+    private ubicacionService: UbicacionService
   ) {}
 
   ngOnInit(): void {
@@ -97,46 +93,43 @@ export class InstalacionFormComponent implements OnInit {
       this.instalacionForm.get('canton_id')?.setValue('');
       return;
     }
-    if (this.useStaticProvincias) {
-      const prov = (this.provincias as Province[]).find(x => x.id === provinciaId);
-      this.cantones = prov ? prov.ciudades : [];
+    const parsedProvinciaId = Number(provinciaId);
+    this.ubicacionService.getCantones(Number.isFinite(parsedProvinciaId) ? parsedProvinciaId : undefined).subscribe((cants: any[]) => {
+      this.cantones = cants || [];
       this.afterCantonesLoaded();
-    } else {
-      this.ubicacionService.getCantones(provinciaId).subscribe((cants: any[]) => {
-        this.cantones = cants || [];
-        this.afterCantonesLoaded();
-      });
-    }
+    });
   }
 
   private loadProvincias(instalacion: any): void {
-    this.useStaticProvincias = true;
-    this.provincias = this.provinciasService.getProvinciasSync();
+    this.ubicacionService.getProvincias().subscribe((provs: any[]) => {
+      this.provincias = provs || [];
+
     this.initialCanton = instalacion.canton_id || null;
     this.initialCantonName = (instalacion.canton_nombre || '').trim().toUpperCase() || null;
     this.initialProvinciaName = (instalacion.provincia_nombre || '').trim().toUpperCase() || null;
 
     const storedProvId = instalacion.provincia_id;
     const provFoundById = storedProvId
-      ? this.provincias.find((x: any) => x.id === storedProvId)
+      ? this.provincias.find((x: any) => Number(x.id) === Number(storedProvId))
       : null;
     const provFoundByName = this.initialProvinciaName
-      ? this.provincias.find((x: any) => (x.nombre || '').toUpperCase() === this.initialProvinciaName)
+      ? this.provincias.find((x: any) => this.normalizeName(x.nombre || '') === this.normalizeName(this.initialProvinciaName || ''))
       : null;
     const provFound = provFoundById || provFoundByName;
     if (provFound) {
       this.instalacionForm.get('provincia_id')?.setValue(provFound.id);
       this.onProvinciaChange();
     }
+    });
   }
 
   private afterCantonesLoaded(): void {
     if (this.initialCanton || this.initialCantonName) {
       const foundById = this.initialCanton
-        ? this.cantones.find((x: any) => x.id === this.initialCanton)
+        ? this.cantones.find((x: any) => Number(x.id) === Number(this.initialCanton))
         : null;
       const foundByName = this.initialCantonName
-        ? this.cantones.find((x: any) => (x.nombre || '').toUpperCase() === this.initialCantonName)
+        ? this.cantones.find((x: any) => this.normalizeName(x.nombre || '') === this.normalizeName(this.initialCantonName || ''))
         : null;
       const found = foundById || foundByName;
       if (found) {
@@ -180,6 +173,14 @@ export class InstalacionFormComponent implements OnInit {
       }
     });
     return merged;
+  }
+
+  private normalizeName(value: string): string {
+    return (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toUpperCase();
   }
 
   onSubmit(): void {
