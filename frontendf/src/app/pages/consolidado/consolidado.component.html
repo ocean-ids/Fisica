@@ -51,6 +51,7 @@
         <tr>
           <th>Nominativo</th>
           <th>Proyecto</th>
+          <th>Puesto</th>
           <th>Apellidos y Nombre</th>
           <th>Estado</th>
           <th>Observación</th>
@@ -60,11 +61,12 @@
       <tbody>
         <ng-container *ngFor="let g of agrupado">
           <tr>
-            <td colspan="6" class="fw-bold text-center">{{ g.label }}</td>
+            <td colspan="7" class="fw-bold text-center">{{ g.label }}</td>
           </tr>
           <tr *ngFor="let r of g.rows">
             <td>{{ r.nominativo || '-' }}</td>
             <td>{{ r.proyecto || '-' }}</td>
+            <td>{{ r.puesto || '-' }}</td>
             <td>{{ getNombreCompleto(r) }}</td>
             <td>{{ r.estado || '-' }}</td>
             <td>
@@ -78,7 +80,7 @@
           </tr>
         </ng-container>
         <tr *ngIf="agrupado.length === 0">
-          <td colspan="6" class="text-muted text-center">Sin registros</td>
+          <td colspan="7" class="text-muted text-center">Sin registros</td>
         </tr>
       </tbody>
     </table>

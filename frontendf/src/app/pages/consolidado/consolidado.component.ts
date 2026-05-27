@@ -236,6 +236,7 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
       if (row.tipo === 'CONSOLa') {
         row.nominativo = result.nominativo || '';
         row.proyecto = result.proyecto || '';
+        row.puesto = result.puesto || '';
       }
       this.guardarObservacion(row);
     });
@@ -251,6 +252,7 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
       referencia_id: row.referencia_id,
       nominativo: row.nominativo || '',
       proyecto: row.proyecto || '',
+      puesto: row.puesto || '',
       observacion: row.observacion || ''
     };
 
@@ -258,7 +260,8 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
       this.svc.updateConsolidado(row.consolidado_id, {
         observacion: payload.observacion,
         nominativo: payload.nominativo,
-        proyecto: payload.proyecto
+        proyecto: payload.proyecto,
+        puesto: payload.puesto
       }).subscribe({
         next: () => {
           Swal.fire({ icon: 'success', title: 'Observacion guardada', timer: 1200, showConfirmButton: false });

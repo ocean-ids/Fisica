@@ -628,6 +628,7 @@ class Consolidado(models.Model):
     referencia_id = models.PositiveIntegerField(db_index=True)
     nominativo = models.CharField(max_length=50, blank=True, null=True)
     proyecto = models.CharField(max_length=120, blank=True, null=True)
+    puesto = models.CharField(max_length=120, blank=True, null=True)
     observacion = models.CharField(max_length=200, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

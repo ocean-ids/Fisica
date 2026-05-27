@@ -6,6 +6,7 @@ export interface ConsolidadoRow {
   referencia_id?: number;
   nominativo?: string;
   proyecto?: string;
+  puesto?: string;
   cedula?: string | null;
   apellidos?: string;
   nombres?: string;

@@ -37,6 +37,22 @@
         </mat-option>
       </mat-select>
     </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="!isConsola">
+      <mat-label>Puesto</mat-label>
+      <input matInput formControlName="puesto" [readonly]="!isConsola">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="isConsola">
+      <mat-label>Puesto</mat-label>
+      <mat-select formControlName="puesto">
+        <mat-option value="">Seleccionar</mat-option>
+        <mat-option *ngFor="let p of oceanPuestos" [value]="p.nombre || ''">
+          {{ p.nombre || '-' }}
+        </mat-option>
+      </mat-select>
+      <mat-hint *ngIf="loadingPuestos">Cargando puestos...</mat-hint>
+    </mat-form-field>
   
 
     <mat-form-field appearance="outline" class="full-width">

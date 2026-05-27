@@ -59,6 +59,7 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
             'referencia_id': p.id,
             'nominativo': cons.nominativo if cons and cons.nominativo else '',
             'proyecto': cons.proyecto if cons and cons.proyecto else '',
+            'puesto': cons.puesto if cons and cons.puesto else '',
             'apellidos': p.apellidos,
             'nombres': p.nombres,
             'estado': p.tipo,
@@ -89,6 +90,7 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
             'referencia_id': asig_id,
             'nominativo': row.get('codigo') or '',
             'proyecto': proyecto,
+            'puesto': row.get('puesto') or '',
             'apellidos': nombre_apellidos,
             'nombres': '',
             'estado': row.get('estado') or '',
@@ -104,6 +106,7 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
             haystack = ' '.join([
                 str(item.get('nominativo') or ''),
                 str(item.get('proyecto') or ''),
+                str(item.get('puesto') or ''),
                 str(item.get('apellidos') or ''),
                 str(item.get('nombres') or ''),
                 str(item.get('estado') or ''),
@@ -220,6 +223,7 @@ def _serialize_item(item: Consolidado):
         'referencia_id': item.referencia_id,
         'nominativo': item.nominativo or '',
         'proyecto': item.proyecto or '',
+        'puesto': item.puesto or '',
         'observacion': item.observacion or ''
     }
 
@@ -350,6 +354,7 @@ def crear_consolidado(request):
     referencia_id = data.get('referencia_id')
     nominativo = (data.get('nominativo') or '').strip() or None
     proyecto = (data.get('proyecto') or '').strip() or None
+    puesto = (data.get('puesto') or '').strip() or None
     observacion = (data.get('observacion') or '').strip() or None
 
     if not fecha or not turno or not tipo or referencia_id in [None, '']:
@@ -373,6 +378,7 @@ def crear_consolidado(request):
         referencia_id=referencia_id,
         nominativo=nominativo,
         proyecto=proyecto,
+        puesto=puesto,
         observacion=observacion
     )
 
@@ -420,6 +426,9 @@ def actualizar_consolidado(request, id):
     if 'proyecto' in data:
         item.proyecto = (data.get('proyecto') or '').strip() or None
 
+    if 'puesto' in data:
+        item.puesto = (data.get('puesto') or '').strip() or None
+
     if 'observacion' in data:
         item.observacion = (data.get('observacion') or '').strip() or None
 
@@ -455,7 +464,7 @@ def exportar_consolidado_excel(request):
     if user and user.is_authenticated:
         operador = f"{user.first_name} {user.last_name}".strip() or user.get_username()
 
-    headers = ['NOMINATIVO', 'PROYECTO', 'APELLIDOS Y NOMBRE', 'ESTADO', 'OBSERVACIONES']
+    headers = ['NOMINATIVO', 'PROYECTO', 'PUESTO', 'APELLIDOS Y NOMBRE', 'ESTADO', 'OBSERVACIONES']
     header_row = 2
 
     thin = Side(border_style='thin', color='000000')
@@ -475,16 +484,16 @@ def exportar_consolidado_excel(request):
         ws.merge_cells(start_row=1, start_column=2, end_row=1, end_column=3)
         ws['B1'] = fecha_label
         ws['D1'] = f"TURNO: {turno_label}"
-        ws['E1'] = f"REPORTA: {operador}"
+        ws['F1'] = f"REPORTA: {operador}"
 
         ws['A1'].font = Font(bold=True)
         ws['D1'].font = Font(bold=True)
-        ws['E1'].font = Font(bold=True)
+        ws['F1'].font = Font(bold=True)
         ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
         ws['B1'].alignment = Alignment(horizontal='center', vertical='center')
         ws['D1'].alignment = Alignment(horizontal='left', vertical='center')
-        ws['E1'].alignment = Alignment(horizontal='left', vertical='center')
-        for col in range(1, 6):
+        ws['F1'].alignment = Alignment(horizontal='left', vertical='center')
+        for col in range(1, 7):
             c = ws.cell(row=1, column=col)
             c.border = border
 
@@ -500,13 +509,13 @@ def exportar_consolidado_excel(request):
 
         consola_rows = [d for d in data if d.get('tipo') == TIPO_CONSOLA]
         if consola_rows:
-            ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=5)
+            ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=6)
             cell = ws.cell(row=row_idx, column=1)
             cell.value = 'PERSONAL DE CONSOLA Y OFICINAS'
             cell.font = Font(bold=True)
             cell.alignment = Alignment(horizontal='center', vertical='center')
             cell.fill = header_fill
-            for col in range(1, 6):
+            for col in range(1, 7):
                 c = ws.cell(row=row_idx, column=col)
                 c.border = border
             row_idx += 1
@@ -516,6 +525,7 @@ def exportar_consolidado_excel(request):
                 values = [
                     item.get('nominativo', ''),
                     item.get('proyecto', ''),
+                    item.get('puesto', ''),
                     nombre,
                     item.get('estado', ''),
                     item.get('observacion', ''),
@@ -524,18 +534,18 @@ def exportar_consolidado_excel(request):
                     cell = ws.cell(row=row_idx, column=col_idx)
                     cell.value = value
                     cell.border = border
-                    align = 'left' if col_idx in (3, 5) else 'center'
+                    align = 'left' if col_idx in (4, 6) else 'center'
                     cell.alignment = Alignment(horizontal=align, vertical='center')
                 row_idx += 1
 
         for zona_label, items in _group_guardias_por_zona(data):
-            ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=5)
+            ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=6)
             cell = ws.cell(row=row_idx, column=1)
             cell.value = str(zona_label).upper()
             cell.font = Font(bold=True)
             cell.alignment = Alignment(horizontal='center', vertical='center')
             cell.fill = header_fill
-            for col in range(1, 6):
+            for col in range(1, 7):
                 c = ws.cell(row=row_idx, column=col)
                 c.border = border
             row_idx += 1
@@ -545,6 +555,7 @@ def exportar_consolidado_excel(request):
                 values = [
                     item.get('nominativo', ''),
                     item.get('proyecto', ''),
+                    item.get('puesto', ''),
                     nombre,
                     item.get('estado', ''),
                     item.get('observacion', ''),
@@ -553,7 +564,7 @@ def exportar_consolidado_excel(request):
                     cell = ws.cell(row=row_idx, column=col_idx)
                     cell.value = value
                     cell.border = border
-                    align = 'left' if col_idx in (3, 5) else 'center'
+                    align = 'left' if col_idx in (4, 6) else 'center'
                     cell.alignment = Alignment(horizontal=align, vertical='center')
                 row_idx += 1
 
@@ -605,11 +616,12 @@ def exportar_consolidado_excel(request):
             row_idx = write_summary_row(row_idx, 'CUSTODIO', estados['custodio'])
             row_idx = write_summary_row(row_idx, 'TOTAL=', estados['total'], is_total=True)
 
-        ws.column_dimensions['A'].width = 18
-        ws.column_dimensions['B'].width = 36
-        ws.column_dimensions['C'].width = 38
-        ws.column_dimensions['D'].width = 16
-        ws.column_dimensions['E'].width = 40
+        ws.column_dimensions['A'].width = 16
+        ws.column_dimensions['B'].width = 24
+        ws.column_dimensions['C'].width = 24
+        ws.column_dimensions['D'].width = 34
+        ws.column_dimensions['E'].width = 14
+        ws.column_dimensions['F'].width = 34
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -667,8 +679,8 @@ def exportar_consolidado_pdf(request):
     p.drawString(x_margin + 3.5 * inch, height - y_margin, f"TURNO: {turno_label}")
     p.drawRightString(width - x_margin, height - y_margin, f"REPORTA: {operador}")
 
-    headers = ['NOMINATIVO', 'PROYECTO', 'APELLIDOS Y NOMBRE', 'ESTADO', 'OBSERVACIONES']
-    col_widths = [1.2, 2.4, 2.6, 1.2, 2.6]
+    headers = ['NOMINATIVO', 'PROYECTO', 'PUESTO', 'APELLIDOS Y NOMBRE', 'ESTADO', 'OBSERVACIONES']
+    col_widths = [0.9, 1.8, 1.3, 2.3, 0.9, 2.7]
     col_widths = [w * inch for w in col_widths]
 
     y = height - y_margin - 0.4 * inch
@@ -709,6 +721,7 @@ def exportar_consolidado_pdf(request):
             row_vals = [
                 item.get('nominativo', ''),
                 item.get('proyecto', ''),
+                item.get('puesto', ''),
                 nombre,
                 item.get('estado', ''),
                 item.get('observacion', ''),
@@ -731,6 +744,7 @@ def exportar_consolidado_pdf(request):
             row_vals = [
                 item.get('nominativo', ''),
                 item.get('proyecto', ''),
+                item.get('puesto', ''),
                 nombre,
                 item.get('estado', ''),
                 item.get('observacion', ''),

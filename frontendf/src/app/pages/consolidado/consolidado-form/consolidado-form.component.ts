@@ -8,6 +8,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { ConsolidadoRow } from '../../../models/consolidado.model';
 import { InstalacionService } from '../../../services/instalacion.service';
+import { PuestoService } from '../../../services/puesto.service';
+import { Puesto } from '../../../models/puesto.model';
 
 export interface ConsolidadoFormDialogData {
   row: ConsolidadoRow;
@@ -32,19 +34,23 @@ export class ConsolidadoFormComponent {
   form: FormGroup;
   isConsola: boolean;
   oceanInstalaciones: any[] = [];
+  oceanPuestos: Puesto[] = [];
   loadingInstalaciones = false;
+  loadingPuestos = false;
 
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<ConsolidadoFormComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ConsolidadoFormDialogData,
-    private instalacionService: InstalacionService
+    private instalacionService: InstalacionService,
+    private puestoService: PuestoService
   ) {
     const tipo = (data.row?.tipo || '').toString().toUpperCase();
     this.isConsola = tipo.startsWith('CONS');
     this.form = this.fb.group({
       nominativo: [data.row?.nominativo || '', Validators.maxLength(50)],
       proyecto: [data.row?.proyecto || '', Validators.maxLength(120)],
+      puesto: [data.row?.puesto || '', Validators.maxLength(120)],
       observacion: [data.row?.observacion || '', Validators.maxLength(200)]
     });
 
@@ -62,6 +68,13 @@ export class ConsolidadoFormComponent {
           const name = (inst?.cliente_nombre || inst?.nombre_cliente || '').toString().toUpperCase();
           return name.includes('OCEAN');
         });
+        const proyecto = (this.form.value.proyecto || '').toString().trim();
+        if (proyecto) {
+          const match = this.oceanInstalaciones.find(i => (i?.nombre || '') === proyecto);
+          if (match?.id) {
+            this.loadPuestos(match.id);
+          }
+        }
       },
       error: () => {
         this.oceanInstalaciones = [];
@@ -79,6 +92,9 @@ export class ConsolidadoFormComponent {
       nominativo: codigo,
       proyecto: match?.nombre || this.form.value.proyecto || ''
     });
+    if (match?.id) {
+      this.loadPuestos(match.id);
+    }
   }
 
   setProyecto(value: string): void {
@@ -87,6 +103,24 @@ export class ConsolidadoFormComponent {
     this.form.patchValue({
       proyecto,
       nominativo: match?.codigo || this.form.value.nominativo || ''
+    });
+    if (match?.id) {
+      this.loadPuestos(match.id);
+    }
+  }
+
+  private loadPuestos(instalacionId: number): void {
+    this.loadingPuestos = true;
+    this.puestoService.getPuestosPorInstalacion(instalacionId).subscribe({
+      next: (rows) => {
+        this.oceanPuestos = Array.isArray(rows) ? rows : [];
+      },
+      error: () => {
+        this.oceanPuestos = [];
+      },
+      complete: () => {
+        this.loadingPuestos = false;
+      }
     });
   }
 
@@ -99,6 +133,7 @@ export class ConsolidadoFormComponent {
     this.dialogRef.close({
       nominativo: this.form.value.nominativo || '',
       proyecto: this.form.value.proyecto || '',
+      puesto: this.form.value.puesto || '',
       observacion: this.form.value.observacion || ''
     });
   }
