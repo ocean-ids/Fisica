@@ -45,6 +45,8 @@ export class PersonaFormComponent implements OnInit {
     'SUPERVISOR EVENTUAL',
     'SUPERVISOR MOTORIZADO',
     'SUPERVISOR DE ACOMPAÑAMIENTO',
+    'OPERADOR CENTRO CONTROL',
+    'SUPERVISOR CENTRO CONTROL',
   ];
 
   constructor(

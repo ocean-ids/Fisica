@@ -12,13 +12,14 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.lib import colors
-from ..models import Consolidado, PersonalConsola, Asignacion, ConsolidadoResumen
+from ..models import Consolidado, Asignacion, ConsolidadoResumen, Persona
 from .reporte_asistencia_views import _build_reporte_asistencia_data
 
-ALLOWED_TURNOS = {choice[0] for choice in PersonalConsola.TURNOS}
+ALLOWED_TURNOS = {'Diurno', 'Nocturno'}
 ALLOWED_TIPOS = {choice[0] for choice in Consolidado.TIPOS}
 TIPO_CONSOLA = 'CONSOLa'
 TIPO_GUARDIA = 'GUARDIA'
+TIPOS_CENTRO_CONTROL = {'OPERADOR CENTRO CONTROL', 'SUPERVISOR CENTRO CONTROL'}
 
 
 def _parse_fecha(fecha_param):
@@ -42,25 +43,25 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
         for c in consolidados_qs
     }
 
-    consola_qs = PersonalConsola.objects.filter(is_active=True)
-    if turno_val:
-        consola_qs = consola_qs.filter(turno=turno_val)
-    consola_qs = consola_qs.order_by('apellidos', 'nombres')
+    consola_qs = Persona.objects.filter(
+        is_active=True,
+        tipo__in=TIPOS_CENTRO_CONTROL,
+    ).order_by('apellidos', 'nombres')
 
     data = []
-    for item in consola_qs:
-        cons = consolidado_map.get((TIPO_CONSOLA, item.id))
+    for p in consola_qs:
+        cons = consolidado_map.get((TIPO_CONSOLA, p.id))
         data.append({
             'consolidado_id': cons.id if cons else None,
             'fecha': fecha_obj.isoformat(),
-            'turno': turno_val or item.turno,
+            'turno': turno_val or '',
             'tipo': TIPO_CONSOLA,
-            'referencia_id': item.id,
+            'referencia_id': p.id,
             'nominativo': cons.nominativo if cons and cons.nominativo else '',
             'proyecto': cons.proyecto if cons and cons.proyecto else '',
-            'apellidos': item.apellidos,
-            'nombres': item.nombres,
-            'estado': item.tipo,
+            'apellidos': p.apellidos,
+            'nombres': p.nombres,
+            'estado': p.tipo,
             'observacion': cons.observacion if cons else '',
             'zona': 'PERSONAL DE CONSOLA'
         })

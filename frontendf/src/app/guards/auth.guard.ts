@@ -10,6 +10,7 @@ const dashboardRoutesByPermission = [
   { path: '/dashboard/horarios', permission: 'CoreFisica.view_horario' },
   { path: '/dashboard/asignaciones', permission: 'CoreFisica.view_asignacion' },
   { path: '/dashboard/reporte-asistencia', permission: 'CoreFisica.view_reporteasistencia' },
+  { path: '/dashboard/consolidado', permission: 'CoreFisica.view_consolidado' },
 ];
 
 function getFirstAccessibleDashboardRoute(authService: AuthService): string | null {

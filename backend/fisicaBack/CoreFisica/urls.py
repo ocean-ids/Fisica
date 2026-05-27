@@ -18,7 +18,6 @@ from .views.asignacion_semanal_views import listar_asignacion_semanal, listar_as
 from .views.patron_asignacion_views import PatronAsignacionListCreateView, PatronAsignacionRetrieveUpdateDestroyView
 from .views.reporte_asistencia_views import obtener_reporte_asistencia, insertar_reporte_asistencia, historial_reporte_asistencia, exportar_reporte_asistencia_excel, exportar_reporte_asistencia_pdf
 from .views.consolidado_views import obtener_consolidado, crear_consolidado, actualizar_consolidado, eliminar_consolidado, obtener_consolidado_armado, exportar_consolidado_excel, exportar_consolidado_pdf, obtener_consolidado_resumen, actualizar_consolidado_resumen
-from .views.personal_consola_views import obtener_personal_consola, crear_personal_consola, actualizar_personal_consola, eliminar_personal_consola
 
 urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
@@ -91,10 +90,6 @@ urlpatterns = [
     path('reporte-asistencia/<int:asignacion_id>/historial/', historial_reporte_asistencia, name='reporte-asistencia-historial'),
     path('reporte-asistencia/exportar-excel/', exportar_reporte_asistencia_excel, name='reporte-asistencia-excel'),
     path('reporte-asistencia/exportar-pdf/', exportar_reporte_asistencia_pdf, name='reporte-asistencia-pdf'),
-    path('personal-consola/', obtener_personal_consola),
-    path('personal-consola/crear/', crear_personal_consola),
-    path('personal-consola/<int:id>/', actualizar_personal_consola),
-    path('personal-consola/<int:id>/eliminar/', eliminar_personal_consola),
     path('consolidado/', obtener_consolidado),
     path('consolidado/armado/', obtener_consolidado_armado),
     path('consolidado/resumen/', obtener_consolidado_resumen),

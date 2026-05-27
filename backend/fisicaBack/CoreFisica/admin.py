@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, PersonalConsola, Consolidado, UserProfile
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, Consolidado, UserProfile
 
 admin.site.site_header = 'Seguridad Física'
 admin.site.site_title = 'Seguridad Física'
@@ -131,28 +131,6 @@ class ReporteAsistenciaHistorialAdmin(admin.ModelAdmin):
 	list_display = ('reporte', 'usuario', 'creado_en')
 	search_fields = ('reporte__codigo', 'usuario__username')
 	list_filter = ('creado_en',)
-
-@admin.register(PersonalConsola)
-class PersonalConsolaAdmin(admin.ModelAdmin):
-	list_display = ('apellidos', 'nombres', 'tipo', 'turno', 'is_active')
-	search_fields = ('apellidos', 'nombres', 'cedula')
-	list_filter = ('tipo', 'turno', 'is_active')
-
-	def has_module_permission(self, request):
-		return request.user.has_perm('CoreFisica.view_personalconsola')
-
-	def has_view_permission(self, request, obj=None):
-		return request.user.has_perm('CoreFisica.view_personalconsola')
-
-	def has_change_permission(self, request, obj=None):
-		return request.user.has_perm('CoreFisica.change_personalconsola')
-
-	def has_add_permission(self, request):
-		return request.user.has_perm('CoreFisica.add_personalconsola')
-
-	def has_delete_permission(self, request, obj=None):
-		return request.user.has_perm('CoreFisica.delete_personalconsola')
-
 
 @admin.register(Consolidado)
 class ConsolidadoAdmin(admin.ModelAdmin):

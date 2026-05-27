@@ -284,7 +284,9 @@ class Persona(models.Model):
         ('SUPERVISOR ZONAL', 'SUPERVISOR ZONAL'),
         ('SUPERVISOR EVENTUAL', 'SUPERVISOR EVENTUAL'),
         ('SUPERVISOR MOTORIZADO', 'SUPERVISOR MOTORIZADO'),
-        ('SUPERVISOR DE ACOMPAÑAMIENTO', 'SUPERVISOR DE ACOMPAÑAMIENTO')
+        ('SUPERVISOR DE ACOMPAÑAMIENTO', 'SUPERVISOR DE ACOMPAÑAMIENTO'),
+        ('OPERADOR CENTRO CONTROL', 'OPERADOR CENTRO CONTROL'),
+        ('SUPERVISOR CENTRO CONTROL', 'SUPERVISOR CENTRO CONTROL'),
     ]
     tipo = models.CharField(null=True, max_length=28, choices=TIPO_CHOICES)
     nombres = models.CharField(max_length=100)
@@ -608,27 +610,10 @@ class ReporteAsistenciaHistorial(models.Model):
         ]
 
 
-class PersonalConsola(models.Model):
-    TURNOS = [
-        ('Diurno', 'Diurno'),
-        ('Nocturno', 'Nocturno'),
-    ]
-    TIPOS = [
-        ('SUPERVISOR', 'Supervisor'),
-        ('OPERADOR', 'Operador'),
-        ('OCEAN SECURITY', 'Ocean Security'),
-    ]
-    turno = models.CharField(max_length=10, choices=TURNOS, db_index=True)
-    cedula = models.CharField(max_length=10, blank=True, null=True, validators=[cedula_validator])
-    nombres = models.CharField(max_length=100)
-    apellidos = models.CharField(max_length=100)
-    tipo = models.CharField(max_length=20, choices=TIPOS, default='OPERADOR')
-    is_active = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['apellidos', 'nombres']
+TURNOS_CONSOLIDADO = [
+    ('Diurno', 'Diurno'),
+    ('Nocturno', 'Nocturno'),
+]
 
 
 class Consolidado(models.Model):
@@ -638,7 +623,7 @@ class Consolidado(models.Model):
     ]
 
     fecha = models.DateField(db_index=True)
-    turno = models.CharField(max_length=10, choices=PersonalConsola.TURNOS, db_index=True)
+    turno = models.CharField(max_length=10, choices=TURNOS_CONSOLIDADO, db_index=True)
     tipo = models.CharField(max_length=10, choices=TIPOS, db_index=True)
     referencia_id = models.PositiveIntegerField(db_index=True)
     nominativo = models.CharField(max_length=50, blank=True, null=True)
@@ -660,7 +645,7 @@ class Consolidado(models.Model):
 
 class ConsolidadoResumen(models.Model):
     fecha = models.DateField(db_index=True)
-    turno = models.CharField(max_length=10, choices=PersonalConsola.TURNOS, db_index=True)
+    turno = models.CharField(max_length=10, choices=TURNOS_CONSOLIDADO, db_index=True)
     faltas = models.PositiveIntegerField(default=0)
     huecas = models.PositiveIntegerField(default=0)
     apoyos = models.PositiveIntegerField(default=0)
@@ -685,6 +670,7 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"Perfil {self.user_id}"
+
     
 
 
