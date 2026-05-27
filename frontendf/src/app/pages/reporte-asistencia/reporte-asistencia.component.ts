@@ -191,7 +191,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
         next: (res) => {
           row.row_color = res.row_color || selectedColor;
         },
-        error: (err) => console.error('Error al actualizar color de fila:', err)
+        error: (err) => this.handleActionError(err, 'No se pudo actualizar el color')
       });
     });
   }
@@ -210,9 +210,10 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
         if (!result) return;
         this.personaService.createPersona(result).subscribe({
           next: () => {
+            Swal.fire({ icon: 'success', title: 'Persona creada', timer: 1200, showConfirmButton: false });
             this.cargarReporte();
           },
-          error: (err) => console.error('Error al crear persona:', err)
+          error: (err) => this.handleActionError(err, 'No se pudo crear persona')
         });
       });
   }
@@ -293,6 +294,12 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     Swal.fire({ icon: 'error', title: 'Error', text: msg });
   }
 
+  private handleActionError(err: any, fallback: string): void {
+    const status = err?.status;
+    const msg = status === 403 ? 'No autorizado' : fallback;
+    Swal.fire({ icon: 'error', title: 'Error', text: msg });
+  }
+
   private descargarArchivo(blob: Blob, nombre: string): void {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -327,7 +334,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
         this.reporteAgrupado = this.buildReporteAgrupado();
         this.resumen = this.buildResumenAsistencia();
       },
-      error: err => console.error('Error al cargar reporte de asistencia:', err),
+      error: err => this.handleActionError(err, 'No se pudo cargar reporte de asistencia'),
       complete: () => {
         if (showLoader) {
           this.loading = false;

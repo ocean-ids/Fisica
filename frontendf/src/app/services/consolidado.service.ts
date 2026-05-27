@@ -21,6 +21,10 @@ export class ConsolidadoService {
     return this.api.put<any>(`/consolidado/${id}/`, payload);
   }
 
+  deleteConsolidado(id: number) {
+    return this.api.delete<any>(`/consolidado/${id}/eliminar/`);
+  }
+
   exportarExcel(params?: any) {
     return this.api.getBlob('/consolidado/exportar-excel/', params);
   }

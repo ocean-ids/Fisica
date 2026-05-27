@@ -34,6 +34,10 @@
     </div>
 
     <div class="d-flex gap-2 justify-content-end flex-grow-1" style="flex-basis: 0;">
+      <button type="button" class="btn btn-outline-primary" title="Agregar personal de consola" aria-label="Agregar personal de consola" (click)="crearPersonalConsola()">
+        <i class="bi bi-plus-lg" style="margin-right:6px;"></i>
+        Agregar consola
+      </button>
       <button type="button" class="btn btn-outline-success" title="Descargar Excel" aria-label="Descargar Excel" (click)="descargarExcel()" >
         <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;"  />
         Descargar
@@ -73,8 +77,11 @@
               <span class="text-center">{{ r.observacion || '-' }}</span>
             </td>
             <td>
-              <button mat-stroked-button type="button" color="primary" (click)="abrirObservacion(r)" aria-label="Editar observacion">
+              <button mat-stroked-button type="button" color="primary" (click)="abrirObservacion(r)" aria-label="Editar observacion" style="margin-right: 6px;">
                 <i class="bi bi-pencil"></i>
+              </button>
+              <button *ngIf="r.tipo === 'CONSOLa'" mat-stroked-button type="button" color="warn" (click)="eliminarFila(r)" aria-label="Eliminar registro de consola">
+                <i class="bi bi-trash"></i>
               </button>
             </td>
           </tr>

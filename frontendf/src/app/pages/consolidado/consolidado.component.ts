@@ -13,6 +13,11 @@ import { ConsolidadoEstadoFormComponent } from './consolidado-estado-form/consol
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { Router } from '@angular/router';
 import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
+import { PersonaService } from '../../services/persona.service';
+import { InstalacionService } from '../../services/instalacion.service';
+import { PuestoService } from '../../services/puesto.service';
+import { Persona } from '../../models';
+import { Puesto } from '../../models/puesto.model';
 
 @Component({
   selector: 'app-consolidado',
@@ -54,6 +59,9 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
 
   constructor(
     private svc: ConsolidadoService,
+    private personaSvc: PersonaService,
+    private instalacionSvc: InstalacionService,
+    private puestoSvc: PuestoService,
     private dialog: MatDialog,
     private globalFilter: GlobalFilterStateService,
     private router: Router
@@ -239,6 +247,218 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
         row.puesto = result.puesto || '';
       }
       this.guardarObservacion(row);
+    });
+  }
+
+  crearPersonalConsola(): void {
+    if (!this.filtroFecha || !this.filtroTurno) {
+      Swal.fire({ icon: 'warning', title: 'Falta fecha o turno' });
+      return;
+    }
+
+    this.personaSvc.getPersonas().subscribe({
+      next: (personas: Persona[]) => {
+        this.instalacionSvc.getInstalaciones({ cliente: 'OCEAN' }).subscribe({
+          next: async (instalaciones: any[]) => {
+            const candidatos = (personas || []).filter(p => {
+              const tipo = (p?.tipo || '').toString().toUpperCase();
+              return p?.is_active !== false && (tipo === 'OPERADOR CENTRO CONTROL' || tipo === 'SUPERVISOR CENTRO CONTROL');
+            });
+
+            if (!candidatos.length) {
+              Swal.fire({ icon: 'info', title: 'Sin personal de consola disponible' });
+              return;
+            }
+
+            const oceanInstalaciones = (Array.isArray(instalaciones) ? instalaciones : []).filter((inst: any) => {
+              const name = (inst?.cliente_nombre || inst?.nombre_cliente || '').toString().toUpperCase();
+              return name.includes('OCEAN');
+            });
+
+            const personaOptions = candidatos
+              .filter(p => p.id)
+              .map(p => `<option value="${p.id}">${p.apellidos} ${p.nombres} (${p.tipo || '-'})</option>`)
+              .join('');
+
+            const nominativoOptions = oceanInstalaciones
+              .map((i: any) => `<option value="${i.codigo || ''}">${i.codigo || '-'}</option>`)
+              .join('');
+
+            const proyectoOptions = oceanInstalaciones
+              .map((i: any) => `<option value="${i.nombre || ''}">${i.nombre || 'Sin nombre'}</option>`)
+              .join('');
+
+            const result = await Swal.fire({
+              title: 'Agregar personal de consola',
+              html: `
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;">
+                  <div style="grid-column:1 / -1;">
+                    <label style="font-size:12px;display:block;margin-bottom:4px;">Personal</label>
+                    <select id="swal-persona" class="swal2-input" style="margin:0;width:100%;">
+                      <option value="">Seleccionar</option>
+                      ${personaOptions}
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:12px;display:block;margin-bottom:4px;">Nominativo</label>
+                    <select id="swal-nominativo" class="swal2-input" style="margin:0;width:100%;">
+                      <option value="">Seleccionar</option>
+                      ${nominativoOptions}
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:12px;display:block;margin-bottom:4px;">Proyecto</label>
+                    <select id="swal-proyecto" class="swal2-input" style="margin:0;width:100%;">
+                      <option value="">Seleccionar</option>
+                      ${proyectoOptions}
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:12px;display:block;margin-bottom:4px;">Puesto</label>
+                    <select id="swal-puesto" class="swal2-input" style="margin:0;width:100%;">
+                      <option value="">Seleccionar</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:12px;display:block;margin-bottom:4px;">Observación</label>
+                    <textarea id="swal-observacion" class="swal2-textarea" style="margin:0;width:100%;min-height:42px;"></textarea>
+                  </div>
+                </div>
+              `,
+              showCancelButton: true,
+              confirmButtonText: 'Crear',
+              cancelButtonText: 'Cancelar',
+              focusConfirm: false,
+              didOpen: () => {
+                const proyectoEl = document.getElementById('swal-proyecto') as HTMLSelectElement | null;
+                const nominativoEl = document.getElementById('swal-nominativo') as HTMLSelectElement | null;
+                const puestoEl = document.getElementById('swal-puesto') as HTMLSelectElement | null;
+
+                const applyPuestos = (list: Puesto[]) => {
+                  if (!puestoEl) return;
+                  puestoEl.innerHTML = '<option value="">Seleccionar</option>' + list.map(p => {
+                    const name = (p?.nombre || '-').toString();
+                    return `<option value="${name.replace(/"/g, '&quot;')}">${name}</option>`;
+                  }).join('');
+                };
+
+                const isCompatible = (p: Puesto): boolean => {
+                  const turnoActual = (this.filtroTurno || '').toString().trim().toUpperCase();
+                  if (!turnoActual) return true;
+                  const labels = new Set<string>();
+                  const t1 = (p?.turno || '').toString().trim().toUpperCase();
+                  const t2 = (p?.turno_display || '').toString().trim().toUpperCase();
+                  if (t1) labels.add(t1);
+                  if (t2) labels.add(t2);
+                  const hs = Array.isArray(p?.horarios) ? p.horarios : [];
+                  for (const h of hs) {
+                    const t = (h?.turno || '').toString().trim().toUpperCase();
+                    if (t) labels.add(t);
+                  }
+                  const is24h = labels.has('24H') || labels.has('AMBOS');
+                  if (is24h) return true;
+                  if (turnoActual === 'DIURNO') return labels.has('DIURNO');
+                  if (turnoActual === 'NOCTURNO') return labels.has('NOCTURNO');
+                  return true;
+                };
+
+                const loadByInstalacion = (instId: number) => {
+                  this.puestoSvc.getPuestosPorInstalacion(instId).subscribe({
+                    next: (rows) => {
+                      const puestos = (Array.isArray(rows) ? rows : []).filter(isCompatible);
+                      applyPuestos(puestos);
+                    },
+                    error: () => applyPuestos([])
+                  });
+                };
+
+                const syncByProyecto = () => {
+                  const proyecto = (proyectoEl?.value || '').toString();
+                  const match = oceanInstalaciones.find((i: any) => (i?.nombre || '') === proyecto);
+                  if (nominativoEl) nominativoEl.value = (match?.codigo || '');
+                  if (match?.id) loadByInstalacion(match.id);
+                  else applyPuestos([]);
+                };
+
+                const syncByNominativo = () => {
+                  const codigo = (nominativoEl?.value || '').toString();
+                  const match = oceanInstalaciones.find((i: any) => (i?.codigo || '') === codigo);
+                  if (proyectoEl) proyectoEl.value = (match?.nombre || '');
+                  if (match?.id) loadByInstalacion(match.id);
+                  else applyPuestos([]);
+                };
+
+                proyectoEl?.addEventListener('change', syncByProyecto);
+                nominativoEl?.addEventListener('change', syncByNominativo);
+              },
+              preConfirm: () => {
+                const personaId = Number((document.getElementById('swal-persona') as HTMLSelectElement | null)?.value || 0);
+                const nominativo = ((document.getElementById('swal-nominativo') as HTMLSelectElement | null)?.value || '').toString();
+                const proyecto = ((document.getElementById('swal-proyecto') as HTMLSelectElement | null)?.value || '').toString();
+                const puesto = ((document.getElementById('swal-puesto') as HTMLSelectElement | null)?.value || '').toString();
+                const observacion = ((document.getElementById('swal-observacion') as HTMLTextAreaElement | null)?.value || '').toString();
+
+                if (!personaId) {
+                  Swal.showValidationMessage('Selecciona una persona');
+                  return null;
+                }
+
+                return { personaId, nominativo, proyecto, puesto, observacion };
+              }
+            });
+
+            if (!result.isConfirmed || !result.value) return;
+
+            const personaId = Number(result.value.personaId || 0);
+            const repetido = this.lista.some(r => r.tipo === 'CONSOLa' && r.persona_ref_id === personaId);
+            if (repetido) {
+              Swal.fire({ icon: 'info', title: 'Ese personal ya fue agregado' });
+              return;
+            }
+
+            this.svc.createConsolidado({
+              fecha: this.filtroFecha,
+              turno: this.filtroTurno,
+              tipo: 'CONSOLa',
+              persona_ref_id: personaId,
+              nominativo: result.value.nominativo || '',
+              proyecto: result.value.proyecto || '',
+              puesto: result.value.puesto || '',
+              observacion: result.value.observacion || ''
+            }).subscribe({
+              next: () => {
+                Swal.fire({ icon: 'success', title: 'Personal agregado', timer: 1200, showConfirmButton: false });
+                this.cargar(false);
+              },
+              error: (err) => this.handleActionError(err, 'No se pudo agregar')
+            });
+          },
+          error: (err) => this.handleActionError(err, 'No se pudieron cargar instalaciones')
+        });
+      },
+      error: (err) => this.handleActionError(err, 'No se pudo cargar personal')
+    });
+  }
+
+  eliminarFila(row: ConsolidadoRow): void {
+    if (row.tipo !== 'CONSOLa' || !row.consolidado_id) return;
+
+    Swal.fire({
+      icon: 'warning',
+      title: 'Eliminar personal de consola',
+      text: 'Se eliminará este registro del consolidado.',
+      showCancelButton: true,
+      confirmButtonText: 'Eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then((res) => {
+      if (!res.isConfirmed) return;
+      this.svc.deleteConsolidado(row.consolidado_id!).subscribe({
+        next: () => {
+          Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1000, showConfirmButton: false });
+          this.cargar(false);
+        },
+        error: (err) => this.handleActionError(err, 'No se pudo eliminar')
+      });
     });
   }
 

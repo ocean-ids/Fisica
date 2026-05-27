@@ -63,28 +63,26 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
         if key:
             consolidado_map[key] = c
 
-    consola_qs = Persona.objects.filter(
-        is_active=True,
-        tipo__in=TIPOS_CENTRO_CONTROL,
-    ).order_by('apellidos', 'nombres')
-
     data = []
-    for p in consola_qs:
-        cons = consolidado_map.get((TIPO_CONSOLA, p.id))
+    consola_items = [c for c in consolidados_qs.select_related('persona_ref') if c.tipo == TIPO_CONSOLA and c.persona_ref_id]
+    for cons in consola_items:
+        p = cons.persona_ref
+        if not p:
+            continue
         data.append({
-            'consolidado_id': cons.id if cons else None,
+            'consolidado_id': cons.id,
             'fecha': fecha_obj.isoformat(),
             'turno': turno_val or '',
             'tipo': TIPO_CONSOLA,
             'persona_ref_id': p.id,
             'asignacion_ref_id': None,
-            'nominativo': cons.nominativo if cons and cons.nominativo else '',
-            'proyecto': cons.proyecto if cons and cons.proyecto else '',
-            'puesto': cons.puesto if cons and cons.puesto else '',
+            'nominativo': cons.nominativo or '',
+            'proyecto': cons.proyecto or '',
+            'puesto': cons.puesto or '',
             'apellidos': p.apellidos,
             'nombres': p.nombres,
             'estado': p.tipo,
-            'observacion': cons.observacion if cons else '',
+            'observacion': cons.observacion or '',
             'zona': 'PERSONAL DE CONSOLA'
         })
 
