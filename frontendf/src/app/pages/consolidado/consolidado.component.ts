@@ -243,13 +243,18 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
   }
 
   private guardarObservacion(row: ConsolidadoRow): void {
-    if (!row.referencia_id || !row.tipo) return;
+    if (!row.tipo) return;
+    const personaRefId = row.tipo === 'CONSOLa' ? (row.persona_ref_id ?? null) : null;
+    const asignacionRefId = row.tipo === 'GUARDIA' ? (row.asignacion_ref_id ?? null) : null;
+    if (row.tipo === 'CONSOLa' && !personaRefId) return;
+    if (row.tipo === 'GUARDIA' && !asignacionRefId) return;
 
     const payload = {
       fecha: row.fecha || this.filtroFecha,
       turno: row.turno || this.filtroTurno,
       tipo: row.tipo,
-      referencia_id: row.referencia_id,
+      persona_ref_id: personaRefId,
+      asignacion_ref_id: asignacionRefId,
       nominativo: row.nominativo || '',
       proyecto: row.proyecto || '',
       puesto: row.puesto || '',
@@ -261,7 +266,9 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
         observacion: payload.observacion,
         nominativo: payload.nominativo,
         proyecto: payload.proyecto,
-        puesto: payload.puesto
+        puesto: payload.puesto,
+        persona_ref_id: payload.persona_ref_id,
+        asignacion_ref_id: payload.asignacion_ref_id
       }).subscribe({
         next: () => {
           Swal.fire({ icon: 'success', title: 'Observacion guardada', timer: 1200, showConfirmButton: false });

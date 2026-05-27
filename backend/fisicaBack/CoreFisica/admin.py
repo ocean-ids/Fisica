@@ -134,7 +134,7 @@ class ReporteAsistenciaHistorialAdmin(admin.ModelAdmin):
 
 @admin.register(Consolidado)
 class ConsolidadoAdmin(admin.ModelAdmin):
-	list_display = ('fecha', 'turno', 'tipo', 'referencia_id', 'observacion')
+	list_display = ('fecha', 'turno', 'tipo', 'persona_ref', 'asignacion_ref', 'observacion')
 	search_fields = ('observacion',)
 	list_filter = ('fecha', 'turno', 'tipo')
 

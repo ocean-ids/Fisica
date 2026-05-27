@@ -31,6 +31,25 @@ def _parse_fecha(fecha_param):
     return timezone.localdate()
 
 
+def _resolve_row_reference(tipo, persona_ref_id=None, asignacion_ref_id=None):
+    if tipo == TIPO_CONSOLA:
+        if persona_ref_id:
+            return int(persona_ref_id), None
+        return None, None
+    if tipo == TIPO_GUARDIA:
+        if asignacion_ref_id:
+            return None, int(asignacion_ref_id)
+        return None, None
+    return None, None
+
+
+def _consolidado_key(item: Consolidado):
+    ref_id = item.persona_ref_id if item.tipo == TIPO_CONSOLA else item.asignacion_ref_id
+    if not ref_id:
+        return None
+    return item.tipo, ref_id
+
+
 def _build_consolidado_data(fecha, turno, zona='', q=''):
     fecha_obj = _parse_fecha(fecha)
     turno_val = turno if turno in ALLOWED_TURNOS else None
@@ -38,10 +57,11 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
     consolidados_qs = Consolidado.objects.filter(fecha=fecha_obj)
     if turno_val:
         consolidados_qs = consolidados_qs.filter(turno=turno_val)
-    consolidado_map = {
-        (c.tipo, c.referencia_id): c
-        for c in consolidados_qs
-    }
+    consolidado_map = {}
+    for c in consolidados_qs:
+        key = _consolidado_key(c)
+        if key:
+            consolidado_map[key] = c
 
     consola_qs = Persona.objects.filter(
         is_active=True,
@@ -56,7 +76,8 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
             'fecha': fecha_obj.isoformat(),
             'turno': turno_val or '',
             'tipo': TIPO_CONSOLA,
-            'referencia_id': p.id,
+            'persona_ref_id': p.id,
+            'asignacion_ref_id': None,
             'nominativo': cons.nominativo if cons and cons.nominativo else '',
             'proyecto': cons.proyecto if cons and cons.proyecto else '',
             'puesto': cons.puesto if cons and cons.puesto else '',
@@ -87,7 +108,8 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
             'fecha': fecha_obj.isoformat(),
             'turno': turno_val or '',
             'tipo': TIPO_GUARDIA,
-            'referencia_id': asig_id,
+            'persona_ref_id': None,
+            'asignacion_ref_id': asig_id,
             'nominativo': row.get('codigo') or '',
             'proyecto': proyecto,
             'puesto': row.get('puesto') or '',
@@ -220,7 +242,8 @@ def _serialize_item(item: Consolidado):
         'fecha': item.fecha.isoformat() if item.fecha else None,
         'turno': item.turno,
         'tipo': item.tipo,
-        'referencia_id': item.referencia_id,
+        'persona_ref_id': item.persona_ref_id,
+        'asignacion_ref_id': item.asignacion_ref_id,
         'nominativo': item.nominativo or '',
         'proyecto': item.proyecto or '',
         'puesto': item.puesto or '',
@@ -250,11 +273,16 @@ def obtener_consolidado(request):
     if referencia_id:
         try:
             ref_id = int(referencia_id)
-            qs = qs.filter(referencia_id=ref_id)
+            if tipo == TIPO_CONSOLA:
+                qs = qs.filter(persona_ref_id=ref_id)
+            elif tipo == TIPO_GUARDIA:
+                qs = qs.filter(asignacion_ref_id=ref_id)
+            else:
+                qs = qs.filter(persona_ref_id=ref_id) | qs.filter(asignacion_ref_id=ref_id)
         except (TypeError, ValueError):
             pass
 
-    data = [_serialize_item(item) for item in qs.order_by('fecha', 'turno', 'tipo', 'referencia_id')]
+    data = [_serialize_item(item) for item in qs.order_by('fecha', 'turno', 'tipo', 'id')]
     return JsonResponse(data, safe=False)
 
 
@@ -351,13 +379,14 @@ def crear_consolidado(request):
     fecha = parse_date(data.get('fecha')) if data.get('fecha') else None
     turno = data.get('turno')
     tipo = data.get('tipo')
-    referencia_id = data.get('referencia_id')
+    persona_ref_id = data.get('persona_ref_id')
+    asignacion_ref_id = data.get('asignacion_ref_id')
     nominativo = (data.get('nominativo') or '').strip() or None
     proyecto = (data.get('proyecto') or '').strip() or None
     puesto = (data.get('puesto') or '').strip() or None
     observacion = (data.get('observacion') or '').strip() or None
 
-    if not fecha or not turno or not tipo or referencia_id in [None, '']:
+    if not fecha or not turno or not tipo:
         return JsonResponse({'error': 'Faltan campos obligatorios'}, status=400)
 
     if turno not in ALLOWED_TURNOS:
@@ -367,15 +396,32 @@ def crear_consolidado(request):
         return JsonResponse({'error': 'Tipo invalido'}, status=400)
 
     try:
-        referencia_id = int(referencia_id)
+        resolved_persona_id, resolved_asig_id = _resolve_row_reference(
+            tipo,
+            persona_ref_id=persona_ref_id,
+            asignacion_ref_id=asignacion_ref_id,
+        )
     except (TypeError, ValueError):
-        return JsonResponse({'error': 'referencia_id invalido'}, status=400)
+        return JsonResponse({'error': 'Referencia invalida'}, status=400)
+
+    if tipo == TIPO_CONSOLA and not resolved_persona_id:
+        return JsonResponse({'error': 'Falta persona_ref_id para CONSOLa'}, status=400)
+
+    if tipo == TIPO_GUARDIA and not resolved_asig_id:
+        return JsonResponse({'error': 'Falta asignacion_ref_id para GUARDIA'}, status=400)
+
+    if resolved_persona_id and not Persona.objects.filter(id=resolved_persona_id).exists():
+        return JsonResponse({'error': 'Persona no encontrada'}, status=400)
+
+    if resolved_asig_id and not Asignacion.objects.filter(id=resolved_asig_id).exists():
+        return JsonResponse({'error': 'Asignacion no encontrada'}, status=400)
 
     item = Consolidado.objects.create(
         fecha=fecha,
         turno=turno,
         tipo=tipo,
-        referencia_id=referencia_id,
+        persona_ref_id=resolved_persona_id,
+        asignacion_ref_id=resolved_asig_id,
         nominativo=nominativo,
         proyecto=proyecto,
         puesto=puesto,
@@ -414,11 +460,26 @@ def actualizar_consolidado(request, id):
         if tipo in ALLOWED_TIPOS:
             item.tipo = tipo
 
-    if 'referencia_id' in data:
+    has_reference_payload = any(k in data for k in ('persona_ref_id', 'asignacion_ref_id'))
+    if has_reference_payload:
+        tipo_resuelto = item.tipo
+        persona_ref_id = data.get('persona_ref_id', None)
+        asignacion_ref_id = data.get('asignacion_ref_id', None)
         try:
-            item.referencia_id = int(data.get('referencia_id'))
+            resolved_persona_id, resolved_asig_id = _resolve_row_reference(
+                tipo_resuelto,
+                persona_ref_id=persona_ref_id,
+                asignacion_ref_id=asignacion_ref_id,
+            )
+            if tipo_resuelto == TIPO_CONSOLA and not resolved_persona_id:
+                return JsonResponse({'error': 'Falta persona_ref_id para CONSOLa'}, status=400)
+            if tipo_resuelto == TIPO_GUARDIA and not resolved_asig_id:
+                return JsonResponse({'error': 'Falta asignacion_ref_id para GUARDIA'}, status=400)
+
+            item.persona_ref_id = resolved_persona_id
+            item.asignacion_ref_id = resolved_asig_id
         except (TypeError, ValueError):
-            pass
+            return JsonResponse({'error': 'Referencia invalida'}, status=400)
 
     if 'nominativo' in data:
         item.nominativo = (data.get('nominativo') or '').strip() or None

@@ -625,7 +625,8 @@ class Consolidado(models.Model):
     fecha = models.DateField(db_index=True)
     turno = models.CharField(max_length=10, choices=TURNOS_CONSOLIDADO, db_index=True)
     tipo = models.CharField(max_length=10, choices=TIPOS, db_index=True)
-    referencia_id = models.PositiveIntegerField(db_index=True)
+    persona_ref = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True, related_name='consolidados')
+    asignacion_ref = models.ForeignKey(Asignacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='consolidados')
     nominativo = models.CharField(max_length=50, blank=True, null=True)
     proyecto = models.CharField(max_length=120, blank=True, null=True)
     puesto = models.CharField(max_length=120, blank=True, null=True)
@@ -636,9 +637,30 @@ class Consolidado(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['fecha', 'turno', 'tipo']),
-            models.Index(fields=['tipo', 'referencia_id']),
+            models.Index(fields=['tipo', 'persona_ref']),
+            models.Index(fields=['tipo', 'asignacion_ref']),
         ]
-        ordering = ['fecha', 'turno', 'tipo', 'referencia_id']
+        constraints = [
+            models.CheckConstraint(
+                name='corefisica_consolidado_consola_ref_ck',
+                check=(
+                    ~models.Q(tipo='CONSOLa') |
+                    (
+                        models.Q(asignacion_ref__isnull=True)
+                    )
+                )
+            ),
+            models.CheckConstraint(
+                name='corefisica_consolidado_guardia_ref_ck',
+                check=(
+                    ~models.Q(tipo='GUARDIA') |
+                    (
+                        models.Q(persona_ref__isnull=True)
+                    )
+                )
+            ),
+        ]
+        ordering = ['fecha', 'turno', 'tipo', 'id']
         permissions = [
             ('export_consolidado', 'Can export consolidado'),
         ]
