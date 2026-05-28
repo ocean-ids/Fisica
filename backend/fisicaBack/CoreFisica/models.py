@@ -525,6 +525,11 @@ class ReporteAsistencia(models.Model):
         
     ]
 
+    ESTADO_ASISTENCIA_CHOICES = [
+        ('ASISTIO', 'Asistio'),
+        ('FALTO', 'Falto'),
+    ]
+
     TIPOS_REEMPLAZO = [
         'FIJOS',
         'SACAFRANCO',
@@ -555,6 +560,12 @@ class ReporteAsistencia(models.Model):
     puesto_tipo = models.CharField(max_length=50, blank=True, null=True)
 
     estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default='TURNO')
+    estado_asistencia = models.CharField(
+        max_length=10,
+        choices=ESTADO_ASISTENCIA_CHOICES,
+        null=True,
+        blank=True,
+    )
     reemplazo = models.ForeignKey(
         Persona,
         on_delete=models.SET_NULL,
@@ -580,6 +591,7 @@ class ReporteAsistencia(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['estado']),
+            models.Index(fields=['estado_asistencia']),
         ]
         permissions = [
             ('export_reporte_asistencia', 'Can export reporte asistencia'),
@@ -598,6 +610,7 @@ class ReporteAsistenciaHistorial(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     codigo = models.CharField(max_length=20, blank=True, null=True)
     estado = models.CharField(max_length=12, blank=True, null=True)
+    estado_asistencia = models.CharField(max_length=10, blank=True, null=True)
     reemplazo = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True)
     descripcion = models.CharField(max_length=200, blank=True, null=True)
     row_color = models.CharField(max_length=7, blank=True, null=True)

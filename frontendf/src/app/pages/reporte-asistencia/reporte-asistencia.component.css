@@ -2,6 +2,12 @@
 	font-weight: 700;
 	text-align: left;
 }
+
+.badge-turno-dobla {
+	background-color: #fd7e14;
+	color: #ffffff;
+}
+
 :host-context(body.theme-dark) ::ng-deep mat-button-toggle.turno-label-toggle.mat-button-toggle-disabled .mat-button-toggle-label-content,
 :host-context(body.theme-dark) ::ng-deep mat-button-toggle.turno-label-toggle.mat-button-toggle-disabled .mdc-button__label {
 	color: #e2e8f0 !important;

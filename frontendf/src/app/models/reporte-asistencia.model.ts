@@ -7,6 +7,7 @@ export interface ReporteAsistenciaRow {
   nombre_apellidos?: string;
   reemplazo_id?: number | null;
   reemplazo?: string;
+  estado_asistencia?: 'ASISTIO' | 'FALTO' | '' | null;
   estado?: string;
   descripcion?: string | null;
   modificado_por?: string;
@@ -18,6 +19,7 @@ export interface ReporteAsistenciaRow {
 
 export interface UpdateReporteAsistenciaPayload {
   codigo?: string | null;
+  estado_asistencia?: 'ASISTIO' | 'FALTO' | null;
   estado?: string | null;
   reemplazo_id?: number | null;
   descripcion?: string | null;
@@ -29,6 +31,7 @@ export interface ReporteAsistenciaHistorialItem {
   fecha_reporte?: string | null;
   usuario?: string;
   codigo?: string;
+  estado_asistencia?: 'ASISTIO' | 'FALTO' | '' | null;
   estado?: string;
   reemplazo?: string;
   descripcion?: string;

@@ -37,6 +37,16 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Asistencia</mat-label>
+      <mat-select formControlName="estado_asistencia" [disabled]="guardando">
+        <mat-option [value]="null">Seleccione</mat-option>
+        <mat-option *ngFor="let estado of estadosAsistenciaDisponibles" [value]="estado">
+          {{ estado === 'ASISTIO' ? 'ASISTE' : 'FALTO' }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
       <mat-label>Reemplazo</mat-label>
       <mat-select formControlName="reemplazo_id" [disabled]="guardando || cargandoReemplazos">
         <mat-option [value]="null">Sin reemplazo</mat-option>

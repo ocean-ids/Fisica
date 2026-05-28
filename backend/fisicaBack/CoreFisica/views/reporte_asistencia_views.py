@@ -297,10 +297,15 @@ def _normalize_hex_color(color_value):
     return c.upper()
 
 
+def _normalize_estado_asistencia(value):
+    v = str(value or '').strip().upper()
+    if v in ('ASISTIO', 'FALTO'):
+        return v
+    return ''
+
+
 def _is_falto(item):
-    reemplazo_id = item.get('reemplazo_id')
-    reemplazo_txt = str(item.get('reemplazo') or '').strip()
-    return (reemplazo_id is not None) or (reemplazo_txt not in ['', '-'])
+    return str(item.get('estado_asistencia') or '').strip().upper() == 'FALTO'
 
 
 def _zona_sort_key(zona_titulo):
@@ -466,6 +471,7 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
             overrides[h.asignacion_id] = SimpleNamespace(
                 codigo=h.codigo,
                 estado=h.estado,
+                estado_asistencia=getattr(h, 'estado_asistencia', None),
                 descripcion=h.descripcion,
                 reemplazo=h.reemplazo,
                 modificado_por=h.usuario,
@@ -578,6 +584,8 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
             modificado_en_iso = override.modificado_en.isoformat() if override.modificado_en else None
 
         codigo_instalacion = getattr(asig.instalacion, 'codigo', '') if asig and asig.instalacion else ''
+        estado_asistencia = _normalize_estado_asistencia(getattr(override, 'estado_asistencia', '') if override else '')
+        estado = (getattr(override, 'estado', None) if override else None) or 'TURNO'
         data.append({
             'asignacion_id': asig.id,
             'codigo': override.codigo if (override and override.codigo) else (codigo_instalacion or ''),
@@ -587,7 +595,8 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
             'nombre_apellidos': nombre_apellidos,
             'reemplazo_id': reemplazo_id,
             'reemplazo': reemplazo_nombre,
-            'estado': (override.estado or 'TURNO') if override else 'TURNO',
+            'estado_asistencia': estado_asistencia,
+            'estado': estado,
             'descripcion': (override.descripcion or '') if override else '',
             'modificado_por': modificado_por_nombre,
             'row_color': (override.row_color or '') if override else '',
@@ -607,6 +616,7 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
                 str(item.get('horario') or ''),
                 str(item.get('nombre_apellidos') or ''),
                 str(item.get('estado') or ''),
+                str(item.get('estado_asistencia') or ''),
                 str(item.get('reemplazo') or ''),
                 str(item.get('descripcion') or ''),
                 str(item.get('zona_titulo') or ''),
@@ -688,7 +698,7 @@ def insertar_reporte_asistencia(request, asignacion_id):
 
     override.codigo = getattr(asignacion.instalacion, 'codigo', None)
 
-    for field in ['estado', 'descripcion', 'row_color']:
+    for field in ['estado', 'estado_asistencia', 'descripcion', 'row_color']:
         if field in request.data:
             val = request.data.get(field) or None
             setattr(override, field, val)
@@ -720,6 +730,7 @@ def insertar_reporte_asistencia(request, asignacion_id):
             fecha_reporte=override.fecha_reporte,
             usuario=request.user if request.user and request.user.is_authenticated else None,
             codigo=override.codigo,
+            estado_asistencia=override.estado_asistencia,
             estado=override.estado,
             reemplazo=override.reemplazo,
             descripcion=override.descripcion,
@@ -739,6 +750,7 @@ def insertar_reporte_asistencia(request, asignacion_id):
 
     return JsonResponse({
         'codigo': override.codigo or '',
+        'estado_asistencia': _normalize_estado_asistencia(override.estado_asistencia),
         'estado': override.estado or 'TURNO',
         'descripcion': override.descripcion or '',
         'reemplazo_id': override.reemplazo_id,
@@ -779,6 +791,7 @@ def historial_reporte_asistencia(request, asignacion_id):
             'fecha_reporte': h.fecha_reporte.isoformat() if h.fecha_reporte else None,
             'usuario': usuario_nombre,
             'codigo': h.codigo or '',
+            'estado_asistencia': _normalize_estado_asistencia(h.estado_asistencia),
             'estado': h.estado or '',
             'reemplazo': reemplazo_nombre,
             'descripcion': h.descripcion or '',

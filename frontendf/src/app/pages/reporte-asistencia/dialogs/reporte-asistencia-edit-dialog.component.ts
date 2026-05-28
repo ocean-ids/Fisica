@@ -29,6 +29,7 @@ import { Persona } from '../../../models';
 })
 export class ReporteAsistenciaEditDialogComponent {
   readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'EVENTUAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO', 'RETEN', 'CUSTODIO'];
+  readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
   readonly tiposReemplazoPermitidos = new Set([
     'FIJOS',
     'SACAFRANCO',
@@ -55,6 +56,7 @@ export class ReporteAsistenciaEditDialogComponent {
     this.dialogRef.disableClose = true;
     this.form = this.fb.group({
       estado: [data?.row?.estado || 'TURNO', Validators.required],
+      estado_asistencia: [data?.row?.estado_asistencia ?? null],
       reemplazo_id: [data?.row?.reemplazo_id ?? null],
       descripcion: [data?.row?.descripcion ?? '']
     });
@@ -98,6 +100,7 @@ export class ReporteAsistenciaEditDialogComponent {
 
     const payload: UpdateReporteAsistenciaPayload = {
       estado: this.form.value.estado || null,
+      estado_asistencia: this.form.value.estado_asistencia || null,
       reemplazo_id: this.form.value.reemplazo_id === '' ? null : this.form.value.reemplazo_id,
       descripcion: this.form.value.descripcion === '' ? null : this.form.value.descripcion,
       fecha: this.data?.fecha || null

@@ -225,9 +225,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   }
 
   private hasReemplazo(row: ReporteAsistenciaRow): boolean {
-    if (row.reemplazo_id) return true;
-    const nombre = (row.reemplazo || '').trim();
-    return !!nombre && nombre !== '-';
+    return (row.estado_asistencia || '') === 'FALTO';
   }
 
   private buildResumenAsistencia(): ResumenAsistencia {
@@ -355,6 +353,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     dialogRef.afterClosed().subscribe((res) => {
       if (!res) return;
       row.codigo = res.codigo;
+      row.estado_asistencia = res.estado_asistencia;
       row.estado = res.estado;
       row.descripcion = res.descripcion;
       row.reemplazo_id = res.reemplazo_id;
@@ -420,9 +419,30 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   nextPage(): void {
     this.goToPage(this.currentPage + 1);
   }
-  
 
   estadoClass(estado?: string): string {
-    return estado === 'ADICIONAL' ? 'badge bg-danger' : 'badge bg-success';
+    const value = (estado || '').trim().toUpperCase();
+    if (value === 'TURNO') return 'badge bg-success';
+    if (value === 'ADICIONAL') return 'badge bg-warning text-dark';
+    if (value === 'EVENTUAL') return 'badge bg-info text-dark';
+    if (value === 'ADEL/TURNO') return 'badge bg-secondary';
+    if (value === 'DOBLA' || value === 'DOBLADO') return 'badge badge-turno-dobla';
+    if (value === 'FR/TRABAJADO') return 'badge bg-light text-dark border';
+    if (value === 'RETEN') return 'badge bg-secondary';
+    if (value === 'CUSTODIO') return 'badge bg-info';
+    return 'badge bg-secondary';
+  }
+  
+
+  estadoAsistenciaClass(estadoAsistencia?: string | null): string {
+    if (estadoAsistencia === 'FALTO') return 'badge bg-danger';
+    if (estadoAsistencia === 'ASISTIO') return 'badge bg-primary';
+    return 'badge bg-secondary';
+  }
+
+  estadoAsistenciaLabel(estadoAsistencia?: string | null): string {
+    if (estadoAsistencia === 'ASISTIO') return 'ASISTE';
+    if (estadoAsistencia === 'FALTO') return 'FALTO';
+    return '-';
   }
 }

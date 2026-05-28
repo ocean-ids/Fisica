@@ -88,6 +88,7 @@
                     <th class="text-nowrap">Horario</th>
                     <th class="text-nowrap">Nombre y Apellidos</th>
                     <th class="text-nowrap">Estado</th>
+                    <th class="text-nowrap">Asistencia</th>
                     <th class="text-nowrap d-none d-lg-table-cell">Reemplazo</th>
                     <th class="text-nowrap d-none d-lg-table-cell">Descripcion</th>
                     <th class="text-nowrap d-none d-lg-table-cell">Ultima modificacion</th>
@@ -97,11 +98,11 @@
             <tbody>
                 <ng-container *ngFor="let zona of reporteAgrupado">
                     <tr class="zona-row">
-                        <td class="text-center" colspan="10">{{ getZonaTitulo(zona.zona) }}</td>
+                        <td class="text-center" colspan="11">{{ getZonaTitulo(zona.zona) }}</td>
                     </tr>
                     <ng-container *ngFor="let prov of zona.provincias">
                         <tr class="provincia-row">
-                            <td colspan="10">{{ prov.provincia }}</td>
+                            <td colspan="11">{{ prov.provincia }}</td>
                         </tr>
                         <ng-container *ngFor="let r of prov.rows">
                         <tr class="text-center align-middle" (dblclick)="onRowDoubleClick(r)">
@@ -114,10 +115,13 @@
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.horario || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.nombre_apellidos || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">
+                                <span [class]="estadoClass(r.estado)">{{ r.estado || '-' }}</span>
+                            </td>
+                            <td [style.backgroundColor]="getRowColor(r)">
                                 <ng-container *ngIf="r.asignacion_id; else noEstado">
-                                    <span [class]="estadoClass(r.estado)">{{ r.estado || '-' }}</span>
+                                    <span [class]="estadoAsistenciaClass(r.estado_asistencia)">{{ estadoAsistenciaLabel(r.estado_asistencia) }}</span>
                                 </ng-container>
-                                <ng-template #noEstado><span [class]="estadoClass(r.estado)">{{ r.estado }}</span></ng-template>
+                                <ng-template #noEstado><span [class]="estadoAsistenciaClass(r.estado_asistencia)">{{ estadoAsistenciaLabel(r.estado_asistencia) }}</span></ng-template>
                             </td>
                             <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">{{ r.reemplazo || '-' }}</td>
                             <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">
@@ -150,7 +154,7 @@
                     </ng-container>
                 </ng-container>
                 <tr *ngIf="reporte.length === 0">
-                    <td colspan="10" class="text-center text-muted">Sin datos</td>
+                    <td colspan="11" class="text-center text-muted">Sin datos</td>
                 </tr>
             </tbody>
         </table>

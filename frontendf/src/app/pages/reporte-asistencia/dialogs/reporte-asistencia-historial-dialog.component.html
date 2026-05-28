@@ -14,7 +14,7 @@
           <span class="text-muted">{{ h.creado_en ? (h.creado_en | date:'short') : '-' }}</span>
         </div>
         <div class="small text-muted">Fecha reporte: {{ h.fecha_reporte || '-' }}</div>
-        <div class="small">Estado: {{ h.estado || '-' }} | Reemplazo: {{ h.reemplazo || '-' }}</div>
+        <div class="small">Estado: {{ h.estado || '-' }} | Asistencia: {{ h.estado_asistencia || '-' }} | Reemplazo: {{ h.reemplazo || '-' }}</div>
         <div class="small">Codigo: {{ h.codigo || '-' }} | Descripcion: {{ h.descripcion || '-' }}</div>
       </div>
     </div>
