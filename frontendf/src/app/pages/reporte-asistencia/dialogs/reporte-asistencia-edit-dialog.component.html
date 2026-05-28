@@ -18,22 +18,15 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Nombre y Apellidos</mat-label>
-      <input matInput [value]="data.row.nombre_apellidos || '-'" readonly>
+      <mat-label>Nominativo</mat-label>
+      <input matInput [value]="data.row.codigo || '-'" readonly>
     </mat-form-field>
   </div>
 
   <form [formGroup]="form" class="editable-grid">
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Nominativo</mat-label>
-      <input matInput [value]="data.row.codigo || '-'" readonly>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Estado</mat-label>
-      <mat-select formControlName="estado" [disabled]="guardando">
-        <mat-option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</mat-option>
-      </mat-select>
+      <mat-label>Nombre y Apellidos</mat-label>
+      <input matInput [value]="data.row.nombre_apellidos || '-'" readonly>
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
@@ -57,6 +50,13 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Estado</mat-label>
+      <mat-select formControlName="estado" [disabled]="guardando">
+        <mat-option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width span-2">
       <mat-label>Descripcion</mat-label>
       <textarea matInput rows="3" formControlName="descripcion" [readonly]="guardando"></textarea>
     </mat-form-field>
