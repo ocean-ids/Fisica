@@ -1,5 +1,5 @@
 from django.http import JsonResponse
-from django.db.models import Q, F
+from django.db.models import Q, F, Subquery
 from django.http import HttpResponse
 from django.utils import timezone
 import datetime
@@ -550,14 +550,16 @@ def _build_reporte_asistencia_data(
 
     overrides = {}
     if fecha_obj:
-        hist_qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo')
-        hist_qs = hist_qs.filter(fecha_reporte=fecha_obj)
+        latest_hist_ids = ReporteAsistenciaHistorial.objects.filter(
+            fecha_reporte=fecha_obj
+        )
         if use_db_pagination and asig_ids:
-            hist_qs = hist_qs.filter(asignacion_id__in=asig_ids)
-        hist_qs = hist_qs.order_by('asignacion_id', '-creado_en')
+            latest_hist_ids = latest_hist_ids.filter(asignacion_id__in=asig_ids)
+        latest_hist_ids = latest_hist_ids.order_by('asignacion_id', '-creado_en').distinct('asignacion_id').values('id')
+
+        hist_qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo')
+        hist_qs = hist_qs.filter(id__in=Subquery(latest_hist_ids)).order_by('asignacion_id')
         for h in hist_qs:
-            if h.asignacion_id in overrides:
-                continue
             overrides[h.asignacion_id] = SimpleNamespace(
                 codigo=h.codigo,
                 estado=h.estado,
