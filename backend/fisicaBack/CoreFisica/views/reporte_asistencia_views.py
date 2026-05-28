@@ -71,10 +71,8 @@ def _format_fecha_reporte_es(fecha_obj):
 def _find_logo_path():
     this_file = Path(__file__).resolve()
     root_candidates = [
-        this_file.parents[4],
-        this_file.parents[3],
-        Path.cwd(),
-    ]
+        this_file.parents[i] for i in [4, 3] if i < len(this_file.parents)
+    ] + [Path.cwd()]
     relative_candidates = [
         Path('frontendf/public/logodescargable.jpg'),
         Path('frontendf/public/favicon.png'),
