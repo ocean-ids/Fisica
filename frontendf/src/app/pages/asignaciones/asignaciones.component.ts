@@ -809,7 +809,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         ? this.buildRangeMap(startDate, endDate, tokens, anchor, true)
         : backendMap;
       this.applyRangeToBackend(row, backendMap, isSacafranco);
-      this.applyRangeToCurrentWeek(row, weekStart, uiMap);
+      if (isSacafranco) {
+        this.applyRangeToCalendarData(row, uiMap);
+      } else {
+        this.applyRangeToCurrentWeek(row, weekStart, uiMap);
+      }
     });
   }
 
