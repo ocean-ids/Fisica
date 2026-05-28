@@ -108,10 +108,10 @@ def _draw_excel_header(ws, ctx, border):
     ws.merge_cells('C1:F2')
     ws.merge_cells('A4:D4')
     ws.merge_cells('E4:F4')
-    ws.merge_cells('G4:H4')
+    ws.merge_cells('G4:I4')
 
     for row in range(1, 5):
-        for col in range(1, 9):
+        for col in range(1, 10):
             cell = ws.cell(row=row, column=col)
             cell.border = border
             cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
@@ -391,7 +391,7 @@ def _group_reporte_por_zona_y_provincia(data):
 
 def _write_excel_resumen(ws, row_idx, asistencias, faltos, border):
     ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=4)
-    ws.merge_cells(start_row=row_idx, start_column=5, end_row=row_idx, end_column=8)
+    ws.merge_cells(start_row=row_idx, start_column=5, end_row=row_idx, end_column=9)
 
     left_cell = ws.cell(row=row_idx, column=1)
     left_cell.value = f"{asistencias}\nASISTENCIAS"
@@ -404,7 +404,7 @@ def _write_excel_resumen(ws, row_idx, asistencias, faltos, border):
     right_cell.font = Font(bold=True, color='000000', size=12)
     right_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
-    for col_idx in range(1, 9):
+    for col_idx in range(1, 10):
         ws.cell(row=row_idx, column=col_idx).border = border
     ws.row_dimensions[row_idx].height = 38
     return row_idx
@@ -852,7 +852,7 @@ def exportar_reporte_asistencia_excel(request):
     zona = _normalize_zona_filter(request.GET.get('zona'))
     headers = [
         'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
-        'NOMBRE Y APELLIDOS', 'ESTADO', 'REEMPLAZO', 'DESCRIPCIÓN',
+        'NOMBRE Y APELLIDOS', 'ESTADO', 'ASISTENCIA', 'REEMPLAZO', 'DESCRIPCIÓN',
     ]
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -879,12 +879,12 @@ def exportar_reporte_asistencia_excel(request):
         current_row = data_start_row
         for zona_group in grouped:
             # Fila de zona
-            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=8)
+            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=9)
             zona_cell = ws.cell(row=current_row, column=1)
             zona_cell.value = _normalize_zona_label(zona_group['zona'])
             zona_cell.font = Font(bold=True, size=11)
             zona_cell.alignment = Alignment(horizontal='left', vertical='center')
-            for col_idx in range(1, 9):
+            for col_idx in range(1, 10):
                 ws.cell(row=current_row, column=col_idx).border = border
             ws.row_dimensions[current_row].height = 24
             current_row += 1
@@ -892,12 +892,12 @@ def exportar_reporte_asistencia_excel(request):
             zona_items = []
             for prov_group in zona_group['provincias']:
                 # Fila de provincia
-                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=8)
+                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=9)
                 prov_cell = ws.cell(row=current_row, column=1)
                 prov_cell.value = str(prov_group['provincia']).upper()
                 prov_cell.font = Font(bold=True, size=10)
                 prov_cell.alignment = Alignment(horizontal='left', vertical='center')
-                for col_idx in range(1, 9):
+                for col_idx in range(1, 10):
                     ws.cell(row=current_row, column=col_idx).border = border
                 ws.row_dimensions[current_row].height = 22
                 current_row += 1
@@ -913,6 +913,7 @@ def exportar_reporte_asistencia_excel(request):
                         item.get('horario', ''),
                         item.get('nombre_apellidos', ''),
                         item.get('estado', ''),
+                        'ASISTE' if item.get('estado_asistencia') == 'ASISTIO' else ('FALTO' if item.get('estado_asistencia') == 'FALTO' else ''),
                         item.get('reemplazo', ''),
                         item.get('descripcion', ''),
                     ]
@@ -922,7 +923,7 @@ def exportar_reporte_asistencia_excel(request):
                         cell.border = border
                         if row_fill:
                             cell.fill = row_fill
-                        if col_idx == 8:
+                        if col_idx == 9:
                             cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
                         else:
                             cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -941,8 +942,9 @@ def exportar_reporte_asistencia_excel(request):
             4: 12,  # Horario
             5: 40,  # Nombre y Apellidos
             6: 12,  # Estado
-            7: 40,  # Reemplazo
-            8: 28,  # Descripcion
+            7: 14,  # Asistencia
+            8: 38,  # Reemplazo
+            9: 28,  # Descripcion
         }
         for col_idx, width in column_widths.items():
             ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
@@ -952,7 +954,7 @@ def exportar_reporte_asistencia_excel(request):
         for zona_label, zona_asistencias, zona_faltos in zona_resumen:
             ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=2)
             ws.merge_cells(start_row=current_row, start_column=3, end_row=current_row, end_column=5)
-            ws.merge_cells(start_row=current_row, start_column=6, end_row=current_row, end_column=8)
+            ws.merge_cells(start_row=current_row, start_column=6, end_row=current_row, end_column=9)
 
             zcell = ws.cell(row=current_row, column=1)
             zcell.value = _format_zona_label(zona_label)
@@ -967,7 +969,7 @@ def exportar_reporte_asistencia_excel(request):
             fcell.value = f"Faltas: {zona_faltos}"
             fcell.alignment = Alignment(horizontal='center', vertical='center')
 
-            for col_idx in range(1, 9):
+            for col_idx in range(1, 10):
                 ws.cell(row=current_row, column=col_idx).border = border
             current_row += 1
 
@@ -1013,10 +1015,10 @@ def exportar_reporte_asistencia_pdf(request):
 
     headers = [
         'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
-        'NOMBRE Y APELLIDOS', 'ESTADO', 'REEMPLAZO', 'DESCRIPCIÓN',
+        'NOMBRE Y APELLIDOS', 'ESTADO', 'ASISTENCIA', 'REEMPLAZO', 'DESCRIPCIÓN',
     ]
-    
-    col_widths = [0.8, 1.25, 1.2, 0.65, 1.95, 0.9, 1.9, 1.05]
+
+    col_widths = [0.75, 1.15, 1.1, 0.6, 1.75, 0.7, 0.8, 1.5, 1.0]
     col_widths = [w * inch for w in col_widths]
 
     def ensure_space(y_cursor, needed_height):
@@ -1096,6 +1098,7 @@ def exportar_reporte_asistencia_pdf(request):
                     item.get('horario', ''),
                     item.get('nombre_apellidos', ''),
                     item.get('estado', ''),
+                    'ASISTE' if item.get('estado_asistencia') == 'ASISTIO' else ('FALTO' if item.get('estado_asistencia') == 'FALTO' else ''),
                     item.get('reemplazo', ''),
                     (item.get('descripcion', '') or '')[:120],
                 ]
