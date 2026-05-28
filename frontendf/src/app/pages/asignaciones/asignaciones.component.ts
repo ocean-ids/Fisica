@@ -796,24 +796,34 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     ref.afterClosed().subscribe((result?: AsignacionRangeModalResult) => {
       if (!result) return;
-      const { start, end, seq } = result;
-      if (!start || !end || !seq) return;
-      const startDate = new Date(start + 'T00:00:00');
-      const endDate = new Date(end + 'T00:00:00');
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
-      const tokens = this.parseSequence(seq, isSacafranco);
-      if (!tokens.length) return;
-      const anchor = this.parseWeekStart(weekStart);
-      const backendMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
-      const uiMap = isSacafranco
-        ? this.buildRangeMap(startDate, endDate, tokens, anchor, true)
-        : backendMap;
-      this.applyRangeToBackend(row, backendMap, isSacafranco);
-      if (isSacafranco) {
-        this.applyRangeToCalendarData(row, uiMap);
-      } else {
-        this.applyRangeToCurrentWeek(row, weekStart, uiMap);
-      }
+      setTimeout(() => {
+        const { start, end, seq } = result;
+        if (!start || !end || !seq) return;
+        const startDate = new Date(start + 'T00:00:00');
+        let endDate = new Date(end + 'T00:00:00');
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
+
+        if (isSacafranco) {
+          const monthEnd = new Date(this.anio, this.mes, 0);
+          if (endDate > monthEnd) {
+            endDate = monthEnd;
+          }
+        }
+
+        const tokens = this.parseSequence(seq, isSacafranco);
+        if (!tokens.length) return;
+        const anchor = this.parseWeekStart(weekStart);
+        const backendMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
+        const uiMap = isSacafranco
+          ? this.buildRangeMap(startDate, endDate, tokens, anchor, true)
+          : backendMap;
+        this.applyRangeToBackend(row, backendMap, isSacafranco);
+        if (isSacafranco) {
+          this.applyRangeToCalendarData(row, uiMap);
+        } else {
+          this.applyRangeToCurrentWeek(row, weekStart, uiMap);
+        }
+      }, 0);
     });
   }
 
