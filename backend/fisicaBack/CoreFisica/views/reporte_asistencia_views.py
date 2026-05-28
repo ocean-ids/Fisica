@@ -552,7 +552,7 @@ def _build_reporte_asistencia_data(
     if fecha_obj:
         hist_qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo')
         hist_qs = hist_qs.filter(fecha_reporte=fecha_obj)
-        if asig_ids:
+        if use_db_pagination and asig_ids:
             hist_qs = hist_qs.filter(asignacion_id__in=asig_ids)
         hist_qs = hist_qs.order_by('asignacion_id', '-creado_en')
         for h in hist_qs:
@@ -570,7 +570,7 @@ def _build_reporte_asistencia_data(
             )
 
     reporte_iter = reporte_qs
-    if asig_ids:
+    if use_db_pagination and asig_ids:
         reporte_iter = reporte_iter.filter(asignacion_id__in=asig_ids)
     for r in reporte_iter:
         if r.asignacion_id not in overrides:
