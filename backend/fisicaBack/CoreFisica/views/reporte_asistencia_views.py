@@ -444,7 +444,17 @@ def _resolver_reemplazo_desde_request(request):
 
 
 
-def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, exclude_sacafranco=False, zona='', q=''):
+def _build_reporte_asistencia_data(
+    fecha=None,
+    cliente_id=None,
+    turno=None,
+    exclude_sacafranco=False,
+    zona='',
+    q='',
+    page=None,
+    page_size=None,
+    include_total=False,
+):
     fecha_obj = None
     if fecha:
         try:
@@ -460,28 +470,6 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
     reporte_qs = reporte_qs.filter(asignacion__estado='ACTIVO')
     if fecha_obj:
         reporte_qs = reporte_qs.filter(fecha_reporte=fecha_obj)
-
-    overrides = {}
-    if fecha_obj:
-        hist_qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo')
-        hist_qs = hist_qs.filter(fecha_reporte=fecha_obj).order_by('asignacion_id', '-creado_en')
-        for h in hist_qs:
-            if h.asignacion_id in overrides:
-                continue
-            overrides[h.asignacion_id] = SimpleNamespace(
-                codigo=h.codigo,
-                estado=h.estado,
-                estado_asistencia=getattr(h, 'estado_asistencia', None),
-                descripcion=h.descripcion,
-                reemplazo=h.reemplazo,
-                modificado_por=h.usuario,
-                modificado_en=h.creado_en,
-                row_color=h.row_color
-            )
-
-    for r in reporte_qs:
-        if r.asignacion_id not in overrides:
-            overrides[r.asignacion_id] = r
 
     asig_qs = Asignacion.objects.select_related(
         'cliente', 'instalacion', 'instalacion__canton', 'instalacion__canton__provincia',
@@ -546,9 +534,51 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
 
             asig_qs = asig_qs.exclude(id__in=sacafranco_asig_ids)
 
+    term = (q or '').strip().lower()
+    use_db_pagination = bool(include_total and page and page_size and not term)
+    ordered_qs = asig_qs.order_by('mes', 'fecha', 'id')
+
+    total = None
+    if use_db_pagination:
+        total = ordered_qs.count()
+        start = (int(page) - 1) * int(page_size)
+        end = start + int(page_size)
+        ordered_qs = ordered_qs[start:end]
+
+    asig_list = list(ordered_qs)
+    asig_ids = [a.id for a in asig_list]
+
+    overrides = {}
+    if fecha_obj:
+        hist_qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo')
+        hist_qs = hist_qs.filter(fecha_reporte=fecha_obj)
+        if asig_ids:
+            hist_qs = hist_qs.filter(asignacion_id__in=asig_ids)
+        hist_qs = hist_qs.order_by('asignacion_id', '-creado_en')
+        for h in hist_qs:
+            if h.asignacion_id in overrides:
+                continue
+            overrides[h.asignacion_id] = SimpleNamespace(
+                codigo=h.codigo,
+                estado=h.estado,
+                estado_asistencia=getattr(h, 'estado_asistencia', None),
+                descripcion=h.descripcion,
+                reemplazo=h.reemplazo,
+                modificado_por=h.usuario,
+                modificado_en=h.creado_en,
+                row_color=h.row_color
+            )
+
+    reporte_iter = reporte_qs
+    if asig_ids:
+        reporte_iter = reporte_iter.filter(asignacion_id__in=asig_ids)
+    for r in reporte_iter:
+        if r.asignacion_id not in overrides:
+            overrides[r.asignacion_id] = r
+
     data = []
     personas_con_asignacion = set()
-    for asig in asig_qs.order_by('mes', 'fecha', 'id'):
+    for asig in asig_list:
         p = asig.persona
         personas_con_asignacion.add(p.id)
         override = overrides.get(asig.id)
@@ -605,7 +635,6 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
             'provincia': provincia_nombre,
         })
 
-    term = (q or '').strip().lower()
     if term:
         filtered = []
         for item in data:
@@ -625,6 +654,11 @@ def _build_reporte_asistencia_data(fecha=None, cliente_id=None, turno=None, excl
             if term in haystack:
                 filtered.append(item)
         data = filtered
+
+    if include_total:
+        if use_db_pagination:
+            return data, int(total or 0), True
+        return data, len(data), False
 
     return data
 
@@ -651,19 +685,21 @@ def obtener_reporte_asistencia(request):
         return JsonResponse({'error': 'Parámetros de paginación inválidos'}, status=400)
 
     exclude_sacafranco = str(request.GET.get('exclude_sacafranco', '')).strip() == '1'
-    data = _build_reporte_asistencia_data(
+    data, total, db_paginated = _build_reporte_asistencia_data(
         fecha=fecha,
         cliente_id=cliente_id,
         turno=turno,
         exclude_sacafranco=exclude_sacafranco,
         zona=zona,
         q=q,
+        page=page,
+        page_size=page_size,
+        include_total=True,
     )
 
-    total = len(data)
     start = (page - 1) * page_size
     end = start + page_size
-    page_results = data[start:end]
+    page_results = data if db_paginated else data[start:end]
     total_pages = (total + page_size - 1) // page_size if total else 1
 
     return JsonResponse({
