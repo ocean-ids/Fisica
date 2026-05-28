@@ -5,6 +5,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import json
 import datetime
+from io import BytesIO
 import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from reportlab.pdfgen import canvas
@@ -699,7 +700,10 @@ def exportar_consolidado_excel(request):
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
-    wb.save(response)
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    response.write(output.getvalue())
     return response
 
 
@@ -718,10 +722,8 @@ def exportar_consolidado_pdf(request):
     manual = _build_resumen_manual(_parse_fecha(fecha), turno_val, reporte_rows) if turno_val else None
     estados = _build_estado_agentes_counts(reporte_rows)
 
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="consolidado.pdf"'
-
-    p = canvas.Canvas(response, pagesize=landscape(letter))
+    output = BytesIO()
+    p = canvas.Canvas(output, pagesize=landscape(letter))
     width, height = landscape(letter)
     x_margin = 0.5 * inch
     y_margin = 0.5 * inch
@@ -879,4 +881,9 @@ def exportar_consolidado_pdf(request):
 
     p.showPage()
     p.save()
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="consolidado.pdf"'
+    output.seek(0)
+    response.write(output.getvalue())
     return response

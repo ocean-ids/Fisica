@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.db.models import Q, F, Subquery
 from django.http import HttpResponse
 from django.utils import timezone
+from io import BytesIO
 import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -982,7 +983,10 @@ def exportar_reporte_asistencia_excel(request):
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.xlsx"'
-    wb.save(response)
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    response.write(output.getvalue())
     return response
 
 @api_view(['GET'])
@@ -1002,10 +1006,8 @@ def exportar_reporte_asistencia_pdf(request):
     grouped = _group_reporte_por_zona_y_provincia(data)
     zona_resumen = []
 
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.pdf"'
-
-    p = canvas.Canvas(response, pagesize=landscape(letter))
+    output = BytesIO()
+    p = canvas.Canvas(output, pagesize=landscape(letter))
     width, height = landscape(letter)
 
     x_margin = 0.5 * inch
@@ -1129,4 +1131,9 @@ def exportar_reporte_asistencia_pdf(request):
 
     p.showPage()
     p.save()
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.pdf"'
+    output.seek(0)
+    response.write(output.getvalue())
     return response

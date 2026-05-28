@@ -12,6 +12,7 @@ from django.utils import timezone
 from ..serializers import AsignacionSerializer, AsignacionLiteSerializer, SacafrancoFilaSerializer
 import openpyxl
 import datetime
+from io import BytesIO
 from pathlib import Path
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
@@ -1880,5 +1881,8 @@ def exportar_asignaciones_excel(request):
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename=reporte_asignaciones_calendario_{year}_{month}.xlsx'
-    wb.save(response)
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    response.write(output.getvalue())
     return response
