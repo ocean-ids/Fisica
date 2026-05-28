@@ -852,7 +852,7 @@ def exportar_reporte_asistencia_excel(request):
     zona = _normalize_zona_filter(request.GET.get('zona'))
     headers = [
         'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
-        'NOMBRE Y APELLIDOS', 'ESTADO', 'ASISTENCIA', 'REEMPLAZO', 'DESCRIPCIÓN',
+        'NOMBRE Y APELLIDOS', 'ASISTENCIA', 'REEMPLAZO', 'ESTADO', 'DESCRIPCIÓN',
     ]
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -912,9 +912,9 @@ def exportar_reporte_asistencia_excel(request):
                         item.get('puesto', ''),
                         item.get('horario', ''),
                         item.get('nombre_apellidos', ''),
-                        item.get('estado', ''),
                         'ASISTE' if item.get('estado_asistencia') == 'ASISTIO' else ('FALTO' if item.get('estado_asistencia') == 'FALTO' else ''),
                         item.get('reemplazo', ''),
+                        item.get('estado', ''),
                         item.get('descripcion', ''),
                     ]
                     for col_idx, value in enumerate(row_vals, start=1):
@@ -941,9 +941,9 @@ def exportar_reporte_asistencia_excel(request):
             3: 23,  # Puesto
             4: 12,  # Horario
             5: 40,  # Nombre y Apellidos
-            6: 12,  # Estado
-            7: 14,  # Asistencia
-            8: 38,  # Reemplazo
+            6: 14,  # Asistencia
+            7: 38,  # Reemplazo
+            8: 12,  # Estado
             9: 28,  # Descripcion
         }
         for col_idx, width in column_widths.items():
@@ -1015,7 +1015,7 @@ def exportar_reporte_asistencia_pdf(request):
 
     headers = [
         'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
-        'NOMBRE Y APELLIDOS', 'ESTADO', 'ASISTENCIA', 'REEMPLAZO', 'DESCRIPCIÓN',
+        'NOMBRE Y APELLIDOS', 'ASISTENCIA', 'REEMPLAZO', 'ESTADO', 'DESCRIPCIÓN',
     ]
 
     col_widths = [0.75, 1.15, 1.1, 0.6, 1.75, 0.7, 0.8, 1.5, 1.0]
@@ -1097,9 +1097,9 @@ def exportar_reporte_asistencia_pdf(request):
                     item.get('puesto', ''),
                     item.get('horario', ''),
                     item.get('nombre_apellidos', ''),
-                    item.get('estado', ''),
                     'ASISTE' if item.get('estado_asistencia') == 'ASISTIO' else ('FALTO' if item.get('estado_asistencia') == 'FALTO' else ''),
                     item.get('reemplazo', ''),
+                    item.get('estado', ''),
                     (item.get('descripcion', '') or '')[:120],
                 ]
 
