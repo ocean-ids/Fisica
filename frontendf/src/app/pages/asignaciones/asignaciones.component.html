@@ -266,7 +266,7 @@
                             <div class="calendar-day" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
                               <input
                                 type="text"
-                                maxlength="5"
+                                maxlength="12"
                                 class="calendar-input"
                                 [ngClass]="getCalendarCellClass(calRow[dayKey])"
                                 [ngModel]="calRow[dayKey]"

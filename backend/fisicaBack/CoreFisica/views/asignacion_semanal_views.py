@@ -1,4 +1,13 @@
-from ..models import AsignacionSemanal, SacafrancoFilaSemanal, CoberturaSacafranco, Asignacion
+from ..models import (
+    AsignacionSemanal,
+    SacafrancoFilaSemanal,
+    CoberturaSacafranco,
+    Asignacion,
+    SacafrancoFila,
+    ReporteAsistencia,
+    ReporteAsistenciaHistorial,
+    Consolidado,
+)
 from django.db.models import Q
 from django.http import JsonResponse
 from rest_framework.permissions import IsAuthenticated
@@ -8,6 +17,12 @@ from rest_framework import status
 from ..serializers import AsignacionSemanalSerializer, SacafrancoFilaSemanalSerializer
 from django.db import transaction
 from datetime import datetime, date, timedelta
+import re
+
+
+DAY_INDEX_TO_KEY = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+DAY_KEY_TO_INDEX = {k: i for i, k in enumerate(DAY_INDEX_TO_KEY)}
+SACAFRANCO_TOKEN_REGEX = re.compile(r'^(?P<prefix>[DN])(?P<code>[A-Z0-9]+)(?:#(?P<index>\d+))?$')
 
 
 def _puesto_detalle_dict(puesto):
@@ -51,6 +66,335 @@ def _overlay_coberturas_sacafranco(rows, week_start_date):
             row[cobertura.day] = 'F'
 
     return rows
+
+
+def _parse_sacafranco_token(value):
+    raw = str(value or '').strip().upper()
+    if not raw:
+        return 'empty', None, None, None
+    if raw == 'F':
+        return 'free', None, None, None
+    match = SACAFRANCO_TOKEN_REGEX.fullmatch(raw)
+    if match:
+        prefix = match.group('prefix')
+        code = match.group('code')
+        index_raw = match.group('index')
+        index_val = int(index_raw) if index_raw else None
+        return 'coverage', ('Diurno' if prefix == 'D' else 'Nocturno'), code, index_val
+    return 'invalid', None, None, None
+
+
+def _get_calendar_day_date(week_start_date, day_key):
+    target_index = DAY_KEY_TO_INDEX.get(str(day_key or '').lower())
+    if target_index is None:
+        return None
+    for offset in range(7):
+        d = week_start_date + timedelta(days=offset)
+        if d.weekday() == target_index:
+            return d
+    return None
+
+
+def _resolve_asignacion_turno(asig):
+    try:
+        if asig and asig.horario and asig.horario.hora_ingreso == asig.horario.hora_salida:
+            return 'Ambos'
+    except Exception:
+        pass
+
+    tokens = set()
+    try:
+        horarios_qs = getattr(asig.puesto, 'horarios', None)
+        if horarios_qs is not None:
+            turnos = horarios_qs.values_list('turno', flat=True)
+            tokens = {str(t or '').strip().lower() for t in turnos if t}
+    except Exception:
+        tokens = set()
+
+    if any(t.startswith('a') for t in tokens):
+        return 'Ambos'
+    if any(t.startswith('d') for t in tokens) and any(t.startswith('n') for t in tokens):
+        return 'Ambos'
+    if any(t.startswith('n') for t in tokens):
+        return 'Nocturno'
+    if any(t.startswith('d') for t in tokens):
+        return 'Diurno'
+
+    try:
+        puesto_turno = str(asig.puesto.get_turno() or '').strip()
+        if puesto_turno in ['Diurno', 'Nocturno', 'Ambos']:
+            return puesto_turno
+    except Exception:
+        pass
+    return 'Diurno'
+
+
+def _is_asignacion_active_on_date(asig, target_date):
+    if not asig or getattr(asig, 'estado', '') != 'ACTIVO':
+        return False
+    if getattr(asig, 'recurring', False):
+        start_date = getattr(asig, 'start_date', None)
+        end_date = getattr(asig, 'end_date', None)
+        if start_date and target_date < start_date:
+            return False
+        if end_date and target_date > end_date:
+            return False
+        return True
+
+    fecha = getattr(asig, 'fecha', None)
+    if fecha:
+        return fecha == target_date
+    return (getattr(asig, 'mes', None) == target_date.month and getattr(asig, 'anio', None) == target_date.year)
+
+
+def _validate_sacafranco_tokens(data, week_start_date):
+    resolved = {}
+    for day_key in DAY_INDEX_TO_KEY:
+        if day_key not in data:
+            continue
+        raw_value = str(data.get(day_key) or '').strip().upper()
+        token_type, token_turno, token_code, token_index = _parse_sacafranco_token(raw_value)
+
+        if token_type == 'empty' or token_type == 'free':
+            resolved[day_key] = None
+            continue
+
+        if token_type == 'invalid':
+            return f"Token inválido en {day_key.upper()}: '{raw_value}'. Use F o D/N + código y opcional #n (ej: DG5, NG28, DAQ1#2).", None
+
+        target_date = _get_calendar_day_date(week_start_date, day_key)
+        if not target_date:
+            return f"No se pudo resolver la fecha para {day_key.upper()}", None
+
+        qs = Asignacion.objects.select_related('puesto', 'horario', 'instalacion').prefetch_related('puesto__horarios').filter(
+            estado='ACTIVO',
+            instalacion__codigo__iexact=token_code
+        ).exclude(persona__tipo='SACAFRANCO')
+
+        matches = []
+        for asig in qs:
+            if not _is_asignacion_active_on_date(asig, target_date):
+                continue
+            asig_turno = _resolve_asignacion_turno(asig)
+            if asig_turno == token_turno or asig_turno == 'Ambos':
+                matches.append(asig)
+
+        matches = sorted(matches, key=lambda a: ((a.orden if getattr(a, 'orden', None) is not None else 999999), a.id))
+
+        if not matches:
+            return (
+                f"No existe cobertura para {raw_value} en {day_key.upper()} "
+                f"({target_date.isoformat()}). Verifique nominativo y turno."
+            ), None
+
+        selected = None
+        if token_index is None:
+            selected = matches[0]
+        else:
+            if token_index < 1 or token_index > len(matches):
+                return (
+                    f"Índice fuera de rango para {raw_value} en {day_key.upper()} "
+                    f"({target_date.isoformat()}). Opciones válidas: #1 a #{len(matches)}."
+                ), None
+            selected = matches[token_index - 1]
+
+        resolved[day_key] = {
+            'token': raw_value,
+            'turno': token_turno,
+            'code': token_code,
+            'index': token_index,
+            'date': target_date,
+            'asignacion': selected,
+        }
+
+    return None, resolved
+
+
+def _is_manual_historial_entry(entry):
+    if not entry:
+        return False
+    if getattr(entry, 'usuario_id', None):
+        return True
+    desc = str(getattr(entry, 'descripcion', '') or '').strip().upper()
+    return bool(desc and not desc.startswith('COBERTURA SACAFRANCO AUTO'))
+
+
+def _sync_sacafranco_to_reporte_y_consolidado(sacafranco_fila_id, week_start_date, payload, resolved_tokens):
+    try:
+        fila = SacafrancoFila.objects.select_related('persona').get(id=sacafranco_fila_id)
+    except SacafrancoFila.DoesNotExist:
+        return
+
+    persona = getattr(fila, 'persona', None)
+    if not persona:
+        return
+
+    for day_key in DAY_INDEX_TO_KEY:
+        if day_key not in payload:
+            continue
+        info = resolved_tokens.get(day_key)
+        if not info:
+            continue
+
+        asig = info.get('asignacion')
+        target_date = info.get('date')
+        token = str(info.get('token') or '').strip().upper()
+        turno = info.get('turno')
+        if not asig or not target_date or not token or turno not in ['Diurno', 'Nocturno']:
+            continue
+
+        codigo = str(getattr(getattr(asig, 'instalacion', None), 'codigo', '') or '').strip()
+        cliente = getattr(asig, 'cliente', None)
+        instalacion = getattr(asig, 'instalacion', None)
+        puesto = getattr(asig, 'puesto', None)
+        horario = getattr(asig, 'horario', None)
+        auto_desc = f"Cobertura SACAFRANCO AUTO {token}"
+
+        reporte, created = ReporteAsistencia.objects.get_or_create(
+            asignacion_id=asig.id,
+            defaults={
+                'codigo': codigo or None,
+                'persona': getattr(asig, 'persona', None),
+                'cliente': cliente,
+                'instalacion': instalacion,
+                'puesto': puesto,
+                'horario': horario,
+                'puesto_tipo': getattr(puesto, 'tipo', None) if puesto else None,
+                'estado': 'TURNO',
+                'fecha_reporte': target_date,
+            }
+        )
+
+        if not created:
+            changed = False
+            if not reporte.codigo and codigo:
+                reporte.codigo = codigo
+                changed = True
+            if not reporte.persona_id and getattr(asig, 'persona_id', None):
+                reporte.persona = asig.persona
+                changed = True
+            if not reporte.cliente_id and getattr(asig, 'cliente_id', None):
+                reporte.cliente = cliente
+                changed = True
+            if not reporte.instalacion_id and getattr(asig, 'instalacion_id', None):
+                reporte.instalacion = instalacion
+                changed = True
+            if not reporte.puesto_id and getattr(asig, 'puesto_id', None):
+                reporte.puesto = puesto
+                changed = True
+            if not reporte.horario_id and getattr(asig, 'horario_id', None):
+                reporte.horario = horario
+                changed = True
+            if changed:
+                reporte.save()
+
+        latest = ReporteAsistenciaHistorial.objects.filter(
+            asignacion_id=asig.id,
+            fecha_reporte=target_date
+        ).order_by('-creado_en').first()
+
+        if _is_manual_historial_entry(latest):
+            continue
+
+        if latest and not latest.usuario_id and str(latest.descripcion or '').upper().startswith('COBERTURA SACAFRANCO AUTO'):
+            latest.reporte = reporte
+            if codigo and not latest.codigo:
+                latest.codigo = codigo
+            if not latest.estado:
+                latest.estado = 'TURNO'
+            latest.estado_asistencia = 'ASISTIO'
+            latest.reemplazo = persona
+            latest.descripcion = auto_desc
+            latest.save()
+        else:
+            ReporteAsistenciaHistorial.objects.create(
+                reporte=reporte,
+                asignacion_id=asig.id,
+                fecha_reporte=target_date,
+                usuario=None,
+                codigo=codigo or None,
+                estado=(latest.estado if latest and latest.estado else 'TURNO'),
+                estado_asistencia='ASISTIO',
+                reemplazo=persona,
+                descripcion=auto_desc,
+                row_color=(latest.row_color if latest else None),
+            )
+
+        cons = Consolidado.objects.filter(
+            fecha=target_date,
+            turno=turno,
+            tipo='GUARDIA',
+            asignacion_ref_id=asig.id,
+        ).first()
+        if cons:
+            if cons.observacion and not str(cons.observacion).upper().startswith('COBERTURA SACAFRANCO AUTO'):
+                continue
+            cons.nominativo = cons.nominativo or (codigo or None)
+            cons.proyecto = cons.proyecto or (getattr(cliente, 'nombre_comercial', None) if cliente else None)
+            cons.puesto = ''
+            cons.observacion = ''
+            cons.save()
+        else:
+            Consolidado.objects.create(
+                fecha=target_date,
+                turno=turno,
+                tipo='GUARDIA',
+                persona_ref=None,
+                asignacion_ref_id=asig.id,
+                nominativo=(codigo or None),
+                proyecto=(getattr(cliente, 'nombre_comercial', None) if cliente else None),
+                puesto='',
+                observacion='',
+            )
+
+
+def _cleanup_auto_sacafranco_from_token_map(sacafranco_fila_id, week_start_date, token_map):
+    """Remove auto-generated historial/consolidado rows for provided old tokens.
+
+    token_map format: { 'mon': 'DA1', 'tue': 'F', ... }
+    Only coverage tokens D*/N* are considered.
+    """
+    try:
+        fila = SacafrancoFila.objects.select_related('persona').get(id=sacafranco_fila_id)
+    except SacafrancoFila.DoesNotExist:
+        return
+
+    persona = getattr(fila, 'persona', None)
+    if not persona:
+        return
+
+    for day_key, token_value in (token_map or {}).items():
+        token_type, token_turno, token_code, token_index = _parse_sacafranco_token(token_value)
+        if token_type != 'coverage' or token_turno not in ['Diurno', 'Nocturno']:
+            continue
+
+        target_date = _get_calendar_day_date(week_start_date, day_key)
+        if not target_date:
+            continue
+
+        token_raw = str(token_value or '').strip().upper()
+        auto_desc = f"Cobertura SACAFRANCO AUTO {token_raw}"
+
+        auto_hist_qs = ReporteAsistenciaHistorial.objects.filter(
+            fecha_reporte=target_date,
+            reemplazo_id=persona.id,
+            usuario__isnull=True,
+            descripcion__iexact=auto_desc,
+        )
+        asig_ids = list(auto_hist_qs.values_list('asignacion_id', flat=True))
+        auto_hist_qs.delete()
+
+        if asig_ids:
+            Consolidado.objects.filter(
+                fecha=target_date,
+                turno=token_turno,
+                tipo='GUARDIA',
+                asignacion_ref_id__in=asig_ids,
+            ).filter(
+                Q(observacion__isnull=True)
+                | Q(observacion='')
+                | Q(observacion__istartswith='COBERTURA SACAFRANCO AUTO')
+            ).delete()
 
 
 def _auto_create_asignacion_semanal_for_week(week_start_date, provincia_id=None, canton_id=None):
@@ -1008,8 +1352,23 @@ def crear_o_actualizar_sacafranco_fila_semanal(request):
     except Exception:
         return Response({'error': 'week_start inválida, formato YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
 
+    validation_error, resolved_tokens = _validate_sacafranco_tokens(data, ws)
+    if validation_error:
+        return Response({'error': validation_error}, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         with transaction.atomic():
+            existing = SacafrancoFilaSemanal.objects.filter(
+                sacafranco_fila_id=sacafranco_fila_id,
+                week_start=ws,
+            ).first()
+
+            previous_values = {}
+            if existing:
+                for d in ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']:
+                    if d in data:
+                        previous_values[d] = getattr(existing, d, '') or ''
+
             defaults = {}
             for d in ['mon','tue','wed','thu','fri','sat','sun']:
                 if d in data:
@@ -1026,6 +1385,27 @@ def crear_o_actualizar_sacafranco_fila_semanal(request):
                     if d in data:
                         setattr(obj, d, data.get(d) or '')
                 obj.save()
+
+            cleanup_old_tokens = {}
+            for d, old_val in previous_values.items():
+                new_val = str(data.get(d) or '').strip().upper()
+                old_norm = str(old_val or '').strip().upper()
+                if old_norm and old_norm != new_val:
+                    cleanup_old_tokens[d] = old_norm
+
+            if cleanup_old_tokens:
+                _cleanup_auto_sacafranco_from_token_map(
+                    sacafranco_fila_id=sacafranco_fila_id,
+                    week_start_date=ws,
+                    token_map=cleanup_old_tokens,
+                )
+
+            _sync_sacafranco_to_reporte_y_consolidado(
+                sacafranco_fila_id=sacafranco_fila_id,
+                week_start_date=ws,
+                payload=data,
+                resolved_tokens=resolved_tokens,
+            )
 
             serializer = SacafrancoFilaSemanalSerializer(obj)
             return Response({'created': created, 'result': serializer.data}, status=status.HTTP_200_OK)

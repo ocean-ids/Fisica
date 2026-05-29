@@ -763,8 +763,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     if (!row || row.type !== 'sacafranco') return;
     const calRow = this.getCalendarRow(row, weekStart);
     if (!calRow) return;
-    const v = value ? String(value).toUpperCase().slice(0, 5) : '';
+    const prevValue = calRow[dayKey] || '';
+    const v = value ? String(value).toUpperCase().slice(0, 12) : '';
     calRow[dayKey] = v;
+    // Evita validar mientras el usuario aún no completa el token D/N + código[#n].
+    if (v && /^[DN]$/.test(v)) return;
+    if (v && /^[DN][A-Z0-9]+#$/.test(v)) return;
     const payload: any = {
       sacafranco_fila: row.id,
       week_start: weekStart
@@ -772,7 +776,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     payload[dayKey] = v;
     this.asignacionCalendarioService.crearSacafrancoFilaSemanal(payload).subscribe({
       next: () => {},
-      error: () => {}
+      error: (err) => {
+        calRow[dayKey] = prevValue;
+        const message = err?.error?.error || 'No se pudo guardar la celda SACAFRANCO.';
+        Swal.fire({ icon: 'error', title: 'Error', text: message });
+      }
     });
   }
 
@@ -949,7 +957,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       next: () => {
         this.loadCalendarWeeks();
       },
-      error: () => {}
+      error: (err) => {
+        const message = err?.error?.error || 'No se pudo aplicar la secuencia.';
+        Swal.fire({ icon: 'error', title: 'Error', text: message });
+        this.loadCalendarWeeks();
+      }
     });
   }
 

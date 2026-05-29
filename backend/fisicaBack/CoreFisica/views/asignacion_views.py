@@ -1352,7 +1352,28 @@ def eliminar_sacafranco_fila(request, id):
         fila = SacafrancoFila.objects.get(id=id)
     except SacafrancoFila.DoesNotExist:
         return Response({'error': 'Fila no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-    SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id=fila.id).delete()
+
+    # Clean up auto-generated cobertura records before removing weekly tokens.
+    from .asignacion_semanal_views import _cleanup_auto_sacafranco_from_token_map
+
+    semanales = SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id=fila.id)
+    for semanal in semanales:
+        token_map = {
+            'mon': semanal.mon,
+            'tue': semanal.tue,
+            'wed': semanal.wed,
+            'thu': semanal.thu,
+            'fri': semanal.fri,
+            'sat': semanal.sat,
+            'sun': semanal.sun,
+        }
+        _cleanup_auto_sacafranco_from_token_map(
+            sacafranco_fila_id=fila.id,
+            week_start_date=semanal.week_start,
+            token_map=token_map,
+        )
+
+    semanales.delete()
     fila.delete()
     return Response({'mensaje': 'Fila sacafranco eliminada', 'eliminadas': 1})
 

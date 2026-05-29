@@ -10,11 +10,20 @@
             </mat-option>
         </mat-select>
     </mat-form-field>
+    <mat-form-field appearance="outline" class="w-100 mb-2" *ngIf="selectedCantonId !== null">
+        <mat-label>Filtrar por nombre o apellido</mat-label>
+        <input
+            matInput
+            [(ngModel)]="filtroNombre"
+            (ngModelChange)="onNombreFilterChange()"
+            placeholder="Ej: Alvarado"
+        />
+    </mat-form-field>
     <div class="list-group" style="max-height: 320px; overflow: auto;" *ngIf="selectedCantonId !== null; else noCanton">
         <button
             type="button"
             class="list-group-item list-group-item-action"
-            *ngFor="let p of personas"
+            *ngFor="let p of personasFiltradas"
             (click)="selectPersona(p.id)"
             [class.active]="selectedId === p.id"
         >
@@ -31,7 +40,7 @@
                 </div>
             </div>
         </button>
-        <div class="text-muted p-2" *ngIf="!personas.length">
+        <div class="text-muted p-2" *ngIf="!personasFiltradas.length">
             No hay personas sacafranco para mostrar.
         </div>
     </div>

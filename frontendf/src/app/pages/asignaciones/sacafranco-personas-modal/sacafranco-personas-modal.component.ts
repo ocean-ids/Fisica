@@ -20,6 +20,8 @@ import { PersonaService } from '../../../services/persona.service';
 export class SacafrancoPersonasModalComponent implements OnInit {
   personas: Persona[] = [];
   personasAll: Persona[] = [];
+  personasFiltradas: Persona[] = [];
+  filtroNombre: string = '';
   selectedId: number | null = null;
   cantones: Array<{ id: number | null; nombre: string }> = [];
   selectedCantonId: number | null = null;
@@ -31,33 +33,53 @@ export class SacafrancoPersonasModalComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: { personas?: Persona[]; assignedPersonaIds?: number[]; cantones?: Array<{ id: number | null; nombre: string }>; cantonId?: number | null } | null
   ) {}
 
-  private applyCantonFilter(): void {
+  private normalizeText(value: string | null | undefined): string {
+    if (!value) return '';
+    return value
+      .toString()
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '');
+  }
+
+  private applyFilters(): void {
     if (this.selectedCantonId === null){
-      this.personas = [];
+      this.personasFiltradas = [];
       return;
     }
-    const normalizeName = (value: string | null | undefined): string => {
-      if (!value) return '';
-      return value
-        .toString()
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9]+/g, '');
-    };
+
     const selectedCanton = (this.cantones || []).find(c => c.id === this.selectedCantonId);
-    const selectedName = normalizeName(selectedCanton?.nombre || '');
-    this.personas = (this.personasAll || []).filter(p => {
+    const selectedName = this.normalizeText(selectedCanton?.nombre || '');
+
+    const byCanton = (this.personasAll || []).filter(p => {
       const personaCantonId = (p as any).canton;
       if (personaCantonId === this.selectedCantonId) return true;
       if (!selectedName) return false;
-      const personaCantonName = normalizeName((p as any).canton_nombre || '');
+      const personaCantonName = this.normalizeText((p as any).canton_nombre || '');
       return personaCantonName && personaCantonName === selectedName;
+    });
+
+    const q = this.normalizeText(this.filtroNombre);
+    if (!q) {
+      this.personasFiltradas = byCanton;
+      return;
+    }
+
+    this.personasFiltradas = byCanton.filter(p => {
+      const fullName = this.normalizeText(`${p.apellidos || ''} ${p.nombres || ''}`);
+      return fullName.includes(q);
     });
   }
 
   onCantonChange(): void {
     this.selectedId = null;
-    this.applyCantonFilter();
+    this.filtroNombre = '';
+    this.applyFilters();
+  }
+
+  onNombreFilterChange(): void {
+    this.selectedId = null;
+    this.applyFilters();
   }
 
   ngOnInit(): void {
@@ -71,8 +93,9 @@ export class SacafrancoPersonasModalComponent implements OnInit {
       this.selectedCantonId = this.data.cantonId ?? null;
     }
     if (this.data?.personas && this.data.personas.length) {
-      this.personas = this.data.personas.filter(p => (p.tipo || '').toString().toUpperCase() === 'SACAFRANCO');
-      this.applyCantonFilter();
+      this.personasAll = this.data.personas.filter(p => (p.tipo || '').toString().toUpperCase() === 'SACAFRANCO');
+      this.personas = this.personasAll;
+      this.applyFilters();
       return;
     }
     
@@ -80,11 +103,13 @@ export class SacafrancoPersonasModalComponent implements OnInit {
     this.personaService.getPersonas({ tipo: 'SACAFRANCO' }).subscribe({
       next: list => {
         this.personasAll = list || [];
-        this.applyCantonFilter();
+        this.personas = this.personasAll;
+        this.applyFilters();
       },
       error: () => {
         this.personasAll = [];
-        this.applyCantonFilter();
+        this.personas = [];
+        this.applyFilters();
       }
     });
   }

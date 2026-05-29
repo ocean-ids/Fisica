@@ -303,6 +303,10 @@ def _normalize_estado_asistencia(value):
     return ''
 
 
+def _is_auto_sacafranco_desc(desc):
+    return str(desc or '').strip().upper().startswith('COBERTURA SACAFRANCO AUTO')
+
+
 def _is_falto(item):
     return str(item.get('estado_asistencia') or '').strip().upper() == 'FALTO'
 
@@ -559,12 +563,15 @@ def _build_reporte_asistencia_data(
         hist_qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo')
         hist_qs = hist_qs.filter(id__in=Subquery(latest_hist_ids)).order_by('asignacion_id')
         for h in hist_qs:
+            is_auto_sacafranco = _is_auto_sacafranco_desc(h.descripcion)
             overrides[h.asignacion_id] = SimpleNamespace(
                 codigo=h.codigo,
                 estado=h.estado,
                 estado_asistencia=getattr(h, 'estado_asistencia', None),
                 descripcion=h.descripcion,
                 reemplazo=h.reemplazo,
+                persona_cobertura=h.reemplazo if is_auto_sacafranco else None,
+                auto_sacafranco=is_auto_sacafranco,
                 modificado_por=h.usuario,
                 modificado_en=h.creado_en,
                 row_color=h.row_color
@@ -593,6 +600,14 @@ def _build_reporte_asistencia_data(
         if asig and asig.horario:
             horario_str = f"{asig.horario.hora_ingreso.strftime('%H:%M')} - {asig.horario.hora_salida.strftime('%H:%M')}"
         nombre_apellidos = f"{p.nombres} {p.apellidos}".strip()
+        auto_sacafranco = _is_auto_sacafranco_desc(getattr(override, 'descripcion', '')) if override else False
+        persona_cobertura = None
+        if override:
+            persona_cobertura = getattr(override, 'persona_cobertura', None)
+            if not persona_cobertura and auto_sacafranco:
+                persona_cobertura = getattr(override, 'reemplazo', None)
+        if auto_sacafranco and persona_cobertura:
+            nombre_apellidos = f"{persona_cobertura.nombres} {persona_cobertura.apellidos}".strip()
         zona_titulo = ''
         provincia_nombre = ''
         if asig and asig.instalacion:
@@ -606,6 +621,10 @@ def _build_reporte_asistencia_data(
         if override and override.reemplazo:
             reemplazo_id = override.reemplazo.id
             reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
+        if auto_sacafranco:
+            reemplazo_id = None
+            reemplazo_nombre = ''
+
         modificado_por_nombre = ''
         modificado_en_iso = None
         if override:
@@ -617,6 +636,14 @@ def _build_reporte_asistencia_data(
         codigo_instalacion = getattr(asig.instalacion, 'codigo', '') if asig and asig.instalacion else ''
         estado_asistencia = _normalize_estado_asistencia(getattr(override, 'estado_asistencia', '') if override else '')
         estado = (getattr(override, 'estado', None) if override else None) or 'TURNO'
+        descripcion = (override.descripcion or '') if override else ''
+        if auto_sacafranco:
+            puesto_nombre = ''
+            horario_str = ''
+            estado = ''
+            estado_asistencia = ''
+            descripcion = ''
+
         data.append({
             'asignacion_id': asig.id,
             'codigo': override.codigo if (override and override.codigo) else (codigo_instalacion or ''),
@@ -628,7 +655,7 @@ def _build_reporte_asistencia_data(
             'reemplazo': reemplazo_nombre,
             'estado_asistencia': estado_asistencia,
             'estado': estado,
-            'descripcion': (override.descripcion or '') if override else '',
+            'descripcion': descripcion,
             'modificado_por': modificado_por_nombre,
             'row_color': (override.row_color or '') if override else '',
             'modificado_en': modificado_en_iso,
