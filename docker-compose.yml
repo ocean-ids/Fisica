@@ -17,9 +17,9 @@ services:
     environment:
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY}
-      ALLOWED_HOSTS: "89.117.146.163"
-      CORS_ALLOWED_ORIGINS: "http://89.117.146.163"
-      PASSWORD_RESET_BASE_URL: "http://89.117.146.163"
+      ALLOWED_HOSTS:  "fisica.oceansecurity.net,89.117.146.163"
+      CORS_ALLOWED_ORIGINS:  "http://fisica.oceansecurity.net,http://89.117.146.163"
+      PASSWORD_RESET_BASE_URL: "http://fisica.oceansecurity.net"
       DB_NAME: sf_bd
       DB_USER: postgres
       DB_PASSWORD: ${DB_PASSWORD}
