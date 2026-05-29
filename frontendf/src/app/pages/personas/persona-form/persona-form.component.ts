@@ -145,11 +145,7 @@ export class PersonaFormComponent implements OnInit {
     if (current && this.cantones.find((x: any) => x.id === current)) {
       return;
     }
-    if (this.cantones.length > 0) {
-      this.personaForm.get('canton')?.setValue(this.cantones[0].id);
-    } else {
-      this.personaForm.get('canton')?.setValue(null);
-    }
+    this.personaForm.get('canton')?.setValue(null);
   }
 
   onSubmit(): void {

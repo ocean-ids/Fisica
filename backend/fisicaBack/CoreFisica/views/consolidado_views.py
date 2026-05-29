@@ -58,14 +58,17 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
     consolidados_qs = Consolidado.objects.filter(fecha=fecha_obj)
     if turno_val:
         consolidados_qs = consolidados_qs.filter(turno=turno_val)
+
+    consolidados_items = list(consolidados_qs.select_related('persona_ref'))
+
     consolidado_map = {}
-    for c in consolidados_qs:
+    for c in consolidados_items:
         key = _consolidado_key(c)
         if key:
             consolidado_map[key] = c
 
     data = []
-    consola_items = [c for c in consolidados_qs.select_related('persona_ref') if c.tipo == TIPO_CONSOLA and c.persona_ref_id]
+    consola_items = [c for c in consolidados_items if c.tipo == TIPO_CONSOLA and c.persona_ref_id]
     for cons in consola_items:
         p = cons.persona_ref
         if not p:

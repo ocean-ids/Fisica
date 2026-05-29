@@ -611,7 +611,8 @@ def _build_reporte_asistencia_data(
         zona_titulo = ''
         provincia_nombre = ''
         if asig and asig.instalacion:
-            zona_obj = asig.instalacion.zonas.order_by('id').first()
+            # Use prefetched zones to avoid one DB hit per row.
+            zona_obj = next(iter(asig.instalacion.zonas.all()), None)
             if zona_obj:
                 zona_titulo = zona_obj.titulo
         if asig and asig.instalacion and asig.instalacion.canton and asig.instalacion.canton.provincia:

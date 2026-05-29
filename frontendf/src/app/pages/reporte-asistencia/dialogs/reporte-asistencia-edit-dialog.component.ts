@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,6 +20,7 @@ import { Persona } from '../../../models';
     CommonModule,
     ReactiveFormsModule,
     MatDialogModule,
+    MatAutocompleteModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -41,6 +43,7 @@ export class ReporteAsistenciaEditDialogComponent {
   ]);
 
   reemplazos: Persona[] = [];
+  reemplazoCtrl = new FormControl<Persona | string | null>('');
   cargandoReemplazos = false;
   guardando = false;
   error = '';
@@ -61,6 +64,13 @@ export class ReporteAsistenciaEditDialogComponent {
       descripcion: [data?.row?.descripcion ?? '']
     });
 
+    this.reemplazoCtrl.setValue(data?.row?.reemplazo || '', { emitEvent: false });
+    this.reemplazoCtrl.valueChanges.subscribe((value) => {
+      if (typeof value === 'string') {
+        this.form.get('reemplazo_id')?.setValue(null, { emitEvent: false });
+      }
+    });
+
     this.cargarReemplazos();
   }
 
@@ -74,6 +84,14 @@ export class ReporteAsistenciaEditDialogComponent {
           p?.is_active !== false &&
           this.tiposReemplazoPermitidos.has(String(p?.tipo || ''))
         );
+
+        const selectedId = this.form.get('reemplazo_id')?.value;
+        if (selectedId) {
+          const selectedPersona = this.reemplazos.find(p => p.id === selectedId);
+          if (selectedPersona) {
+            this.reemplazoCtrl.setValue(selectedPersona, { emitEvent: false });
+          }
+        }
       },
       error: (err) => {
         console.error('Error al cargar reemplazos', err);
@@ -88,6 +106,36 @@ export class ReporteAsistenciaEditDialogComponent {
 
   getNombrePersona(p: Persona): string {
     return `${p.nombres || ''} ${p.apellidos || ''}`.trim();
+  }
+
+  private normalizeText(value: string | null | undefined): string {
+    if (!value) return '';
+    return value.toString().trim().toUpperCase().replace(/[^A-Z0-9]+/g, '');
+  }
+
+  displayReemplazo = (value: Persona | string | null): string => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    return this.getNombrePersona(value);
+  };
+
+  onReemplazoOptionSelected(value: Persona | null): void {
+    this.form.get('reemplazo_id')?.setValue(value?.id ?? null);
+  }
+
+  getReemplazosFiltrados(): Persona[] {
+    const currentValue = this.reemplazoCtrl.value;
+    const query = typeof currentValue === 'string'
+      ? currentValue
+      : (currentValue ? this.getNombrePersona(currentValue) : '');
+    const q = this.normalizeText(query);
+    if (!q) return this.reemplazos;
+
+    return this.reemplazos.filter((p) => {
+      const fullName = this.normalizeText(`${p.apellidos || ''} ${p.nombres || ''}`);
+      const tipo = this.normalizeText(p.tipo || '');
+      return fullName.includes(q) || tipo.includes(q);
+    });
   }
 
   cancelar(): void {

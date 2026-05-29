@@ -41,12 +41,25 @@
 
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Reemplazo</mat-label>
-      <mat-select formControlName="reemplazo_id" [disabled]="guardando || cargandoReemplazos">
+      <input
+        type="text"
+        matInput
+        [formControl]="reemplazoCtrl"
+        [matAutocomplete]="autoReemplazo"
+        [readonly]="guardando || cargandoReemplazos"
+        placeholder="Escribe para filtrar reemplazo"
+      >
+      <mat-autocomplete
+        #autoReemplazo="matAutocomplete"
+        [displayWith]="displayReemplazo"
+        (optionSelected)="onReemplazoOptionSelected($event.option.value)"
+      >
         <mat-option [value]="null">Sin reemplazo</mat-option>
-        <mat-option *ngFor="let p of reemplazos" [value]="p.id">
+        <mat-option *ngFor="let p of getReemplazosFiltrados()" [value]="p">
           {{ getNombrePersona(p) }} - {{ p.tipo }}
         </mat-option>
-      </mat-select>
+        <mat-option disabled *ngIf="!getReemplazosFiltrados().length">Sin coincidencias</mat-option>
+      </mat-autocomplete>
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
