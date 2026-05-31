@@ -47,6 +47,10 @@ SECRET_KEY = os.getenv('SECRET_KEY', '')
 DEBUG = env_bool('DEBUG', default=True)
 
 ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', default='localhost,127.0.0.1')
+CSRF_TRUSTED_ORIGINS = env_list(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost:4200,http://localhost:5173,https://fisica.oceansecurity.net,http://fisica.oceansecurity.net'
+)
 
 
 # Application definition
@@ -87,6 +91,17 @@ CORS_ALLOWED_ORIGINS = env_list(
 )
 
 CORS_ALLOW_CREDENTIALS = True
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
 
 REST_FRAMEWORK = {
