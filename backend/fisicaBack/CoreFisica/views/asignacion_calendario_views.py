@@ -7,6 +7,8 @@ from rest_framework import status
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def listar_asignacion_calendario(request):
+    if not request.user.has_perm('CoreFisica.view_asignacioncalendario'):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
    
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
@@ -57,6 +59,9 @@ def listar_asignacion_calendario(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_asignacion_calendario(request):
+    if not request.user.has_perm('CoreFisica.add_asignacioncalendario'):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+
     datos = request.data
 
     if not datos.get("asignacion_id") or not datos.get("fecha") or not datos.get("turno"):

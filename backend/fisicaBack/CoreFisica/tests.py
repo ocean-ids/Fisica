@@ -1,7 +1,9 @@
 from django.test import TestCase
 from datetime import date
+from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission
 
-from CoreFisica.models import Cliente, Instalacion, Puesto, AsignacionSemanal
+from CoreFisica.models import Cliente, Instalacion, Puesto, AsignacionSemanal, Provincia, Canton, Zona
 
 
 class SemanasTests(TestCase):
@@ -57,3 +59,103 @@ class AsignacionSemanalPaginationTests(TestCase):
                 self.assertIsInstance(d3, list)
             else:
                 self.assertIn('results', d3)
+
+
+class ApiSmokeAuthTests(TestCase):
+    def setUp(self):
+        self.username = 'smoke_user'
+        self.password = 'Sm0kePass123!'
+        User.objects.create_user(
+            username=self.username,
+            password=self.password,
+            email='smoke@example.com',
+        )
+
+    def test_login_returns_tokens(self):
+        response = self.client.post(
+            '/api/login/',
+            data='{"username":"%s","password":"%s"}' % (self.username, self.password),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn('access', payload)
+        self.assertIn('refresh', payload)
+
+    def test_protected_user_endpoint_requires_authentication(self):
+        response = self.client.get('/api/user/')
+        self.assertIn(response.status_code, [401, 403])
+
+    def test_protected_user_endpoint_with_bearer_token(self):
+        login_response = self.client.post(
+            '/api/login/',
+            data='{"username":"%s","password":"%s"}' % (self.username, self.password),
+            content_type='application/json',
+        )
+        self.assertEqual(login_response.status_code, 200)
+        access = login_response.json().get('access')
+        self.assertTrue(access)
+
+        response = self.client.get(
+            '/api/user/',
+            HTTP_AUTHORIZATION=f'Bearer {access}'
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload.get('username'), self.username)
+
+
+class UbicacionPermissionsTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='ubic_user',
+            password='UbicPass123!',
+            email='ubic@example.com',
+        )
+        login_response = self.client.post(
+            '/api/login/',
+            data='{"username":"ubic_user","password":"UbicPass123!"}',
+            content_type='application/json',
+        )
+        self.assertEqual(login_response.status_code, 200)
+        self.access_token = login_response.json().get('access')
+        self.assertTrue(self.access_token)
+
+        self.provincia = Provincia.objects.create(nombre='GUAYAS')
+        self.canton = Canton.objects.create(nombre='GUAYAQUIL', provincia=self.provincia)
+        self.cliente = Cliente.objects.create(razon_social='ACME SA', nombre_comercial='ACME')
+        self.instalacion = Instalacion.objects.create(cliente=self.cliente, canton=self.canton)
+        self.zona = Zona.objects.create(instalacion=self.instalacion, titulo='Zona 1')
+
+    def _auth_headers(self):
+        return {'HTTP_AUTHORIZATION': f'Bearer {self.access_token}'}
+
+    def test_provincias_requires_view_perm(self):
+        response = self.client.get('/api/provincias/', **self._auth_headers())
+        self.assertEqual(response.status_code, 403)
+
+        perm = Permission.objects.get(codename='view_provincia')
+        self.user.user_permissions.add(perm)
+
+        response = self.client.get('/api/provincias/', **self._auth_headers())
+        self.assertEqual(response.status_code, 200)
+
+    def test_cantones_requires_view_perm(self):
+        response = self.client.get('/api/cantones/', **self._auth_headers())
+        self.assertEqual(response.status_code, 403)
+
+        perm = Permission.objects.get(codename='view_canton')
+        self.user.user_permissions.add(perm)
+
+        response = self.client.get('/api/cantones/', {'provincia_id': self.provincia.id}, **self._auth_headers())
+        self.assertEqual(response.status_code, 200)
+
+    def test_zonas_requires_view_perm(self):
+        response = self.client.get('/api/zonas/', {'instalacion_id': self.instalacion.id}, **self._auth_headers())
+        self.assertEqual(response.status_code, 403)
+
+        perm = Permission.objects.get(codename='view_zona')
+        self.user.user_permissions.add(perm)
+
+        response = self.client.get('/api/zonas/', {'instalacion_id': self.instalacion.id}, **self._auth_headers())
+        self.assertEqual(response.status_code, 200)

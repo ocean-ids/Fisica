@@ -6,12 +6,16 @@ from ..models import Provincia, Canton, Zona
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_provincias(request):
+    if not request.user.has_perm('CoreFisica.view_provincia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     provincias = Provincia.objects.all().order_by('nombre').values('id', 'nombre')
     return JsonResponse(list(provincias), safe=False)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_cantones(request):
+    if not request.user.has_perm('CoreFisica.view_canton'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     provincia_id = request.GET.get('provincia_id')
     qs = Canton.objects.select_related('provincia').all()
     if provincia_id:
@@ -22,6 +26,8 @@ def obtener_cantones(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_zonas(request):
+    if not request.user.has_perm('CoreFisica.view_zona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
     instalacion_id = request.GET.get('instalacion_id')
     if not instalacion_id:
         return JsonResponse({'error': 'instalacion_id es requerido'}, status=400)
