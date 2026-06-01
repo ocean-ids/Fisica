@@ -24,9 +24,6 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   images: string[] = [
     'assets/images/fondo.png',
-    'assets/images/fondo2.png',
-    'assets/images/fondo3.png',
-    'assets/images/fondo4.png'
   ];
 
   get currentBackground(): string {
