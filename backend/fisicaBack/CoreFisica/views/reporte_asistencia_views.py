@@ -414,7 +414,26 @@ def _write_excel_resumen(ws, row_idx, asistencias, faltos, border):
     return row_idx
 
 
-def _resolver_reemplazo_desde_request(request):
+def _reemplazo_esta_ocupado(persona_id, fecha_reporte=None, asignacion_id_actual=None):
+    # A replacement must be a free person: no active assignment and not already used
+    # as replacement on the same report date.
+    if Asignacion.objects.filter(persona_id=persona_id, estado='ACTIVO').exists():
+        return True, 'La persona seleccionada ya tiene una asignacion activa.'
+
+    if fecha_reporte:
+        qs = ReporteAsistencia.objects.filter(
+            fecha_reporte=fecha_reporte,
+            reemplazo_id=persona_id,
+        )
+        if asignacion_id_actual:
+            qs = qs.exclude(asignacion_id=asignacion_id_actual)
+        if qs.exists():
+            return True, 'La persona seleccionada ya esta asignada como reemplazo en este reporte.'
+
+    return False, ''
+
+
+def _resolver_reemplazo_desde_request(request, fecha_reporte=None, asignacion_id_actual=None):
     if 'reemplazo_id' not in request.data:
         return 'no-enviado', None
 
@@ -440,6 +459,17 @@ def _resolver_reemplazo_desde_request(request):
     if persona.tipo not in TIPOS_REEMPLAZO_PERMITIDOS:
         return None, JsonResponse(
             {'error': f'El tipo {persona.tipo} no puede ser reemplazo. Permitidos: {sorted(TIPOS_REEMPLAZO_PERMITIDOS)}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    ocupado, motivo = _reemplazo_esta_ocupado(
+        persona_id=persona.id,
+        fecha_reporte=fecha_reporte,
+        asignacion_id_actual=asignacion_id_actual,
+    )
+    if ocupado:
+        return None, JsonResponse(
+            {'error': motivo},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -768,12 +798,6 @@ def insertar_reporte_asistencia(request, asignacion_id):
             val = request.data.get(field) or None
             setattr(override, field, val)
 
-    reemplazo_result, err = _resolver_reemplazo_desde_request(request)
-    if err:
-        return err
-    if reemplazo_result != 'no-enviado':
-        override.reemplazo = reemplazo_result
-
     fecha_param = request.data.get('fecha')
     fecha_reporte = None
     if fecha_param:
@@ -781,6 +805,16 @@ def insertar_reporte_asistencia(request, asignacion_id):
             fecha_reporte = datetime.date.fromisoformat(str(fecha_param))
         except ValueError:
             fecha_reporte = None
+
+    reemplazo_result, err = _resolver_reemplazo_desde_request(
+        request,
+        fecha_reporte=fecha_reporte,
+        asignacion_id_actual=asignacion_id,
+    )
+    if err:
+        return err
+    if reemplazo_result != 'no-enviado':
+        override.reemplazo = reemplazo_result
 
     if request.user and request.user.is_authenticated:
         override.modificado_por = request.user

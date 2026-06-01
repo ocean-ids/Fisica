@@ -11,6 +11,7 @@ import { ReporteAsistenciaService } from '../../../services/reporte-asistencia.s
 import { ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../../../models';
 import { PersonaService } from '../../../services/persona.service';
 import { Persona } from '../../../models';
+import Swal from 'sweetalert2';
 
 
 @Component({
@@ -34,16 +35,15 @@ export class ReporteAsistenciaEditDialogComponent {
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
   readonly tiposReemplazoPermitidos = new Set([
     'FIJOS',
-    'SACAFRANCO',
     'RETEN',
     'EVENTUAL',
-    'SACAVACACIONES',
     'SUPERVISOR MOTORIZADO',
     'SUPERVISOR ZONAL'
   ]);
 
   reemplazos: Persona[] = [];
   reemplazoCtrl = new FormControl<Persona | string | null>('');
+  reemplazosOcupadosIds = new Set<number>();
   cargandoReemplazos = false;
   guardando = false;
   error = '';
@@ -54,9 +54,19 @@ export class ReporteAsistenciaEditDialogComponent {
     private reporteSvc: ReporteAsistenciaService,
     private personaSvc: PersonaService,
     private dialogRef: MatDialogRef<ReporteAsistenciaEditDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { row: ReporteAsistenciaRow; fecha?: string | null }
+    @Inject(MAT_DIALOG_DATA) public data: {
+      row: ReporteAsistenciaRow;
+      fecha?: string | null;
+      occupiedReemplazoIds?: number[];
+    }
   ) {
     this.dialogRef.disableClose = true;
+    this.reemplazosOcupadosIds = new Set(
+      (data?.occupiedReemplazoIds || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    );
+
     this.form = this.fb.group({
       estado: [data?.row?.estado || 'TURNO', Validators.required],
       estado_asistencia: [data?.row?.estado_asistencia ?? null],
@@ -82,7 +92,8 @@ export class ReporteAsistenciaEditDialogComponent {
         this.reemplazos = list.filter((p) =>
           !!p?.id &&
           p?.is_active !== false &&
-          this.tiposReemplazoPermitidos.has(String(p?.tipo || ''))
+          this.tiposReemplazoPermitidos.has(String(p?.tipo || '')) &&
+          !this.reemplazosOcupadosIds.has(Number(p.id))
         );
 
         const selectedId = this.form.get('reemplazo_id')?.value;
@@ -120,6 +131,17 @@ export class ReporteAsistenciaEditDialogComponent {
   };
 
   onReemplazoOptionSelected(value: Persona | null): void {
+    if (value?.id && this.reemplazosOcupadosIds.has(Number(value.id))) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Reemplazo ocupado',
+        text: 'Esta persona ya esta seleccionada como reemplazo en otro registro del reporte.',
+      });
+      this.reemplazoCtrl.setValue('', { emitEvent: false });
+      this.form.get('reemplazo_id')?.setValue(null);
+      return;
+    }
+
     this.form.get('reemplazo_id')?.setValue(value?.id ?? null);
   }
 
@@ -165,6 +187,11 @@ export class ReporteAsistenciaEditDialogComponent {
       error: (err) => {
         this.guardando = false;
         this.error = err?.error?.error || err?.error?.detail || 'No se pudo guardar la actualizacion.';
+        Swal.fire({
+          icon: 'warning',
+          title: 'No se pudo guardar',
+          text: this.error,
+        });
         console.error('Error al actualizar reporte de asistencia', err);
       }
     });

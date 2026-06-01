@@ -344,10 +344,21 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   abrirModalEdicion(row: ReporteAsistenciaRow): void {
     if (!row?.asignacion_id) return;
 
+    const occupiedReemplazoIds = Array.from(new Set(
+      (this.reporte || [])
+        .filter((r) => !!r?.reemplazo_id && r.asignacion_id !== row.asignacion_id)
+        .map((r) => Number(r.reemplazo_id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    ));
+
     const dialogRef = this.dialog.open(ReporteAsistenciaEditDialogComponent, {
       width: '700px',
       maxWidth: '95vw',
-      data: { row: { ...row }, fecha: this.filtroFecha || null }
+      data: {
+        row: { ...row },
+        fecha: this.filtroFecha || null,
+        occupiedReemplazoIds,
+      }
     });
 
     dialogRef.afterClosed().subscribe((res) => {
