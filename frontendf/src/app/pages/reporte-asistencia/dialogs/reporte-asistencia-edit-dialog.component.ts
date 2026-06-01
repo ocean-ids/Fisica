@@ -35,8 +35,10 @@ export class ReporteAsistenciaEditDialogComponent {
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
   readonly tiposReemplazoPermitidos = new Set([
     'FIJOS',
+    'SACAFRANCO',
     'RETEN',
     'EVENTUAL',
+    'SACAVACACIONES',
     'SUPERVISOR MOTORIZADO',
     'SUPERVISOR ZONAL'
   ]);
