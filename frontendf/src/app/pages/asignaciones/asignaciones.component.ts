@@ -1590,7 +1590,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         horarios: this.horarios,
         patrones: this.patrones,
         clienteSeleccionado: this.clienteSeleccionado,
-        instalacionSeleccionada: this.instalacionSeleccionada
+        instalacionSeleccionada: this.instalacionSeleccionada,
+        occupiedPuestoIds: this.getOccupiedPuestoIds()
       }
     });
 
@@ -1699,7 +1700,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         horarios: this.horarios,
         patrones: this.patrones,
         clienteSeleccionado: this.clienteSeleccionado,
-        instalacionSeleccionada: this.instalacionSeleccionada
+        instalacionSeleccionada: this.instalacionSeleccionada,
+        occupiedPuestoIds: this.getOccupiedPuestoIds(asignacion.id)
       }
     });
 
@@ -1713,6 +1715,22 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.textoBotonAsignacion = 'Actualizar';
       this.guardarAsignacion();
     });
+  }
+
+  private getOccupiedPuestoIds(excludeAsignacionId?: number): number[] {
+    const list = Array.isArray(this.asignaciones) ? this.asignaciones : [];
+    const ids = list
+      .filter((a: Asignacion) => {
+        if (!a?.puesto) return false;
+        if (excludeAsignacionId && a.id === excludeAsignacionId) return false;
+        if (a?.persona === undefined || a?.persona === null || a?.persona === 0) return false;
+        if (a?.estado && String(a.estado).toUpperCase() !== 'ACTIVO') return false;
+        return true;
+      })
+      .map((a: Asignacion) => Number(a.puesto))
+      .filter((id: number) => Number.isFinite(id) && id > 0);
+
+    return Array.from(new Set(ids));
   }
 
   //guardarAsignacion se encarga de validar la información de la asignación actual antes de guardarla, asegurándose de que se hayan seleccionado un cliente, una instalación, un puesto, una persona y un horario. Si alguna de estas validaciones falla, se muestra una alerta al usuario indicando qué información falta. Si todas las validaciones pasan, se procede a guardar la asignación en el backend, ya sea creando una nueva asignación o actualizando una existente según el modo en que se encuentre el componente, y luego se actualiza la vista con los cambios realizados

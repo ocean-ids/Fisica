@@ -56,8 +56,17 @@
           [displayWith]="displayPuestoLabel"
           (optionSelected)="seleccionarPuesto($event.option.value)"
         >
-          <mat-option *ngFor="let p of puestosFiltrados" [value]="p">
-            {{ p.nombre }}
+          <mat-option
+            *ngFor="let p of puestosFiltrados"
+            [value]="p"
+            [class.puesto-ocupado-option]="isPuestoOcupado(p.id)"
+          >
+            <div class="puesto-option-row d-flex justify-content-between align-items-center w-100">
+              <span>{{ p.nombre }} <small class="text-muted" *ngIf="getPuestoHoras(p)">- {{ getPuestoHoras(p) }}</small></span>
+              <span *ngIf="isPuestoOcupado(p.id)" class="puesto-ocupado-check" title="Puesto ocupado">
+                <i class="fa-solid fa-person-military-rifle"></i>
+              </span>
+            </div>
           </mat-option>
         </mat-autocomplete>
       </mat-form-field>

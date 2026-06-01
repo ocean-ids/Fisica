@@ -22,6 +22,7 @@ export interface AsignacionFormData {
   patrones: PatronAsignacion[];
   clienteSeleccionado: number | null;
   instalacionSeleccionada: number | null;
+  occupiedPuestoIds?: number[];
 }
 
 export interface AsignacionFormResult {
@@ -63,6 +64,7 @@ export class AsignacionFormComponent implements OnInit {
   puestos: Puesto[] = [];
   puestoSeleccionado: Puesto | null = null;
   puestosFiltrados: Puesto[] = [];
+  occupiedPuestoIds = new Set<number>();
 
   personaSeleccionada: Persona | null = null;
   personasFiltradas: Persona[] = [];
@@ -88,6 +90,11 @@ export class AsignacionFormComponent implements OnInit {
     this.patrones = data.patrones || [];
     this.clienteSeleccionado = data.clienteSeleccionado ?? null;
     this.instalacionSeleccionada = data.instalacionSeleccionada ?? null;
+    this.occupiedPuestoIds = new Set(
+      (data.occupiedPuestoIds || [])
+        .map(id => Number(id))
+        .filter(id => Number.isFinite(id) && id > 0)
+    );
   }
 
   ngOnInit(): void {
@@ -151,8 +158,43 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   displayPuestoLabel = (puesto: Puesto | null): string => {
-    return puesto?.nombre || '';
+    if (!puesto) return '';
+    const horas = this.getPuestoHoras(puesto);
+    return horas ? `${puesto.nombre} - ${horas}` : (puesto.nombre || '');
   };
+
+  getPuestoHoras(puesto: Puesto | null | undefined): string {
+    if (!puesto) return '';
+
+    const fromHorarios = Array.isArray(puesto.horarios)
+      ? Array.from(new Set((puesto.horarios || [])
+          .map(h => Number((h as any)?.horas || 0))
+          .filter(h => h > 0)))
+          .sort((a, b) => a - b)
+      : [];
+
+    if (fromHorarios.length > 0) {
+      return fromHorarios.length === 1
+        ? `${fromHorarios[0]} horas`
+        : `${fromHorarios.join(' / ')} horas`;
+    }
+
+    const direct = Number((puesto as any).horas_trabajo || 0);
+    if (direct > 0) return `${direct} horas`;
+
+    const resumen = String((puesto as any).resumen || '').trim();
+    const match = resumen.match(/\b(\d{1,2})\b/);
+    if (match) {
+      const val = Number(match[1]);
+      if (val > 0) return `${val} horas`;
+    }
+
+    return '';
+  }
+
+  isPuestoOcupado(puestoId: number | null | undefined): boolean {
+    return !!puestoId && this.occupiedPuestoIds.has(Number(puestoId));
+  }
 
   seleccionarPuesto(puesto: Puesto): void {
     this.puestoSeleccionado = puesto || null;
