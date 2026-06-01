@@ -40,10 +40,26 @@
     <div class="col-md-6 mb-3">
       <mat-form-field class="w-100">
         <mat-label>Puesto</mat-label>
-        <mat-select [(ngModel)]="asignacion.puesto" [ngModelOptions]="{standalone:true}">
-          <mat-option [value]="0">Seleccione</mat-option>
-          <mat-option *ngFor="let p of puestos" [value]="p.id">{{ p.nombre }}</mat-option>
-        </mat-select>
+        <input
+          matInput
+          type="text"
+          #puestoInput
+          [matAutocomplete]="puestoAuto"
+          [ngModel]="puestoSeleccionado"
+          [ngModelOptions]="{standalone:true}"
+          (input)="filtrarPuestos(puestoInput.value)"
+          [disabled]="!instalacionSeleccionada"
+        />
+
+        <mat-autocomplete
+          #puestoAuto="matAutocomplete"
+          [displayWith]="displayPuestoLabel"
+          (optionSelected)="seleccionarPuesto($event.option.value)"
+        >
+          <mat-option *ngFor="let p of puestosFiltrados" [value]="p">
+            {{ p.nombre }}
+          </mat-option>
+        </mat-autocomplete>
       </mat-form-field>
     </div>
 

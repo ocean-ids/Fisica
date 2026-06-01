@@ -61,6 +61,8 @@ export class AsignacionFormComponent implements OnInit {
 
   instalaciones: Instalacion[] = [];
   puestos: Puesto[] = [];
+  puestoSeleccionado: Puesto | null = null;
+  puestosFiltrados: Puesto[] = [];
 
   personaSeleccionada: Persona | null = null;
   personasFiltradas: Persona[] = [];
@@ -97,6 +99,8 @@ export class AsignacionFormComponent implements OnInit {
     this.setClienteSeleccionadoFromAsignacion();
     this.personasFiltradas = this.getPersonasActivas();
     this.setPersonaSeleccionadaFromAsignacion();
+    this.puestosFiltrados = this.puestos.slice();
+    this.setPuestoSeleccionadoFromAsignacion();
     if (this.clienteSeleccionado) {
       this.cargarInstalaciones(this.clienteSeleccionado, this.instalacionSeleccionada || undefined, this.asignacion.puesto || undefined);
     }
@@ -115,6 +119,8 @@ export class AsignacionFormComponent implements OnInit {
     if (!this.clienteSeleccionado) {
       this.instalaciones = [];
       this.puestos = [];
+      this.puestosFiltrados = [];
+      this.puestoSeleccionado = null;
       this.instalacionSeleccionada = null;
       this.asignacion.cliente = 0;
       this.asignacion.instalacion = 0;
@@ -127,10 +133,38 @@ export class AsignacionFormComponent implements OnInit {
     this.asignacion.puesto = 0;
     this.instalaciones = [];
     this.puestos = [];
+    this.puestosFiltrados = [];
+    this.puestoSeleccionado = null;
     this.personaSeleccionada = null;
     this.asignacion.persona = 0;
     this.personasFiltradas = this.getPersonasActivas();
     this.cargarInstalaciones(this.clienteSeleccionado);
+  }
+
+  filtrarPuestos(value: string): void {
+    const term = (value || '').trim().toLowerCase();
+    this.puestosFiltrados = this.puestos.filter(p => {
+      if (!term) return true;
+      const nombre = (p.nombre || '').toLowerCase();
+      return nombre.includes(term);
+    });
+  }
+
+  displayPuestoLabel = (puesto: Puesto | null): string => {
+    return puesto?.nombre || '';
+  };
+
+  seleccionarPuesto(puesto: Puesto): void {
+    this.puestoSeleccionado = puesto || null;
+    this.asignacion.puesto = puesto?.id || 0;
+  }
+
+  private setPuestoSeleccionadoFromAsignacion(): void {
+    if (!this.asignacion.puesto) {
+      this.puestoSeleccionado = null;
+      return;
+    }
+    this.puestoSeleccionado = this.puestos.find(p => p.id === this.asignacion.puesto) || null;
   }
 
   filtrarClientes(value: string): void {
@@ -231,6 +265,8 @@ export class AsignacionFormComponent implements OnInit {
       this.asignacion.instalacion = 0;
       this.asignacion.puesto = 0;
       this.puestos = [];
+      this.puestosFiltrados = [];
+      this.puestoSeleccionado = null;
       this.personaSeleccionada = null;
       this.asignacion.persona = 0;
       this.personasFiltradas = this.getPersonasActivas();
@@ -239,6 +275,8 @@ export class AsignacionFormComponent implements OnInit {
     this.asignacion.instalacion = this.instalacionSeleccionada;
     this.asignacion.puesto = 0;
     this.puestos = [];
+    this.puestosFiltrados = [];
+    this.puestoSeleccionado = null;
     this.personaSeleccionada = null;
     this.asignacion.persona = 0;
     this.personasFiltradas = this.getPersonasActivas();
@@ -264,9 +302,11 @@ export class AsignacionFormComponent implements OnInit {
     this.puestoService.getPuestosPorInstalacion(instalacionId).subscribe({
       next: data => {
         this.puestos = data || [];
+        this.puestosFiltrados = this.puestos.slice();
         if (preselectPuestoId) {
           this.asignacion.puesto = preselectPuestoId;
         }
+        this.setPuestoSeleccionadoFromAsignacion();
       },
       error: err => console.error('Error al cargar puestos', err)
     });
