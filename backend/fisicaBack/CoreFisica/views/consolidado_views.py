@@ -59,7 +59,7 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
     if turno_val:
         consolidados_qs = consolidados_qs.filter(turno=turno_val)
 
-    consolidados_items = list(consolidados_qs.select_related('persona_ref'))
+    consolidados_items = list(consolidados_qs.select_related('persona_ref', 'provincia_ref'))
 
     consolidado_map = {}
     for c in consolidados_items:
@@ -100,6 +100,39 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
     for row in reporte_rows:
         asig_id = row.get('asignacion_id')
         if not asig_id:
+            is_base = str(row.get('descripcion') or '').strip().lower().startswith('libre en base')
+            if not is_base:
+                continue
+            nombre_apellidos = (row.get('nombre_apellidos') or '').strip()
+            provincia_val = (row.get('provincia') or 'SIN PROVINCIA').strip()
+            matching_cons = next(
+                (
+                    c for c in consolidados_items
+                    if c.tipo == TIPO_GUARDIA
+                    and not c.asignacion_ref_id
+                    and str(c.observacion or '').strip().lower().startswith('libre en base')
+                    and (getattr(getattr(c, 'provincia_ref', None), 'nombre', '') or 'SIN PROVINCIA').strip() == provincia_val
+                    and (str(c.puesto or '').strip() == nombre_apellidos or not str(c.puesto or '').strip())
+                ),
+                None
+            )
+            data.append({
+                'consolidado_id': matching_cons.id if matching_cons else None,
+                'fecha': fecha_obj.isoformat(),
+                'turno': turno_val or '',
+                'tipo': TIPO_GUARDIA,
+                'persona_ref_id': None,
+                'asignacion_ref_id': None,
+                'nominativo': row.get('codigo') or 'BASE',
+                'proyecto': row.get('cliente') or 'OCEANSECURITY',
+                'puesto': row.get('puesto') or nombre_apellidos or 'Libre en base',
+                'apellidos': nombre_apellidos,
+                'nombres': '',
+                'estado': row.get('estado') or '',
+                'observacion': (matching_cons.observacion if matching_cons else None) or (row.get('descripcion') or 'Libre en base'),
+                'zona': (row.get('zona_titulo') or 'SIN ZONA').strip(),
+                'provincia': provincia_val,
+            })
             continue
         cons = consolidado_map.get((TIPO_GUARDIA, asig_id))
         asig = asig_map.get(asig_id)

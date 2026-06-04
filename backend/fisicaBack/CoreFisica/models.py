@@ -640,6 +640,7 @@ class Consolidado(models.Model):
     tipo = models.CharField(max_length=10, choices=TIPOS, db_index=True)
     persona_ref = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True, related_name='consolidados')
     asignacion_ref = models.ForeignKey(Asignacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='consolidados')
+    provincia_ref = models.ForeignKey(Provincia, on_delete=models.SET_NULL, null=True, blank=True, related_name='consolidados')
     nominativo = models.CharField(max_length=50, blank=True, null=True)
     proyecto = models.CharField(max_length=120, blank=True, null=True)
     puesto = models.CharField(max_length=120, blank=True, null=True)

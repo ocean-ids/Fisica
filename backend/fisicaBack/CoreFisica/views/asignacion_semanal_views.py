@@ -74,6 +74,10 @@ def _parse_sacafranco_token(value):
         return 'empty', None, None, None
     if raw == 'F':
         return 'free', None, None, None
+    if raw == 'DB':
+        return 'base_free', 'Diurno', 'BASE', None
+    if raw == 'NB':
+        return 'base_free', 'Nocturno', 'BASE', None
     match = SACAFRANCO_TOKEN_REGEX.fullmatch(raw)
     if match:
         prefix = match.group('prefix')
@@ -160,11 +164,27 @@ def _validate_sacafranco_tokens(data, week_start_date):
             continue
 
         if token_type == 'invalid':
-            return f"Token inválido en {day_key.upper()}: '{raw_value}'. Use F o D/N + código y opcional #n (ej: DG5, NG28, DAQ1#2).", None
+            return (
+                f"Token inválido en {day_key.upper()}: '{raw_value}'. "
+                "Use F, NB, DB o D/N + código y opcional #n "
+                "(ej: DG5, NG28, DAQ1#2)."
+            ), None
 
         target_date = _get_calendar_day_date(week_start_date, day_key)
         if not target_date:
             return f"No se pudo resolver la fecha para {day_key.upper()}", None
+
+        if token_type == 'base_free':
+            resolved[day_key] = {
+                'token': raw_value,
+                'turno': token_turno,
+                'code': token_code,
+                'index': token_index,
+                'date': target_date,
+                'asignacion': None,
+                'mode': 'BASE_FREE',
+            }
+            continue
 
         qs = Asignacion.objects.select_related('puesto', 'horario', 'instalacion').prefetch_related('puesto__horarios').filter(
             estado='ACTIVO',
@@ -205,6 +225,7 @@ def _validate_sacafranco_tokens(data, week_start_date):
             'index': token_index,
             'date': target_date,
             'asignacion': selected,
+            'mode': 'COVERAGE',
         }
 
     return None, resolved
@@ -221,13 +242,15 @@ def _is_manual_historial_entry(entry):
 
 def _sync_sacafranco_to_reporte_y_consolidado(sacafranco_fila_id, week_start_date, payload, resolved_tokens):
     try:
-        fila = SacafrancoFila.objects.select_related('persona').get(id=sacafranco_fila_id)
+        fila = SacafrancoFila.objects.select_related('persona', 'provincia').get(id=sacafranco_fila_id)
     except SacafrancoFila.DoesNotExist:
         return
 
     persona = getattr(fila, 'persona', None)
     if not persona:
         return
+    provincia_id = getattr(fila, 'provincia_id', None) or getattr(persona, 'provincia_id', None)
+    persona_full_name = f"{persona.nombres} {persona.apellidos}".strip() or 'Libre en base'
 
     for day_key in DAY_INDEX_TO_KEY:
         if day_key not in payload:
@@ -236,10 +259,60 @@ def _sync_sacafranco_to_reporte_y_consolidado(sacafranco_fila_id, week_start_dat
         if not info:
             continue
 
-        asig = info.get('asignacion')
+        mode = info.get('mode')
         target_date = info.get('date')
-        token = str(info.get('token') or '').strip().upper()
         turno = info.get('turno')
+
+        if mode == 'BASE_FREE':
+            if not target_date or turno not in ['Diurno', 'Nocturno']:
+                continue
+
+            cons = Consolidado.objects.filter(
+                fecha=target_date,
+                turno=turno,
+                tipo='GUARDIA',
+                asignacion_ref__isnull=True,
+                persona_ref__isnull=True,
+                nominativo='BASE',
+                provincia_ref_id=provincia_id,
+                puesto=persona_full_name,
+            ).first()
+            if not cons:
+                # Backward compatibility: migrate legacy single-row BASE entries.
+                cons = Consolidado.objects.filter(
+                    fecha=target_date,
+                    turno=turno,
+                    tipo='GUARDIA',
+                    asignacion_ref__isnull=True,
+                    persona_ref__isnull=True,
+                    nominativo='BASE',
+                    provincia_ref_id=provincia_id,
+                    observacion='Libre en base',
+                ).filter(
+                    Q(puesto__isnull=True) | Q(puesto='') | Q(puesto='Libre en base')
+                ).first()
+            if cons:
+                cons.proyecto = 'OCEANSECURITY'
+                cons.puesto = persona_full_name
+                cons.observacion = 'Libre en base'
+                cons.save()
+            else:
+                Consolidado.objects.create(
+                    fecha=target_date,
+                    turno=turno,
+                    tipo='GUARDIA',
+                    persona_ref=None,
+                    asignacion_ref=None,
+                    provincia_ref_id=provincia_id,
+                    nominativo='BASE',
+                    proyecto='OCEANSECURITY',
+                    puesto=persona_full_name,
+                    observacion='Libre en base',
+                )
+            continue
+
+        asig = info.get('asignacion')
+        token = str(info.get('token') or '').strip().upper()
         if not asig or not target_date or not token or turno not in ['Diurno', 'Nocturno']:
             continue
 
@@ -351,25 +424,44 @@ def _sync_sacafranco_to_reporte_y_consolidado(sacafranco_fila_id, week_start_dat
 def _cleanup_auto_sacafranco_from_token_map(sacafranco_fila_id, week_start_date, token_map):
     """Remove auto-generated historial/consolidado rows for provided old tokens.
 
-    token_map format: { 'mon': 'DA1', 'tue': 'F', ... }
-    Only coverage tokens D*/N* are considered.
+    token_map format: { 'mon': 'DA1', 'tue': 'F', 'wed': 'DB', ... }
     """
     try:
-        fila = SacafrancoFila.objects.select_related('persona').get(id=sacafranco_fila_id)
+        fila = SacafrancoFila.objects.select_related('persona', 'provincia').get(id=sacafranco_fila_id)
     except SacafrancoFila.DoesNotExist:
         return
 
     persona = getattr(fila, 'persona', None)
     if not persona:
         return
+    provincia_id = getattr(fila, 'provincia_id', None) or getattr(persona, 'provincia_id', None)
+    persona_full_name = f"{persona.nombres} {persona.apellidos}".strip() or 'Libre en base'
 
     for day_key, token_value in (token_map or {}).items():
         token_type, token_turno, token_code, token_index = _parse_sacafranco_token(token_value)
-        if token_type != 'coverage' or token_turno not in ['Diurno', 'Nocturno']:
-            continue
-
         target_date = _get_calendar_day_date(week_start_date, day_key)
         if not target_date:
+            continue
+
+        if token_type == 'base_free' and token_turno in ['Diurno', 'Nocturno']:
+            Consolidado.objects.filter(
+                fecha=target_date,
+                turno=token_turno,
+                tipo='GUARDIA',
+                asignacion_ref__isnull=True,
+                persona_ref__isnull=True,
+                nominativo='BASE',
+                provincia_ref_id=provincia_id,
+                observacion='Libre en base',
+            ).filter(
+                Q(puesto=persona_full_name)
+                | Q(puesto__isnull=True)
+                | Q(puesto='')
+                | Q(puesto='Libre en base')
+            ).delete()
+            continue
+
+        if token_type != 'coverage' or token_turno not in ['Diurno', 'Nocturno']:
             continue
 
         token_raw = str(token_value or '').strip().upper()

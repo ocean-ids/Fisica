@@ -136,7 +136,9 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   private buildReporteAgrupado(): ReporteAsistenciaGrupoZona[] {
     const zonas: Record<string, Record<string, ReporteAsistenciaRow[]>> = {};
     for (const row of this.reporte) {
-      if (!row.asignacion_id) {
+      const isBaseLibre = !row.asignacion_id
+        && (row.descripcion || '').toString().trim().toLowerCase().includes('libre en base');
+      if (!row.asignacion_id && !isBaseLibre) {
         continue;
       }
       let zona = (row.zona_titulo || '').trim() || 'SIN ZONA';

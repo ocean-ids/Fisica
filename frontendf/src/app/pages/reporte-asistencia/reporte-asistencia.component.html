@@ -107,8 +107,7 @@
                         <ng-container *ngFor="let r of prov.rows">
                         <tr class="text-center align-middle" (dblclick)="onRowDoubleClick(r)">
                             <td [style.backgroundColor]="getRowColor(r)">
-                                <ng-container *ngIf="r.asignacion_id; else noCodigo">{{ r.codigo || '-' }}</ng-container>
-                                <ng-template #noCodigo>-</ng-template>
+                                {{ r.codigo || '-' }}
                             </td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.cliente || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto || '-' }}</td>
@@ -126,8 +125,7 @@
                             </td>
                             
                             <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">
-                                <ng-container *ngIf="r.asignacion_id; else noDescripcion">{{ r.descripcion || '-' }}</ng-container>
-                                <ng-template #noDescripcion>-</ng-template>
+                                {{ r.descripcion || '-' }}
                             </td>
                             <td class="text-start d-none d-lg-table-cell" style="font-size: 0.85rem;" [style.backgroundColor]="getRowColor(r)">
                                 <div><strong>{{ r.modificado_por || '-' }}</strong></div>
