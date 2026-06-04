@@ -186,7 +186,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       if (!selectedColor || !row.asignacion_id) return;
 
       const payload = {
-        row_color: selectedColor
+        row_color: selectedColor,
+        fecha: this.filtroFecha || null,
       };
 
       this.reporteSvc.updateReporteAsistencia(row.asignacion_id, payload).subscribe({

@@ -969,13 +969,16 @@ def insertar_reporte_asistencia(request, asignacion_id):
             val = request.data.get(field) or None
             setattr(override, field, val)
 
-    fecha_param = request.data.get('fecha')
-    fecha_reporte = None
-    if fecha_param:
-        try:
-            fecha_reporte = datetime.date.fromisoformat(str(fecha_param))
-        except ValueError:
+    fecha_reporte = override.fecha_reporte
+    if 'fecha' in request.data:
+        fecha_param = request.data.get('fecha')
+        if fecha_param in [None, '', 'null']:
             fecha_reporte = None
+        else:
+            try:
+                fecha_reporte = datetime.date.fromisoformat(str(fecha_param))
+            except ValueError:
+                fecha_reporte = None
 
     reemplazo_result, err = _resolver_reemplazo_desde_request(
         request,
