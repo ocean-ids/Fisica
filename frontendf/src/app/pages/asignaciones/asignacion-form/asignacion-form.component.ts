@@ -244,11 +244,17 @@ export class AsignacionFormComponent implements OnInit {
     const provinciaId = this.getProvinciaIdFromInstalacion();
     const cantonId = this.getCantonIdFromInstalacion();
 
+    const tiposPermitidos = new Set([
+      'FIJOS',
+      'SUPERVISOR MOTORIZADO',
+      'SUPERVISOR ZONAL',
+    ]);
+
     return this.personas.filter(persona => {
       const tipo = (persona.tipo || '').toString().toUpperCase();
-      if (persona.is_active === false || tipo !== 'FIJOS') return false;
+      if (persona.is_active === false || !tiposPermitidos.has(tipo)) return false;
 
-      if (provinciaId && persona.provincia  && persona.provincia!== provinciaId) return false;
+      if (provinciaId && persona.provincia && persona.provincia !== provinciaId) return false;
       if (cantonId && persona.canton && persona.canton !== cantonId) return false;
 
       return true;
