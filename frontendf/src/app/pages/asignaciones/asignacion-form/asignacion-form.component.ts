@@ -23,6 +23,7 @@ export interface AsignacionFormData {
   clienteSeleccionado: number | null;
   instalacionSeleccionada: number | null;
   occupiedPuestoIds?: number[];
+  assignedPersonaIds?: number[];
 }
 
 export interface AsignacionFormResult {
@@ -65,6 +66,7 @@ export class AsignacionFormComponent implements OnInit {
   puestoSeleccionado: Puesto | null = null;
   puestosFiltrados: Puesto[] = [];
   occupiedPuestoIds = new Set<number>();
+  assignedPersonaIds = new Set<number>();
 
   personaSeleccionada: Persona | null = null;
   personasFiltradas: Persona[] = [];
@@ -92,6 +94,11 @@ export class AsignacionFormComponent implements OnInit {
     this.instalacionSeleccionada = data.instalacionSeleccionada ?? null;
     this.occupiedPuestoIds = new Set(
       (data.occupiedPuestoIds || [])
+        .map(id => Number(id))
+        .filter(id => Number.isFinite(id) && id > 0)
+    );
+    this.assignedPersonaIds = new Set(
+      (data.assignedPersonaIds || [])
         .map(id => Number(id))
         .filter(id => Number.isFinite(id) && id > 0)
     );
@@ -231,6 +238,12 @@ export class AsignacionFormComponent implements OnInit {
   private setClienteSeleccionadoFromAsignacion(): void {
     if (!this.clienteSeleccionado) return;
     this.clienteSeleccionadoObj = this.clientes.find(c => c.id === this.clienteSeleccionado) || null;
+  }
+
+  isPersonaAssigned(persona: Persona): boolean {
+    if (!persona?.id) return false;
+    if (this.personaSeleccionada?.id === persona.id) return false;
+    return this.assignedPersonaIds.has(Number(persona.id));
   }
 
   formatPersonaLabel(persona: Persona): string {

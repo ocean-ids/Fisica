@@ -1584,7 +1584,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         patrones: this.patrones,
         clienteSeleccionado: this.clienteSeleccionado,
         instalacionSeleccionada: this.instalacionSeleccionada,
-        occupiedPuestoIds: this.getOccupiedPuestoIds()
+        occupiedPuestoIds: this.getOccupiedPuestoIds(),
+        assignedPersonaIds: this.getAssignedPersonaIds()
       }
     });
 
@@ -1694,7 +1695,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         patrones: this.patrones,
         clienteSeleccionado: this.clienteSeleccionado,
         instalacionSeleccionada: this.instalacionSeleccionada,
-        occupiedPuestoIds: this.getOccupiedPuestoIds(asignacion.id)
+        occupiedPuestoIds: this.getOccupiedPuestoIds(asignacion.id),
+        assignedPersonaIds: this.getAssignedPersonaIds(asignacion.id)
       }
     });
 
@@ -1708,6 +1710,20 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.textoBotonAsignacion = 'Actualizar';
       this.guardarAsignacion();
     });
+  }
+
+  private getAssignedPersonaIds(excludeAsignacionId?: number): number[] {
+    const list = Array.isArray(this.asignaciones) ? this.asignaciones : [];
+    const ids = list
+      .filter((a: Asignacion) => {
+        if (!a?.persona) return false;
+        if (excludeAsignacionId && a.id === excludeAsignacionId) return false;
+        if (a?.estado && String(a.estado).toUpperCase() !== 'ACTIVO') return false;
+        return true;
+      })
+      .map((a: Asignacion) => Number(a.persona))
+      .filter((id: number) => Number.isFinite(id) && id > 0);
+    return Array.from(new Set(ids));
   }
 
   private getOccupiedPuestoIds(excludeAsignacionId?: number): number[] {
