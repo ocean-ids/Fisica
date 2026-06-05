@@ -355,6 +355,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
         asignaciones = asignaciones.filter(filtros).distinct()
     
     canton_page = request.GET.get('canton_page')
+    restore_canton_id = request.GET.get('restore_canton_id')
     if canton_page:
         try:
             cant_page = int(canton_page)
@@ -389,6 +390,15 @@ def obtener_asignaciones(request, mes=None, anio=None):
             seen.add(cid)
             ordered.append(cid)
         ordered.sort(key=lambda v: (v is None, v if v is not None else 999999))
+
+        # Si se pide restaurar un cantón específico, encontrar su página
+        if restore_canton_id:
+            try:
+                restore_id = int(restore_canton_id)
+                if restore_id in ordered:
+                    cant_page = ordered.index(restore_id) + 1
+            except (TypeError, ValueError):
+                pass
 
         total_cantones = len(ordered)
         if total_cantones == 0:

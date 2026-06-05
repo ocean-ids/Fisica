@@ -375,11 +375,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.cargarCatalogos();
-    
+
     this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
-    // inicializar semanas para el mes actual para que el ngFor tenga datos
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
     this.buildCalendarWeekDayKeys();
+
     this.cargarAsignaciones();
 
     this.filterSub = this.globalFilter.state$
@@ -446,13 +446,22 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   prevPage(): void {
     if (this.provinciaPage <= 1) return;
     this.provinciaPage -= 1;
+    this._persistCantonPage();
     this.cargarAsignaciones();
   }
 
   nextPage(): void {
     if (this.provinciaPage >= this.getTotalPages()) return;
     this.provinciaPage += 1;
+    this._persistCantonPage();
     this.cargarAsignaciones();
+  }
+
+  private _persistCantonPage(): void {
+    const canton = this.cantonesDisponibles?.[this.provinciaPage - 1];
+    if (canton?.id != null) {
+      localStorage.setItem('asig_canton_id', String(canton.id));
+    }
   }
 
   // hideMultipleSelectionIndicator se utiliza para ocultar el indicador de selección múltiple en la vista, devolviendo siempre true para indicar que no se deben mostrar indicadores adicionales incluso si hay múltiples elementos seleccionados
@@ -619,6 +628,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     }
     params.lite = true;
     params.canton_page = this.provinciaPage;
+    const savedCantonId = localStorage.getItem('asig_canton_id');
+    if (savedCantonId && this.provinciaPage === 1) {
+      params.restore_canton_id = savedCantonId;
+    }
 
     this.asignacionService
       .obtenerAsignacionesPaginadas(this.mes, this.anio, params)
@@ -1078,6 +1091,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     if (idx < 0) return;
     this.provinciaPage = idx + 1;
     this.activeProvinciaId = targetId;
+    localStorage.setItem('asig_canton_id', String(targetId));
     this.cargarAsignaciones();
   }
 
