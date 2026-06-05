@@ -1509,8 +1509,27 @@ def exportar_asignaciones_excel(request):
         Q(mes=month, anio=year) |
         (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
     ).select_related('horario', 'cliente', 'puesto', 'persona', 'instalacion').prefetch_related('puesto__horarios')
-    # Precachear AsignacionSemanal por puesto y week_start para eficiencia
+    asignaciones = list(asignaciones)
+
+    # Pre-cargar AsignacionSemanal del mes en una sola consulta para evitar N x dias queries.
     semanal_cache = {}
+    asignacion_ids = {getattr(a, 'id', None) for a in asignaciones if getattr(a, 'id', None)}
+    puesto_ids = {getattr(a, 'puesto_id', None) for a in asignaciones if getattr(a, 'puesto_id', None)}
+    week_starts = set()
+    for d in dates:
+        week_index = (d.day - 1) // 7
+        week_starts.add(first_day + datetime.timedelta(days=week_index * 7))
+        week_starts.add(d - datetime.timedelta(days=d.weekday()))
+
+    if week_starts and (asignacion_ids or puesto_ids):
+        semanales = AsignacionSemanal.objects.filter(week_start__in=week_starts).filter(
+            Q(asignacion_id__in=asignacion_ids) | Q(puesto_id__in=puesto_ids)
+        )
+        for s in semanales:
+            if getattr(s, 'asignacion_id', None):
+                semanal_cache[('a', s.asignacion_id, s.week_start)] = s
+            if getattr(s, 'puesto_id', None):
+                semanal_cache[('p', s.puesto_id, s.week_start)] = s
 
     def build_resumen(puesto):
         try:
@@ -1771,50 +1790,17 @@ def exportar_asignaciones_excel(request):
                     week_start = first_day + datetime.timedelta(days=week_index * 7)
                     legacy_week_start = d - datetime.timedelta(days=d.weekday())
                     puesto_id = getattr(asignacion.puesto, 'id', getattr(asignacion, 'puesto_id', None))
-                    semanal = None
                     asign_key = ('a', getattr(asignacion, 'id', None), week_start)
-                    if asign_key in semanal_cache:
-                        semanal = semanal_cache[asign_key]
-                    else:
-                        try:
-                            if getattr(asignacion, 'id', None):
-                                semanal = AsignacionSemanal.objects.filter(asignacion_id=asignacion.id, week_start=week_start).first()
-                                if not semanal:
-                                    legacy_asign_key = ('a', getattr(asignacion, 'id', None), legacy_week_start)
-                                    if legacy_asign_key in semanal_cache:
-                                        semanal = semanal_cache[legacy_asign_key]
-                                    else:
-                                        semanal = AsignacionSemanal.objects.filter(
-                                            asignacion_id=asignacion.id,
-                                            week_start=legacy_week_start
-                                        ).first()
-                                        semanal_cache[legacy_asign_key] = semanal
-                            else:
-                                semanal = None
-                        except Exception:
-                            semanal = None
-                        semanal_cache[asign_key] = semanal
+                    legacy_asign_key = ('a', getattr(asignacion, 'id', None), legacy_week_start)
+                    puesto_key = ('p', puesto_id, week_start)
+                    legacy_puesto_key = ('p', puesto_id, legacy_week_start)
 
-                    if not semanal:
-                        puesto_key = ('p', puesto_id, week_start)
-                        if puesto_key in semanal_cache:
-                            semanal = semanal_cache[puesto_key]
-                        else:
-                            try:
-                                semanal = AsignacionSemanal.objects.filter(puesto_id=puesto_id, week_start=week_start).first()
-                                if not semanal:
-                                    legacy_puesto_key = ('p', puesto_id, legacy_week_start)
-                                    if legacy_puesto_key in semanal_cache:
-                                        semanal = semanal_cache[legacy_puesto_key]
-                                    else:
-                                        semanal = AsignacionSemanal.objects.filter(
-                                            puesto_id=puesto_id,
-                                            week_start=legacy_week_start
-                                        ).first()
-                                        semanal_cache[legacy_puesto_key] = semanal
-                            except Exception:
-                                semanal = None
-                            semanal_cache[puesto_key] = semanal
+                    semanal = (
+                        semanal_cache.get(asign_key)
+                        or semanal_cache.get(legacy_asign_key)
+                        or semanal_cache.get(puesto_key)
+                        or semanal_cache.get(legacy_puesto_key)
+                    )
 
                     val = ''
                     if semanal:
@@ -1899,7 +1885,7 @@ def exportar_asignaciones_excel(request):
         build_sheet(ws_prov, sheet_title, prov_rows)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename=reporte_asignaciones_calendario_{year}_{month}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="reporte_asignaciones_calendario_{year}_{month}.xlsx"'
     output = BytesIO()
     wb.save(output)
     output.seek(0)
