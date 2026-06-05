@@ -708,6 +708,33 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"Perfil {self.user_id}"
 
+
+class AsignacionCalendarioLog(models.Model):
+    asignacion = models.ForeignKey(
+        'Asignacion', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='logs_calendario'
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True
+    )
+    week_start = models.DateField()
+    dia = models.CharField(max_length=3)
+    valor_anterior = models.CharField(max_length=10, blank=True)
+    valor_nuevo = models.CharField(max_length=10, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado_en']
+        indexes = [
+            models.Index(fields=['-creado_en']),
+            models.Index(fields=['asignacion', 'week_start']),
+            models.Index(fields=['usuario']),
+        ]
+
+    def __str__(self):
+        return f"{self.creado_en:%Y-%m-%d %H:%M} | {self.dia} | {self.valor_anterior}→{self.valor_nuevo}"
+
     
 
 

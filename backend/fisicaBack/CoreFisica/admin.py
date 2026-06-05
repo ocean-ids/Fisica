@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, Consolidado, UserProfile
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, Consolidado, UserProfile, AsignacionCalendarioLog
 
 admin.site.site_header = 'Seguridad Física'
 admin.site.site_title = 'Seguridad Física'
@@ -128,9 +128,24 @@ class ReporteAsistenciaAdmin(admin.ModelAdmin):
 
 @admin.register(ReporteAsistenciaHistorial)
 class ReporteAsistenciaHistorialAdmin(admin.ModelAdmin):
-	list_display = ('reporte', 'usuario', 'creado_en')
-	search_fields = ('reporte__codigo', 'usuario__username')
-	list_filter = ('creado_en',)
+	list_display  = ('creado_en', 'fecha_reporte', 'get_persona', 'usuario', 'estado_asistencia', 'estado', 'reemplazo', 'descripcion')
+	list_filter   = ('fecha_reporte', 'estado_asistencia', 'estado', 'usuario')
+	search_fields = ('asignacion__persona__nombres', 'asignacion__persona__apellidos', 'asignacion__persona__cedula', 'usuario__username', 'reemplazo__nombres', 'reemplazo__apellidos', 'descripcion')
+	readonly_fields = ('reporte', 'asignacion', 'fecha_reporte', 'usuario', 'codigo', 'estado', 'estado_asistencia', 'reemplazo', 'descripcion', 'row_color', 'creado_en')
+	date_hierarchy = 'creado_en'
+
+	def get_persona(self, obj):
+		p = getattr(getattr(obj, 'asignacion', None), 'persona', None)
+		if not p:
+			return '-'
+		return f"{p.apellidos} {p.nombres}"
+	get_persona.short_description = 'Persona'
+
+	def has_add_permission(self, request):
+		return False
+
+	def has_change_permission(self, request, obj=None):
+		return False
 
 @admin.register(Consolidado)
 class ConsolidadoAdmin(admin.ModelAdmin):
@@ -152,6 +167,21 @@ class ConsolidadoAdmin(admin.ModelAdmin):
 
 	def has_delete_permission(self, request, obj=None):
 		return request.user.has_perm('CoreFisica.delete_consolidado')
+
+@admin.register(AsignacionCalendarioLog)
+class AsignacionCalendarioLogAdmin(admin.ModelAdmin):
+	list_display  = ('creado_en', 'dia', 'asignacion', 'usuario', 'valor_anterior', 'valor_nuevo', 'week_start')
+	list_filter   = ('dia', 'usuario', 'creado_en')
+	search_fields = ('asignacion__id', 'usuario__username', 'valor_nuevo', 'valor_anterior')
+	readonly_fields = ('asignacion', 'usuario', 'week_start', 'dia', 'valor_anterior', 'valor_nuevo', 'creado_en')
+	date_hierarchy = 'creado_en'
+
+	def has_add_permission(self, request):
+		return False
+
+	def has_change_permission(self, request, obj=None):
+		return False
+
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):

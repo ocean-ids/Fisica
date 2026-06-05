@@ -7,6 +7,7 @@ from ..models import (
     ReporteAsistencia,
     ReporteAsistenciaHistorial,
     Consolidado,
+    AsignacionCalendarioLog,
 )
 from django.db.models import Q
 from django.http import JsonResponse
@@ -1394,9 +1395,13 @@ def crear_o_actualizar_asignacion_semanal(request):
                 defaults={**defaults, 'puesto_id': effective_puesto_id}
             )
 
+            # Capturar valores anteriores antes de modificar
+            dias = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+            valores_anteriores = {d: str(getattr(obj, d, '') or '') for d in dias}
+
             # Si no se creó (existía), actualizar campos proporcionados y ligar asignacion si se indicó
             if not created:
-                for d in ['mon','tue','wed','thu','fri','sat','sun']:
+                for d in dias:
                     if d in data:
                         setattr(obj, d, data.get(d) or '')
                 if getattr(obj, 'asignacion_id', None) != int(effective_asignacion_id):
@@ -1404,6 +1409,23 @@ def crear_o_actualizar_asignacion_semanal(request):
                 if effective_puesto_id and getattr(obj, 'puesto_id', None) != int(effective_puesto_id):
                     obj.puesto_id = effective_puesto_id
                 obj.save()
+
+            logs = []
+            for d in dias:
+                if d in data:
+                    nuevo = str(data.get(d) or '')
+                    anterior = valores_anteriores[d] if not created else ''
+                    if nuevo != anterior:
+                        logs.append(AsignacionCalendarioLog(
+                            asignacion_id=effective_asignacion_id,
+                            usuario=request.user if request.user.is_authenticated else None,
+                            week_start=ws,
+                            dia=d,
+                            valor_anterior=anterior,
+                            valor_nuevo=nuevo,
+                        ))
+            if logs:
+                AsignacionCalendarioLog.objects.bulk_create(logs)
 
             serializer = AsignacionSemanalSerializer(obj)
             return Response({'created': created, 'result': serializer.data}, status=status.HTTP_200_OK)
