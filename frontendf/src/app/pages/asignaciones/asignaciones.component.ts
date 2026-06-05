@@ -832,11 +832,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           ? this.buildRangeMap(startDate, endDate, tokens, anchor, true)
           : backendMap;
         this.applyRangeToBackend(row, backendMap, isSacafranco);
-        if (isSacafranco) {
-          this.applyRangeToCalendarData(row, uiMap);
-        } else {
-          this.applyRangeToCurrentWeek(row, weekStart, uiMap);
-        }
+        this.applyRangeToCalendarData(row, uiMap);
       }, 0);
     });
   }
@@ -978,15 +974,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     if (byAsignacion && weekMap[byAsignacion]) return weekMap[byAsignacion];
     if (byPuesto && weekMap[byPuesto]) return weekMap[byPuesto];
     return {};
-  }
-
-  private applyRangeToCurrentWeek(row: any, weekStart: string, rangeMap: Record<string, Record<string, string>>): void {
-    const weekDays = rangeMap[weekStart] || {};
-    const calRow = this.getCalendarRow(row, weekStart);
-    if (!calRow) return;
-    Object.keys(weekDays).forEach(k => {
-      calRow[k] = weekDays[k];
-    });
   }
 
   private applyRangeToCalendarData(row: any, rangeMap: Record<string, Record<string, string>>): void {
