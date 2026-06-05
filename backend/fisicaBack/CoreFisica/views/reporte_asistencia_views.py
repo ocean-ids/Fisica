@@ -815,6 +815,8 @@ def _build_reporte_asistencia_data(
             month_base = fecha_obj.replace(day=1)
             week_start_month = month_base + datetime.timedelta(days=((fecha_obj.day - 1) // 7) * 7)
             week_start_iso = fecha_obj - datetime.timedelta(days=fecha_obj.weekday())
+            zona_filter_norm = _normalize_zona_filter(zona) if zona else ''
+            base_context_cache = {}
 
             sac_qs = SacafrancoFilaSemanal.objects.select_related(
                 'sacafranco_fila', 'sacafranco_fila__persona', 'sacafranco_fila__provincia'
@@ -839,12 +841,16 @@ def _build_reporte_asistencia_data(
                 provincia_nombre = getattr(provincia_obj, 'nombre', None) or 'SIN PROVINCIA'
                 persona_nombre = f"{persona.nombres} {persona.apellidos}".strip()
 
-                ctx = _resolve_base_context(
-                    provincia_id_val=provincia_id_val,
-                    target_date=fecha_obj,
-                    target_turno=turno,
-                    zona_filter=_normalize_zona_filter(zona) if zona else '',
-                )
+                cache_key = (provincia_id_val, turno, fecha_obj, zona_filter_norm)
+                ctx = base_context_cache.get(cache_key)
+                if not ctx:
+                    ctx = _resolve_base_context(
+                        provincia_id_val=provincia_id_val,
+                        target_date=fecha_obj,
+                        target_turno=turno,
+                        zona_filter=zona_filter_norm,
+                    )
+                    base_context_cache[cache_key] = ctx
 
                 data.append({
                     'asignacion_id': None,
@@ -861,7 +867,7 @@ def _build_reporte_asistencia_data(
                     'modificado_por': '',
                     'row_color': '',
                     'modificado_en': None,
-                    'zona_titulo': ctx.get('zona_titulo') or (_normalize_zona_filter(zona) if zona else 'SIN ZONA'),
+                    'zona_titulo': ctx.get('zona_titulo') or (zona_filter_norm or 'SIN ZONA'),
                     'provincia': provincia_nombre,
                 })
 
