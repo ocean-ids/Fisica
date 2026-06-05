@@ -161,7 +161,12 @@
                       </div>
                     </mat-menu>
                   </td>
-                  <td *ngIf="!columnaOculta('persona')" class="text-wrap align-middle overflow-hidden" style="min-width: 180px; height: 70px;">
+                  <td
+                    *ngIf="!columnaOculta('persona')"
+                    class="text-wrap align-middle overflow-hidden"
+                    style="min-width: 180px; height: 70px;"
+                    [style.backgroundColor]="row.asig.cedula_color || ''"
+                    (dblclick)="onPersonaColorDblClick($event, row.asig)">
                       <div>
                         {{ row.asig.persona_detalle?.apellidos }}
                       </div>

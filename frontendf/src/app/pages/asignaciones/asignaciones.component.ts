@@ -483,7 +483,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   //abrirColorCedula se encarga de abrir un diálogo para seleccionar el color de la cédula de una asignación específica, permitiendo al usuario elegir un color de una paleta predefinida y luego actualizando la asignación con el color seleccionado a través del servicio correspondiente
   abrirColorCedula(asig: Asignacion): void {
-    if (!asig?.id) return;
+    if (!asig?.id || !asig.persona_detalle) return;
     const dialogRef = this.dialog.open(ReporteAsistenciaColorDialogComponent, {
       width: '420px',
       maxWidth: '95vw',
@@ -502,6 +502,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         error: (err) => console.error('Error al actualizar color de cédula:', err)
       });
     });
+  }
+
+  onPersonaColorDblClick(event: MouseEvent, asig: Asignacion): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.abrirColorCedula(asig);
   }
 
   //totalColumns se encarga de calcular el número total de columnas que se deben mostrar en la tabla de asignaciones, teniendo en cuenta las columnas ocultas y si la columna de puesto está visible, para así ajustar dinámicamente el diseño de la tabla según las preferencias del usuario
