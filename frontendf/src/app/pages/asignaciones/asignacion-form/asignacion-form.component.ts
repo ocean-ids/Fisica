@@ -105,10 +105,8 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (!this.asignacion.start_date) {
-      const today = new Date();
-      this.asignacion.start_date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
-    }
+    const today = new Date();
+    this.asignacion.start_date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
     this.clientesFiltrados = this.clientes.slice();
     this.setClienteSeleccionadoFromAsignacion();
     this.personasFiltradas = this.getPersonasActivas();
