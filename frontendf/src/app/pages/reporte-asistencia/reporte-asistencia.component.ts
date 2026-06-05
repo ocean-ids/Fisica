@@ -90,9 +90,30 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     
   ) {}
 
+  _saveFilters(): void {
+    localStorage.setItem('reporte_filtros', JSON.stringify({
+      fecha: this.filtroFecha,
+      turno: this.filtroTurno,
+      zona: this.filtroZona,
+      pageSize: this.pageSize
+    }));
+  }
+
   ngOnInit(): void {
     this.setHoy();
     this.filtroTurno = 'Diurno';
+
+    const saved = localStorage.getItem('reporte_filtros');
+    if (saved) {
+      try {
+        const f = JSON.parse(saved);
+        if (f.fecha) { this.filtroFecha = f.fecha; this.filtroFechaDisplay = f.fecha.split('-').reverse().join('/'); }
+        if (f.turno) this.filtroTurno = f.turno;
+        if (f.zona !== undefined) this.filtroZona = f.zona;
+        if (f.pageSize) this.pageSize = f.pageSize;
+      } catch {}
+    }
+
     this.cargarReporte();
 
     this.filterSub = this.globalFilter.state$
@@ -404,12 +425,14 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     const iso = (event.target as HTMLInputElement).value;
     this.filtroFecha = iso || '';
     this.filtroFechaDisplay = iso ? iso.split('-').reverse().join('/') : '';
+    this._saveFilters();
     this.cargarReporte(true);
   }
 
   onZonaChange(event: Event): void {
     const zona = (event.target as HTMLSelectElement).value || '';
     this.filtroZona = zona;
+    this._saveFilters();
     this.cargarReporte(true);
   }
 
@@ -417,6 +440,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     const size = Number((event.target as HTMLSelectElement).value);
     if (!size || size < 1) return;
     this.pageSize = size;
+    this._saveFilters();
     this.cargarReporte(true);
   }
 

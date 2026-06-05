@@ -59,9 +59,28 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
     private router: Router
   ) {}
 
+  _saveFilters(): void {
+    localStorage.setItem('consolidado_filtros', JSON.stringify({
+      fecha: this.filtroFecha,
+      turno: this.filtroTurno,
+      zona: this.filtroZona
+    }));
+  }
+
   ngOnInit(): void {
     this.setHoy();
     this.filtroTurno = 'Diurno';
+
+    const saved = localStorage.getItem('consolidado_filtros');
+    if (saved) {
+      try {
+        const f = JSON.parse(saved);
+        if (f.fecha) this.filtroFecha = f.fecha;
+        if (f.turno) this.filtroTurno = f.turno;
+        if (f.zona !== undefined) this.filtroZona = f.zona;
+      } catch {}
+    }
+
     this.cargar();
 
     this.filterSub = this.globalFilter.state$
@@ -89,6 +108,7 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
   onFechaChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.filtroFecha = input.value;
+    this._saveFilters();
     this.cargar();
   }
 
