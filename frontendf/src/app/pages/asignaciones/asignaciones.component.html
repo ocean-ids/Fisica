@@ -213,6 +213,7 @@
                                 [ngModel]="calRow[dayKey]"
                                 (input)="onCalendarCellChange(row, ws, dayKey, $any($event.target).value)"
                                 (dblclick)="openRangeModal(row, ws, dayKey, false)"
+                                [disabled]="isPastMonth()"
                                 [ngModelOptions]="{standalone:true}">
                             </div>
                           </ng-container>
@@ -277,6 +278,7 @@
                                 [ngModel]="calRow[dayKey]"
                                 (input)="onSacafrancoCalendarCellChange(row, ws, dayKey, $any($event.target).value)"
                                 (dblclick)="openRangeModal(row, ws, dayKey, true)"
+                                [disabled]="isPastMonth()"
                                 [ngModelOptions]="{standalone:true}">
                             </div>
                           </ng-container>

@@ -1005,16 +1005,75 @@ def editar_servicio(request, id):
     except Asignacion.DoesNotExist:
         return Response({'error': 'Asignación no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
+    old_persona_id = asignacion.persona_id
     old_patron_id = getattr(asignacion, 'patronAsignacion_id', None)
     data = request.data.copy()
     reset_calendar_raw = data.get('reset_calendar', None)
     if 'reset_calendar' in data:
         data.pop('reset_calendar')
     reset_calendar = str(reset_calendar_raw).strip().lower() in ('1', 'true', 'yes', 'y', 'si', 'sí')
+
+    # Detectar cambio de persona
+    new_persona_raw = data.get('persona')
+    try:
+        new_persona_id = int(new_persona_raw) if new_persona_raw not in [None, '', 'null'] else None
+    except (TypeError, ValueError):
+        new_persona_id = None
+
+    persona_cambio = new_persona_id and new_persona_id != old_persona_id
+
+    if persona_cambio:
+        try:
+            with transaction.atomic():
+                hoy = timezone.localdate()
+                primer_dia_mes = hoy.replace(day=1)
+                fin_mes_anterior = primer_dia_mes - datetime.timedelta(days=1)
+
+                # Verificar que la nueva persona no tenga ya asignación activa este mes
+                if Asignacion.objects.filter(
+                    persona_id=new_persona_id,
+                    mes=hoy.month,
+                    anio=hoy.year,
+                    estado='ACTIVO'
+                ).exists():
+                    return Response(
+                        {'error': 'La persona ya tiene una asignación activa para este mes.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Cerrar asignación anterior en el mes previo
+                asignacion.end_date = fin_mes_anterior
+                asignacion.save(update_fields=['end_date'])
+
+                # Crear nueva asignación con la nueva persona desde este mes
+                nueva = Asignacion.objects.create(
+                    persona_id=new_persona_id,
+                    cliente_id=int(data.get('cliente') or asignacion.cliente_id),
+                    instalacion_id=int(data.get('instalacion') or asignacion.instalacion_id),
+                    puesto_id=int(data.get('puesto') or asignacion.puesto_id),
+                    horario_id=int(data.get('horario') or asignacion.horario_id),
+                    mes=hoy.month,
+                    anio=hoy.year,
+                    recurring=True,
+                    start_date=primer_dia_mes,
+                    end_date=None,
+                    estado='ACTIVO',
+                    orden=asignacion.orden,
+                )
+
+                # Transferir semanas actuales y futuras a la nueva asignación
+                AsignacionSemanal.objects.filter(
+                    asignacion_id=asignacion.id,
+                    week_start__gte=primer_dia_mes
+                ).update(asignacion_id=nueva.id, puesto_id=nueva.puesto_id)
+
+                return Response(AsignacionSerializer(nueva).data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     data['recurring'] = True
     data['end_date'] = None
     serializer = AsignacionSerializer(asignacion, data=data, partial=True)
-    # Si la actualización es válida, guardar la asignación y luego actualizar el calendario semanal si se indicó reset_calendar o si cambió el patrón de asignación. Esto asegura que los cambios en la asignación se reflejen correctamente en las filas semanales, especialmente si se modificó el patrón o se solicitó un reseteo del calendario.
     if serializer.is_valid():
         asignacion = serializer.save()
         patron_changed = 'patronAsignacion' in request.data and old_patron_id != getattr(asignacion, 'patronAsignacion_id', None)

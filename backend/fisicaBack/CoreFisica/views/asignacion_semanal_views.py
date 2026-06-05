@@ -1362,6 +1362,10 @@ def crear_o_actualizar_asignacion_semanal(request):
     except Exception:
         return Response({'error': 'week_start inválida, formato YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
 
+    hoy = date.today()
+    if ws.year < hoy.year or (ws.year == hoy.year and ws.month < hoy.month):
+        return Response({'error': 'No se pueden modificar meses anteriores al mes actual.'}, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         with transaction.atomic():
             # Si existe una asignación de la misma persona para el mes/año de week_start,
@@ -1465,6 +1469,10 @@ def crear_o_actualizar_sacafranco_fila_semanal(request):
         ws = datetime.fromisoformat(week_start).date()
     except Exception:
         return Response({'error': 'week_start inválida, formato YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+
+    hoy = date.today()
+    if ws.year < hoy.year or (ws.year == hoy.year and ws.month < hoy.month):
+        return Response({'error': 'No se pueden modificar meses anteriores al mes actual.'}, status=status.HTTP_400_BAD_REQUEST)
 
     validation_error, resolved_tokens = _validate_sacafranco_tokens(data, ws)
     if validation_error:

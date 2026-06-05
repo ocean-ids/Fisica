@@ -294,6 +294,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return '';
   }
 
+  isPastMonth(): boolean {
+    const now = new Date();
+    return this.anio < now.getFullYear() ||
+      (this.anio === now.getFullYear() && this.mes < (now.getMonth() + 1));
+  }
+
   isDayInCurrentMonth(weekStart: string, dayKey: string): boolean {
     if (!weekStart || !dayKey) return false;
     const parts = weekStart.split('-').map(Number);
