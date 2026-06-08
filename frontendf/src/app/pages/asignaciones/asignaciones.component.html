@@ -48,7 +48,7 @@
     <div class="d-flex align-items-center gap-2">
       <select class="form-select form-select-sm" [(ngModel)]="selectedCantonKey" (change)="onCantonSelect()" [ngModelOptions]="{standalone:true}">
         <optgroup label="Cantones">
-          <option *ngFor="let c of cantonesDisponibles" [ngValue]="'canton:' + (c.id == null ? 'null' : c.id)">{{ c.nombre }}</option>
+          <option *ngFor="let c of cantonesParaSelect" [ngValue]="'canton:' + (c.id == null ? 'null' : c.id)">{{ c.nombre }}</option>
         </optgroup>
         <optgroup label="Vistas guardadas" *ngIf="cantonViews.length">
           <option *ngFor="let v of cantonViews" [ngValue]="'view:' + v.id">Vista: {{ v.nombre }} ({{ v.cantonIds.length }})</option>

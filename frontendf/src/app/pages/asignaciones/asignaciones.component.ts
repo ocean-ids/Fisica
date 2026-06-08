@@ -1220,6 +1220,14 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return (view?.nombre || 'Vista personalizada').toUpperCase();
   }
 
+  // Cantones a mostrar en el select: oculta los que ya pertenecen a alguna vista guardada.
+  get cantonesParaSelect(): Array<{ id: number | null; nombre: string }> {
+    const idsEnVistas = new Set<number>();
+    (this.cantonViews || []).forEach(v => (v.cantonIds || []).forEach(id => idsEnVistas.add(Number(id))));
+    if (!idsEnVistas.size) return this.cantonesDisponibles || [];
+    return (this.cantonesDisponibles || []).filter(c => c.id == null || !idsEnVistas.has(Number(c.id)));
+  }
+
   private getSingleSelectedCantonId(): number | null {
     if (!this.selectedCantonKey.startsWith('canton:')) return null;
     const raw = this.selectedCantonKey.replace('canton:', '').trim();
