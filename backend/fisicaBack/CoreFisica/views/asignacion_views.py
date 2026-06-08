@@ -279,6 +279,13 @@ def obtener_asignaciones(request, mes=None, anio=None):
     cliente_id = request.GET.get('cliente_id')
     provincia_id = request.GET.get('provincia_id')
     canton_id = request.GET.get('canton_id')
+    canton_ids_raw = (request.GET.get('canton_ids') or '').strip()
+    canton_ids: list[int] = []
+    if canton_ids_raw:
+        try:
+            canton_ids = [int(x) for x in canton_ids_raw.split(',') if str(x).strip()]
+        except (TypeError, ValueError):
+            return Response({'error': 'Canton IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
     #q es un texto libre q se busca
     q = (request.GET.get('q') or '').strip()
@@ -329,7 +336,9 @@ def obtener_asignaciones(request, mes=None, anio=None):
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
     if instalacion_id:
         asignaciones = asignaciones.filter(instalacion_id=instalacion_id)
-    if canton_id:
+    if canton_ids:
+        asignaciones = asignaciones.filter(instalacion__canton_id__in=canton_ids)
+    elif canton_id:
         try:
             canton_val = int(canton_id)
             asignaciones = asignaciones.filter(instalacion__canton_id=canton_val)
@@ -362,7 +371,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
     
     canton_page = request.GET.get('canton_page')
     restore_canton_id = request.GET.get('restore_canton_id')
-    if canton_page:
+    if canton_page and not canton_ids:
         try:
             cant_page = int(canton_page)
             if cant_page < 1:
@@ -1311,6 +1320,13 @@ def sacafranco_filas(request):
         anio = request.GET.get('anio')
         provincia_id = request.GET.get('provincia_id')
         canton_id = request.GET.get('canton_id')
+        canton_ids_raw = (request.GET.get('canton_ids') or '').strip()
+        canton_ids: list[int] = []
+        if canton_ids_raw:
+            try:
+                canton_ids = [int(x) for x in canton_ids_raw.split(',') if str(x).strip()]
+            except (TypeError, ValueError):
+                return Response({'error': 'Canton IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
         # se obtiene las filas de sacafranco
         qs = SacafrancoFila.objects.all()
         if mes and anio:
@@ -1321,7 +1337,9 @@ def sacafranco_filas(request):
                 # Mostrar todas las filas del mes (no filtrar por semanales).
             except (TypeError, ValueError):
                 pass
-        if canton_id:
+        if canton_ids:
+            qs = qs.filter(persona__canton_id__in=canton_ids)
+        elif canton_id:
             try:
                 canton_val = int(canton_id)
             except (TypeError, ValueError):

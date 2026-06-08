@@ -27,41 +27,36 @@
       </button>
     </div>
 
-    <div class="d-flex justify-content-md-end gap-2">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
       <!--<button class="btn btn-outline-secondary" (click)="abrirNuevoPatron()" >
         <i class="bi bi-grid-3x3-gap"></i> Nuevo Patrón
       </button>-->
+      <button class="btn btn-outline-primary" type="button" (click)="abrirModalVistasCantones()">
+        <i class="bi bi-layout-text-window-reverse"></i> Nueva vista
+      </button>
       <button class="btn btn-outline-success" (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel">
         <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
         Descargar
       </button>
     </div>
   </div>
-  <!--<div class="row g-2 align-items-center mt-3 mb-1">
-    <div class="col-12 col-md-6">
-      <div class="input-group">
-        <span class="input-group-text"><i class="bi bi-search"></i></span>
-        <input
-          type="text"
-          class="form-control"
-          placeholder="Filtrar por cliente, cédula, persona o puesto"
-          [(ngModel)]="filtroTexto"
-          (input)="onFiltroChange()"
-        />
-      </div>
-    </div>
-  </div>-->
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+  <div class="d-flex justify-content-md-end gap-2">
     <div class="text-muted" *ngIf="getTotalPages()">
-      Canton o Ciudad {{ provinciaPage }} de {{ getTotalPages() }}
+      <span *ngIf="!isVistaCantonActiva()">Canton o Ciudad {{ provinciaPage }} de {{ getTotalPages() }}</span>
+      <span *ngIf="isVistaCantonActiva()">Vista personalizada de cantones</span>
     </div>
     <div class="d-flex align-items-center gap-2">
-      <select class="form-select form-select-sm" [(ngModel)]="selectedCantonId" (change)="onCantonSelect()" [ngModelOptions]="{standalone:true}">
-        <option *ngFor="let c of cantonesDisponibles" [ngValue]="c.id">{{ c.nombre }}</option>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedCantonKey" (change)="onCantonSelect()" [ngModelOptions]="{standalone:true}">
+        <optgroup label="Cantones">
+          <option *ngFor="let c of cantonesDisponibles" [ngValue]="'canton:' + (c.id == null ? 'null' : c.id)">{{ c.nombre }}</option>
+        </optgroup>
+        <optgroup label="Vistas guardadas" *ngIf="cantonViews.length">
+          <option *ngFor="let v of cantonViews" [ngValue]="'view:' + v.id">Vista: {{ v.nombre }} ({{ v.cantonIds.length }})</option>
+        </optgroup>
       </select>
       <div class="btn-group" role="group" aria-label="Pagination">
-        <button class="btn btn-outline-secondary btn-sm" (click)="prevPage()" [disabled]="provinciaPage <= 1">&#x2039;</button>
-        <button class="btn btn-outline-secondary btn-sm" (click)="nextPage()" [disabled]="provinciaPage >= getTotalPages()">&#x203A;</button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="prevPage()" [disabled]="isVistaCantonActiva() || provinciaPage <= 1">&#x2039;</button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="nextPage()" [disabled]="isVistaCantonActiva() || provinciaPage >= getTotalPages()">&#x203A;</button>
       </div>
     </div>
   </div>

@@ -1056,6 +1056,13 @@ def listar_asignacion_semanal_mes(request):
     cliente_id = request.GET.get('cliente')
     provincia_id = request.GET.get('provincia_id')
     canton_id = request.GET.get('canton_id')
+    canton_ids_raw = (request.GET.get('canton_ids') or '').strip()
+    canton_ids = []
+    if canton_ids_raw:
+        try:
+            canton_ids = [int(x) for x in canton_ids_raw.split(',') if str(x).strip()]
+        except (TypeError, ValueError):
+            return Response({'error': 'canton_ids invalido'}, status=status.HTTP_400_BAD_REQUEST)
     turno = request.GET.get('turno')
     q = (request.GET.get('q') or '').strip()
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']

@@ -34,6 +34,7 @@ import { Router } from '@angular/router';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
 import { environment } from '@env/environment';
+import { CantonMixView, CantonViewsModalComponent } from './canton-views-modal.component';
 
 @Component({
   selector: 'app-asignaciones',
@@ -57,6 +58,8 @@ import { environment } from '@env/environment';
   styleUrl: './asignaciones.component.css'
 })
 export class AsignacionesComponent implements OnInit, OnDestroy {
+  private readonly cantonViewsStorageKey = 'asig_canton_views';
+  private readonly selectedCantonKeyStorageKey = 'asig_selected_canton_key';
   showColumnMenu = false;
   weeksForMonth: string[] = [];
   calendarRowOrder: Array<number | string> = [];
@@ -375,6 +378,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.cargarCatalogos();
+    this.loadCantonViews();
+    this.selectedCantonKey = localStorage.getItem(this.selectedCantonKeyStorageKey) || '';
 
     this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
@@ -458,6 +463,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   private _persistCantonPage(): void {
+    if (this.isVistaCantonActiva()) return;
     const canton = this.cantonesDisponibles?.[this.provinciaPage - 1];
     if (canton?.id != null) {
       localStorage.setItem('asig_canton_id', String(canton.id));
@@ -623,14 +629,21 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   // cargarAsignaciones se encarga de cargar las asignaciones y filas de sacafranco para el mes y año seleccionados, realizando llamadas a los servicios correspondientes para obtener esta información, aplicando filtros si es necesario, y luego actualizando la vista con los datos obtenidos, además de manejar los errores que puedan ocurrir durante la carga para asegurar que la información mostrada sea precisa y actualizada
   cargarAsignaciones(): void {
     const params: any = {};
+    const selectedViewCantons = this.getSelectedViewCantonIds();
+    const mixedView = selectedViewCantons.length >= 2;
     if (this.filtroTexto && this.filtroTexto.trim()) {
       params.q = this.filtroTexto.trim();
     }
     params.lite = true;
-    params.canton_page = this.provinciaPage;
-    const savedCantonId = localStorage.getItem('asig_canton_id');
-    if (savedCantonId && this.provinciaPage === 1) {
-      params.restore_canton_id = savedCantonId;
+
+    if (mixedView) {
+      params.canton_ids = selectedViewCantons.join(',');
+    } else {
+      params.canton_page = this.provinciaPage;
+      const savedCantonId = localStorage.getItem('asig_canton_id');
+      if (savedCantonId && this.provinciaPage === 1) {
+        params.restore_canton_id = savedCantonId;
+      }
     }
 
     this.asignacionService
@@ -654,7 +667,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         }),
         switchMap(asignaciones => {
           const cantonId = asignaciones?.cantonId ?? asignaciones?.provinciaId ?? null;
-          const sacafrancoParams = cantonId != null ? { canton_id: cantonId } : {};
+          const sacafrancoParams = mixedView
+            ? { canton_ids: selectedViewCantons.join(',') }
+            : (cantonId != null ? { canton_id: cantonId } : {});
           return this.asignacionService
             .obtenerSacafrancoFilas(this.mes, this.anio, sacafrancoParams)
             .pipe(
@@ -668,15 +683,25 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       ).subscribe({
         next: ({ asignaciones, sacafranco }) => {
           this.asignaciones = asignaciones?.results || [];
-          this.provinciaTotal = asignaciones?.cantonTotal ?? asignaciones?.provinciaTotal ?? this.provinciaTotal;
-          this.provinciaPage = asignaciones?.cantonPage ?? asignaciones?.provinciaPage ?? this.provinciaPage;
-          this.activeProvinciaId = asignaciones?.cantonId ?? asignaciones?.provinciaId ?? this.activeProvinciaId;
+          if (mixedView) {
+            this.provinciaTotal = 1;
+            this.provinciaPage = 1;
+            this.activeProvinciaId = null;
+            this.selectedCantonId = selectedViewCantons[0] || null;
+          } else {
+            this.provinciaTotal = asignaciones?.cantonTotal ?? asignaciones?.provinciaTotal ?? this.provinciaTotal;
+            this.provinciaPage = asignaciones?.cantonPage ?? asignaciones?.provinciaPage ?? this.provinciaPage;
+            this.activeProvinciaId = asignaciones?.cantonId ?? asignaciones?.provinciaId ?? this.activeProvinciaId;
+            this.selectedCantonId = this.activeProvinciaId ?? null;
+            this.selectedCantonKey = this.selectedCantonId == null ? 'canton:null' : `canton:${this.selectedCantonId}`;
+            localStorage.setItem(this.selectedCantonKeyStorageKey, this.selectedCantonKey);
+          }
           this.sacafrancoRows = sacafranco || [];
           this.provinciasDisponibles = this.computeProvinciaOptions();
+          const computedCantones = this.computeCantonOptions();
           this.cantonesDisponibles = (asignaciones?.cantonOptions && asignaciones.cantonOptions.length)
             ? asignaciones.cantonOptions
-            : this.computeCantonOptions();
-          this.selectedCantonId = this.activeProvinciaId ?? null;
+            : (computedCantones.length ? computedCantones : this.cantonesDisponibles);
           this.buildDisplayRows();
           this.updateCalendarOrder();
           this.loadCalendarWeeks();
@@ -1082,17 +1107,107 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   provinciasDisponibles: Array<{ id: number; nombre: string }> = [];
   cantonesDisponibles: Array<{ id: number | null; nombre: string }> = [];
   selectedCantonId: number | null = null;
+  selectedCantonKey = '';
+  cantonViews: CantonMixView[] = [];
 
   onCantonSelect(): void {
+    if (!this.selectedCantonKey) return;
+    localStorage.setItem(this.selectedCantonKeyStorageKey, this.selectedCantonKey);
+
+    if (this.isVistaCantonActiva()) {
+      this.provinciaPage = 1;
+      this.activeProvinciaId = null;
+      this.selectedCantonId = null;
+      this.cargarAsignaciones();
+      return;
+    }
+
     if (!this.cantonesDisponibles || !this.cantonesDisponibles.length) return;
-    const targetId = this.selectedCantonId;
-    if (targetId == null) return;
+    const targetId = this.getSingleSelectedCantonId();
+    this.selectedCantonId = targetId;
     const idx = this.cantonesDisponibles.findIndex(c => c.id === targetId);
     if (idx < 0) return;
     this.provinciaPage = idx + 1;
     this.activeProvinciaId = targetId;
-    localStorage.setItem('asig_canton_id', String(targetId));
+    if (targetId != null) {
+      localStorage.setItem('asig_canton_id', String(targetId));
+    }
     this.cargarAsignaciones();
+  }
+
+  isVistaCantonActiva(): boolean {
+    return this.selectedCantonKey.startsWith('view:');
+  }
+
+  abrirModalVistasCantones(): void {
+    const ref = this.dialog.open(CantonViewsModalComponent, {
+      width: '680px',
+      maxWidth: '95vw',
+      data: {
+        cantones: this.cantonesDisponibles || [],
+        views: this.cantonViews || []
+      }
+    });
+
+    ref.afterClosed().subscribe(result => {
+      if (!result?.views) return;
+      this.cantonViews = result.views;
+      this.persistCantonViews();
+
+      if (this.selectedCantonKey.startsWith('view:')) {
+        const selectedId = this.selectedCantonKey.replace('view:', '').trim();
+        const exists = this.cantonViews.some(v => v.id === selectedId);
+        if (!exists) {
+          this.selectedCantonKey = this.selectedCantonId == null ? 'canton:null' : `canton:${this.selectedCantonId}`;
+          localStorage.setItem(this.selectedCantonKeyStorageKey, this.selectedCantonKey);
+          this.cargarAsignaciones();
+        }
+      }
+    });
+  }
+
+  private loadCantonViews(): void {
+    try {
+      const raw = localStorage.getItem(this.cantonViewsStorageKey);
+      if (!raw) {
+        this.cantonViews = [];
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        this.cantonViews = [];
+        return;
+      }
+      this.cantonViews = parsed
+        .filter(v => v && typeof v.id === 'string' && typeof v.nombre === 'string' && Array.isArray(v.cantonIds))
+        .map(v => ({
+          id: v.id,
+          nombre: v.nombre,
+          cantonIds: (v.cantonIds || []).map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id) && id > 0)
+        }))
+        .filter(v => v.cantonIds.length >= 2);
+    } catch {
+      this.cantonViews = [];
+    }
+  }
+
+  private persistCantonViews(): void {
+    localStorage.setItem(this.cantonViewsStorageKey, JSON.stringify(this.cantonViews || []));
+  }
+
+  private getSelectedViewCantonIds(): number[] {
+    if (!this.selectedCantonKey.startsWith('view:')) return [];
+    const viewId = this.selectedCantonKey.replace('view:', '').trim();
+    const view = (this.cantonViews || []).find(v => v.id === viewId);
+    return view?.cantonIds || [];
+  }
+
+  private getSingleSelectedCantonId(): number | null {
+    if (!this.selectedCantonKey.startsWith('canton:')) return null;
+    const raw = this.selectedCantonKey.replace('canton:', '').trim();
+    if (raw === 'null' || raw === '') return null;
+    const val = Number(raw);
+    return Number.isFinite(val) ? val : null;
   }
 
   private computeProvinciaOptions(): Array<{ id: number; nombre: string }> {
