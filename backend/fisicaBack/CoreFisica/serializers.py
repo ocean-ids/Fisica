@@ -264,13 +264,23 @@ class PuestoHorarioSerializer(serializers.ModelSerializer):
 class PuestoSerializer(serializers.ModelSerializer):
     horarios = PuestoHorarioSerializer(many=True, required=False)
     horarios_text = serializers.CharField(write_only=True, required=False)
+    horario_detalle = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Puesto
         fields = (
             'id', 'instalacion', 'zona', 'nombre', 'tipo', 'cantidad_puestos',
-            'resumen', 'horarios', 'horarios_text'
+            'resumen', 'horarios', 'horarios_text', 'horario', 'horario_detalle'
         )
+
+    def get_horario_detalle(self, obj):
+        if not obj.horario:
+            return None
+        return {
+            'id': obj.horario.id,
+            'hora_ingreso': str(obj.horario.hora_ingreso),
+            'hora_salida': str(obj.horario.hora_salida),
+        }
 
     def create(self, validated_data):
         text = validated_data.pop('horarios_text', None)

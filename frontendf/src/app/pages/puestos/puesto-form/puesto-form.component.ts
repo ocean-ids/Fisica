@@ -8,7 +8,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { InstalacionService } from '../../../services/instalacion.service';
-import { Instalacion } from '../../../models';
+import { HorarioService } from '../../../services/horario.service';
+import { Instalacion, Horario } from '../../../models';
 
 @Component({
   selector: 'app-puesto-form',
@@ -29,6 +30,7 @@ import { Instalacion } from '../../../models';
 export class PuestoFormComponent implements OnInit {
   puestoForm!: FormGroup;
   instalaciones: Instalacion[] = [];
+  horariosCatalogo: Horario[] = [];
   private readonly TURNO_24H_UI = '24H';
   private readonly TURNO_24H_BACKEND = 'Ambos';
 
@@ -36,6 +38,7 @@ export class PuestoFormComponent implements OnInit {
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<PuestoFormComponent>,
     private instalacionService: InstalacionService,
+    private horarioService: HorarioService,
     @Inject(MAT_DIALOG_DATA) public data: { puesto: any, clienteId: number }
   ) {}
 
@@ -46,7 +49,13 @@ export class PuestoFormComponent implements OnInit {
       tipo: [puesto?.tipo || ''],
       instalacion_id: [puesto?.instalacion_id || '', Validators.required],
       cantidad_puestos: [puesto?.cantidad_puestos ?? 0, Validators.required],
+      horario: [puesto?.horario ?? null],
       horarios: this.fb.array([])
+    });
+
+    this.horarioService.obtenerHorarios().subscribe({
+      next: data => this.horariosCatalogo = data || [],
+      error: err => console.error('Error al cargar horarios', err)
     });
 
     

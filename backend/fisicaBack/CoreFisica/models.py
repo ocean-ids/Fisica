@@ -102,6 +102,7 @@ class Puesto(models.Model):
     nombre = models.CharField(max_length=100)
     tipo = models.CharField(max_length=50, blank=True, null=True)
     cantidad_puestos = models.IntegerField(default=1)
+    horario = models.ForeignKey('Horario', null=True, blank=True, on_delete=models.SET_NULL, related_name='puestos')
     
     resumen = models.CharField(max_length=50, blank=True, editable=False)  
 

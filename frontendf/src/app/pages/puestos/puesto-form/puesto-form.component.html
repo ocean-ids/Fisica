@@ -37,6 +37,16 @@
       </mat-error>
     </mat-form-field>
 
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Horario (ingreso - salida)</mat-label>
+      <mat-select formControlName="horario">
+        <mat-option [value]="null">Sin horario</mat-option>
+        <mat-option *ngFor="let h of horariosCatalogo" [value]="h.id">
+          {{ h.hora_ingreso | slice:0:5 }} - {{ h.hora_salida | slice:0:5 }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
     <div class=" mb-3">
       <button mat-raised-button color="primary" class="rounded-5" (click)="addHorario()">+</button>
     </div>
