@@ -1106,7 +1106,9 @@ def listar_asignacion_semanal_mes(request):
     if auto_create:
         for ws in weeks:
             base_qs = AsignacionSemanal.objects.filter(week_start=ws)
-            if cant_id is not None:
+            if canton_ids:
+                base_qs = base_qs.filter(puesto__instalacion__canton_id__in=canton_ids)
+            elif cant_id is not None:
                 base_qs = base_qs.filter(puesto__instalacion__canton_id=cant_id)
             elif prov_id is not None:
                 base_qs = base_qs.filter(puesto__instalacion__canton__provincia_id=prov_id)
@@ -1122,7 +1124,9 @@ def listar_asignacion_semanal_mes(request):
     qs = qs.filter(week_start__in=weeks)
     if cliente_id:
         qs = qs.filter(puesto__instalacion__cliente_id=cliente_id)
-    if cant_id is not None:
+    if canton_ids:
+        qs = qs.filter(puesto__instalacion__canton_id__in=canton_ids)
+    elif cant_id is not None:
         qs = qs.filter(puesto__instalacion__canton_id=cant_id)
     elif prov_id is not None:
         qs = qs.filter(puesto__instalacion__canton__provincia_id=prov_id)

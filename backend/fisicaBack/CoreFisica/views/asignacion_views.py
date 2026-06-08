@@ -464,6 +464,56 @@ def obtener_asignaciones(request, mes=None, anio=None):
             'provincia_id': canton_id
         })
 
+    # Vista mixta: devolver resultados filtrados por canton_ids + lista COMPLETA de cantones
+    if canton_ids:
+        full_canton_ids = list(
+            base_qs
+            .order_by('instalacion__canton_id')
+            .values_list('instalacion__canton_id', flat=True)
+            .distinct()
+        )
+        sac_full_qs = SacafrancoFila.objects.all()
+        if mes and anio:
+            try:
+                sac_full_qs = sac_full_qs.filter(Q(anio__lt=int(anio)) | Q(anio=int(anio), mes__lte=int(mes)))
+            except (TypeError, ValueError):
+                pass
+        full_canton_ids += list(
+            sac_full_qs.order_by('persona__canton_id').values_list('persona__canton_id', flat=True).distinct()
+        )
+        seen_full = set()
+        ordered_full = []
+        for cid in full_canton_ids:
+            if cid in seen_full:
+                continue
+            seen_full.add(cid)
+            ordered_full.append(cid)
+        ordered_full.sort(key=lambda v: (v is None, v if v is not None else 999999))
+
+        real_full_ids = [cid for cid in ordered_full if cid is not None]
+        canton_map_full = {}
+        if real_full_ids:
+            canton_map_full = {c.id: c.nombre for c in Canton.objects.filter(id__in=real_full_ids)}
+        canton_options_full = []
+        for cid in ordered_full:
+            if cid is None:
+                canton_options_full.append({'id': None, 'nombre': 'SIN CANTON'})
+                continue
+            nombre = (canton_map_full.get(cid) or '').strip()
+            canton_options_full.append({'id': cid, 'nombre': nombre or f'CANTON {cid}'})
+
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+        return Response({
+            'results': serializer.data,
+            'canton_page': 1,
+            'canton_total': len(ordered_full),
+            'canton_id': None,
+            'canton_options': canton_options_full,
+            'provincia_page': 1,
+            'provincia_total': len(ordered_full),
+            'provincia_id': None
+        })
+
     page_param = request.GET.get('page')
     size_param = request.GET.get('size')
     if page_param is not None or size_param is not None:

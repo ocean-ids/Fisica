@@ -698,10 +698,17 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           }
           this.sacafrancoRows = sacafranco || [];
           this.provinciasDisponibles = this.computeProvinciaOptions();
-          const computedCantones = this.computeCantonOptions();
-          this.cantonesDisponibles = (asignaciones?.cantonOptions && asignaciones.cantonOptions.length)
-            ? asignaciones.cantonOptions
-            : (computedCantones.length ? computedCantones : this.cantonesDisponibles);
+          if (mixedView) {
+            // El backend ahora devuelve la lista COMPLETA de cantones aun en vista mixta.
+            if (asignaciones?.cantonOptions && asignaciones.cantonOptions.length) {
+              this.cantonesDisponibles = asignaciones.cantonOptions;
+            }
+          } else {
+            const computedCantones = this.computeCantonOptions();
+            this.cantonesDisponibles = (asignaciones?.cantonOptions && asignaciones.cantonOptions.length)
+              ? asignaciones.cantonOptions
+              : (computedCantones.length ? computedCantones : this.cantonesDisponibles);
+          }
           this.buildDisplayRows();
           this.updateCalendarOrder();
           this.loadCalendarWeeks();
@@ -720,6 +727,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       paramsBase.q = this.filtroTexto.trim();
     }
     const hasSacafranco = (this.sacafrancoRows || []).length > 0;
+    const selectedViewCantons = this.getSelectedViewCantonIds();
+    const mixedView = selectedViewCantons.length >= 2;
     const cantonId = this.activeProvinciaId != null ? this.activeProvinciaId : null;
     this.asignacionCalendarioService.obtenerAsignacionesCalendarioMes(
       this.mes,
@@ -729,7 +738,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         lite: true,
         include_sacafranco: hasSacafranco,
         auto_create: true,
-        ...(cantonId != null ? { canton_id: cantonId } : {})
+        ...(mixedView
+          ? { canton_ids: selectedViewCantons.join(',') }
+          : (cantonId != null ? { canton_id: cantonId } : {}))
       }
     ).subscribe({
       next: res => {
@@ -1202,6 +1213,13 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return view?.cantonIds || [];
   }
 
+  getActiveViewName(): string {
+    if (!this.selectedCantonKey.startsWith('view:')) return '';
+    const viewId = this.selectedCantonKey.replace('view:', '').trim();
+    const view = (this.cantonViews || []).find(v => v.id === viewId);
+    return (view?.nombre || 'Vista personalizada').toUpperCase();
+  }
+
   private getSingleSelectedCantonId(): number | null {
     if (!this.selectedCantonKey.startsWith('canton:')) return null;
     const raw = this.selectedCantonKey.replace('canton:', '').trim();
@@ -1328,8 +1346,46 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       return null;
     };
 
-    const sourceKey = getRowProvinciaKey(draggedRow) || getHeaderKeyAbove(this.displayRows || [], event.previousIndex);
+    const vistaMixta = this.isVistaCantonActiva();
     const orderableRows = (this.displayRows || []).filter(r => r?.type === 'asignacion' || r?.type === 'sacafranco');
+    const ordenAsignaciones: { id: number; orden: number }[] = [];
+    const ordenSacafranco: { id: number; orden: number }[] = [];
+
+    if (vistaMixta) {
+      // Lista plana con una sola franja (nombre de la vista): arrastrar libremente.
+      moveItemInArray(orderableRows, event.previousIndex, event.currentIndex);
+      this.displayRows = [
+        { type: 'provincia', key: 'mixed-view', label: this.getActiveViewName() },
+        ...orderableRows
+      ] as any;
+      orderableRows.forEach((row, idx) => {
+        if (row.type === 'asignacion' && row.asig?.id) {
+          row.asig.orden = idx;
+          ordenAsignaciones.push({ id: row.asig.id, orden: idx });
+        }
+        if (row.type === 'sacafranco' && row.fila?.id) {
+          row.fila.orden = idx;
+          ordenSacafranco.push({ id: row.fila.id, orden: idx });
+        }
+      });
+
+      this.displayAssignmentRows = orderableRows
+        .filter(r => r?.type === 'asignacion')
+        .map(r => (r as any).asig)
+        .filter(a => !!a);
+      this.asignaciones = [...this.displayAssignmentRows];
+      this.sacafrancoRows = orderableRows
+        .filter(r => r?.type === 'sacafranco')
+        .map(r => (r as any).fila)
+        .filter(f => !!f);
+
+      this.updateCalendarOrder();
+      this.persistOrder(ordenAsignaciones);
+      this.persistSacafrancoOrder(ordenSacafranco);
+      return;
+    }
+
+    const sourceKey = getRowProvinciaKey(draggedRow) || getHeaderKeyAbove(this.displayRows || [], event.previousIndex);
     const targetRowPre = orderableRows[event.currentIndex] || null;
     const targetKey = getRowProvinciaKey(targetRowPre);
     if (!sourceKey || !targetKey || sourceKey !== targetKey) {
@@ -1354,10 +1410,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.displayRows = rebuiltRows as any;
 
     this.buildProvinciaSortOrderFromRows(this.displayRows || []);
-
-
-    const ordenAsignaciones: { id: number; orden: number }[] = [];
-    const ordenSacafranco: { id: number; orden: number }[] = [];
 
     const provinceKey = sourceKey;
     const blockRows = orderableRows.filter(r => {
@@ -1439,40 +1491,53 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       ...sacRows.map(f => ({ kind: 'sacafranco' as const, fila: f }))
     ];
 
+    // En vista mixta de cantones: una sola franja con el nombre de la vista,
+    // y lista plana ordenada solo por orden para arrastrar libremente.
+    const vistaMixta = this.isVistaCantonActiva();
+    if (vistaMixta) {
+      rows.push({ type: 'provincia', key: 'mixed-view', label: this.getActiveViewName() });
+    }
+
     let lastProvincia: string | null = null;
 
     orderables
       .sort((a, b) => {
-        const aKey = a.kind === 'asignacion'
-          ? this.getProvinciaKeyFromAsignacion(a.asig)
-          : this.getProvinciaKeyFromSacafranco(a.fila);
-        const bKey = b.kind === 'asignacion'
-          ? this.getProvinciaKeyFromAsignacion(b.asig)
-          : this.getProvinciaKeyFromSacafranco(b.fila);
-        const aGroup = this.provinciaSortOrder[aKey] ?? 0;
-        const bGroup = this.provinciaSortOrder[bKey] ?? 0;
-        if (aGroup !== bGroup) return aGroup - bGroup;
+        if (!vistaMixta) {
+          const aKey = a.kind === 'asignacion'
+            ? this.getProvinciaKeyFromAsignacion(a.asig)
+            : this.getProvinciaKeyFromSacafranco(a.fila);
+          const bKey = b.kind === 'asignacion'
+            ? this.getProvinciaKeyFromAsignacion(b.asig)
+            : this.getProvinciaKeyFromSacafranco(b.fila);
+          const aGroup = this.provinciaSortOrder[aKey] ?? 0;
+          const bGroup = this.provinciaSortOrder[bKey] ?? 0;
+          if (aGroup !== bGroup) return aGroup - bGroup;
+        }
         const aOrd = a.kind === 'asignacion' ? (a.asig.orden ?? 0) : (a.fila.orden ?? 0);
         const bOrd = b.kind === 'asignacion' ? (b.asig.orden ?? 0) : (b.fila.orden ?? 0);
         return aOrd - bOrd;
       })
       .forEach(item => {
         if (item.kind === 'asignacion') {
-          const provinciaKey = this.getProvinciaKeyFromAsignacion(item.asig);
-          const provinciaLabel = this.getProvinciaLabel(item.asig);
-          if (provinciaKey !== lastProvincia) {
-            rows.push({ type: 'provincia', key: provinciaKey, label: provinciaLabel });
-            lastProvincia = provinciaKey;
+          if (!vistaMixta) {
+            const provinciaKey = this.getProvinciaKeyFromAsignacion(item.asig);
+            const provinciaLabel = this.getProvinciaLabel(item.asig);
+            if (provinciaKey !== lastProvincia) {
+              rows.push({ type: 'provincia', key: provinciaKey, label: provinciaLabel });
+              lastProvincia = provinciaKey;
+            }
           }
           rows.push({ type: 'asignacion', asig: item.asig, isGroupedChild: false });
           displayAssignments.push(item.asig);
           return;
         }
-        const sacProvinciaKey = this.getProvinciaKeyFromSacafranco(item.fila);
-        const sacProvinciaLabel = this.getSacafrancoProvinciaLabel(item.fila);
-        if (sacProvinciaKey !== lastProvincia) {
-          rows.push({ type: 'provincia', key: sacProvinciaKey, label: sacProvinciaLabel });
-          lastProvincia = sacProvinciaKey;
+        if (!vistaMixta) {
+          const sacProvinciaKey = this.getProvinciaKeyFromSacafranco(item.fila);
+          const sacProvinciaLabel = this.getSacafrancoProvinciaLabel(item.fila);
+          if (sacProvinciaKey !== lastProvincia) {
+            rows.push({ type: 'provincia', key: sacProvinciaKey, label: sacProvinciaLabel });
+            lastProvincia = sacProvinciaKey;
+          }
         }
         rows.push({ type: 'sacafranco', id: item.fila.id as number, fila: item.fila });
       });
