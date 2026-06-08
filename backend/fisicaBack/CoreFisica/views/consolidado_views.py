@@ -150,6 +150,7 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
             'puesto': row.get('puesto') or '',
             'apellidos': nombre_apellidos,
             'nombres': '',
+            'cedula': row.get('cedula') or '',
             'estado': row.get('estado') or '',
             'observacion': cons.observacion if cons else '',
             'zona': (row.get('zona_titulo') or 'SIN ZONA').strip(),
@@ -158,6 +159,7 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
 
     term = (q or '').strip().lower()
     if term:
+        tokens = [t for t in term.split() if t]
         filtered = []
         for item in data:
             haystack = ' '.join([
@@ -166,13 +168,14 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
                 str(item.get('puesto') or ''),
                 str(item.get('apellidos') or ''),
                 str(item.get('nombres') or ''),
+                str(item.get('cedula') or ''),
                 str(item.get('estado') or ''),
                 str(item.get('observacion') or ''),
                 str(item.get('zona') or ''),
                 str(item.get('provincia') or ''),
                 str(item.get('tipo') or ''),
             ]).lower()
-            if term in haystack:
+            if all(token in haystack for token in tokens):
                 filtered.append(item)
         data = filtered
 

@@ -342,16 +342,22 @@ def obtener_asignaciones(request, mes=None, anio=None):
         except (TypeError, ValueError):
             return Response({'error': 'Provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
     if q:
-        filtros = (
-            Q(cliente__nombre_comercial__icontains=q) |
-            Q(cliente__razon_social__icontains=q) |
-            Q(persona__cedula__icontains=q) |
-            Q(persona__nombres__icontains=q) |
-            Q(persona__apellidos__icontains=q) |
-            Q(puesto__nombre__icontains=q)
-        )
-        if q.isdigit():
-            filtros = filtros | Q(semanales__id=int(q))
+        tokens = [t for t in q.split() if t]
+        filtros = Q()
+        for token in tokens:
+            token_filter = (
+                Q(cliente__nombre_comercial__icontains=token) |
+                Q(cliente__razon_social__icontains=token) |
+                Q(persona__cedula__icontains=token) |
+                Q(persona__nombres__icontains=token) |
+                Q(persona__apellidos__icontains=token) |
+                Q(puesto__nombre__icontains=token) |
+                Q(instalacion__codigo__icontains=token) |
+                Q(instalacion__nombre__icontains=token)
+            )
+            if token.isdigit():
+                token_filter = token_filter | Q(semanales__id=int(token))
+            filtros &= token_filter
         asignaciones = asignaciones.filter(filtros).distinct()
     
     canton_page = request.GET.get('canton_page')

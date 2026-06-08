@@ -690,6 +690,7 @@ def _build_reporte_asistencia_data(
             'puesto': puesto_nombre,
             'horario': horario_str,
             'nombre_apellidos': nombre_apellidos,
+            'cedula': getattr(p, 'cedula', '') or '',
             'reemplazo_id': reemplazo_id,
             'reemplazo': reemplazo_nombre,
             'estado_asistencia': estado_asistencia,
@@ -872,6 +873,7 @@ def _build_reporte_asistencia_data(
                 })
 
     if term:
+        tokens = [t for t in term.split() if t]
         filtered = []
         for item in data:
             haystack = ' '.join([
@@ -887,7 +889,7 @@ def _build_reporte_asistencia_data(
                 str(item.get('zona_titulo') or ''),
                 str(item.get('provincia') or ''),
             ]).lower()
-            if term in haystack:
+            if all(token in haystack for token in tokens):
                 filtered.append(item)
         data = filtered
 
