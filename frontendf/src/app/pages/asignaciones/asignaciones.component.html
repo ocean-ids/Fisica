@@ -164,18 +164,18 @@
                     (dblclick)="onPersonaColorDblClick($event, row.asig)">
                       <ng-container *ngIf="row.asig.persona_detalle; else puestoVacante">
                         <div>
-                          {{ row.asig.persona_detalle?.apellidos }}
+                          {{ row.asig.persona_detalle.apellidos }}
                         </div>
                         <div>
-                          {{ row.asig.persona_detalle?.nombres }}
+                          {{ row.asig.persona_detalle.nombres }}
                         </div>
                           <div class="text-muted">
-                            {{ row.asig.persona_detalle?.cedula }}
+                            {{ row.asig.persona_detalle.cedula }}
                           </div>
                         <div>
                           <span class="badge"
-                            [ngClass]="row.asig.persona_detalle?.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
-                            {{ row.asig.persona_detalle?.tipo }}
+                            [ngClass]="row.asig.persona_detalle.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
+                            {{ row.asig.persona_detalle.tipo }}
                           </span>
                         </div>
                       </ng-container>

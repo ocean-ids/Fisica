@@ -1171,16 +1171,12 @@ def editar_servicio(request, id):
     if persona_cambio:
         try:
             with transaction.atomic():
-                hoy = timezone.localdate()
-                primer_dia_mes = hoy.replace(day=1)
-                fin_mes_anterior = primer_dia_mes - datetime.timedelta(days=1)
-
-                # Si la nueva persona ya tiene asignación activa este mes en otro puesto,
-                # liberarla (queda vacante) en vez de bloquear.
+                # Si la nueva persona ya tiene asignación activa este mes en OTRO puesto,
+                # liberar ese puesto (la persona se mueve, su puesto anterior queda vacante).
                 otras = Asignacion.objects.filter(
                     persona_id=new_persona_id,
-                    mes=hoy.month,
-                    anio=hoy.year,
+                    mes=asignacion.mes,
+                    anio=asignacion.anio,
                     estado='ACTIVO'
                 ).exclude(id=asignacion.id)
                 for otra in otras:
@@ -1188,33 +1184,17 @@ def editar_servicio(request, id):
                     otra.save(update_fields=['persona'])
                     ReporteAsistencia.objects.filter(asignacion=otra).update(persona=None)
 
-                # Cerrar asignación anterior en el mes previo
-                asignacion.end_date = fin_mes_anterior
-                asignacion.save(update_fields=['end_date'])
-
-                # Crear nueva asignación con la nueva persona desde este mes
-                nueva = Asignacion.objects.create(
-                    persona_id=new_persona_id,
-                    cliente_id=int(data.get('cliente') or asignacion.cliente_id),
-                    instalacion_id=int(data.get('instalacion') or asignacion.instalacion_id),
-                    puesto_id=int(data.get('puesto') or asignacion.puesto_id),
-                    horario_id=int(data.get('horario') or asignacion.horario_id),
-                    mes=hoy.month,
-                    anio=hoy.year,
-                    recurring=True,
-                    start_date=primer_dia_mes,
-                    end_date=None,
-                    estado='ACTIVO',
-                    orden=asignacion.orden,
-                )
-
-                # Transferir semanas actuales y futuras a la nueva asignación
-                AsignacionSemanal.objects.filter(
-                    asignacion_id=asignacion.id,
-                    week_start__gte=primer_dia_mes
-                ).update(asignacion_id=nueva.id, puesto_id=nueva.puesto_id)
-
-                return Response(AsignacionSerializer(nueva).data, status=status.HTTP_200_OK)
+                # Cambiar la persona EN LA MISMA fila: el puesto conserva su calendario.
+                asignacion.persona_id = new_persona_id
+                nuevo_horario = data.get('horario')
+                if nuevo_horario:
+                    try:
+                        asignacion.horario_id = int(nuevo_horario)
+                    except (TypeError, ValueError):
+                        pass
+                asignacion.save()
+                ReporteAsistencia.objects.filter(asignacion=asignacion).update(persona_id=new_persona_id)
+                return Response(AsignacionSerializer(asignacion).data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
