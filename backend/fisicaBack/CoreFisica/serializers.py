@@ -44,6 +44,8 @@ class AsignacionSerializer(serializers.ModelSerializer):
     cedula_color = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     def get_persona_detalle(self, obj):
+        if not obj.persona:
+            return None
         return {
             'id': obj.persona.id,
             'nombres': obj.persona.nombres,
@@ -117,6 +119,8 @@ class AsignacionLiteSerializer(serializers.ModelSerializer):
     cedula_color = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     def get_persona_detalle(self, obj):
+        if not obj.persona:
+            return None
         return {
             'id': obj.persona.id,
             'nombres': obj.persona.nombres,

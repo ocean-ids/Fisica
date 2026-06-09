@@ -1950,6 +1950,29 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return Array.from(new Set(ids));
   }
 
+  // Muestra una descripción del puesto vacante (sin persona) y permite reasignar.
+  mostrarPuestoVacante(asig: Asignacion): void {
+    const cliente = (asig as any)?.cliente_detalle?.nombre_comercial || '';
+    const puesto = (asig as any)?.puesto_detalle?.nombre || '';
+    const codigo = this.getCodigoInstalacionAsignacion(asig) || '-';
+    Swal.fire({
+      icon: 'warning',
+      title: 'Puesto vacante',
+      html: `Este puesto quedó <b>sin persona asignada</b>.<br><br>` +
+            `<b>Nominativo:</b> ${codigo}<br>` +
+            `<b>Cliente:</b> ${cliente}<br>` +
+            `<b>Puesto:</b> ${puesto}<br><br>` +
+            `¿Deseas asignarle una persona ahora?`,
+      showCancelButton: true,
+      confirmButtonText: 'Reasignar persona',
+      cancelButtonText: 'Cerrar'
+    }).then(result => {
+      if (result.isConfirmed) {
+        this.abrirModalEditar(asig);
+      }
+    });
+  }
+
   //guardarAsignacion se encarga de validar la información de la asignación actual antes de guardarla, asegurándose de que se hayan seleccionado un cliente, una instalación, un puesto, una persona y un horario. Si alguna de estas validaciones falla, se muestra una alerta al usuario indicando qué información falta. Si todas las validaciones pasan, se procede a guardar la asignación en el backend, ya sea creando una nueva asignación o actualizando una existente según el modo en que se encuentre el componente, y luego se actualiza la vista con los cambios realizados
   guardarAsignacion(): void {
     if (this.isSaving) return;
@@ -1980,35 +2003,34 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.asignacionActual.mes = this.mes;
     this.asignacionActual.anio = this.anio;
 
-    const yaExiste = this.asignaciones.some(a =>
+    const personaConflict = this.asignaciones.some(a =>
       a.persona === this.asignacionActual.persona &&
       a.mes === this.mes &&
       a.anio === this.anio &&
       (!this.modoEdicion || a.id !== this.asignacionActual.id)
     );
+    const puestoConflict = this.asignaciones.some(a =>
+      a.puesto === this.asignacionActual.puesto &&
+      !!a.persona &&
+      a.mes === this.mes &&
+      a.anio === this.anio &&
+      (!this.modoEdicion || a.id !== this.asignacionActual.id)
+    );
 
-    if (yaExiste) {
-      Swal.fire({ icon: 'warning', title: 'Duplicado', text: 'Ya existe una asignación para esta persona en este mes.' });
-      return;
-    }
-
-    // No enviar fecha exacta: las asignaciones se guardan por mes y año
-    // (this.asignacionActual as any).fecha = this.dia ? this.dia : null;
-
-    const patronStart = this.asignacionActual.start_date || null;
-
+    // Modo edición: mantener bloqueo de duplicado por persona
     if (this.modoEdicion && this.asignacionActual.id) {
-      const payload = { 
+      if (personaConflict) {
+        Swal.fire({ icon: 'warning', title: 'Duplicado', text: 'Ya existe una asignación para esta persona en este mes.' });
+        return;
+      }
+      const payload = {
         ...this.asignacionActual,
-        start_date: patronStart,
+        start_date: this.asignacionActual.start_date || null,
         recurring: true,
         end_date: null,
       } as any;
       this.isSaving = true;
-      this.asignacionService.actualizarAsignacion(
-        this.asignacionActual.id,
-        payload
-      ).subscribe({
+      this.asignacionService.actualizarAsignacion(this.asignacionActual.id, payload).subscribe({
         next: () => {
           Swal.fire({ icon: 'success', title: 'Asignación actualizada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
@@ -2023,33 +2045,55 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           this.isSaving = false;
         }
       });
-    } else {
-      // Forzar creación de calendario semanal al crear la asignación
-      const payload = { 
-        ...this.asignacionActual,
-        patronAsignacion: null,
-        start_date: patronStart,
-        create_calendar: true,
-        recurring: true,
-        end_date: null
-      } as any;
-      this.isSaving = true;
-      this.asignacionService.crearAsignacion(payload).subscribe({
-        next: () => {
-          Swal.fire({ icon: 'success', title: 'Asignación creada', timer: 1200, showConfirmButton: false });
-          this.cargarAsignaciones();
-          this.resetAsignacionState();
-          this.loadCalendarWeeks();
-          this.isSaving = false;
-        },
-        error: err => {
-          console.error(err);
-          const detail = err?.error ? JSON.stringify(err.error) : 'No se pudo crear la asignación';
-          Swal.fire({ icon: 'error', title: 'Error', text: detail });
-          this.isSaving = false;
+      return;
+    }
+
+    // Modo creación: si hay conflicto, ofrecer reasignar (mover y liberar al anterior)
+    if (personaConflict || puestoConflict) {
+      Swal.fire({
+        icon: 'question',
+        title: 'Reasignar',
+        html: 'La persona y/o el puesto ya están ocupados.<br>¿Mover a esta persona a este puesto y dejar libre al anterior?',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, reasignar',
+        cancelButtonText: 'Cancelar'
+      }).then(result => {
+        if (result.isConfirmed) {
+          this.ejecutarCrearAsignacion(true);
         }
       });
+      return;
     }
+
+    this.ejecutarCrearAsignacion(false);
+  }
+
+  private ejecutarCrearAsignacion(reasignar: boolean): void {
+    const payload = {
+      ...this.asignacionActual,
+      patronAsignacion: null,
+      start_date: this.asignacionActual.start_date || null,
+      create_calendar: true,
+      recurring: true,
+      end_date: null,
+      ...(reasignar ? { reasignar: true } : {})
+    } as any;
+    this.isSaving = true;
+    this.asignacionService.crearAsignacion(payload).subscribe({
+      next: () => {
+        Swal.fire({ icon: 'success', title: reasignar ? 'Persona reasignada' : 'Asignación creada', timer: 1200, showConfirmButton: false });
+        this.cargarAsignaciones();
+        this.resetAsignacionState();
+        this.loadCalendarWeeks();
+        this.isSaving = false;
+      },
+      error: err => {
+        console.error(err);
+        const detail = err?.error ? JSON.stringify(err.error) : 'No se pudo crear la asignación';
+        Swal.fire({ icon: 'error', title: 'Error', text: detail });
+        this.isSaving = false;
+      }
+    });
   }
 
   //buildRowForPuesto se encarga de construir una fila de visualización para un puesto específico, utilizando la información del puesto y sus horarios para determinar qué días de la semana están asociados con ese puesto, y luego creando un objeto que representa la fila con los detalles del puesto y las celdas correspondientes a cada día de la semana, lo que permite mostrar esta información de manera organizada en la vista

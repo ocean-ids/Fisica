@@ -162,21 +162,30 @@
                     style="min-width: 180px; height: 70px;"
                     [style.backgroundColor]="row.asig.cedula_color || ''"
                     (dblclick)="onPersonaColorDblClick($event, row.asig)">
-                      <div>
-                        {{ row.asig.persona_detalle?.apellidos }}
-                      </div>
-                      <div>
-                        {{ row.asig.persona_detalle?.nombres }}
-                      </div>
-                        <div class="text-muted">
-                          {{ row.asig.persona_detalle?.cedula }}
+                      <ng-container *ngIf="row.asig.persona_detalle; else puestoVacante">
+                        <div>
+                          {{ row.asig.persona_detalle?.apellidos }}
                         </div>
-                      <div>
-                        <span class="badge"
-                          [ngClass]="row.asig.persona_detalle?.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
-                          {{ row.asig.persona_detalle?.tipo }}
-                        </span>
-                      </div>
+                        <div>
+                          {{ row.asig.persona_detalle?.nombres }}
+                        </div>
+                          <div class="text-muted">
+                            {{ row.asig.persona_detalle?.cedula }}
+                          </div>
+                        <div>
+                          <span class="badge"
+                            [ngClass]="row.asig.persona_detalle?.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
+                            {{ row.asig.persona_detalle?.tipo }}
+                          </span>
+                        </div>
+                      </ng-container>
+                      <ng-template #puestoVacante>
+                        <button type="button" class="btn btn-sm btn-warning d-flex align-items-center gap-1 mx-auto"
+                          title="Puesto sin persona asignada"
+                          (click)="mostrarPuestoVacante(row.asig)">
+                          <i class="bi bi-exclamation-triangle-fill"></i> VACANTE
+                        </button>
+                      </ng-template>
                     </td>
                   <td *ngIf="!columnaOculta('accion')" class="p-0 align-middle overflow-hidden" style="height: 70px;">
                     <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">

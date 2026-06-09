@@ -204,11 +204,16 @@ export class AsignacionFormComponent implements OnInit {
   seleccionarPuesto(puesto: Puesto): void {
     this.puestoSeleccionado = puesto || null;
     this.asignacion.puesto = puesto?.id || 0;
-    // Auto-rellenar el horario desde el puesto (queda editable)
+    // Auto-rellenar el horario desde el puesto si lo tiene
     const horarioPuesto = (puesto as any)?.horario;
     if (horarioPuesto) {
       this.asignacion.horario = horarioPuesto;
     }
+  }
+
+  // Solo lectura si el puesto ya tiene horario; editable si no (se guardará en el puesto al asignar).
+  puestoTieneHorario(): boolean {
+    return !!(this.puestoSeleccionado as any)?.horario;
   }
 
   private setPuestoSeleccionadoFromAsignacion(): void {

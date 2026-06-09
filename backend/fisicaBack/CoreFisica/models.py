@@ -376,7 +376,7 @@ class Asignacion(models.Model):
         ('INACTIVO', 'INACTIVO'),
     ]
 
-    persona = models.ForeignKey(Persona, on_delete=models.CASCADE)
+    persona = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE)
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE)

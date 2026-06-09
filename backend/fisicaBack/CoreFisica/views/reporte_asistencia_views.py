@@ -513,6 +513,7 @@ def _build_reporte_asistencia_data(
         'cliente', 'instalacion', 'instalacion__canton', 'instalacion__canton__provincia',
         'puesto', 'horario', 'persona'
     ).prefetch_related('instalacion__zonas').filter(
+        persona__isnull=False,
         persona__is_active=True,
         estado='ACTIVO'
     ).exclude(persona__tipo='SACAFRANCO')

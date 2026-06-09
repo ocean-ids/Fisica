@@ -21,6 +21,8 @@ def crear_puesto(request):
     tipo = data.get('tipo')
     horarios = data.get('horarios')
     horarios_text = data.get('horarios_text')
+    horario_raw = data.get('horario')
+    horario_id = int(horario_raw) if horario_raw not in [None, '', 'null', 0] else None
 
     try:
         instalacion = Instalacion.objects.get(id=instalacion_id)
@@ -73,7 +75,8 @@ def crear_puesto(request):
             tipo=tipo,
             cantidad_puestos=cantidad_puestos,
             instalacion_id=instalacion.id,
-            zona=zona
+            zona=zona,
+            horario_id=horario_id
         )
 
         for h in horarios_payload:
@@ -117,7 +120,7 @@ def crear_puesto(request):
 def obtener_puestos(request):
     if not request.user.has_perm('CoreFisica.view_puesto'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-    puestos_qs = Puesto.objects.all()
+    puestos_qs = Puesto.objects.select_related('zona', 'horario').prefetch_related('horarios')
     resultado = []
     for p in puestos_qs:
         resultado.append({
@@ -128,6 +131,12 @@ def obtener_puestos(request):
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
+            'horario': p.horario_id,
+            'horario_detalle': ({
+                'id': p.horario.id,
+                'hora_ingreso': str(p.horario.hora_ingreso),
+                'hora_salida': str(p.horario.hora_salida),
+            } if p.horario_id else None),
             'instalacion_id': p.instalacion_id,
             'zona_id': p.zona_id,
             'zona_titulo': getattr(p.zona, 'titulo', None),
@@ -141,7 +150,7 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
     if not request.user.has_perm('CoreFisica.view_puesto'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
-    puestos_qs = Puesto.objects.filter(instalacion_id=instalacion_id)
+    puestos_qs = Puesto.objects.filter(instalacion_id=instalacion_id).select_related('zona', 'horario').prefetch_related('horarios')
     resultado = []
     for p in puestos_qs:
         resultado.append({
@@ -152,6 +161,12 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
+            'horario': p.horario_id,
+            'horario_detalle': ({
+                'id': p.horario.id,
+                'hora_ingreso': str(p.horario.hora_ingreso),
+                'hora_salida': str(p.horario.hora_salida),
+            } if p.horario_id else None),
             'instalacion_id': p.instalacion_id,
             'zona_id': p.zona_id,
             'zona_titulo': getattr(p.zona, 'titulo', None),
@@ -166,7 +181,7 @@ def obtener_puestos_por_cliente(request, cliente_id):
         return JsonResponse({'error': 'No autorizado'}, status=403
         )
 
-    puestos_qs = Puesto.objects.filter(instalacion__cliente_id=cliente_id).select_related('instalacion', 'zona')
+    puestos_qs = Puesto.objects.filter(instalacion__cliente_id=cliente_id).select_related('instalacion', 'zona', 'horario').prefetch_related('horarios')
     resultado = []
     for p in puestos_qs:
         resultado.append({
@@ -177,6 +192,12 @@ def obtener_puestos_por_cliente(request, cliente_id):
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
             'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
+            'horario': p.horario_id,
+            'horario_detalle': ({
+                'id': p.horario.id,
+                'hora_ingreso': str(p.horario.hora_ingreso),
+                'hora_salida': str(p.horario.hora_salida),
+            } if p.horario_id else None),
             'instalacion_id': p.instalacion_id,
             'resumen': p.resumen,
             'instalacion__provincia': getattr(p.instalacion, 'provincia', None),
@@ -218,6 +239,9 @@ def actualizar_puesto(request, id):
 
         puesto.nombre = data.get('nombre', puesto.nombre)
         puesto.tipo = data.get('tipo', puesto.tipo)
+        if 'horario' in data:
+            horario_val = data.get('horario')
+            puesto.horario_id = int(horario_val) if horario_val not in [None, '', 'null', 0] else None
         cantidad_puestos = data.get('cantidad_puestos', puesto.cantidad_puestos)
         try:
             cantidad_puestos = int(cantidad_puestos)

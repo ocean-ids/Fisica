@@ -555,18 +555,81 @@ def asignar_servicio(request):
     data['recurring'] = True
     data['end_date'] = None
 
+    reasignar = str(data.get('reasignar', '')).strip().lower() in ('1', 'true', 'yes', 'si', 'sí')
+    if 'reasignar' in data:
+        data.pop('reasignar')
+
+    # Reasignación: mover persona a un puesto, liberando al ocupante anterior
+    # y dejando su puesto previo como vacante (conservando su calendario).
+    if reasignar:
+        try:
+            persona_id = int(data.get('persona'))
+            puesto_id = int(data.get('puesto') or data.get('puesto_id'))
+            mes_val = int(data.get('mes'))
+            anio_val = int(data.get('anio'))
+        except (TypeError, ValueError):
+            return Response({'error': 'Datos insuficientes para reasignar'}, status=status.HTTP_400_BAD_REQUEST)
+        horario_id = data.get('horario')
+
+        with transaction.atomic():
+            # 1. Vacar la asignación previa de la persona (en otro puesto este mes)
+            old_p = Asignacion.objects.filter(
+                persona_id=persona_id, mes=mes_val, anio=anio_val, estado='ACTIVO'
+            ).exclude(puesto_id=puesto_id).first()
+            if old_p:
+                old_p.persona = None
+                old_p.save(update_fields=['persona'])
+                ReporteAsistencia.objects.filter(asignacion=old_p).update(persona=None)
+
+            # 2. Tomar el puesto destino si ya está ocupado (el ocupante queda libre)
+            target = Asignacion.objects.filter(
+                puesto_id=puesto_id, mes=mes_val, anio=anio_val, estado='ACTIVO'
+            ).first()
+            if target:
+                target.persona_id = persona_id
+                if horario_id:
+                    try:
+                        target.horario_id = int(horario_id)
+                    except (TypeError, ValueError):
+                        pass
+                target.save()
+                ReporteAsistencia.objects.filter(asignacion=target).update(persona_id=persona_id)
+                return Response(AsignacionSerializer(target).data, status=status.HTTP_200_OK)
+            # Si el puesto destino está vacío, continúa al flujo normal de creación.
+
     try:
         puesto_id = data.get('puesto') or data.get('puesto_id')
         mes_val = data.get('mes')
         anio_val = data.get('anio')
-        if puesto_id and mes_val and anio_val:
-            existe_puesto = Asignacion.objects.filter(
+        if not reasignar and puesto_id and mes_val and anio_val:
+            existentes = Asignacion.objects.filter(
                 puesto_id=int(puesto_id),
                 mes=int(mes_val),
                 anio=int(anio_val),
                 estado='ACTIVO'
-            ).exists()
-            if existe_puesto:
+            )
+            # Si hay una asignación VACANTE (sin persona) para este puesto, llenarla en vez de bloquear.
+            vacante = existentes.filter(persona__isnull=True).first()
+            if vacante:
+                vacante.persona_id = int(data.get('persona'))
+                horario_id = data.get('horario')
+                if horario_id:
+                    try:
+                        vacante.horario_id = int(horario_id)
+                    except (TypeError, ValueError):
+                        pass
+                vacante.save()
+                ReporteAsistencia.objects.filter(asignacion=vacante).update(persona_id=vacante.persona_id)
+                # Reflejar horario en el puesto si no tiene
+                try:
+                    if vacante.puesto and not vacante.puesto.horario_id and vacante.horario_id:
+                        vacante.puesto.horario_id = vacante.horario_id
+                        vacante.puesto.save(update_fields=['horario'])
+                except Exception:
+                    pass
+                return Response(AsignacionSerializer(vacante).data, status=status.HTTP_200_OK)
+            # Si existe una asignación OCUPADA, sí bloquear (el front ofrece reasignar).
+            if existentes.filter(persona__isnull=False).exists():
                 return Response(
                     {'error': 'Ya existe una asignación para este puesto en el mes seleccionado.'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -581,6 +644,14 @@ def asignar_servicio(request):
             if getattr(asignacion, 'recurring', False) and not getattr(asignacion, 'start_date', None):
                 asignacion.start_date = datetime.date(int(asignacion.anio), int(asignacion.mes), 1)
                 asignacion.save()
+        except Exception:
+            pass
+        # Si el puesto no tiene horario, asignarle el de esta asignación (se refleja en el puesto)
+        try:
+            puesto_obj = asignacion.puesto
+            if puesto_obj and not puesto_obj.horario_id and asignacion.horario_id:
+                puesto_obj.horario_id = asignacion.horario_id
+                puesto_obj.save(update_fields=['horario'])
         except Exception:
             pass
         # Crear filas de AsignacionSemanal para el puesto en las semanas del mes/año de la asignación
@@ -1918,9 +1989,9 @@ def exportar_asignaciones_excel(request):
                     getattr(asignacion.cliente, 'nombre_comercial', ''),
                     getattr(puesto_obj, 'nombre', ''),
                     resumen_val,
-                    getattr(getattr(asignacion, 'persona', None), 'cedula', ''),
-                    f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}",
-                    getattr(getattr(asignacion, 'persona', None), 'tipo', '')
+                    getattr(asignacion.persona, 'cedula', '') if asignacion.persona else '',
+                    f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}".strip() if asignacion.persona else '(VACANTE)',
+                    getattr(asignacion.persona, 'tipo', '') if asignacion.persona else ''
                 ]
                 for ci, v in enumerate(vals, start=1):
                     cell = target_ws.cell(row=row_idx, column=ci)
