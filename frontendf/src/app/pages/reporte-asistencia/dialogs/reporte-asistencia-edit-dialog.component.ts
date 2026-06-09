@@ -33,15 +33,8 @@ import Swal from 'sweetalert2';
 export class ReporteAsistenciaEditDialogComponent {
   readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'EVENTUAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO', 'RETEN', 'CUSTODIO'];
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
-  readonly tiposReemplazoPermitidos = new Set([
-    'FIJOS',
-    'SACAFRANCO',
-    'RETEN',
-    'EVENTUAL',
-    'SACAVACACIONES',
-    'SUPERVISOR MOTORIZADO',
-    'SUPERVISOR ZONAL'
-  ]);
+  readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL']);
+  descripcionesComunes: string[] = [];
 
   reemplazos: Persona[] = [];
   reemplazoCtrl = new FormControl<Persona | string | null>('');
@@ -84,6 +77,14 @@ export class ReporteAsistenciaEditDialogComponent {
     });
 
     this.cargarReemplazos();
+    this.cargarDescripciones();
+  }
+
+  private cargarDescripciones(): void {
+    this.reporteSvc.getDescripciones().subscribe({
+      next: (list) => { this.descripcionesComunes = Array.isArray(list) ? list : []; },
+      error: () => { this.descripcionesComunes = []; }
+    });
   }
 
   private cargarReemplazos(): void {
@@ -145,6 +146,12 @@ export class ReporteAsistenciaEditDialogComponent {
     }
 
     this.form.get('reemplazo_id')?.setValue(value?.id ?? null);
+  }
+
+  getDescripcionesFiltradas(): string[] {
+    const val = (this.form.get('descripcion')?.value || '').toString().trim().toUpperCase();
+    if (!val) return this.descripcionesComunes;
+    return this.descripcionesComunes.filter(d => (d || '').toUpperCase().includes(val));
   }
 
   getReemplazosFiltrados(): Persona[] {

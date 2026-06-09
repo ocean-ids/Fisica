@@ -948,6 +948,23 @@ def obtener_reporte_asistencia(request):
         'total_pages': total_pages,
         'zona': zona or None,
     }, safe=False, status=status.HTTP_200_OK)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def listar_descripciones_reporte(request):
+    if not request.user.has_perm('CoreFisica.view_reporteasistencia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    descripciones = (
+        ReporteAsistencia.objects
+        .exclude(descripcion__isnull=True)
+        .exclude(descripcion__exact='')
+        .values_list('descripcion', flat=True)
+        .distinct()
+        .order_by('descripcion')
+    )
+
+    return JsonResponse(list(descripciones), safe=False, status=status.HTTP_200_OK)
+
 
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])

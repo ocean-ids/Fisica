@@ -69,10 +69,23 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width span-2">
-      <mat-label>Descripcion</mat-label>
-      <textarea matInput rows="3" formControlName="descripcion" [readonly]="guardando"></textarea>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Descripción</mat-label>
+      <textarea
+        matInput
+        rows="3"
+        formControlName="descripcion"
+        [readonly]="guardando"
+        placeholder="Ej: No asistió por enfermedad"
+        [matAutocomplete]="autoDescripcion"
+        style="resize: vertical;"
+      ></textarea>
+      <mat-autocomplete #autoDescripcion="matAutocomplete">
+        <mat-option *ngFor="let d of getDescripcionesFiltradas()" [value]="d">{{ d }}</mat-option>
+        <mat-option disabled *ngIf="!getDescripcionesFiltradas().length">Sin coincidencias</mat-option>
+      </mat-autocomplete>
     </mat-form-field>
+    
   </form>
 
   <div class="error" *ngIf="error">{{ error }}</div>

@@ -21,6 +21,10 @@ export class ReporteAsistenciaService {
     return this.apiService.get<ReporteAsistenciaHistorialItem[]>(`/reporte-asistencia/${asignacionId}/historial/`, params);
   }
 
+  getDescripciones(){
+    return this.apiService.get<string[]>('/reporte-asistencia/descripciones/');
+  }
+
   exportarExcel(params?: any) {
     return this.apiService.getBlob('/reporte-asistencia/exportar-excel/', params);
   }
