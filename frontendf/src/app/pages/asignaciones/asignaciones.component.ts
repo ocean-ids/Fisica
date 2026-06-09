@@ -2017,34 +2017,24 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       (!this.modoEdicion || a.id !== this.asignacionActual.id)
     );
 
-    // Modo edición: mantener bloqueo de duplicado por persona
+    // Modo edición: si la persona ya está en otro puesto este mes, ofrecer reasignar
     if (this.modoEdicion && this.asignacionActual.id) {
       if (personaConflict) {
-        Swal.fire({ icon: 'warning', title: 'Duplicado', text: 'Ya existe una asignación para esta persona en este mes.' });
+        Swal.fire({
+          icon: 'question',
+          title: 'Reasignar',
+          html: 'Esta persona ya tiene una asignación este mes.<br>¿Moverla a este puesto y dejar libre el anterior?',
+          showCancelButton: true,
+          confirmButtonText: 'Sí, reasignar',
+          cancelButtonText: 'Cancelar'
+        }).then(result => {
+          if (result.isConfirmed) {
+            this.ejecutarActualizarAsignacion();
+          }
+        });
         return;
       }
-      const payload = {
-        ...this.asignacionActual,
-        start_date: this.asignacionActual.start_date || null,
-        recurring: true,
-        end_date: null,
-      } as any;
-      this.isSaving = true;
-      this.asignacionService.actualizarAsignacion(this.asignacionActual.id, payload).subscribe({
-        next: () => {
-          Swal.fire({ icon: 'success', title: 'Asignación actualizada', timer: 1200, showConfirmButton: false });
-          this.cargarAsignaciones();
-          this.resetAsignacionState();
-          this.loadCalendarWeeks();
-          this.isSaving = false;
-        },
-        error: err => {
-          console.error(err);
-          const detail = err?.error ? JSON.stringify(err.error) : 'No se pudo actualizar la asignación';
-          Swal.fire({ icon: 'error', title: 'Error', text: detail });
-          this.isSaving = false;
-        }
-      });
+      this.ejecutarActualizarAsignacion();
       return;
     }
 
@@ -2066,6 +2056,32 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     }
 
     this.ejecutarCrearAsignacion(false);
+  }
+
+  private ejecutarActualizarAsignacion(): void {
+    if (!this.asignacionActual.id) return;
+    const payload = {
+      ...this.asignacionActual,
+      start_date: this.asignacionActual.start_date || null,
+      recurring: true,
+      end_date: null,
+    } as any;
+    this.isSaving = true;
+    this.asignacionService.actualizarAsignacion(this.asignacionActual.id, payload).subscribe({
+      next: () => {
+        Swal.fire({ icon: 'success', title: 'Asignación actualizada', timer: 1200, showConfirmButton: false });
+        this.cargarAsignaciones();
+        this.resetAsignacionState();
+        this.loadCalendarWeeks();
+        this.isSaving = false;
+      },
+      error: err => {
+        console.error(err);
+        const detail = err?.error ? JSON.stringify(err.error) : 'No se pudo actualizar la asignación';
+        Swal.fire({ icon: 'error', title: 'Error', text: detail });
+        this.isSaving = false;
+      }
+    });
   }
 
   private ejecutarCrearAsignacion(reasignar: boolean): void {

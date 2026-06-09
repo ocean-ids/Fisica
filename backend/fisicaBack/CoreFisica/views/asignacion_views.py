@@ -1175,17 +1175,18 @@ def editar_servicio(request, id):
                 primer_dia_mes = hoy.replace(day=1)
                 fin_mes_anterior = primer_dia_mes - datetime.timedelta(days=1)
 
-                # Verificar que la nueva persona no tenga ya asignación activa este mes
-                if Asignacion.objects.filter(
+                # Si la nueva persona ya tiene asignación activa este mes en otro puesto,
+                # liberarla (queda vacante) en vez de bloquear.
+                otras = Asignacion.objects.filter(
                     persona_id=new_persona_id,
                     mes=hoy.month,
                     anio=hoy.year,
                     estado='ACTIVO'
-                ).exists():
-                    return Response(
-                        {'error': 'La persona ya tiene una asignación activa para este mes.'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                ).exclude(id=asignacion.id)
+                for otra in otras:
+                    otra.persona = None
+                    otra.save(update_fields=['persona'])
+                    ReporteAsistencia.objects.filter(asignacion=otra).update(persona=None)
 
                 # Cerrar asignación anterior en el mes previo
                 asignacion.end_date = fin_mes_anterior
