@@ -579,7 +579,10 @@ def asignar_servicio(request):
             if old_p:
                 old_p.persona = None
                 old_p.save(update_fields=['persona'])
-                ReporteAsistencia.objects.filter(asignacion=old_p).update(persona=None)
+                ReporteAsistencia.objects.filter(asignacion=old_p).update(
+                    persona=None, estado='TURNO', estado_asistencia='',
+                    reemplazo=None, descripcion=None, row_color=None
+                )
 
             # 2. Tomar el puesto destino si ya está ocupado (el ocupante queda libre)
             target = Asignacion.objects.filter(
@@ -593,7 +596,10 @@ def asignar_servicio(request):
                     except (TypeError, ValueError):
                         pass
                 target.save()
-                ReporteAsistencia.objects.filter(asignacion=target).update(persona_id=persona_id)
+                ReporteAsistencia.objects.filter(asignacion=target).update(
+                    persona_id=persona_id, estado='TURNO', estado_asistencia='',
+                    reemplazo=None, descripcion=None, row_color=None
+                )
                 return Response(AsignacionSerializer(target).data, status=status.HTTP_200_OK)
             # Si el puesto destino está vacío, continúa al flujo normal de creación.
 
@@ -619,7 +625,10 @@ def asignar_servicio(request):
                     except (TypeError, ValueError):
                         pass
                 vacante.save()
-                ReporteAsistencia.objects.filter(asignacion=vacante).update(persona_id=vacante.persona_id)
+                ReporteAsistencia.objects.filter(asignacion=vacante).update(
+                    persona_id=vacante.persona_id, estado='TURNO', estado_asistencia='',
+                    reemplazo=None, descripcion=None, row_color=None
+                )
                 # Reflejar horario en el puesto si no tiene
                 try:
                     if vacante.puesto and not vacante.puesto.horario_id and vacante.horario_id:
@@ -1182,7 +1191,11 @@ def editar_servicio(request, id):
                 for otra in otras:
                     otra.persona = None
                     otra.save(update_fields=['persona'])
-                    ReporteAsistencia.objects.filter(asignacion=otra).update(persona=None)
+                    # El puesto queda vacante: limpiar estado del reporte
+                    ReporteAsistencia.objects.filter(asignacion=otra).update(
+                        persona=None, estado='TURNO', estado_asistencia='',
+                        reemplazo=None, descripcion=None, row_color=None
+                    )
 
                 # Cambiar la persona EN LA MISMA fila: el puesto conserva su calendario.
                 asignacion.persona_id = new_persona_id
@@ -1193,7 +1206,11 @@ def editar_servicio(request, id):
                     except (TypeError, ValueError):
                         pass
                 asignacion.save()
-                ReporteAsistencia.objects.filter(asignacion=asignacion).update(persona_id=new_persona_id)
+                # Nueva persona: resetear estado del reporte (no heredar el de la anterior)
+                ReporteAsistencia.objects.filter(asignacion=asignacion).update(
+                    persona_id=new_persona_id, estado='TURNO', estado_asistencia='',
+                    reemplazo=None, descripcion=None, row_color=None
+                )
                 return Response(AsignacionSerializer(asignacion).data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -2105,13 +2122,15 @@ def asignaciones_vacantes(request, mes, anio):
     else:
         month_end = datetime.date(anio, mes + 1, 1) - datetime.timedelta(days=1)
 
+    mes_filter = (
+        Q(mes=mes, anio=anio) |
+        (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
+    )
+
     qs = Asignacion.objects.filter(
         estado='ACTIVO',
         persona__isnull=True
-    ).filter(
-        Q(mes=mes, anio=anio) |
-        (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
-    ).select_related(
+    ).filter(mes_filter).select_related(
         'cliente', 'instalacion', 'instalacion__canton', 'puesto', 'horario'
     ).order_by('instalacion__canton__nombre', 'orden', 'id')
 
@@ -2135,3 +2154,32 @@ def asignaciones_vacantes(request, mes, anio):
         })
 
     return JsonResponse({'total': len(resultado), 'results': resultado}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def personas_asignadas(request, mes, anio):
+    """Devuelve los IDs de personas con asignación activa en el mes (todos los cantones)."""
+    if not request.user.has_perm('CoreFisica.view_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        mes = int(mes)
+        anio = int(anio)
+    except (TypeError, ValueError):
+        return Response({'error': 'mes o anio invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    month_start = datetime.date(anio, mes, 1)
+    if mes == 12:
+        month_end = datetime.date(anio + 1, 1, 1) - datetime.timedelta(days=1)
+    else:
+        month_end = datetime.date(anio, mes + 1, 1) - datetime.timedelta(days=1)
+
+    ids = Asignacion.objects.filter(
+        estado='ACTIVO',
+        persona__isnull=False
+    ).filter(
+        Q(mes=mes, anio=anio) |
+        (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
+    ).values_list('persona_id', flat=True).distinct()
+
+    return JsonResponse({'persona_ids': list(ids)}, status=status.HTTP_200_OK)

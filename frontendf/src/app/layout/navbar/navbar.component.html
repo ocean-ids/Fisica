@@ -28,19 +28,23 @@
         <i [class]="isLightMode ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill'"></i>
       </button>
 
-      <!-- Notificaciones: puestos sin persona -->
-      <button
-        type="button"
-        mat-icon-button
-        class="position-relative"
-        (click)="abrirVacantes()"
-        aria-label="Puestos sin persona">
-        <mat-icon>notifications_active</mat-icon>
-        <span *ngIf="vacantesCount > 0" class="position-absolute translate-middle badge rounded-pill bg-danger notif-badge">
-          {{ vacantesCount }}
-          <span class="visually-hidden">puestos sin persona</span>
-        </span>
-      </button>
+      <!-- Notificaciones: puestos sin persona (solo con permiso de asignación) -->
+      @if (puedeVerAsignaciones) {
+        <button
+          type="button"
+          mat-icon-button
+          class="position-relative"
+          (click)="abrirVacantes()"
+          aria-label="Puestos sin persona">
+          <mat-icon>notifications_active</mat-icon>
+          @if (vacantesCount > 0) {
+            <span class="position-absolute translate-middle badge rounded-pill bg-danger notif-badge">
+              {{ vacantesCount }}
+              <span class="visually-hidden">puestos sin persona</span>
+            </span>
+          }
+        </button>
+      }
 
       @if (username) {
         <span class="username">{{ username }}</span>

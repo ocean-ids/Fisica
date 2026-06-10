@@ -108,6 +108,12 @@ export class AsignacionService {
     return this.apiService.patch<SacafrancoFila>(`/sacafranco-filas/${id}/`, payload);
   }
 
+  obtenerPersonasAsignadas(mes: number, anio: number): Observable<number[]> {
+    return this.apiService.get<any>(`/personas-asignadas/${mes}/${anio}/`).pipe(
+      map(response => (response?.persona_ids ?? []) as number[])
+    );
+  }
+
   obtenerAsignacionesVacantes(mes: number, anio: number): Observable<{ total: number; results: Array<{ id: number; codigo: string; cliente: string; instalacion: string; puesto: string; canton: string; canton_id: number | null; horario: string }> }> {
     return this.apiService.get<any>(`/asignaciones-vacantes/${mes}/${anio}/`).pipe(
       map(response => ({

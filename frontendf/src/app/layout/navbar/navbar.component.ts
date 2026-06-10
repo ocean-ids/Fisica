@@ -28,6 +28,7 @@ export class NavbarComponent implements OnInit {
   themeMode: 'light' | 'dark' = 'light';
   searchText: string = '';
   vacantesCount = 0;
+  puedeVerAsignaciones = false;
   private vacantesCargando = false;
 
   constructor(
@@ -55,9 +56,12 @@ export class NavbarComponent implements OnInit {
     this.themeMode = storedTheme === 'dark' ? 'dark' : 'light';
     this.applyThemeClass();
 
-    this.cargarVacantesCount();
-    // Refrescar el contador cuando se crean/editan/eliminan asignaciones
-    this.asignacionService.asignacionesChanged$.subscribe(() => this.cargarVacantesCount());
+    this.puedeVerAsignaciones = this.authService.hasPermission('CoreFisica.view_asignacion');
+    if (this.puedeVerAsignaciones) {
+      this.cargarVacantesCount();
+      // Refrescar el contador cuando se crean/editan/eliminan asignaciones
+      this.asignacionService.asignacionesChanged$.subscribe(() => this.cargarVacantesCount());
+    }
   }
 
   private getMesAnio(): { mes: number; anio: number } {

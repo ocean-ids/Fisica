@@ -343,6 +343,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   filtroTexto: string = '';
   private filterSub?: Subscription;
   private abrirSub?: Subscription;
+  // IDs de personas con asignación activa este mes en CUALQUIER cantón (no solo el cargado).
+  private personasAsignadasGlobal: number[] = [];
   columnasOcultas: string[] = [];
   provinciaPage = 1;
   provinciaTotal = 0;
@@ -426,6 +428,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.selectedCantonId = cantonId;
       this.activeProvinciaId = cantonId;
       localStorage.setItem(this.selectedCantonKeyStorageKey, this.selectedCantonKey);
+      // El backend resuelve la página por restore_canton_id (lee esta clave): apuntarla al cantón destino.
+      localStorage.setItem('asig_canton_id', String(cantonId));
     }
     this.provinciaPage = 1;
     this.cargarAsignaciones();
@@ -650,6 +654,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   // cargarAsignaciones se encarga de cargar las asignaciones y filas de sacafranco para el mes y año seleccionados, realizando llamadas a los servicios correspondientes para obtener esta información, aplicando filtros si es necesario, y luego actualizando la vista con los datos obtenidos, además de manejar los errores que puedan ocurrir durante la carga para asegurar que la información mostrada sea precisa y actualizada
   cargarAsignaciones(): void {
+    // Mantener actualizada la lista global de personas asignadas (todos los cantones)
+    this.cargarPersonasAsignadasGlobal();
     const params: any = {};
     const selectedViewCantons = this.getSelectedViewCantonIds();
     const mixedView = selectedViewCantons.length >= 2;
@@ -1951,9 +1957,17 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
   }
 
+  private cargarPersonasAsignadasGlobal(): void {
+    this.asignacionService.obtenerPersonasAsignadas(this.mes, this.anio).subscribe({
+      next: ids => this.personasAsignadasGlobal = ids || [],
+      error: () => this.personasAsignadasGlobal = []
+    });
+  }
+
   private getAssignedPersonaIds(excludeAsignacionId?: number): number[] {
     const list = Array.isArray(this.asignaciones) ? this.asignaciones : [];
-    const ids = list
+    // IDs del cantón cargado actualmente
+    const locales = list
       .filter((a: Asignacion) => {
         if (!a?.persona) return false;
         if (excludeAsignacionId && a.id === excludeAsignacionId) return false;
@@ -1962,7 +1976,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       })
       .map((a: Asignacion) => Number(a.persona))
       .filter((id: number) => Number.isFinite(id) && id > 0);
-    return Array.from(new Set(ids));
+    // Combinar con los IDs globales (otros cantones) para que el badge sea exacto
+    const combinados = [...locales, ...(this.personasAsignadasGlobal || [])];
+    return Array.from(new Set(combinados));
   }
 
   private getOccupiedPuestoIds(excludeAsignacionId?: number): number[] {
