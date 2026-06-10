@@ -13,7 +13,7 @@ from .views.instalacion_views import obtener_instalaciones, crear_instalacion, a
 from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona, disable_persona, enable_persona, importar_personas, exportar_personas_excel, SacafrancoListView, asignar_sacafranco, desasignar_sacafranco
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
-from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, guardar_orden_sacafranco, eliminar_asignacion, exportar_asignaciones_excel, sacafranco_filas, eliminar_sacafranco_fila
+from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, guardar_orden_sacafranco, eliminar_asignacion, exportar_asignaciones_excel, sacafranco_filas, eliminar_sacafranco_fila, asignaciones_vacantes
 from .views.asignacion_semanal_views import listar_asignacion_semanal, listar_asignacion_semanal_mes, semanas_del_mes, crear_o_actualizar_asignacion_semanal, copiar_semana, listar_sacafranco_fila_semanal, crear_o_actualizar_sacafranco_fila_semanal
 from .views.patron_asignacion_views import PatronAsignacionListCreateView, PatronAsignacionRetrieveUpdateDestroyView
 from .views.reporte_asistencia_views import obtener_reporte_asistencia, listar_descripciones_reporte, insertar_reporte_asistencia, historial_reporte_asistencia, exportar_reporte_asistencia_excel, exportar_reporte_asistencia_pdf
@@ -67,6 +67,7 @@ urlpatterns = [
     path('puestos/instalacion/<int:instalacion_id>/', obtener_puestos_por_instalacion),
     path('puestos/cliente/<int:cliente_id>/', obtener_puestos_por_cliente),
     path('asignaciones/<int:mes>/<int:anio>/', obtener_asignaciones),
+    path('asignaciones-vacantes/<int:mes>/<int:anio>/', asignaciones_vacantes),
     path('asignar-servicio/', asignar_servicio),
     path('editar-servicio/<int:id>/', editar_servicio),
     path('asignaciones/', obtener_asignaciones),

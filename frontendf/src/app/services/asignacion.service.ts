@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { ApiService } from './api.service';
 import { Asignacion, SacafrancoFila } from '../models/asignacion.model';
 import { map } from 'rxjs/operators';
@@ -10,6 +10,14 @@ import { environment } from '@env/environment';
 })
 export class AsignacionService {
   private apiUrl = environment.apiUrl;
+
+  // Notifica cuando cambian las asignaciones (crear/editar/eliminar) para refrescar contadores.
+  private asignacionesChanged = new Subject<void>();
+  asignacionesChanged$ = this.asignacionesChanged.asObservable();
+
+  notifyAsignacionesChanged(): void {
+    this.asignacionesChanged.next();
+  }
 
   constructor(private apiService: ApiService){}
 
@@ -91,5 +99,14 @@ export class AsignacionService {
   actualizarSacafrancoFila(id: number, payload: Partial<SacafrancoFila>): Observable<SacafrancoFila> {
     return this.apiService.patch<SacafrancoFila>(`/sacafranco-filas/${id}/`, payload);
   }
-  
+
+  obtenerAsignacionesVacantes(mes: number, anio: number): Observable<{ total: number; results: Array<{ id: number; codigo: string; cliente: string; instalacion: string; puesto: string; canton: string; horario: string }> }> {
+    return this.apiService.get<any>(`/asignaciones-vacantes/${mes}/${anio}/`).pipe(
+      map(response => ({
+        total: response?.total ?? 0,
+        results: response?.results ?? []
+      }))
+    );
+  }
+
 }

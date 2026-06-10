@@ -2086,3 +2086,51 @@ def exportar_asignaciones_excel(request):
     output.seek(0)
     response.write(output.getvalue())
     return response
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def asignaciones_vacantes(request, mes, anio):
+    """Lista las asignaciones activas sin persona (puestos que quedaron vacantes) del mes."""
+    if not request.user.has_perm('CoreFisica.view_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        mes = int(mes)
+        anio = int(anio)
+    except (TypeError, ValueError):
+        return Response({'error': 'mes o anio invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    month_start = datetime.date(anio, mes, 1)
+    if mes == 12:
+        month_end = datetime.date(anio + 1, 1, 1) - datetime.timedelta(days=1)
+    else:
+        month_end = datetime.date(anio, mes + 1, 1) - datetime.timedelta(days=1)
+
+    qs = Asignacion.objects.filter(
+        estado='ACTIVO',
+        persona__isnull=True
+    ).filter(
+        Q(mes=mes, anio=anio) |
+        (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
+    ).select_related(
+        'cliente', 'instalacion', 'instalacion__canton', 'puesto', 'horario'
+    ).order_by('instalacion__canton__nombre', 'orden', 'id')
+
+    resultado = []
+    for a in qs:
+        horario_txt = ''
+        if a.horario:
+            try:
+                horario_txt = f"{a.horario.hora_ingreso.strftime('%H:%M')} - {a.horario.hora_salida.strftime('%H:%M')}"
+            except Exception:
+                horario_txt = ''
+        resultado.append({
+            'id': a.id,
+            'codigo': getattr(a.instalacion, 'codigo', '') or '',
+            'cliente': getattr(a.cliente, 'nombre_comercial', '') or '',
+            'instalacion': getattr(a.instalacion, 'nombre', '') or '',
+            'puesto': getattr(a.puesto, 'nombre', '') or '',
+            'canton': getattr(getattr(a.instalacion, 'canton', None), 'nombre', '') or 'SIN CANTON',
+            'horario': horario_txt,
+        })
+
+    return JsonResponse({'total': len(resultado), 'results': resultado}, status=status.HTTP_200_OK)

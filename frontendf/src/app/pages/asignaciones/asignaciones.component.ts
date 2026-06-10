@@ -2073,6 +2073,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         this.cargarAsignaciones();
         this.resetAsignacionState();
         this.loadCalendarWeeks();
+        this.asignacionService.notifyAsignacionesChanged();
         this.isSaving = false;
       },
       error: err => {
@@ -2101,6 +2102,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         this.cargarAsignaciones();
         this.resetAsignacionState();
         this.loadCalendarWeeks();
+        this.asignacionService.notifyAsignacionesChanged();
         this.isSaving = false;
       },
       error: err => {
@@ -2161,6 +2163,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           Swal.fire({ icon: 'success', title: 'Asignación eliminada', timer: 1200, showConfirmButton: false });
           this.cargarAsignaciones();
           this.loadCalendarWeeks();
+          this.asignacionService.notifyAsignacionesChanged();
         },
         error: err => {
           console.error(err);

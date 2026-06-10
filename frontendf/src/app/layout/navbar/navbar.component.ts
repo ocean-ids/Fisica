@@ -10,6 +10,8 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ProfileDialogComponent } from '../profile/profile-dialog.component';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { FormsModule } from '@angular/forms';
+import { AsignacionService } from '../../services/asignacion.service';
+import { VacantesModalComponent } from './vacantes-modal.component';
 
 
 @Component({
@@ -25,12 +27,15 @@ export class NavbarComponent implements OnInit {
   photoUrl: string | null = null;
   themeMode: 'light' | 'dark' = 'light';
   searchText: string = '';
+  vacantesCount = 0;
+  private vacantesCargando = false;
 
   constructor(
     private authService: AuthService,
     private router: Router,
     private dialog: MatDialog,
-    private globalFilter: GlobalFilterStateService
+    private globalFilter: GlobalFilterStateService,
+    private asignacionService: AsignacionService
   ){}
 
   onSearchChange(): void {
@@ -49,6 +54,48 @@ export class NavbarComponent implements OnInit {
     const storedTheme = localStorage.getItem('themeMode');
     this.themeMode = storedTheme === 'dark' ? 'dark' : 'light';
     this.applyThemeClass();
+
+    this.cargarVacantesCount();
+    // Refrescar el contador cuando se crean/editan/eliminan asignaciones
+    this.asignacionService.asignacionesChanged$.subscribe(() => this.cargarVacantesCount());
+  }
+
+  private getMesAnio(): { mes: number; anio: number } {
+    const now = new Date();
+    return { mes: now.getMonth() + 1, anio: now.getFullYear() };
+  }
+
+  private cargarVacantesCount(): void {
+    const { mes, anio } = this.getMesAnio();
+    this.asignacionService.obtenerAsignacionesVacantes(mes, anio).subscribe({
+      next: res => this.vacantesCount = res.total || 0,
+      error: () => this.vacantesCount = 0
+    });
+  }
+
+  abrirVacantes(): void {
+    if (this.vacantesCargando) return;
+    this.vacantesCargando = true;
+    const { mes, anio } = this.getMesAnio();
+    const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+    this.asignacionService.obtenerAsignacionesVacantes(mes, anio).subscribe({
+      next: res => {
+        this.vacantesCount = res.total || 0;
+        this.vacantesCargando = false;
+        this.dialog.open(VacantesModalComponent, {
+          width: '720px',
+          maxWidth: '95vw',
+          data: { vacantes: res.results || [], mesLabel: `${meses[mes - 1]} ${anio}` }
+        });
+      },
+      error: () => {
+        this.vacantesCargando = false;
+        this.dialog.open(VacantesModalComponent, {
+          width: '720px',
+          data: { vacantes: [], mesLabel: `${meses[mes - 1]} ${anio}` }
+        });
+      }
+    });
   }
 
   toggleTheme(): void {

@@ -28,16 +28,17 @@
         <i [class]="isLightMode ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill'"></i>
       </button>
 
-      <!-- Notificaciones -->
+      <!-- Notificaciones: puestos sin persona -->
       <button
         type="button"
         mat-icon-button
         class="position-relative"
-        aria-label="Notificaciones">
+        (click)="abrirVacantes()"
+        aria-label="Puestos sin persona">
         <mat-icon>notifications_active</mat-icon>
-        <span class="position-absolute translate-middle badge rounded-pill bg-danger notif-badge">
-          0
-          <span class="visually-hidden">notificaciones</span>
+        <span *ngIf="vacantesCount > 0" class="position-absolute translate-middle badge rounded-pill bg-danger notif-badge">
+          {{ vacantesCount }}
+          <span class="visually-hidden">puestos sin persona</span>
         </span>
       </button>
 
