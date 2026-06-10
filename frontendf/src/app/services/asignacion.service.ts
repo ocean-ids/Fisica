@@ -19,6 +19,14 @@ export class AsignacionService {
     this.asignacionesChanged.next();
   }
 
+  // Canal para pedir a la vista de asignaciones que abra un puesto vacante específico.
+  private abrirAsignacion = new Subject<{ id: number; cantonId: number | null }>();
+  abrirAsignacion$ = this.abrirAsignacion.asObservable();
+
+  solicitarAbrirAsignacion(id: number, cantonId: number | null): void {
+    this.abrirAsignacion.next({ id, cantonId });
+  }
+
   constructor(private apiService: ApiService){}
 
   obtenerAsignaciones(mes: number, anio: number, params?: any): Observable<Asignacion[]> {
@@ -100,7 +108,7 @@ export class AsignacionService {
     return this.apiService.patch<SacafrancoFila>(`/sacafranco-filas/${id}/`, payload);
   }
 
-  obtenerAsignacionesVacantes(mes: number, anio: number): Observable<{ total: number; results: Array<{ id: number; codigo: string; cliente: string; instalacion: string; puesto: string; canton: string; horario: string }> }> {
+  obtenerAsignacionesVacantes(mes: number, anio: number): Observable<{ total: number; results: Array<{ id: number; codigo: string; cliente: string; instalacion: string; puesto: string; canton: string; canton_id: number | null; horario: string }> }> {
     return this.apiService.get<any>(`/asignaciones-vacantes/${mes}/${anio}/`).pipe(
       map(response => ({
         total: response?.total ?? 0,

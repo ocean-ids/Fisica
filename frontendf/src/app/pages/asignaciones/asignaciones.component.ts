@@ -342,6 +342,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   monthValue: string = '';
   filtroTexto: string = '';
   private filterSub?: Subscription;
+  private abrirSub?: Subscription;
   columnasOcultas: string[] = [];
   provinciaPage = 1;
   provinciaTotal = 0;
@@ -403,10 +404,31 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         this.filtroTexto = query;
         this.onFiltroChange();
       });
+
+    // Abrir un puesto vacante solicitado desde la campana de notificaciones
+    this.abrirSub = this.asignacionService.abrirAsignacion$.subscribe(({ id, cantonId }) => {
+      this.abrirAsignacionVacante(id, cantonId);
+    });
   }
 
   ngOnDestroy(): void {
     this.filterSub?.unsubscribe();
+    this.abrirSub?.unsubscribe();
+  }
+
+  // Abre el modal de edición de un puesto vacante (desde notificaciones): cambia al cantón y lo abre.
+  private pendingOpenAsignacionId: number | null = null;
+
+  private abrirAsignacionVacante(id: number, cantonId: number | null): void {
+    this.pendingOpenAsignacionId = id;
+    if (cantonId != null) {
+      this.selectedCantonKey = `canton:${cantonId}`;
+      this.selectedCantonId = cantonId;
+      this.activeProvinciaId = cantonId;
+      localStorage.setItem(this.selectedCantonKeyStorageKey, this.selectedCantonKey);
+    }
+    this.provinciaPage = 1;
+    this.cargarAsignaciones();
   }
 
   // onMonthChange se encarga de manejar el cambio de mes en el calendario, actualizando el estado del componente y recargando las asignaciones para reflejar el nuevo mes seleccionado
@@ -712,6 +734,15 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           this.buildDisplayRows();
           this.updateCalendarOrder();
           this.loadCalendarWeeks();
+
+          // Si se solicitó abrir un puesto vacante, abrir su modal de edición
+          if (this.pendingOpenAsignacionId != null) {
+            const target = (this.asignaciones || []).find(a => a.id === this.pendingOpenAsignacionId);
+            this.pendingOpenAsignacionId = null;
+            if (target) {
+              setTimeout(() => this.abrirModalEditar(target), 100);
+            }
+          }
         },
         error: err => console.error('Error al cargar asignaciones/sacafranco', err)
       });

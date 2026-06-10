@@ -82,10 +82,15 @@ export class NavbarComponent implements OnInit {
       next: res => {
         this.vacantesCount = res.total || 0;
         this.vacantesCargando = false;
-        this.dialog.open(VacantesModalComponent, {
+        const ref = this.dialog.open(VacantesModalComponent, {
           width: '720px',
           maxWidth: '95vw',
           data: { vacantes: res.results || [], mesLabel: `${meses[mes - 1]} ${anio}` }
+        });
+        ref.afterClosed().subscribe((sel: any) => {
+          if (!sel?.id) return;
+          this.asignacionService.solicitarAbrirAsignacion(sel.id, sel.canton_id ?? null);
+          this.router.navigate(['/dashboard/asignaciones']);
         });
       },
       error: () => {

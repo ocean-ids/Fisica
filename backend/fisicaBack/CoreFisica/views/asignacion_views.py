@@ -2130,6 +2130,7 @@ def asignaciones_vacantes(request, mes, anio):
             'instalacion': getattr(a.instalacion, 'nombre', '') or '',
             'puesto': getattr(a.puesto, 'nombre', '') or '',
             'canton': getattr(getattr(a.instalacion, 'canton', None), 'nombre', '') or 'SIN CANTON',
+            'canton_id': getattr(a.instalacion, 'canton_id', None),
             'horario': horario_txt,
         })
 

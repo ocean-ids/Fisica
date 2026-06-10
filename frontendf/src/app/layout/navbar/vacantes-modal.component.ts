@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 
 export interface VacanteItem {
@@ -10,6 +10,7 @@ export interface VacanteItem {
   instalacion: string;
   puesto: string;
   canton: string;
+  canton_id: number | null;
   horario: string;
 }
 
@@ -28,34 +29,38 @@ export interface VacantesModalData {
       <span class="badge bg-danger ms-2">{{ data.vacantes.length }}</span>
     </h2>
     <mat-dialog-content>
-      <div class="text-muted mb-2" *ngIf="data.mesLabel">{{ data.mesLabel }}</div>
+      @if (data.mesLabel) {
+        <div class="text-muted mb-2">{{ data.mesLabel }} — clic en una fila para asignar persona</div>
+      }
 
-      <div *ngIf="!data.vacantes.length" class="text-muted text-center py-3">
-        No hay puestos vacantes este mes. 🎉
-      </div>
-
-      <div class="table-responsive" *ngIf="data.vacantes.length">
-        <table class="table table-sm table-hover align-middle">
-          <thead class="table-light">
-            <tr>
-              <th>Nominativo</th>
-              <th>Cliente</th>
-              <th>Puesto</th>
-              <th>Cantón</th>
-              <th>Horario</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let v of data.vacantes">
-              <td>{{ v.codigo || '-' }}</td>
-              <td>{{ v.cliente || '-' }}</td>
-              <td>{{ v.puesto || '-' }}</td>
-              <td>{{ v.canton || '-' }}</td>
-              <td>{{ v.horario || '-' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      @if (!data.vacantes.length) {
+        <div class="text-muted text-center py-3">No hay puestos vacantes este mes. 🎉</div>
+      } @else {
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Nominativo</th>
+                <th>Cliente</th>
+                <th>Puesto</th>
+                <th>Cantón</th>
+                <th>Horario</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (v of data.vacantes; track v.id) {
+                <tr (click)="seleccionar(v)" style="cursor: pointer;">
+                  <td>{{ v.codigo || '-' }}</td>
+                  <td>{{ v.cliente || '-' }}</td>
+                  <td>{{ v.puesto || '-' }}</td>
+                  <td>{{ v.canton || '-' }}</td>
+                  <td>{{ v.horario || '-' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </mat-dialog-content>
 
     <mat-dialog-actions align="end">
@@ -64,5 +69,12 @@ export interface VacantesModalData {
   `,
 })
 export class VacantesModalComponent {
-  constructor(@Inject(MAT_DIALOG_DATA) public data: VacantesModalData) {}
+  constructor(
+    @Inject(MAT_DIALOG_DATA) public data: VacantesModalData,
+    private dialogRef: MatDialogRef<VacantesModalComponent, VacanteItem>
+  ) {}
+
+  seleccionar(v: VacanteItem): void {
+    this.dialogRef.close(v);
+  }
 }
