@@ -31,6 +31,16 @@
         <i class="bi bi-plus-circle"></i> Nuevo Puesto
       </button>
     </div>
+
+    <div class="col-12 col-md-7" *ngIf="instalaciones.length">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Instalación</mat-label>
+        <mat-select [(ngModel)]="instalacionSeleccionada" [ngModelOptions]="{standalone:true}">
+          <mat-option [value]="null">Todas las instalaciones</mat-option>
+          <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.nombre }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
   </div>
 
   <div class="card" *ngIf="clienteSeleccionado">
@@ -51,7 +61,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="text-center align-middle" *ngFor="let puesto of puestos">
+            <tr class="text-center align-middle" *ngFor="let puesto of puestosMostrados">
               <td>{{ puesto.nombre }}</td>
               <td>{{puesto.tipo}}</td>
               <!--<td>{{ puesto.cantidad_puestos }}</td>-->
@@ -86,7 +96,7 @@
                 </div>
               </td>
             </tr>
-            <tr *ngIf="puestos.length === 0">
+            <tr *ngIf="puestosMostrados.length === 0">
               <td colspan="7" class="text-center text-muted py-4">
                 No hay puestos registrados para este cliente
               </td>

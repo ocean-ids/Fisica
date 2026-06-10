@@ -2050,12 +2050,22 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.asignacionActual.mes = this.mes;
     this.asignacionActual.anio = this.anio;
 
-    const personaConflict = this.asignaciones.some(a =>
+    const personaSel = Number(this.asignacionActual.persona);
+    // En edición: si es la misma persona que ya tenía la asignación, no es conflicto.
+    const currentAsig = this.modoEdicion
+      ? this.asignaciones.find(a => a.id === this.asignacionActual.id)
+      : null;
+    const esMismaPersona = !!currentAsig && Number(currentAsig.persona) === personaSel;
+
+    // Conflicto local (mismo cantón cargado) o global (otros cantones)
+    const enGlobal = (this.personasAsignadasGlobal || []).includes(personaSel);
+    const conflictoLocal = this.asignaciones.some(a =>
       a.persona === this.asignacionActual.persona &&
       a.mes === this.mes &&
       a.anio === this.anio &&
       (!this.modoEdicion || a.id !== this.asignacionActual.id)
     );
+    const personaConflict = !esMismaPersona && (conflictoLocal || enGlobal);
     const puestoConflict = this.asignaciones.some(a =>
       a.puesto === this.asignacionActual.puesto &&
       !!a.persona &&

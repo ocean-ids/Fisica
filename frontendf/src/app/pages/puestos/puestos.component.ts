@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
@@ -30,6 +31,7 @@ import Swal from 'sweetalert2';
      MatCardModule,
      MatFormFieldModule,
     MatAutocompleteModule,
+    MatSelectModule,
     MatInputModule,
      MatDialogModule,
       FormsModule,
@@ -46,6 +48,9 @@ export class PuestosComponent implements OnInit {
   clienteSeleccionado: number | null = null;
   clienteSeleccionadoNombre = '';
   clienteFiltro: string | Cliente = '';
+
+  instalaciones: Array<{ id: number; nombre: string }> = [];
+  instalacionSeleccionada: number | null = null;
 
   constructor(
     private puestoService: PuestoService,
@@ -105,10 +110,29 @@ export class PuestosComponent implements OnInit {
   cargarPuestos(): void {
     if (this.clienteSeleccionado) {
       this.puestoService.getPuestosPorCliente(this.clienteSeleccionado).subscribe({
-        next: data => this.puestos = data,
+        next: data => {
+          this.puestos = data;
+          this.instalacionSeleccionada = null;
+          // Lista única de instalaciones de los puestos cargados
+          const map = new Map<number, string>();
+          (data || []).forEach((p: any) => {
+            const id = p.instalacion_id;
+            const nombre = (p.instalacion_nombre || '').trim();
+            if (id && !map.has(id)) map.set(id, nombre || `Instalación ${id}`);
+          });
+          this.instalaciones = Array.from(map.entries())
+            .map(([id, nombre]) => ({ id, nombre }))
+            .sort((a, b) => a.nombre.localeCompare(b.nombre));
+        },
         error: err => console.error('Error al cargar puestos:', err)
       });
     }
+  }
+
+  // Puestos a mostrar según la instalación elegida (o todos si no hay)
+  get puestosMostrados(): Puesto[] {
+    if (!this.instalacionSeleccionada) return this.puestos;
+    return (this.puestos || []).filter((p: any) => p.instalacion_id === this.instalacionSeleccionada);
   }
 
   abrirFormularioNuevo(puesto?: Puesto): void {
