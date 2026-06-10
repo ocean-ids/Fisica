@@ -867,8 +867,8 @@ def asignar_servicio(request):
                                 except Exception:
                                     value = ''
                         else:
-                            if applies_by_puesto:
-                                value = default_code
+                            # Sin patrón: dejar el día vacío para llenarlo manualmente.
+                            value = ''
 
                         defaults[key] = value
 
@@ -1116,8 +1116,8 @@ def asignar_servicio(request):
                                                 except Exception:
                                                     value = ''
                                         else:
-                                            if applies_by_puesto:
-                                                value = default_code
+                                            # Sin patrón: dejar el día vacío para llenarlo manualmente.
+                                            value = ''
 
                                         defaults[key] = value
                                     try:

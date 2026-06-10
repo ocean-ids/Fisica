@@ -69,10 +69,8 @@ def get_or_create_provincia_token(token):
     nombre = norm(token)
     if not nombre:
         return None
-    prov = Provincia.objects.filter(nombre__iexact=nombre).first()
-    if prov:
-        return prov
-    return Provincia.objects.create(nombre=nombre)
+    from ..utils import buscar_o_crear_provincia
+    return buscar_o_crear_provincia(nombre, Provincia)
 
 
 def get_or_create_canton_token(token, provincia_token=None):

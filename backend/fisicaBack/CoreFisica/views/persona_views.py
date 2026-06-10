@@ -226,16 +226,9 @@ def _resolve_provincia_id(token):
     if token is None or token == '':
         return None
     try:
-        return int(token)
-    except (TypeError, ValueError):
-        pass
-    try:
-        name = str(token).strip()
-        prov = Provincia.objects.filter(nombre__iexact=name).first()
-        if prov:
-            return prov.id
-        prov = Provincia.objects.create(nombre=name.upper())
-        return prov.id
+        from ..utils import buscar_o_crear_provincia
+        prov = buscar_o_crear_provincia(token, Provincia)
+        return prov.id if prov else None
     except Exception:
         return None
 

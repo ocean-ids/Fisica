@@ -118,3 +118,37 @@ def parse_input(text: str) -> List[Dict[str, int]]:
         for d in days:
             rules.append({'dia': d, 'horas': hours, 'cantidad': qty, 'turno': turno})
     return rules
+
+
+import unicodedata
+
+
+def normalizar_nombre(nombre):
+    """Normaliza un nombre para comparar sin acentos, guiones, puntuación ni mayúsculas.
+    Ej: 'EL-ORO', 'EL ORO', 'el oro' -> 'EL ORO'."""
+    s = str(nombre or '').strip().upper()
+    s = ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+    # Tratar guiones, puntos y cualquier separador no alfanumérico como espacio
+    s = re.sub(r'[^A-Z0-9]+', ' ', s)
+    return ' '.join(s.split())
+
+
+def buscar_o_crear_provincia(provincia_token, Provincia):
+    """Devuelve o crea una Provincia a partir de id o nombre, sin duplicar por acentos/mayúsculas."""
+    if not provincia_token:
+        return None
+    # Intentar por id
+    try:
+        obj = Provincia.objects.filter(pk=int(provincia_token)).first()
+        if obj:
+            return obj
+    except (TypeError, ValueError):
+        pass
+    objetivo = normalizar_nombre(provincia_token)
+    if not objetivo:
+        return None
+    # Comparar contra existentes ya normalizadas (insensible a acentos)
+    for p in Provincia.objects.all():
+        if normalizar_nombre(p.nombre) == objetivo:
+            return p
+    return Provincia.objects.create(nombre=str(provincia_token).strip().upper())

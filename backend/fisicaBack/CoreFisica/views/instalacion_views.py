@@ -34,20 +34,9 @@ def resolve_canton_id(canton_token, provincia_token=None):
 
 
 def get_or_create_provincia(provincia_token):
-    """Devuelve o crea Provincia a partir de id o nombre."""
-    if not provincia_token:
-        return None
-    try:
-        provincia_obj = Provincia.objects.filter(pk=int(provincia_token)).first()
-        if provincia_obj:
-            return provincia_obj
-    except Exception:
-        pass
-    nombre = str(provincia_token).strip()
-    provincia_obj = Provincia.objects.filter(nombre__iexact=nombre).first()
-    if provincia_obj:
-        return provincia_obj
-    return Provincia.objects.create(nombre=nombre.upper())
+    """Devuelve o crea Provincia a partir de id o nombre (sin duplicar por acentos/mayúsculas)."""
+    from ..utils import buscar_o_crear_provincia
+    return buscar_o_crear_provincia(provincia_token, Provincia)
 
 
 def get_or_create_canton(canton_token, provincia_token=None):
