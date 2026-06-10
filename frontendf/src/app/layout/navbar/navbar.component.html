@@ -28,7 +28,19 @@
         <i [class]="isLightMode ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill'"></i>
       </button>
 
-      
+      <!-- Notificaciones -->
+      <button
+        type="button"
+        mat-icon-button
+        class="position-relative"
+        aria-label="Notificaciones">
+        <mat-icon>notifications_active</mat-icon>
+        <span class="position-absolute translate-middle badge rounded-pill bg-danger notif-badge">
+          0
+          <span class="visually-hidden">notificaciones</span>
+        </span>
+      </button>
+
       @if (username) {
         <span class="username">{{ username }}</span>
       }

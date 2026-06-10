@@ -64,3 +64,12 @@ mat-toolbar {
   color: #ffffff;
 }
 
+
+.notif-badge {
+  top: 6px;
+  left: calc(100% - 8px);
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 4px;
+  min-width: 14px;
+}
