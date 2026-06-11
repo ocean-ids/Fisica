@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, tap } from 'rxjs';
 import type { LoginResponse } from '../models/login.models';
 import { environment } from '@env/environment';
+import Swal from 'sweetalert2';
 
 @Injectable({
   providedIn: 'root'
@@ -14,10 +15,63 @@ export class AuthService {
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
   private tokenCheckId: any = null;
 
+  // Cierre de sesión por inactividad (3 horas sin actividad del usuario)
+  private readonly INACTIVITY_MS = 3 * 60 * 60 * 1000;
+  private readonly WARNING_MS = 2 * 60 * 1000; // avisar 2 min antes
+  private inactivityTimerId: any = null;
+  private warningActive = false;
+  private boundResetActivity = () => this.resetInactivityTimer();
 
-  
+
   constructor(private http: HttpClient, private router: Router) {
     this.startTokenWatcher();
+    this.setupInactivityWatcher();
+  }
+
+  private setupInactivityWatcher(): void {
+    const eventos = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    eventos.forEach(ev => window.addEventListener(ev, this.boundResetActivity, { passive: true }));
+    if (this.hasToken()) {
+      this.resetInactivityTimer();
+    }
+  }
+
+  private resetInactivityTimer(): void {
+    if (!this.hasToken()) return;
+    // Mientras la alerta está visible, solo el botón "Seguir conectado" reinicia
+    if (this.warningActive) return;
+    if (this.inactivityTimerId) {
+      clearTimeout(this.inactivityTimerId);
+    }
+    // Programar la ALERTA 2 min antes del cierre
+    this.inactivityTimerId = setTimeout(() => {
+      this.mostrarAvisoInactividad();
+    }, this.INACTIVITY_MS - this.WARNING_MS);
+  }
+
+  private mostrarAvisoInactividad(): void {
+    if (!this.hasToken()) return;
+    this.warningActive = true;
+    Swal.fire({
+      icon: 'warning',
+      title: 'Sesión por expirar',
+      text: 'Tu sesión se cerrará por inactividad. ¿Deseas seguir conectado?',
+      timer: this.WARNING_MS,
+      timerProgressBar: true,
+      showConfirmButton: true,
+      confirmButtonText: 'Seguir conectado',
+      allowOutsideClick: false,
+    }).then(result => {
+      this.warningActive = false;
+      if (result.isConfirmed) {
+        // El usuario sigue activo: reiniciar el contador
+        this.resetInactivityTimer();
+      } else {
+        // No respondió a tiempo: cerrar sesión
+        this.forceLogout();
+        this.router.navigate(['/login']);
+      }
+    });
   }
 
   private withCacheBust(url?: string | null): string | null {
@@ -42,6 +96,7 @@ export class AuthService {
         localStorage.setItem('groups', JSON.stringify(response.user.groups ?? []));
         localStorage.setItem('permissions', JSON.stringify(response.user.permissions ?? []));
         this.isAuthenticatedSubject.next(true);
+        this.resetInactivityTimer();
       })
     );
   }
@@ -78,6 +133,14 @@ export class AuthService {
     localStorage.removeItem('user');
     localStorage.removeItem('groups');
     localStorage.removeItem('permissions');
+    if (this.inactivityTimerId) {
+      clearTimeout(this.inactivityTimerId);
+      this.inactivityTimerId = null;
+    }
+    if (this.warningActive) {
+      this.warningActive = false;
+      Swal.close();
+    }
     this.isAuthenticatedSubject.next(false);
   }
 
