@@ -759,10 +759,13 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.calendarData = {};
       return;
     }
+    // NO filtrar el calendario por texto (q): la lista ya viene filtrada/paginada
+    // por cantón y el calendario se mapea fila por fila por asignacion_id/puesto_id.
+    // Si filtramos el calendario por q y la lista y el calendario divergen (vista
+    // mixta, instalación, nombre de puesto, filas sin asignacion directa), algunas
+    // filas visibles se quedan sin su calendario. Traer todo el cantón visible
+    // garantiza que toda fila mostrada encuentre su calendario; el resto se ignora.
     const paramsBase: any = {};
-    if (this.filtroTexto && this.filtroTexto.trim()) {
-      paramsBase.q = this.filtroTexto.trim();
-    }
     const hasSacafranco = (this.sacafrancoRows || []).length > 0;
     const selectedViewCantons = this.getSelectedViewCantonIds();
     const mixedView = selectedViewCantons.length >= 2;
