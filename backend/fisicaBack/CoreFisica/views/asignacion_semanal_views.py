@@ -1016,7 +1016,14 @@ def listar_asignacion_semanal(request):
             Q(asignacion__persona__cedula__icontains=q) |
             Q(asignacion__persona__nombres__icontains=q) |
             Q(asignacion__persona__apellidos__icontains=q) |
-            Q(puesto__nombre__icontains=q)
+            Q(puesto__nombre__icontains=q) |
+            # Mismos campos de instalación que la lista de asignaciones, para que
+            # toda fila visible en la lista traiga su calendario (vía puesto cubre
+            # también filas sin asignacion directa).
+            Q(puesto__instalacion__codigo__icontains=q) |
+            Q(puesto__instalacion__nombre__icontains=q) |
+            Q(asignacion__instalacion__codigo__icontains=q) |
+            Q(asignacion__instalacion__nombre__icontains=q)
         )
         # Si el término de búsqueda es un número, también buscar por ID de asignación o ID de fila semanal para facilitar acceso directo.
         if q.isdigit():
@@ -1137,7 +1144,14 @@ def listar_asignacion_semanal_mes(request):
             Q(asignacion__persona__cedula__icontains=q) |
             Q(asignacion__persona__nombres__icontains=q) |
             Q(asignacion__persona__apellidos__icontains=q) |
-            Q(puesto__nombre__icontains=q)
+            Q(puesto__nombre__icontains=q) |
+            # Mismos campos de instalación que la lista de asignaciones, para que
+            # toda fila visible en la lista traiga su calendario (vía puesto cubre
+            # también filas sin asignacion directa).
+            Q(puesto__instalacion__codigo__icontains=q) |
+            Q(puesto__instalacion__nombre__icontains=q) |
+            Q(asignacion__instalacion__codigo__icontains=q) |
+            Q(asignacion__instalacion__nombre__icontains=q)
         )
         if q.isdigit():
             filtros = filtros | Q(id=int(q)) | Q(asignacion_id=int(q))
@@ -1238,7 +1252,11 @@ def listar_asignacion_semanal_mes(request):
                     Q(asignacion__persona__cedula__icontains=q) |
                     Q(asignacion__persona__nombres__icontains=q) |
                     Q(asignacion__persona__apellidos__icontains=q) |
-                    Q(puesto__nombre__icontains=q)
+                    Q(puesto__nombre__icontains=q) |
+                    Q(puesto__instalacion__codigo__icontains=q) |
+                    Q(puesto__instalacion__nombre__icontains=q) |
+                    Q(asignacion__instalacion__codigo__icontains=q) |
+                    Q(asignacion__instalacion__nombre__icontains=q)
                 )
                 if q.isdigit():
                     filtros = filtros | Q(id=int(q)) | Q(asignacion_id=int(q))
