@@ -283,27 +283,37 @@ def _expand_compact_dias(token: str):
 
 
 def parse_compact_horas_turno_dias(value):
+    """Parsea el resumen compacto de un puesto. Acepta ambos formatos:
+      - Con H: '24HLD', '12HDJM', '9HDLV', '5HDLU' (numero + H + turno? + dias)
+      - Con turno y espacio: '24D LD', '12D LV', '12N LD' (numero + turno + dias)
+      - Decimales y multi-grupo: '5HDLU - 4.5HDV - 5HDSD'
+    """
     if value is None:
         return []
     text = str(value).strip().upper()
     if not text:
         return []
-    parts = [m.group(0) for m in re.finditer(r'\d{1,2}H[DN]?[A-Z]*', text)]
-    if not parts:
-        parts = [p.strip() for p in text.split('/') if p.strip()]
+    # separar grupos por '/' o ' - '
+    raw_parts = re.split(r'\s*/\s*|\s+-\s+', text)
     groups = []
-    for part in parts:
-        part = re.sub(r'\s+', '', part)
-        match = re.match(r'^(\d{1,2})H([DN])?([A-Z]+)?$', part)
-        if not match:
+    for part in raw_parts:
+        p = re.sub(r'\s+', '', part)
+        if not p:
             continue
-        hours_val = int(match.group(1))
-        turno_token = match.group(2) or ''
-        dias_token = match.group(3) or ''
+        # numero(decimal) + H opcional + turno opcional (D/N) + dias (1-2 letras de LMXJVSD)
+        m = re.match(r'^(\d+(?:[.,]\d+)?)H?([DN])?([LMXJVSD]{1,2})?$', p)
+        if not m:
+            continue
+        try:
+            hours_val = int(round(float(m.group(1).replace(',', '.'))))
+        except ValueError:
+            hours_val = 12
+        turno_token = m.group(2) or ''
+        dias_token = m.group(3) or ''
         groups.append({
             'hours': hours_val,
             'turno': parse_turno(turno_token) if turno_token else None,
-            'dias': _expand_compact_dias(dias_token)
+            'dias': _expand_compact_dias(dias_token),
         })
     return groups
 
@@ -385,9 +395,19 @@ def importar_puestos_asignaciones(request):
 
     try:
         # intenta abrir el archivo excel usando openpyxl, si no es posible, retorna un jsonresponse con error 400
-        wb = load_workbook(upload, read_only=True, data_only=True)
+        wb = load_workbook(upload, read_only=False, data_only=True)
     except Exception as exc:
         return JsonResponse({'error': f'No se pudo abrir el archivo: {exc}'}, status=400)
+
+    # Si es el FORMATO REPORTE (el que genera Descargar), usar el importador dedicado
+    try:
+        if es_formato_reporte(wb):
+            resumen = importar_formato_reporte(request, wb, cliente_id)
+            return JsonResponse(resumen, status=200)
+    except Exception:
+        logger.exception('Error importando formato reporte')
+        return JsonResponse({'error': 'No se pudo importar el formato reporte'}, status=500)
+
     # ws es la hoja activa del libro excel
     ws = wb.active
     # rows es una lista de filas de la hoja excel, cada fila es una tupla de valores de celdas, usando values_only=True para obtener solo los valores sin formato
@@ -464,6 +484,9 @@ def importar_puestos_asignaciones(request):
         touched_asig_ids = set()
         touched_dates = set()
         regenerated_future_signatures = {}
+        # Personas importadas por (puesto, mes, anio) -> para reemplazar sin duplicar
+        from collections import defaultdict as _dd
+        puesto_personas = _dd(set)
         with transaction.atomic():
             for i, row in enumerate(rows[start_row:], start=start_row + 1):
                 if not row or all(v is None or str(v).strip() == '' for v in row):
@@ -703,6 +726,7 @@ def importar_puestos_asignaciones(request):
                 )
                 touched_asig_ids.add(asig.id)
                 touched_dates.add(ref_date)
+                puesto_personas[(puesto.id, mes, anio)].add(persona.id)
                 # si se creo una nueva asignacion
                 if created_asig:
                     resumen['asignaciones_creadas'] += 1
@@ -863,6 +887,20 @@ def importar_puestos_asignaciones(request):
 
                 resumen['filas_validas'] += 1
 
+            # Reemplazo sin duplicar: en cada puesto/mes/año importado, desactivar las
+            # personas que YA NO aparecen en el archivo (fueron reemplazadas).
+            for (pid, pmes, panio), persona_ids in puesto_personas.items():
+                sobrantes = Asignacion.objects.filter(
+                    puesto_id=pid, mes=pmes, anio=panio, estado='ACTIVO'
+                ).exclude(persona_id__in=persona_ids)
+                for o in sobrantes:
+                    o.estado = 'INACTIVO'
+                    o.save(update_fields=['estado'])
+                    ReporteAsistencia.objects.filter(asignacion=o).update(
+                        estado='TURNO', estado_asistencia='', reemplazo=None,
+                        descripcion=None, row_color=None
+                    )
+
             if touched_asig_ids:
                 # Asegurar ReporteAsistencia base para las asignaciones importadas
                 asig_qs = Asignacion.objects.select_related(
@@ -899,3 +937,421 @@ def importar_puestos_asignaciones(request):
     except Exception:
         logger.exception('Error importando puestos/asignaciones')
         return JsonResponse({'error': 'No se pudo importar puestos/asignaciones'}, status=500)
+
+
+# ============================================================================
+# Importación del FORMATO REPORTE (el que genera el botón Descargar de Asignaciones)
+# ============================================================================
+def _rep_norm(v):
+    import unicodedata
+    if v is None:
+        return ''
+    t = str(v).strip().upper().replace('.', ' ').replace('_', ' ')
+    t = ''.join(c for c in unicodedata.normalize('NFKD', t) if not unicodedata.combining(c))
+    return ' '.join(t.split())
+
+
+def _periodo_minimo(seq):
+    """Detecta el período mínimo EXACTO de una secuencia (ej. DDDNNNF -> 7).
+    Si no hay período exacto más corto, devuelve la secuencia completa."""
+    n = len(seq)
+    if n == 0:
+        return seq
+    for p in range(1, n):
+        if all(seq[i] == seq[i % p] for i in range(n)):
+            return seq[:p]
+    return list(seq)
+
+
+def _ciclo_para_continuar(seq):
+    """Devuelve el ciclo a usar para continuar el patrón en meses futuros.
+    1) Período exacto si existe. 2) Si la fila es irregular, prueba longitudes
+    típicas (7,6,5,8,14,10,...) y usa la que mejor encaje (>=85%). 3) Si nada
+    encaja, repite el mes completo."""
+    n = len(seq)
+    if n == 0:
+        return list(seq)
+    # 1) período exacto
+    exacto = _periodo_minimo(seq)
+    if len(exacto) < n:
+        return exacto
+    # 2) mejor aproximado entre longitudes típicas de rotación
+    candidatos = [7, 6, 5, 8, 14, 10, 12, 4, 3, 2, 21, 28]
+    mejor_p, mejor_ratio = None, 0.0
+    for p in candidatos:
+        if p >= n:
+            continue
+        aciertos = sum(1 for i in range(n) if seq[i] == seq[i % p])
+        ratio = aciertos / n
+        if ratio > mejor_ratio:
+            mejor_ratio, mejor_p = ratio, p
+    if mejor_p and mejor_ratio >= 0.85:
+        return seq[:mejor_p]
+    # 3) sin patrón claro -> repetir el mes completo
+    return list(seq)
+
+
+def _rep_detectar_columnas(rows):
+    for ri, row in enumerate(rows[:20]):
+        H = {_rep_norm(c): j for j, c in enumerate(row) if c is not None and str(c).strip()}
+        if 'CLIENTE' in H and 'PUESTO' in H and 'CEDULA' in H and ('H INGRESO' in H or 'H SALIDA' in H):
+            dias = []
+            for j, c in enumerate(row):
+                s = str(c).strip() if c is not None else ''
+                if s.isdigit() and 1 <= int(s) <= 31:
+                    dias.append(j)
+            col = {
+                'ing': H.get('H INGRESO'), 'sal': H.get('H SALIDA'),
+                'cli': H['CLIENTE'], 'pue': H['PUESTO'], 'resumen': H.get('TIPO'),
+                'ced': H['CEDULA'], 'nombre': H.get('APELLIDOS Y NOMBRES'),
+                'nominativo': H['CLIENTE'] - 1, 'dias': dias,
+            }
+            return ri, col
+    return None, None
+
+
+def es_formato_reporte(wb):
+    for ws in wb.worksheets:
+        rows = list(ws.iter_rows(values_only=True))
+        ri, _ = _rep_detectar_columnas(rows)
+        if ri is not None:
+            return True
+    return False
+
+
+def importar_formato_reporte(request, wb, cliente_id_filter=None):
+    from .asignacion_semanal_views import _sync_sacafranco_to_reporte_y_consolidado, _validate_sacafranco_tokens
+    from ..models import SacafrancoFila, SacafrancoFilaSemanal
+
+    resumen = {
+        'total_filas': 0, 'filas_validas': 0, 'personas_creadas': 0,
+        'puestos_creados': 0, 'horarios_creados': 0, 'asignaciones_creadas': 0,
+        'asignaciones_actualizadas': 0, 'sacafranco_creados': 0, 'errores': [],
+    }
+
+    req_month = request.GET.get('mes') or request.POST.get('mes')
+    req_year = request.GET.get('anio') or request.POST.get('anio')
+    try:
+        req_month = int(req_month) if req_month else None
+    except (TypeError, ValueError):
+        req_month = None
+    try:
+        req_year = int(req_year) if req_year else None
+    except (TypeError, ValueError):
+        req_year = None
+
+    touched_asig_ids = set()
+    touched_dates = set()
+    puesto_personas = {}
+    orden_counter = 0  # orden de presentación según el orden del Excel (igual en todos los meses)
+    WEEK_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+
+    with transaction.atomic():
+        for ws in wb.worksheets:
+            rows = list(ws.iter_rows(values_only=True))
+            ri, col = _rep_detectar_columnas(rows)
+            if ri is None:
+                continue
+            sheet_year, sheet_month = _detect_month_year_from_sheet(rows)
+            mes = req_month or sheet_month
+            anio = req_year or sheet_year
+            # Fallback: detectar nombre de mes suelto (sin año) y usar año actual
+            if not mes:
+                meses_map = {'ENERO': 1, 'FEBRERO': 2, 'MARZO': 3, 'ABRIL': 4, 'MAYO': 5,
+                             'JUNIO': 6, 'JULIO': 7, 'AGOSTO': 8, 'SEPTIEMBRE': 9, 'SETIEMBRE': 9,
+                             'OCTUBRE': 10, 'NOVIEMBRE': 11, 'DICIEMBRE': 12}
+                for r in rows[:ri + 2]:
+                    for c in r:
+                        key = _rep_norm(c)
+                        if key in meses_map:
+                            mes = meses_map[key]
+                            break
+                    if mes:
+                        break
+            if not anio:
+                anio = date.today().year
+            if not mes:
+                resumen['errores'].append(f'Hoja {ws.title}: no se detecto el mes')
+                continue
+            month_start = date(anio, mes, 1)
+            days_in_month = (date(anio, mes + 1, 1) - timedelta(days=1)).day if mes < 12 else 31
+            carry = {'nominativo': '', 'cli': '', 'pue': '', 'resumen': ''}
+            carry_time = {'ing': None, 'sal': None}
+
+            for i, row in enumerate(rows[ri + 1:], start=ri + 2):
+                if not row or all(v is None or str(v).strip() == '' for v in row):
+                    continue
+                resumen['total_filas'] += 1
+
+                def g(key):
+                    j = col.get(key)
+                    return row[j] if (j is not None and j < len(row)) else None
+
+                for k in ('nominativo', 'cli', 'pue', 'resumen'):
+                    v = g(k)
+                    if v is not None and str(v).strip():
+                        carry[k] = str(v).strip()
+
+                cedula = normalize_cedula(norm(g('ced')))
+                puesto_nombre = carry['pue']
+                es_saca = _rep_norm(puesto_nombre) == 'SACAFRANCO'
+
+                cal = []
+                for d_i, dj in enumerate(col['dias']):
+                    if d_i >= days_in_month:
+                        break
+                    cal.append(parse_calendar_value(row[dj]) if dj < len(row) else '')
+
+                if es_saca:
+                    if not cedula:
+                        continue
+                    persona = Persona.objects.filter(cedula=cedula).first()
+                    if not persona:
+                        toks = [t for t in re.split(r'\s+', norm(g('nombre'))) if t]
+                        ap = ' '.join(toks[:2]) if len(toks) >= 2 else (toks[0] if toks else 'SF')
+                        no = ' '.join(toks[2:]) if len(toks) > 2 else (toks[1] if len(toks) > 1 else ap)
+                        persona = Persona.objects.create(nombres=no.upper(), apellidos=ap.upper(), cedula=cedula, tipo='SACAFRANCO')
+                        resumen['personas_creadas'] += 1
+                    orden_counter += 1
+                    row_orden = orden_counter
+                    fila, _ = SacafrancoFila.objects.get_or_create(persona=persona, mes=mes, anio=anio, defaults={'orden': row_orden})
+                    if fila.orden != row_orden:
+                        fila.orden = row_orden
+                        fila.save(update_fields=['orden'])
+                    for d_i, val in enumerate(cal):
+                        day_num = d_i + 1
+                        ws_start = month_start + timedelta(days=((day_num - 1) // 7) * 7)
+                        day_field = WEEK_KEYS[date(anio, mes, day_num).weekday()]
+                        sem, _ = SacafrancoFilaSemanal.objects.get_or_create(sacafranco_fila=fila, week_start=ws_start)
+                        setattr(sem, day_field, (val or '').upper())
+                        sem.save()
+                    for wk in range(((days_in_month - 1) // 7) + 1):
+                        ws_start = month_start + timedelta(days=wk * 7)
+                        sem = SacafrancoFilaSemanal.objects.filter(sacafranco_fila=fila, week_start=ws_start).first()
+                        if not sem:
+                            continue
+                        payload = {k: getattr(sem, k, '') for k in WEEK_KEYS}
+                        try:
+                            err, resolved = _validate_sacafranco_tokens(payload, ws_start)
+                            if not err:
+                                _sync_sacafranco_to_reporte_y_consolidado(fila.id, ws_start, payload, resolved)
+                        except Exception:
+                            pass
+
+                    # Continuar el patrón del sacafranco en los próximos 36 meses
+                    sf_vals = [(v or '').upper() for v in cal]
+                    sf_ciclo = _ciclo_para_continuar(sf_vals)
+                    if sf_ciclo and any(str(x).strip() for x in sf_ciclo):
+                        sf_len = len(sf_ciclo)
+                        sf_idx = len(sf_vals)
+
+                        def _add_m(y, mo, off):
+                            return (y + (mo - 1 + off) // 12), ((mo - 1 + off) % 12 + 1)
+
+                        for off in range(1, 37):
+                            ty, tm = _add_m(anio, mes, off)
+                            t_start = date(ty, tm, 1)
+                            t_days = (date(ty, tm + 1, 1) - timedelta(days=1)).day if tm < 12 else 31
+                            t_fila, _ = SacafrancoFila.objects.get_or_create(persona=persona, mes=tm, anio=ty, defaults={'orden': row_orden})
+                            if t_fila.orden != row_orden:
+                                t_fila.orden = row_orden
+                                t_fila.save(update_fields=['orden'])
+                            wp = {}
+                            for dn in range(1, t_days + 1):
+                                wss = t_start + timedelta(days=((dn - 1) // 7) * 7)
+                                df = WEEK_KEYS[date(ty, tm, dn).weekday()]
+                                wp.setdefault(wss, {})[df] = sf_ciclo[sf_idx % sf_len]
+                                sf_idx += 1
+                            for wss, dm in wp.items():
+                                sem2, _ = SacafrancoFilaSemanal.objects.get_or_create(sacafranco_fila=t_fila, week_start=wss)
+                                for k, v in dm.items():
+                                    setattr(sem2, k, v)
+                                sem2.save()
+                                payload2 = {k: getattr(sem2, k, '') for k in WEEK_KEYS}
+                                try:
+                                    err2, resolved2 = _validate_sacafranco_tokens(payload2, wss)
+                                    if not err2:
+                                        _sync_sacafranco_to_reporte_y_consolidado(t_fila.id, wss, payload2, resolved2)
+                                except Exception:
+                                    pass
+
+                    resumen['sacafranco_creados'] += 1
+                    resumen['filas_validas'] += 1
+                    touched_dates.add(month_start)
+                    continue
+
+                if not cedula:
+                    continue
+                if not carry['nominativo']:
+                    resumen['errores'].append(f'Fila {i}: sin nominativo (codigo de instalacion)')
+                    continue
+                instalacion = Instalacion.objects.filter(codigo__iexact=carry['nominativo']).first()
+                if not instalacion:
+                    resumen['errores'].append(f"Fila {i}: instalacion con codigo '{carry['nominativo']}' no existe")
+                    continue
+                if cliente_id_filter and instalacion.cliente_id != cliente_id_filter:
+                    continue
+
+                # arrastrar hora ingreso/salida de celdas combinadas (mismo puesto)
+                raw_ing = g('ing')
+                raw_sal = g('sal')
+                if raw_ing is not None and str(raw_ing).strip():
+                    carry_time['ing'] = raw_ing
+                if raw_sal is not None and str(raw_sal).strip():
+                    carry_time['sal'] = raw_sal
+                hora_ingreso = parse_excel_time(raw_ing if (raw_ing is not None and str(raw_ing).strip()) else carry_time['ing'])
+                hora_salida = parse_excel_time(raw_sal if (raw_sal is not None and str(raw_sal).strip()) else carry_time['sal'])
+                if not hora_ingreso or not hora_salida:
+                    resumen['errores'].append(f'Fila {i}: hora ingreso/salida invalida')
+                    continue
+
+                resumen_txt = carry['resumen'] or ''
+                m = re.match(r'\s*(\d+)\s+(.*)', resumen_txt)
+                cantidad = int(m.group(1)) if m else 1
+                resto = m.group(2) if m else resumen_txt
+                grupos = parse_compact_horas_turno_dias(resto) or []
+
+                persona = Persona.objects.filter(cedula=cedula).first()
+                if not persona:
+                    toks = [t for t in re.split(r'\s+', norm(g('nombre'))) if t]
+                    if len(toks) < 2:
+                        resumen['errores'].append(f'Fila {i}: nombre incompleto')
+                        continue
+                    ap = ' '.join(toks[:2])
+                    no = ' '.join(toks[2:]) or toks[1]
+                    persona = Persona.objects.create(nombres=no.upper(), apellidos=ap.upper(), cedula=cedula, tipo='FIJOS')
+                    resumen['personas_creadas'] += 1
+
+                horario, h_created = Horario.objects.get_or_create(hora_ingreso=hora_ingreso, hora_salida=hora_salida)
+                if h_created:
+                    resumen['horarios_creados'] += 1
+
+                puesto, p_created = Puesto.objects.get_or_create(
+                    instalacion=instalacion, nombre=puesto_nombre,
+                    defaults={'cantidad_puestos': cantidad}
+                )
+                if p_created:
+                    resumen['puestos_creados'] += 1
+                if not puesto.horario_id:
+                    puesto.horario = horario
+                    puesto.save(update_fields=['horario'])
+                for grp in grupos:
+                    for dia in grp.get('dias', []):
+                        PuestoHorario.objects.update_or_create(
+                            puesto=puesto, dia=dia,
+                            defaults={'horas': grp.get('hours', 12), 'turno': grp.get('turno') or 'Diurno'}
+                        )
+                try:
+                    puesto.sync_from_horarios()
+                    puesto.save()
+                except Exception:
+                    pass
+
+                orden_counter += 1
+                row_orden = orden_counter
+                asig, created = Asignacion.objects.update_or_create(
+                    persona=persona, mes=mes, anio=anio,
+                    defaults={
+                        'cliente': instalacion.cliente, 'instalacion': instalacion,
+                        'puesto': puesto, 'horario': horario, 'fecha': None,
+                        'patronAsignacion': None, 'estado': 'ACTIVO',
+                        'publicada_calendario': True, 'recurring': True,
+                        'start_date': month_start, 'end_date': None,
+                        'orden': row_orden,
+                    }
+                )
+                touched_asig_ids.add(asig.id)
+                touched_dates.add(month_start)
+                puesto_personas.setdefault((puesto.id, mes, anio), set()).add(persona.id)
+                resumen['asignaciones_creadas' if created else 'asignaciones_actualizadas'] += 1
+
+                cal_by_week = {}
+                for d_i, val in enumerate(cal):
+                    day_num = d_i + 1
+                    ws_start = month_start + timedelta(days=((day_num - 1) // 7) * 7)
+                    day_field = WEEK_KEYS[date(anio, mes, day_num).weekday()]
+                    cal_by_week.setdefault(ws_start, {})[day_field] = (val or '').upper()
+                for ws_start, day_map in cal_by_week.items():
+                    obj, _ = AsignacionSemanal.objects.get_or_create(
+                        asignacion_id=asig.id, week_start=ws_start, defaults={'puesto_id': puesto.id}
+                    )
+                    for k, v in day_map.items():
+                        setattr(obj, k, v)
+                    obj.puesto_id = puesto.id
+                    obj.save()
+
+                # Continuar el patrón D/N/F en los próximos 36 meses (ciclo continuo)
+                # Detectar el período REAL (ej. DDDNNNF=7) para no repetir el mes entero.
+                cal_vals = [(v or '').upper() for v in cal]
+                ciclo = _ciclo_para_continuar(cal_vals)
+                if ciclo and any(str(x).strip() for x in ciclo):
+                    cycle_len = len(ciclo)
+                    seq_idx = len(cal_vals)  # desfase global: continúa donde terminó el mes
+
+                    def _add_months(y, mo, off):
+                        ny = y + (mo - 1 + off) // 12
+                        nm = (mo - 1 + off) % 12 + 1
+                        return ny, nm
+
+                    for off in range(1, 37):
+                        ty, tm = _add_months(anio, mes, off)
+                        t_start = date(ty, tm, 1)
+                        t_days = (date(ty, tm + 1, 1) - timedelta(days=1)).day if tm < 12 else 31
+                        t_asig, _ = Asignacion.objects.update_or_create(
+                            persona=persona, mes=tm, anio=ty,
+                            defaults={
+                                'cliente': instalacion.cliente, 'instalacion': instalacion,
+                                'puesto': puesto, 'horario': horario, 'fecha': None,
+                                'patronAsignacion': None, 'estado': 'ACTIVO',
+                                'publicada_calendario': True, 'recurring': True,
+                                'start_date': t_start, 'end_date': None,
+                                'orden': row_orden,
+                            }
+                        )
+                        puesto_personas.setdefault((puesto.id, tm, ty), set()).add(persona.id)
+                        wp = {}
+                        for dn in range(1, t_days + 1):
+                            wss = t_start + timedelta(days=((dn - 1) // 7) * 7)
+                            df = WEEK_KEYS[date(ty, tm, dn).weekday()]
+                            wp.setdefault(wss, {})[df] = ciclo[seq_idx % cycle_len]
+                            seq_idx += 1
+                        for wss, dm in wp.items():
+                            o, _ = AsignacionSemanal.objects.get_or_create(
+                                asignacion_id=t_asig.id, week_start=wss, defaults={'puesto_id': puesto.id}
+                            )
+                            for k, v in dm.items():
+                                setattr(o, k, v)
+                            o.puesto_id = puesto.id
+                            o.save()
+
+                resumen['filas_validas'] += 1
+
+        for (pid, pmes, panio), pers_ids in puesto_personas.items():
+            for o in Asignacion.objects.filter(puesto_id=pid, mes=pmes, anio=panio, estado='ACTIVO').exclude(persona_id__in=pers_ids):
+                o.estado = 'INACTIVO'
+                o.save(update_fields=['estado'])
+                ReporteAsistencia.objects.filter(asignacion=o).update(
+                    estado='TURNO', estado_asistencia='', reemplazo=None, descripcion=None, row_color=None
+                )
+
+        for asig in Asignacion.objects.select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').filter(id__in=touched_asig_ids):
+            rep, _ = ReporteAsistencia.objects.get_or_create(asignacion=asig)
+            rep.persona = asig.persona
+            rep.cliente = asig.cliente
+            rep.instalacion = asig.instalacion
+            rep.puesto = asig.puesto
+            rep.horario = asig.horario
+            rep.puesto_tipo = getattr(asig.puesto, 'tipo', None) if asig.puesto else None
+            rep.save()
+
+        try:
+            from .reporte_asistencia_views import _build_reporte_asistencia_data
+            from .consolidado_views import _build_resumen_manual
+            for ref_date in touched_dates:
+                for turno_val in ('Diurno', 'Nocturno'):
+                    rows_data = _build_reporte_asistencia_data(fecha=ref_date.isoformat(), turno=turno_val)
+                    _build_resumen_manual(ref_date, turno_val, rows_data)
+        except Exception:
+            pass
+
+    return resumen
