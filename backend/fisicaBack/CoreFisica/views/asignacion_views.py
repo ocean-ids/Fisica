@@ -751,8 +751,6 @@ def asignar_servicio(request):
                                 dias_nums = list(horarios_qs.values_list('dia', flat=True))
                 except Exception:
                     dias_nums = []
-                turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
-                default_code = 'N' if turno.startswith('n') else 'D'
                 # iterar sobre las semanas del mes y crear o actualzar filas de AsignacionSemanal según corresponda, aplicando la lógica de secuencia, días del puesto, días de la semana y fechas de la asignación para determinar el código a asignar en cada día. Se utiliza update_or_create para garantizar que haya una fila 1:1 por asignación/semana, y se actualizan los campos relacionados (persona, cliente, instalacion, horario) para mantener consistencia con la asignación principal.
                 while current <= last_day:
                     defaults = {}
@@ -977,8 +975,6 @@ def asignar_servicio(request):
                                     return map_short.get(t, t)
 
                                 dias_norm = [normalize_day_token(d) for d in dias_puesto if d]
-                                turno = (getattr(puesto_obj, 'turno', '') or '').strip().lower() if puesto_obj else ''
-                                default_code = 'N' if turno.startswith('n') else 'D'
 
                                 # también obtener números de día (1..7) desde los horarios si existen (normalizados a int)
                                 dias_nums = []
