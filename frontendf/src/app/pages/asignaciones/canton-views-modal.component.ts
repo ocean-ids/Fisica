@@ -155,7 +155,7 @@ export interface CantonViewsModalResult {
       }
     </mat-dialog-content>
 
-    <mat-dialog-actions align="end">
+    <mat-dialog-actions adockerlign="end">
       <button mat-stroked-button type="button" (click)="close()">Cerrar</button>
     </mat-dialog-actions>
   `,
