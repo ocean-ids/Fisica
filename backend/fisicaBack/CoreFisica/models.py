@@ -761,3 +761,38 @@ class VistaCanton(models.Model):
         return self.nombre
 
 
+class AuditLog(models.Model):
+    """Registro de auditoría: quién creó/editó/eliminó qué entidad y cuándo.
+
+    Se llena automáticamente vía señales (post_save/post_delete) en CoreFisica/signals.py.
+    El usuario se obtiene del request actual mediante el middleware de auditoría.
+    """
+    ACCIONES = [
+        ('CREATE', 'Creación'),
+        ('UPDATE', 'Actualización'),
+        ('DELETE', 'Eliminación'),
+    ]
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='auditorias'
+    )
+    usuario_str = models.CharField(max_length=150, blank=True)  # respaldo del username
+    accion = models.CharField(max_length=10, choices=ACCIONES)
+    modelo = models.CharField(max_length=100)
+    objeto_id = models.CharField(max_length=64, blank=True)
+    objeto_repr = models.CharField(max_length=255, blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado_en']
+        indexes = [
+            models.Index(fields=['-creado_en']),
+            models.Index(fields=['modelo', 'objeto_id']),
+            models.Index(fields=['usuario']),
+        ]
+
+    def __str__(self):
+        return f"{self.creado_en:%Y-%m-%d %H:%M} | {self.usuario_str} | {self.accion} {self.modelo}#{self.objeto_id}"
+
+

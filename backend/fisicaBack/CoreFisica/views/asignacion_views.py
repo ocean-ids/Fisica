@@ -579,7 +579,6 @@ def asignar_servicio(request):
     # global datetime se declara para asegurar que se utiliza el módulo datetime importado en lugar de cualquier variable local con el mismo nombre, ya que se realizan operaciones con fechas dentro de esta función y es crucial que se utilice el módulo correcto para evitar errores.
     global datetime
 
-    print(f"📥 Datos recibidos: {request.data}")
     data = request.data.copy()
     data['recurring'] = True
     data['end_date'] = None
@@ -926,7 +925,6 @@ def asignar_servicio(request):
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     # Si hay error de unicidad (persona, mes, anio) intentamos actualizar la asignación existente
-    print(f"❌ Errores de validación: {serializer.errors}")
     try:
         errs = serializer.errors or {}
         nonf = errs.get('non_field_errors') if isinstance(errs, dict) else None
@@ -1436,15 +1434,13 @@ def eliminar_asignacion(request, id):
                             qs = qs.filter(week_start__lte=window_end)
                         orphan_count = qs.count()
                         if orphan_count:
-                            print(f"DEBUG eliminar_asignacion: borrando {orphan_count} filas huérfanas para puesto {puesto_id} entre {window_start or '-inf'} y {window_end or '+inf'}")
                             qs.delete()
                 except Exception:
                     # no crítico: continuar con la eliminación principal
                     pass
 
                 asignar.delete()
-        except Exception as e:
-            print(f"⚠️ Error eliminando asignación y sus semanales: {e}")
+        except Exception:
             return Response({'error': 'No se pudo eliminar la asignación'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'mensaje': 'Asignación eliminada correctamente'}, status=status.HTTP_204_NO_CONTENT)

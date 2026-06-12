@@ -80,6 +80,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'CoreFisica.audit.AuditUserMiddleware',
 ]
 
 ROOT_URLCONF = 'fisicaBack.urls'

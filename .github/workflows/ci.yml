@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend-tests:
+    name: Backend tests (Django + pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/fisicaBack
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: sf_bd
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Variables mínimas para que Django arranque en CI (no son secretos reales).
+      SECRET_KEY: ci-secret-key-not-for-production
+      DEBUG: "True"
+      DB_NAME: sf_bd
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Convertir requirements.txt (UTF-16 -> UTF-8)
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import codecs
+          data = Path('requirements.txt').read_bytes()
+          if data.startswith(codecs.BOM_UTF16_LE) or data.startswith(codecs.BOM_UTF16_BE):
+              text = data.decode('utf-16')
+          else:
+              text = data.decode('utf-8-sig')
+          Path('requirements-utf8.txt').write_text(text, encoding='utf-8')
+          PY
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-utf8.txt
+          pip install -r requirements-dev.txt
+
+      - name: Ejecutar tests
+        run: pytest

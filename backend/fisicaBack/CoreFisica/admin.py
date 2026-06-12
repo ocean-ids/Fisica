@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, Consolidado, UserProfile, AsignacionCalendarioLog
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, Consolidado, UserProfile, AsignacionCalendarioLog, AuditLog
 
 admin.site.site_header = 'Seguridad Física'
 admin.site.site_title = 'Seguridad Física'
@@ -208,3 +208,22 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 	def has_delete_permission(self, request, obj=None):
 		return request.user.has_perm('CoreFisica.delete_userprofile')
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+	"""Registro de auditoría: solo lectura (no se crea/edita/borra a mano)."""
+	list_display = ('creado_en', 'usuario_str', 'accion', 'modelo', 'objeto_id', 'objeto_repr', 'ip')
+	list_filter = ('accion', 'modelo', 'creado_en')
+	search_fields = ('usuario_str', 'modelo', 'objeto_id', 'objeto_repr')
+	date_hierarchy = 'creado_en'
+	ordering = ('-creado_en',)
+
+	def has_add_permission(self, request):
+		return False
+
+	def has_change_permission(self, request, obj=None):
+		return False
+
+	def has_delete_permission(self, request, obj=None):
+		return request.user.is_superuser
