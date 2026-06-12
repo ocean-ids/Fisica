@@ -58,7 +58,6 @@ import { CantonMixView, CantonViewsModalComponent } from './canton-views-modal.c
   styleUrl: './asignaciones.component.css'
 })
 export class AsignacionesComponent implements OnInit, OnDestroy {
-  private readonly cantonViewsStorageKey = 'asig_canton_views';
   private readonly selectedCantonKeyStorageKey = 'asig_selected_canton_key';
   showColumnMenu = false;
   weeksForMonth: string[] = [];
@@ -1207,48 +1206,48 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     ref.afterClosed().subscribe(result => {
       if (!result?.views) return;
-      this.cantonViews = result.views;
-      this.persistCantonViews();
-
-      if (this.selectedCantonKey.startsWith('view:')) {
-        const selectedId = this.selectedCantonKey.replace('view:', '').trim();
-        const exists = this.cantonViews.some(v => v.id === selectedId);
-        if (!exists) {
+      const previousSelectedId = this.selectedCantonKey.startsWith('view:')
+        ? this.selectedCantonKey.replace('view:', '').trim()
+        : null;
+      this.cantonViews = this.normalizeCantonViews(result.views);
+      // Guardar en BD (compartidas). Tras la respuesta, los ids quedan estables.
+      this.persistCantonViews(() => {
+        if (previousSelectedId && !this.cantonViews.some(v => v.id === previousSelectedId)) {
           this.selectedCantonKey = this.selectedCantonId == null ? 'canton:null' : `canton:${this.selectedCantonId}`;
           localStorage.setItem(this.selectedCantonKeyStorageKey, this.selectedCantonKey);
           this.cargarAsignaciones();
         }
-      }
+      });
     });
   }
 
-  private loadCantonViews(): void {
-    try {
-      const raw = localStorage.getItem(this.cantonViewsStorageKey);
-      if (!raw) {
-        this.cantonViews = [];
-        return;
-      }
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        this.cantonViews = [];
-        return;
-      }
-      this.cantonViews = parsed
-        .filter(v => v && typeof v.id === 'string' && typeof v.nombre === 'string' && Array.isArray(v.cantonIds))
-        .map(v => ({
-          id: v.id,
-          nombre: v.nombre,
-          cantonIds: (v.cantonIds || []).map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id) && id > 0)
-        }))
-        .filter(v => v.cantonIds.length >= 2);
-    } catch {
-      this.cantonViews = [];
-    }
+  private normalizeCantonViews(arr: any[]): CantonMixView[] {
+    return (arr || [])
+      .filter(v => v && typeof v.nombre === 'string' && Array.isArray(v.cantonIds))
+      .map(v => ({
+        id: String(v.id),
+        nombre: v.nombre,
+        cantonIds: (v.cantonIds || []).map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id) && id > 0)
+      }))
+      .filter(v => v.cantonIds.length >= 2);
   }
 
-  private persistCantonViews(): void {
-    localStorage.setItem(this.cantonViewsStorageKey, JSON.stringify(this.cantonViews || []));
+  // Vistas compartidas: se cargan desde la BD (visibles en cualquier máquina/usuario).
+  private loadCantonViews(): void {
+    this.asignacionService.obtenerVistasCantones().subscribe({
+      next: views => { this.cantonViews = this.normalizeCantonViews(views); },
+      error: () => { this.cantonViews = []; }
+    });
+  }
+
+  private persistCantonViews(done?: () => void): void {
+    this.asignacionService.guardarVistasCantones(this.cantonViews || []).subscribe({
+      next: views => {
+        this.cantonViews = this.normalizeCantonViews(views);
+        if (done) done();
+      },
+      error: () => { if (done) done(); }
+    });
   }
 
   private getSelectedViewCantonIds(): number[] {

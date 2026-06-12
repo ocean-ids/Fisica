@@ -736,7 +736,17 @@ class AsignacionCalendarioLog(models.Model):
     def __str__(self):
         return f"{self.creado_en:%Y-%m-%d %H:%M} | {self.dia} | {self.valor_anterior}→{self.valor_nuevo}"
 
-    
 
+class VistaCanton(models.Model):
+    """Vista personalizada de cantones, compartida (global) entre todos los usuarios.
+    `cantones` guarda la lista de ids de Canton que agrupa la vista."""
+    nombre = models.CharField(max_length=100)
+    cantones = models.JSONField(default=list)
+
+    class Meta:
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
 
 

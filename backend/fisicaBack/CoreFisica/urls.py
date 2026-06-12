@@ -18,6 +18,7 @@ from .views.asignacion_semanal_views import listar_asignacion_semanal, listar_as
 from .views.patron_asignacion_views import PatronAsignacionListCreateView, PatronAsignacionRetrieveUpdateDestroyView
 from .views.reporte_asistencia_views import obtener_reporte_asistencia, listar_descripciones_reporte, insertar_reporte_asistencia, historial_reporte_asistencia, exportar_reporte_asistencia_excel, exportar_reporte_asistencia_pdf
 from .views.consolidado_views import obtener_consolidado, crear_consolidado, actualizar_consolidado, eliminar_consolidado, obtener_consolidado_armado, exportar_consolidado_excel, exportar_consolidado_pdf, obtener_consolidado_resumen, actualizar_consolidado_resumen
+from .views.vista_canton_views import vistas_cantones
 
 urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
@@ -77,6 +78,7 @@ urlpatterns = [
     path('eliminar-asignacion/<int:id>/', eliminar_asignacion),
     path('sacafranco-filas/', sacafranco_filas),
     path('sacafranco-filas/<int:id>/', eliminar_sacafranco_fila),
+    path('vistas-cantones/', vistas_cantones),
     path('reporte-asignaciones/', exportar_asignaciones_excel, name='reporte_asignaciones'),
     path('asignacion-semanal/', listar_asignacion_semanal),
     path('asignacion-semanal/mes/', listar_asignacion_semanal_mes),
