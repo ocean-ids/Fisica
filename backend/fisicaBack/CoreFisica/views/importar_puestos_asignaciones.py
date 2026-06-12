@@ -293,8 +293,8 @@ def parse_compact_horas_turno_dias(value):
     text = str(value).strip().upper()
     if not text:
         return []
-    # separar grupos por '/' o ' - '
-    raw_parts = re.split(r'\s*/\s*|\s+-\s+', text)
+    # separar grupos por '/', ' - ' o ' Y ' (texto ya en mayúsculas)
+    raw_parts = re.split(r'\s*/\s*|\s+-\s+|\s+Y\s+', text)
     groups = []
     for part in raw_parts:
         p = re.sub(r'\s+', '', part)
@@ -1006,6 +1006,21 @@ def _rep_detectar_columnas(rows):
                 'ced': H['CEDULA'], 'nombre': H.get('APELLIDOS Y NOMBRES'),
                 'nominativo': H['CLIENTE'] - 1, 'dias': dias,
             }
+            # Si no hay encabezado "TIPO", inferir la columna del resumen del puesto:
+            # entre PUESTO y CEDULA, la columna cuyos datos tengan patrón de horas
+            # (24H, 4.5HDV, 5HDLJ...). Evita confundirla con el '#'/orden (solo dígitos).
+            if col['resumen'] is None and col['pue'] is not None and col['ced'] is not None:
+                lo, hi = col['pue'] + 1, col['ced']
+                hpat = re.compile(r'\d+(?:[.,]\d+)?\s*H', re.IGNORECASE)
+                conteo = {}
+                for r2 in rows[ri + 1:ri + 60]:
+                    if not r2:
+                        continue
+                    for j in range(lo, hi):
+                        if j < len(r2) and r2[j] is not None and hpat.search(str(r2[j])):
+                            conteo[j] = conteo.get(j, 0) + 1
+                if conteo:
+                    col['resumen'] = max(conteo, key=conteo.get)
             return ri, col
     return None, None
 

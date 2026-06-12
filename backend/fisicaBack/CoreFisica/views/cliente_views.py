@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from django.db.models import Q
+from django.db import IntegrityError
 from django.utils.dateparse import parse_date
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -87,24 +88,30 @@ def crear_cliente(request):
                 razon_social = str(razon_social).strip().upper()
             if nombre_comercial:
                 nombre_comercial = str(nombre_comercial).strip().upper()
+            # RUC vacío -> NULL (la columna es unique; '' chocaría con otros sin RUC)
+            ruc = str(ruc).strip() if ruc is not None else ''
+            ruc = ruc or None
             size = data.get('size', 'MEDIANO')
             fecha_ingreso = parse_date(data.get('fecha_ingreso')) if data.get('fecha_ingreso') else None
             fecha_retiro = parse_date(data.get('fecha_retiro')) if data.get('fecha_retiro') else None
-            
+
             if not razon_social or not nombre_comercial:
                 return JsonResponse({'error': 'Faltan campos obligatorios'}, status=400)
 
             if size not in ALLOWED_SIZES:
                 return JsonResponse({'error': 'Tamaño no válido. Use PEQUENO, MEDIANO o GRANDE.'}, status=400)
 
-            cliente = Cliente.objects.create(
-                razon_social=razon_social,
-                nombre_comercial=nombre_comercial,
-                ruc=ruc,
-                size=size,
-                fecha_ingreso=fecha_ingreso,
-                fecha_retiro=fecha_retiro
-            )
+            try:
+                cliente = Cliente.objects.create(
+                    razon_social=razon_social,
+                    nombre_comercial=nombre_comercial,
+                    ruc=ruc,
+                    size=size,
+                    fecha_ingreso=fecha_ingreso,
+                    fecha_retiro=fecha_retiro
+                )
+            except IntegrityError:
+                return JsonResponse({'error': f'Ya existe un cliente con el RUC {ruc}'}, status=400)
 
             return JsonResponse({'message': 'Cliente creado correctamente', 'id': cliente.id}, status=201)
         except json.JSONDecodeError:
@@ -133,7 +140,10 @@ def actualizar_cliente(request, id):
         if 'nombre_comercial' in data:
             nombre_comercial = data.get('nombre_comercial')
             cliente.nombre_comercial = str(nombre_comercial).strip().upper() if nombre_comercial else ''
-        cliente.ruc = data.get('ruc', cliente.ruc)
+        if 'ruc' in data:
+            ruc = data.get('ruc')
+            ruc = str(ruc).strip() if ruc is not None else ''
+            cliente.ruc = ruc or None  # RUC vacío -> NULL (columna unique)
         size = data.get('size', cliente.size)
 
         if size not in ALLOWED_SIZES:
@@ -147,7 +157,10 @@ def actualizar_cliente(request, id):
 
         cliente.size = size
 
-        cliente.save()
+        try:
+            cliente.save()
+        except IntegrityError:
+            return JsonResponse({'error': f'Ya existe un cliente con el RUC {cliente.ruc}'}, status=400)
 
         return JsonResponse({
             'message': 'Cliente actualizado correctamente',
