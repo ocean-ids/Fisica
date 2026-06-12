@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import RegexValidator
-from django.conf import settings    
+from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 import datetime
 
 def current_month():
@@ -360,6 +361,11 @@ class SacafrancoFila(models.Model):
     orden = models.PositiveIntegerField(default=0)
     provincia = models.ForeignKey(Provincia, null=True, blank=True, on_delete=models.PROTECT)
     persona = models.ForeignKey(Persona, null=True, blank=True, on_delete=models.SET_NULL)
+    # Alcance de la vista donde se creó: si están seteados, la fila se muestra SOLO
+    # en vistas que coincidan (cantones o empresas). Si ambos están vacíos, la fila
+    # es "heredada" y se muestra por el cantón de su persona (compatibilidad).
+    cantones = ArrayField(models.IntegerField(), default=list, blank=True)
+    clientes = ArrayField(models.IntegerField(), default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

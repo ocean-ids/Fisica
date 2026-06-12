@@ -245,7 +245,7 @@ class SacafrancoFilaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SacafrancoFila
-        fields = ['id', 'mes', 'anio', 'orden', 'provincia', 'provincia_nombre', 'persona', 'persona_detalle', 'created_at', 'updated_at']
+        fields = ['id', 'mes', 'anio', 'orden', 'provincia', 'provincia_nombre', 'persona', 'persona_detalle', 'cantones', 'clientes', 'created_at', 'updated_at']
 
 
 class SacafrancoFilaSemanalSerializer(serializers.ModelSerializer):

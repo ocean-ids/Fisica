@@ -1153,12 +1153,25 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     ref.afterClosed().subscribe(result => {
       if (!result?.personaId) return;
-      const payload: SacafrancoFila = {
+      const payload: any = {
         mes: this.mes,
         anio: this.anio,
         orden: (this.sacafrancoRows || []).length,
         persona: result.personaId
       };
+
+      // Atar la fila a la vista donde se crea, para que salga SOLO ahí.
+      const activeView = this.getActiveView();
+      if (activeView?.tipo === 'cliente') {
+        payload.clientes = activeView.clienteIds || [];
+      } else if (activeView?.tipo === 'canton') {
+        payload.cantones = activeView.cantonIds || [];
+      } else {
+        const cantonId = result.cantonId ?? this.selectedCantonId;
+        if (cantonId != null) {
+          payload.cantones = [cantonId];
+        }
+      }
 
       this.asignacionService.crearSacafrancoFila(payload).subscribe({
         next: fila => {

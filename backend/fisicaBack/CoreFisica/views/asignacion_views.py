@@ -1467,21 +1467,16 @@ def sacafranco_filas(request):
                 canton_ids = [int(x) for x in canton_ids_raw.split(',') if str(x).strip()]
             except (TypeError, ValueError):
                 return Response({'error': 'Canton IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
-        # Vista por empresa: derivar los cantones de las instalaciones de esos clientes
-        # y mostrar el sacafranco de esos cantones.
+        # Vista por empresa: scope por clientes (filas creadas en esa vista). Para
+        # filas heredadas (sin scope) se derivan los cantones de las instalaciones.
+        cliente_ids = []
         cliente_ids_raw = (request.GET.get('cliente_ids') or '').strip()
-        if cliente_ids_raw and not canton_ids:
+        if cliente_ids_raw:
             try:
                 cliente_ids = [int(x) for x in cliente_ids_raw.split(',') if str(x).strip()]
             except (TypeError, ValueError):
                 return Response({'error': 'Cliente IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
-            if cliente_ids:
-                from ..models import Instalacion
-                canton_ids = list(
-                    Instalacion.objects.filter(cliente_id__in=cliente_ids)
-                    .exclude(canton_id__isnull=True)
-                    .values_list('canton_id', flat=True).distinct()
-                )
+
         # se obtiene las filas de sacafranco
         qs = SacafrancoFila.objects.all()
         if mes and anio:
@@ -1492,14 +1487,35 @@ def sacafranco_filas(request):
                 # Mostrar todas las filas del mes (no filtrar por semanales).
             except (TypeError, ValueError):
                 pass
-        if canton_ids:
-            qs = qs.filter(persona__canton_id__in=canton_ids)
+
+        # Una fila con scope propio (cantones/clientes) se muestra SOLO donde coincide.
+        # Una fila sin scope ("heredada") se muestra por el cantón de su persona.
+        sin_scope = Q(cantones__len=0) & Q(clientes__len=0)
+        if cliente_ids and not canton_ids:
+            from ..models import Instalacion
+            derived_cantones = list(
+                Instalacion.objects.filter(cliente_id__in=cliente_ids)
+                .exclude(canton_id__isnull=True)
+                .values_list('canton_id', flat=True).distinct()
+            )
+            qs = qs.filter(
+                Q(clientes__overlap=cliente_ids)
+                | (sin_scope & Q(persona__canton_id__in=derived_cantones))
+            )
+        elif canton_ids:
+            qs = qs.filter(
+                Q(cantones__overlap=canton_ids)
+                | (sin_scope & Q(persona__canton_id__in=canton_ids))
+            )
         elif canton_id:
             try:
                 canton_val = int(canton_id)
             except (TypeError, ValueError):
                 return Response({'error': 'Canton invalido'}, status=status.HTTP_400_BAD_REQUEST)
-            qs = qs.filter(persona__canton_id=canton_val)
+            qs = qs.filter(
+                Q(cantones__contains=[canton_val])
+                | (sin_scope & Q(persona__canton_id=canton_val))
+            )
         elif provincia_id:
             try:
                 provincia_val = int(provincia_id)
