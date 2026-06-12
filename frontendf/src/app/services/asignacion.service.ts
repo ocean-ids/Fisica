@@ -123,14 +123,14 @@ export class AsignacionService {
     );
   }
 
-  // Vistas de cantones compartidas (guardadas en BD, visibles para todos los usuarios).
-  obtenerVistasCantones(): Observable<Array<{ id: string; nombre: string; cantonIds: number[] }>> {
+  // Vistas compartidas (guardadas en BD, visibles para todos los usuarios).
+  obtenerVistasCantones(): Observable<any[]> {
     return this.apiService.get<any>('/vistas-cantones/').pipe(
       map(r => (Array.isArray(r) ? r : (r?.views ?? [])))
     );
   }
 
-  guardarVistasCantones(views: Array<{ id: string; nombre: string; cantonIds: number[] }>): Observable<Array<{ id: string; nombre: string; cantonIds: number[] }>> {
+  guardarVistasCantones(views: any[]): Observable<any[]> {
     return this.apiService.post<any>('/vistas-cantones/', { views }).pipe(
       map(r => (Array.isArray(r) ? r : (r?.views ?? [])))
     );

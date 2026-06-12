@@ -656,14 +656,21 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     // Mantener actualizada la lista global de personas asignadas (todos los cantones)
     this.cargarPersonasAsignadasGlobal();
     const params: any = {};
+    const activeView = this.getActiveView();
+    const isClienteView = activeView?.tipo === 'cliente';
+    const clienteIdsCsv = (activeView?.clienteIds || []).join(',');
     const selectedViewCantons = this.getSelectedViewCantonIds();
-    const mixedView = selectedViewCantons.length >= 2;
+    const mixedView = !isClienteView && selectedViewCantons.length >= 2;
+    // Vista plana (no paginar por cantón): aplica a vistas por cantones (2+) y a vistas por empresa.
+    const flatView = isClienteView || mixedView;
     if (this.filtroTexto && this.filtroTexto.trim()) {
       params.q = this.filtroTexto.trim();
     }
     params.lite = true;
 
-    if (mixedView) {
+    if (isClienteView) {
+      params.cliente_ids = clienteIdsCsv;
+    } else if (mixedView) {
       params.canton_ids = selectedViewCantons.join(',');
     } else {
       params.canton_page = this.provinciaPage;
@@ -694,9 +701,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         }),
         switchMap(asignaciones => {
           const cantonId = asignaciones?.cantonId ?? asignaciones?.provinciaId ?? null;
-          const sacafrancoParams: any = mixedView
-            ? { canton_ids: selectedViewCantons.join(',') }
-            : (cantonId != null ? { canton_id: cantonId } : {});
+          const sacafrancoParams: any = isClienteView
+            ? { cliente_ids: clienteIdsCsv }
+            : mixedView
+              ? { canton_ids: selectedViewCantons.join(',') }
+              : (cantonId != null ? { canton_id: cantonId } : {});
           // Pasar el texto de búsqueda también a sacafranco para que no aparezcan
           // siempre al filtrar por cliente/instalación.
           if (this.filtroTexto && this.filtroTexto.trim()) {
@@ -715,11 +724,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       ).subscribe({
         next: ({ asignaciones, sacafranco }) => {
           this.asignaciones = asignaciones?.results || [];
-          if (mixedView) {
+          if (flatView) {
             this.provinciaTotal = 1;
             this.provinciaPage = 1;
             this.activeProvinciaId = null;
-            this.selectedCantonId = selectedViewCantons[0] || null;
+            this.selectedCantonId = isClienteView ? null : (selectedViewCantons[0] || null);
           } else {
             this.provinciaTotal = asignaciones?.cantonTotal ?? asignaciones?.provinciaTotal ?? this.provinciaTotal;
             this.provinciaPage = asignaciones?.cantonPage ?? asignaciones?.provinciaPage ?? this.provinciaPage;
@@ -730,8 +739,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           }
           this.sacafrancoRows = sacafranco || [];
           this.provinciasDisponibles = this.computeProvinciaOptions();
-          if (mixedView) {
-            // El backend ahora devuelve la lista COMPLETA de cantones aun en vista mixta.
+          if (flatView) {
+            // El backend devuelve la lista COMPLETA de cantones aun en vista plana.
             if (asignaciones?.cantonOptions && asignaciones.cantonOptions.length) {
               this.cantonesDisponibles = asignaciones.cantonOptions;
             }
@@ -771,9 +780,16 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     // garantiza que toda fila mostrada encuentre su calendario; el resto se ignora.
     const paramsBase: any = {};
     const hasSacafranco = (this.sacafrancoRows || []).length > 0;
+    const activeView = this.getActiveView();
+    const isClienteView = activeView?.tipo === 'cliente';
     const selectedViewCantons = this.getSelectedViewCantonIds();
-    const mixedView = selectedViewCantons.length >= 2;
+    const mixedView = !isClienteView && selectedViewCantons.length >= 2;
     const cantonId = this.activeProvinciaId != null ? this.activeProvinciaId : null;
+    const scopeParams = isClienteView
+      ? { cliente_ids: (activeView?.clienteIds || []).join(',') }
+      : mixedView
+        ? { canton_ids: selectedViewCantons.join(',') }
+        : (cantonId != null ? { canton_id: cantonId } : {});
     this.asignacionCalendarioService.obtenerAsignacionesCalendarioMes(
       this.mes,
       this.anio,
@@ -782,9 +798,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         lite: true,
         include_sacafranco: hasSacafranco,
         auto_create: true,
-        ...(mixedView
-          ? { canton_ids: selectedViewCantons.join(',') }
-          : (cantonId != null ? { canton_id: cantonId } : {}))
+        ...scopeParams
       }
     ).subscribe({
       next: res => {
@@ -1200,6 +1214,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       maxWidth: '95vw',
       data: {
         cantones: this.cantonesDisponibles || [],
+        empresas: (this.clientes || []).map(c => ({ id: c.id, nombre: c.nombre_comercial })),
         views: this.cantonViews || []
       }
     });
@@ -1222,14 +1237,20 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   private normalizeCantonViews(arr: any[]): CantonMixView[] {
+    const toIds = (xs: any) => (xs || [])
+      .map((id: any) => Number(id))
+      .filter((id: number) => Number.isFinite(id) && id > 0);
     return (arr || [])
-      .filter(v => v && typeof v.nombre === 'string' && Array.isArray(v.cantonIds))
+      .filter(v => v && typeof v.nombre === 'string')
       .map(v => ({
         id: String(v.id),
         nombre: v.nombre,
-        cantonIds: (v.cantonIds || []).map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id) && id > 0)
+        tipo: (v.tipo === 'cliente' ? 'cliente' : 'canton') as ('canton' | 'cliente'),
+        cantonIds: toIds(v.cantonIds),
+        clienteIds: toIds(v.clienteIds)
       }))
-      .filter(v => v.cantonIds.length >= 2);
+      // Vista válida: por cantones (2+) o por empresa (1+).
+      .filter(v => (v.tipo === 'cliente' ? v.clienteIds.length >= 1 : v.cantonIds.length >= 2));
   }
 
   // Vistas compartidas: se cargan desde la BD (visibles en cualquier máquina/usuario).
@@ -1250,11 +1271,16 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
   }
 
-  private getSelectedViewCantonIds(): number[] {
-    if (!this.selectedCantonKey.startsWith('view:')) return [];
+  private getActiveView(): CantonMixView | null {
+    if (!this.selectedCantonKey.startsWith('view:')) return null;
     const viewId = this.selectedCantonKey.replace('view:', '').trim();
-    const view = (this.cantonViews || []).find(v => v.id === viewId);
-    return view?.cantonIds || [];
+    return (this.cantonViews || []).find(v => v.id === viewId) || null;
+  }
+
+  private getSelectedViewCantonIds(): number[] {
+    const view = this.getActiveView();
+    if (!view || view.tipo === 'cliente') return [];
+    return view.cantonIds || [];
   }
 
   getActiveViewName(): string {

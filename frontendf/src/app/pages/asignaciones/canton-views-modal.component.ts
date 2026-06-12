@@ -14,14 +14,19 @@ export interface CantonOption {
   nombre: string;
 }
 
+export type VistaTipo = 'canton' | 'cliente';
+
 export interface CantonMixView {
   id: string;
   nombre: string;
+  tipo: VistaTipo;
   cantonIds: number[];
+  clienteIds: number[];
 }
 
 export interface CantonViewsModalData {
   cantones: CantonOption[];
+  empresas: CantonOption[];
   views: CantonMixView[];
 }
 
@@ -44,37 +49,76 @@ export interface CantonViewsModalResult {
     MatButtonModule,
   ],
   template: `
-    <h2 mat-dialog-title>Nueva Vista De Cantones</h2>
+    <h2 mat-dialog-title>Nueva Vista</h2>
     <mat-dialog-content>
-      <mat-form-field class="w-100" appearance="outline">
-        <mat-label>Nombre de la vista</mat-label>
-        <input matInput [(ngModel)]="viewName" placeholder="Ej: CANTON - CANTON" />
-      </mat-form-field>
+      <!-- Selector de tipo de vista -->
+      <div class="tipo-toggle-wrap mb-3">
+        <div class="tipo-toggle">
+          <button type="button"
+            [class.active]="tipo === 'canton'"
+            (click)="setTipo('canton')">Por cantones</button>
+          <button type="button"
+            [class.active]="tipo === 'cliente'"
+            (click)="setTipo('cliente')">Por empresas</button>
+        </div>
+      </div>
 
       <mat-form-field class="w-100" appearance="outline">
-        <mat-label>Cantones seleccionados</mat-label>
-        <mat-chip-grid #chipGrid aria-label="Seleccion de cantones">
-          @for (id of selectedCantonIds; track id) {
-            <mat-chip-row (removed)="removeCanton(id)">
-              {{ getCantonName(id) }}
-              <button matChipRemove [attr.aria-label]="'Quitar ' + getCantonName(id)">
-                <mat-icon>cancel</mat-icon>
-              </button>
-            </mat-chip-row>
-          }
-        </mat-chip-grid>
-        <input
-          placeholder="Buscar canton..."
-          [(ngModel)]="cantonQuery"
-          [matChipInputFor]="chipGrid"
-          [matAutocomplete]="auto"
-        />
-        <mat-autocomplete #auto="matAutocomplete" (optionSelected)="addCanton($event.option.value)">
-          @for (c of filteredCantones; track c.id) {
-            <mat-option [value]="c.id">{{ c.nombre }}</mat-option>
-          }
-        </mat-autocomplete>
+        <mat-label>Nombre de la vista</mat-label>
+        <input matInput [(ngModel)]="viewName" placeholder="Ej: GUAYAQUIL - DURÁN" />
       </mat-form-field>
+
+      @if (tipo === 'canton') {
+        <mat-form-field class="w-100" appearance="outline">
+          <mat-label>Cantones seleccionados</mat-label>
+          <mat-chip-grid #chipGrid aria-label="Seleccion de cantones">
+            @for (id of selectedCantonIds; track id) {
+              <mat-chip-row (removed)="removeCanton(id)">
+                {{ getName('canton', id) }}
+                <button matChipRemove [attr.aria-label]="'Quitar ' + getName('canton', id)">
+                  <mat-icon>cancel</mat-icon>
+                </button>
+              </mat-chip-row>
+            }
+          </mat-chip-grid>
+          <input
+            placeholder="Buscar canton..."
+            [(ngModel)]="query"
+            [matChipInputFor]="chipGrid"
+            [matAutocomplete]="autoCanton"
+          />
+          <mat-autocomplete #autoCanton="matAutocomplete" (optionSelected)="addCanton($event.option.value)">
+            @for (c of filteredCantones; track c.id) {
+              <mat-option [value]="c.id">{{ c.nombre }}</mat-option>
+            }
+          </mat-autocomplete>
+        </mat-form-field>
+      } @else {
+        <mat-form-field class="w-100" appearance="outline">
+          <mat-label>Empresas seleccionadas</mat-label>
+          <mat-chip-grid #chipGridE aria-label="Seleccion de empresas">
+            @for (id of selectedClienteIds; track id) {
+              <mat-chip-row (removed)="removeCliente(id)">
+                {{ getName('cliente', id) }}
+                <button matChipRemove [attr.aria-label]="'Quitar ' + getName('cliente', id)">
+                  <mat-icon>cancel</mat-icon>
+                </button>
+              </mat-chip-row>
+            }
+          </mat-chip-grid>
+          <input
+            placeholder="Buscar empresa..."
+            [(ngModel)]="query"
+            [matChipInputFor]="chipGridE"
+            [matAutocomplete]="autoCliente"
+          />
+          <mat-autocomplete #autoCliente="matAutocomplete" (optionSelected)="addCliente($event.option.value)">
+            @for (c of filteredEmpresas; track c.id) {
+              <mat-option [value]="c.id">{{ c.nombre }}</mat-option>
+            }
+          </mat-autocomplete>
+        </mat-form-field>
+      }
 
       <div class="d-flex gap-2 mb-3">
         <button mat-flat-button color="primary" type="button" (click)="saveView()">Guardar vista</button>
@@ -86,10 +130,19 @@ export interface CantonViewsModalResult {
           <div class="fw-semibold mb-2">Vistas guardadas</div>
           @for (v of views; track v.id) {
             <div class="saved-item">
-              <div class="saved-title">{{ v.nombre }}</div>
+              <div class="saved-title">
+                {{ v.nombre }}
+                <span class="badge-tipo">{{ v.tipo === 'cliente' ? 'EMPRESAS' : 'CANTONES' }}</span>
+              </div>
               <div class="saved-chips">
-                @for (id of v.cantonIds; track id) {
-                  <span class="saved-chip">{{ getCantonName(id) }}</span>
+                @if (v.tipo === 'cliente') {
+                  @for (id of v.clienteIds; track id) {
+                    <span class="saved-chip">{{ getName('cliente', id) }}</span>
+                  }
+                } @else {
+                  @for (id of v.cantonIds; track id) {
+                    <span class="saved-chip">{{ getName('canton', id) }}</span>
+                  }
                 }
               </div>
               <div class="d-flex gap-2 mt-2">
@@ -108,9 +161,14 @@ export interface CantonViewsModalResult {
   `,
   styles: [
     `
+    .tipo-toggle-wrap { display: flex; justify-content: center; }
+    .tipo-toggle { display: inline-flex; border: 1px solid #c7d2fe; border-radius: 999px; overflow: hidden; }
+    .tipo-toggle button { border: none; background: #fff; padding: 6px 16px; font-size: 13px; cursor: pointer; color: #4338ca; }
+    .tipo-toggle button.active { background: #4338ca; color: #fff; }
     .saved-list { border-top: 1px solid #e5e7eb; padding-top: 12px; }
     .saved-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
-    .saved-title { font-weight: 600; }
+    .saved-title { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .badge-tipo { font-size: 10px; font-weight: 700; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 999px; padding: 1px 8px; }
     .saved-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
     .saved-chip { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
     `
@@ -119,52 +177,89 @@ export interface CantonViewsModalResult {
 export class CantonViewsModalComponent {
   views: CantonMixView[] = [];
   viewName = '';
+  tipo: VistaTipo = 'canton';
   selectedCantonIds: number[] = [];
-  cantonQuery = '';
+  selectedClienteIds: number[] = [];
+  query = '';
   editingId: string | null = null;
 
   constructor(
     private dialogRef: MatDialogRef<CantonViewsModalComponent, CantonViewsModalResult>,
     @Inject(MAT_DIALOG_DATA) public data: CantonViewsModalData,
   ) {
-    this.views = [...(data?.views || [])];
+    this.views = (data?.views || []).map(v => ({
+      ...v,
+      tipo: v.tipo || 'canton',
+      cantonIds: v.cantonIds || [],
+      clienteIds: v.clienteIds || [],
+    }));
   }
 
-  get filteredCantones(): CantonOption[] {
-    const q = (this.cantonQuery || '').trim().toLowerCase();
-    const source = (this.data?.cantones || []).filter(c => c.id != null) as Array<CantonOption & { id: number }>;
-    return source
-      .filter(c => !this.selectedCantonIds.includes(c.id as number))
+  setTipo(t: VistaTipo): void {
+    if (this.tipo === t) return;
+    this.tipo = t;
+    this.query = '';
+  }
+
+  private filterOptions(source: CantonOption[], excludeIds: number[]): CantonOption[] {
+    const q = (this.query || '').trim().toLowerCase();
+    return (source || [])
+      .filter(c => c.id != null)
+      .filter(c => !excludeIds.includes(c.id as number))
       .filter(c => !q || (c.nombre || '').toLowerCase().includes(q));
   }
 
-  getCantonName(id: number): string {
-    const c = (this.data?.cantones || []).find(x => x.id === id);
-    return c?.nombre || `CANTON ${id}`;
+  get filteredCantones(): CantonOption[] {
+    return this.filterOptions(this.data?.cantones || [], this.selectedCantonIds);
+  }
+
+  get filteredEmpresas(): CantonOption[] {
+    return this.filterOptions(this.data?.empresas || [], this.selectedClienteIds);
+  }
+
+  getName(tipo: VistaTipo, id: number): string {
+    const source = tipo === 'cliente' ? (this.data?.empresas || []) : (this.data?.cantones || []);
+    const c = source.find(x => x.id === id);
+    return c?.nombre || `${tipo === 'cliente' ? 'EMPRESA' : 'CANTON'} ${id}`;
   }
 
   addCanton(id: number): void {
     if (!id || this.selectedCantonIds.includes(id)) return;
     this.selectedCantonIds = [...this.selectedCantonIds, id];
-    this.cantonQuery = '';
+    this.query = '';
   }
 
   removeCanton(id: number): void {
     this.selectedCantonIds = this.selectedCantonIds.filter(x => x !== id);
   }
 
+  addCliente(id: number): void {
+    if (!id || this.selectedClienteIds.includes(id)) return;
+    this.selectedClienteIds = [...this.selectedClienteIds, id];
+    this.query = '';
+  }
+
+  removeCliente(id: number): void {
+    this.selectedClienteIds = this.selectedClienteIds.filter(x => x !== id);
+  }
+
   saveView(): void {
     const nombre = (this.viewName || '').trim();
-    if (!nombre || this.selectedCantonIds.length < 2) return;
+    if (!nombre) return;
+    if (this.tipo === 'canton' && this.selectedCantonIds.length < 2) return;
+    if (this.tipo === 'cliente' && this.selectedClienteIds.length < 1) return;
+
+    const nueva: Omit<CantonMixView, 'id'> = {
+      nombre,
+      tipo: this.tipo,
+      cantonIds: this.tipo === 'canton' ? [...this.selectedCantonIds] : [],
+      clienteIds: this.tipo === 'cliente' ? [...this.selectedClienteIds] : [],
+    };
 
     if (this.editingId) {
-      this.views = this.views.map(v => v.id === this.editingId
-        ? { ...v, nombre, cantonIds: [...this.selectedCantonIds] }
-        : v
-      );
+      this.views = this.views.map(v => v.id === this.editingId ? { ...v, ...nueva } : v);
     } else {
-      const id = `view_${Date.now()}`;
-      this.views = [...this.views, { id, nombre, cantonIds: [...this.selectedCantonIds] }];
+      this.views = [...this.views, { id: `view_${Date.now()}`, ...nueva }];
     }
     this.resetForm();
   }
@@ -172,7 +267,9 @@ export class CantonViewsModalComponent {
   editView(v: CantonMixView): void {
     this.editingId = v.id;
     this.viewName = v.nombre;
-    this.selectedCantonIds = [...v.cantonIds];
+    this.tipo = v.tipo || 'canton';
+    this.selectedCantonIds = [...(v.cantonIds || [])];
+    this.selectedClienteIds = [...(v.clienteIds || [])];
   }
 
   deleteView(id: string): void {
@@ -186,7 +283,8 @@ export class CantonViewsModalComponent {
     this.editingId = null;
     this.viewName = '';
     this.selectedCantonIds = [];
-    this.cantonQuery = '';
+    this.selectedClienteIds = [];
+    this.query = '';
   }
 
   close(): void {

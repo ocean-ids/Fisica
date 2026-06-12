@@ -1063,6 +1063,13 @@ def listar_asignacion_semanal_mes(request):
     cliente_id = request.GET.get('cliente')
     provincia_id = request.GET.get('provincia_id')
     canton_id = request.GET.get('canton_id')
+    cliente_ids_raw = (request.GET.get('cliente_ids') or '').strip()
+    cliente_ids = []
+    if cliente_ids_raw:
+        try:
+            cliente_ids = [int(x) for x in cliente_ids_raw.split(',') if str(x).strip()]
+        except (TypeError, ValueError):
+            return Response({'error': 'cliente_ids invalido'}, status=status.HTTP_400_BAD_REQUEST)
     canton_ids_raw = (request.GET.get('canton_ids') or '').strip()
     canton_ids = []
     if canton_ids_raw:
@@ -1131,6 +1138,8 @@ def listar_asignacion_semanal_mes(request):
     qs = qs.filter(week_start__in=weeks)
     if cliente_id:
         qs = qs.filter(puesto__instalacion__cliente_id=cliente_id)
+    if cliente_ids:
+        qs = qs.filter(puesto__instalacion__cliente_id__in=cliente_ids)
     if canton_ids:
         qs = qs.filter(puesto__instalacion__canton_id__in=canton_ids)
     elif cant_id is not None:

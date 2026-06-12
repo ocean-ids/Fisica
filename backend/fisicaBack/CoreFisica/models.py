@@ -738,10 +738,21 @@ class AsignacionCalendarioLog(models.Model):
 
 
 class VistaCanton(models.Model):
-    """Vista personalizada de cantones, compartida (global) entre todos los usuarios.
-    `cantones` guarda la lista de ids de Canton que agrupa la vista."""
+    """Vista personalizada compartida (global) entre todos los usuarios.
+
+    Puede ser de dos tipos:
+      - 'canton'  -> agrupa cantones (lista de ids en `cantones`).
+      - 'cliente' -> agrupa empresas/clientes (lista de ids en `clientes`);
+                     muestra todas las instalaciones de esos clientes.
+    """
+    TIPO_CHOICES = [
+        ('canton', 'Cantones'),
+        ('cliente', 'Empresas'),
+    ]
     nombre = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default='canton')
     cantones = models.JSONField(default=list)
+    clientes = models.JSONField(default=list)
 
     class Meta:
         ordering = ['nombre']

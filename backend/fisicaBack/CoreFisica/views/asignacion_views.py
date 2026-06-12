@@ -287,6 +287,14 @@ def obtener_asignaciones(request, mes=None, anio=None):
             canton_ids = [int(x) for x in canton_ids_raw.split(',') if str(x).strip()]
         except (TypeError, ValueError):
             return Response({'error': 'Canton IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+    # Vista por empresa: filtra por uno o varios clientes (todas sus instalaciones).
+    cliente_ids_raw = (request.GET.get('cliente_ids') or '').strip()
+    cliente_ids: list[int] = []
+    if cliente_ids_raw:
+        try:
+            cliente_ids = [int(x) for x in cliente_ids_raw.split(',') if str(x).strip()]
+        except (TypeError, ValueError):
+            return Response({'error': 'Cliente IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
     #q es un texto libre q se busca
     q = (request.GET.get('q') or '').strip()
@@ -335,6 +343,8 @@ def obtener_asignaciones(request, mes=None, anio=None):
     # si se proporciona cliente_id, filtrar por cliente_id despues de filtrar por mes/año para optimizar la consulta y evitar crear filas semanales innecesarias para clientes no relacionados. Si se proporciona instalacion_id, filtrar por instalacion_id después de filtrar por mes/año para optimizar la consulta y evitar crear filas semanales innecesarias para instalaciones no relacionadas. Si se proporciona un término de búsqueda q, aplicarlo a campos relevantes de asignación, persona y puesto para facilitar búsqueda rápida. Esto se hace después de filtrar por mes/año para optimizar la consulta y evitar aplicar filtros de texto a asignaciones que no corresponden al periodo seleccionado.
     if cliente_id:
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
+    if cliente_ids:
+        asignaciones = asignaciones.filter(cliente_id__in=cliente_ids)
     if instalacion_id:
         asignaciones = asignaciones.filter(instalacion_id=instalacion_id)
     if canton_ids:
@@ -373,6 +383,21 @@ def obtener_asignaciones(request, mes=None, anio=None):
             filtros &= token_filter
         asignaciones = asignaciones.filter(filtros).distinct()
     
+    # Vista por empresa: devolver TODAS las asignaciones de esos clientes (lista plana,
+    # sin paginar por cantón). El frontend la trata como una vista (igual que canton_ids).
+    if cliente_ids:
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+        return Response({
+            'results': serializer.data,
+            'canton_page': 1,
+            'canton_total': 1,
+            'canton_id': None,
+            'canton_options': [],
+            'provincia_page': 1,
+            'provincia_total': 1,
+            'provincia_id': None
+        })
+
     canton_page = request.GET.get('canton_page')
     restore_canton_id = request.GET.get('restore_canton_id')
     if canton_page and not canton_ids:
@@ -1446,6 +1471,21 @@ def sacafranco_filas(request):
                 canton_ids = [int(x) for x in canton_ids_raw.split(',') if str(x).strip()]
             except (TypeError, ValueError):
                 return Response({'error': 'Canton IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+        # Vista por empresa: derivar los cantones de las instalaciones de esos clientes
+        # y mostrar el sacafranco de esos cantones.
+        cliente_ids_raw = (request.GET.get('cliente_ids') or '').strip()
+        if cliente_ids_raw and not canton_ids:
+            try:
+                cliente_ids = [int(x) for x in cliente_ids_raw.split(',') if str(x).strip()]
+            except (TypeError, ValueError):
+                return Response({'error': 'Cliente IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+            if cliente_ids:
+                from ..models import Instalacion
+                canton_ids = list(
+                    Instalacion.objects.filter(cliente_id__in=cliente_ids)
+                    .exclude(canton_id__isnull=True)
+                    .values_list('canton_id', flat=True).distinct()
+                )
         # se obtiene las filas de sacafranco
         qs = SacafrancoFila.objects.all()
         if mes and anio:
