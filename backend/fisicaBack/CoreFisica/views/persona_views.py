@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton, CoberturaSacafranco
+from ..utils import _strip_accents
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Border, Side, Alignment, Font, PatternFill
 import csv
@@ -311,12 +312,13 @@ def obtener_personas(request):
         # la variable persona se asigna a la consulta de todas las personas, luego se filtra por q si existe, buscando coincidencias en nombres, apellidos o cedula, y por tipo si se especifica. Finalmente se ordena por apellidos
         personas = Persona.objects.all()
         if q:
+            qn = _strip_accents(q)
             personas = personas.filter(
-                Q(nombres__icontains=q) |
-                Q(apellidos__icontains=q) |
+                Q(nombres__unaccent__icontains=qn) |
+                Q(apellidos__unaccent__icontains=qn) |
                 Q(cedula__icontains=q) |
-                Q(provincia__nombre__icontains=q) |
-                Q(canton__nombre__icontains=q)
+                Q(provincia__nombre__unaccent__icontains=qn) |
+                Q(canton__nombre__unaccent__icontains=qn)
             )
 
         if tipo:
@@ -784,9 +786,10 @@ def exportar_personas_excel(request):
 
     # Si se proporciona un parámetro de búsqueda q, se filtran las personas buscando coincidencias en los campos nombres, apellidos o cedula utilizando una consulta Q para combinar las condiciones. Si se especifica un tipo, se filtran las personas por ese tipo. Finalmente, se ordenan las personas por apellidos y nombres para una presentación más organizada en el archivo Excel.
     if q:
+        qn = _strip_accents(q)
         personas = personas.filter(
-            Q(nombres__icontains=q) |
-            Q(apellidos__icontains=q) |
+            Q(nombres__unaccent__icontains=qn) |
+            Q(apellidos__unaccent__icontains=qn) |
             Q(cedula__icontains=q)
         )
     

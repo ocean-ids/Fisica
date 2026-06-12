@@ -10,6 +10,7 @@ from django.db.models.functions import Coalesce
 from django.db import transaction
 from django.utils import timezone
 from ..serializers import AsignacionSerializer, AsignacionLiteSerializer, SacafrancoFilaSerializer
+from ..utils import _strip_accents
 import openpyxl
 import datetime
 from io import BytesIO
@@ -351,18 +352,21 @@ def obtener_asignaciones(request, mes=None, anio=None):
         except (TypeError, ValueError):
             return Response({'error': 'Provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
     if q:
+        # Búsqueda insensible a acentos: unaccent en la columna (__unaccent) y
+        # se quitan acentos al texto escrito, así 'JOSE' encuentra 'JOSÉ' y viceversa.
         tokens = [t for t in q.split() if t]
         filtros = Q()
         for token in tokens:
+            tok = _strip_accents(token)
             token_filter = (
-                Q(cliente__nombre_comercial__icontains=token) |
-                Q(cliente__razon_social__icontains=token) |
-                Q(persona__cedula__icontains=token) |
-                Q(persona__nombres__icontains=token) |
-                Q(persona__apellidos__icontains=token) |
-                Q(puesto__nombre__icontains=token) |
-                Q(instalacion__codigo__icontains=token) |
-                Q(instalacion__nombre__icontains=token)
+                Q(cliente__nombre_comercial__unaccent__icontains=tok) |
+                Q(cliente__razon_social__unaccent__icontains=tok) |
+                Q(persona__cedula__icontains=tok) |
+                Q(persona__nombres__unaccent__icontains=tok) |
+                Q(persona__apellidos__unaccent__icontains=tok) |
+                Q(puesto__nombre__unaccent__icontains=tok) |
+                Q(instalacion__codigo__unaccent__icontains=tok) |
+                Q(instalacion__nombre__unaccent__icontains=tok)
             )
             if token.isdigit():
                 token_filter = token_filter | Q(semanales__id=int(token))
@@ -1466,6 +1470,19 @@ def sacafranco_filas(request):
             except (TypeError, ValueError):
                 return Response({'error': 'Provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
             qs = qs.filter(Q(provincia_id=provincia_val) | Q(persona__provincia_id=provincia_val))
+        # Búsqueda de texto: filtrar sacafranco por su persona (nombre/apellido/cédula),
+        # insensible a acentos. Así no aparecen siempre al buscar un cliente/instalación.
+        q = (request.GET.get('q') or '').strip()
+        if q:
+            qn = _strip_accents(q)
+            saca_filtros = (
+                Q(persona__nombres__unaccent__icontains=qn) |
+                Q(persona__apellidos__unaccent__icontains=qn) |
+                Q(persona__cedula__icontains=q)
+            )
+            if q.isdigit():
+                saca_filtros = saca_filtros | Q(id=int(q))
+            qs = qs.filter(saca_filtros)
         qs = qs.order_by(Coalesce('provincia_id', Value(999999)), 'orden', 'id')
 
         page_param = request.GET.get('page')

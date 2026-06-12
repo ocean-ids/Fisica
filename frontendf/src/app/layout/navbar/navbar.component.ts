@@ -40,6 +40,11 @@ export class NavbarComponent implements OnInit {
   ){}
 
   onSearchChange(): void {
+    // Forzar mayúsculas: los datos se guardan en mayúscula, así el filtro coincide siempre.
+    const upper = (this.searchText || '').toUpperCase();
+    if (upper !== this.searchText) {
+      this.searchText = upper;
+    }
     this.globalFilter.setQuery(this.searchText, this.router.url);
   }
 

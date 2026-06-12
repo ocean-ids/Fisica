@@ -695,9 +695,14 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         }),
         switchMap(asignaciones => {
           const cantonId = asignaciones?.cantonId ?? asignaciones?.provinciaId ?? null;
-          const sacafrancoParams = mixedView
+          const sacafrancoParams: any = mixedView
             ? { canton_ids: selectedViewCantons.join(',') }
             : (cantonId != null ? { canton_id: cantonId } : {});
+          // Pasar el texto de búsqueda también a sacafranco para que no aparezcan
+          // siempre al filtrar por cliente/instalación.
+          if (this.filtroTexto && this.filtroTexto.trim()) {
+            sacafrancoParams.q = this.filtroTexto.trim();
+          }
           return this.asignacionService
             .obtenerSacafrancoFilas(this.mes, this.anio, sacafrancoParams)
             .pipe(

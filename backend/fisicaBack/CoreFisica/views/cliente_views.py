@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import json
 from ..models import Cliente
+from ..utils import _strip_accents
 
 
 ALLOWED_SIZES = {choice[0] for choice in Cliente.SIZE_CHOICES}
@@ -22,10 +23,11 @@ def obtener_clientes(request):
     qs = Cliente.objects.all()
 
     if q:
+        qn = _strip_accents(q)
         qs = qs.filter(
             Q(ruc__icontains=q) |
-            Q(razon_social__icontains=q) |
-            Q(nombre_comercial__icontains=q)
+            Q(razon_social__unaccent__icontains=qn) |
+            Q(nombre_comercial__unaccent__icontains=qn)
         )
 
     if size:

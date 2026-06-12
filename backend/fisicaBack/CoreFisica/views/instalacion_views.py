@@ -5,6 +5,7 @@ import json
 from django.db.models import Q
 from ..models import Instalacion, Provincia, Canton, Zona
 from ..serializers import InstalacionSerializer
+from ..utils import _strip_accents
 
 
 def resolve_canton_id(canton_token, provincia_token=None):
@@ -149,15 +150,16 @@ def obtener_instalaciones(request):
 
 
     if q:
+        qn = _strip_accents(q)
         qs = qs.filter(
-            Q(nombre__icontains=q) |
-            Q(codigo__icontains=q) |
-            Q(cliente__nombre_comercial__icontains=q) |
-            Q(cliente__razon_social__icontains=q) |
-            Q(canton__nombre__icontains=q) |
-            Q(canton__provincia__nombre__icontains=q) |
-            Q(direccion__icontains=q) |
-            Q(zonas__titulo__icontains=q)
+            Q(nombre__unaccent__icontains=qn) |
+            Q(codigo__unaccent__icontains=qn) |
+            Q(cliente__nombre_comercial__unaccent__icontains=qn) |
+            Q(cliente__razon_social__unaccent__icontains=qn) |
+            Q(canton__nombre__unaccent__icontains=qn) |
+            Q(canton__provincia__nombre__unaccent__icontains=qn) |
+            Q(direccion__unaccent__icontains=qn) |
+            Q(zonas__titulo__unaccent__icontains=qn)
         )
 
     instalaciones = []
