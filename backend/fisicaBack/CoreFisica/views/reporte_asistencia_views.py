@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal, SacafrancoFilaSemanal
+from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal, SacafrancoFilaSemanal, Instalacion
 import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from openpyxl.drawing.image import Image as XLImage
@@ -743,133 +743,52 @@ def _build_reporte_asistencia_data(
             'provincia': provincia_nombre,
         })
 
-    # Include BASE rows (NB/DB) directly from sacafranco weekly calendar tokens.
+    # Filas de SACAFRANCO desde su calendario semanal, ruteadas por el token del dia.
+    # Token = letra de turno (D/N) + nominativo (codigo de instalacion) o 'B' (base):
+    #   D{nominativo}/N{nominativo} -> fila en ese turno con el CLIENTE de ese nominativo.
+    #   DB/NB -> base, cliente 'SEGURIDAD FISICA', puesto 'DIA BASE'/'NOCHE BASE'.
+    #   F u otro turno -> no aparece.
     if fecha_obj and turno in ['Diurno', 'Nocturno']:
-        day_key_map = {
-            0: 'mon',
-            1: 'tue',
-            2: 'wed',
-            3: 'thu',
-            4: 'fri',
-            5: 'sat',
-            6: 'sun',
-        }
-
-        def _asig_active_on_date(asig, target_date):
-            if not asig or getattr(asig, 'estado', '') != 'ACTIVO':
-                return False
-            if getattr(asig, 'recurring', False):
-                start_date = getattr(asig, 'start_date', None)
-                end_date = getattr(asig, 'end_date', None)
-                if start_date and target_date < start_date:
-                    return False
-                if end_date and target_date > end_date:
-                    return False
-                return True
-            fecha_asig = getattr(asig, 'fecha', None)
-            if fecha_asig:
-                return fecha_asig == target_date
-            return (getattr(asig, 'mes', None) == target_date.month and getattr(asig, 'anio', None) == target_date.year)
-
-        def _asig_turno_matches(asig, target_turno):
-            tokens = set()
-            try:
-                horarios_qs = getattr(asig.puesto, 'horarios', None)
-                if horarios_qs is not None:
-                    turnos = horarios_qs.values_list('turno', flat=True)
-                    tokens = {str(t or '').strip().lower() for t in turnos if t}
-            except Exception:
-                tokens = set()
-
-            if any(t.startswith('a') for t in tokens):
-                return True
-            if target_turno == 'Diurno' and any(t.startswith('d') for t in tokens):
-                return True
-            if target_turno == 'Nocturno' and any(t.startswith('n') for t in tokens):
-                return True
-
-            try:
-                if asig.horario and asig.horario.hora_ingreso == asig.horario.hora_salida:
-                    return True
-            except Exception:
-                pass
-            return False
-
-        def _resolve_base_context(provincia_id_val, target_date, target_turno, zona_filter):
-            qs = Asignacion.objects.select_related(
-                'cliente', 'instalacion', 'instalacion__canton', 'instalacion__canton__provincia', 'puesto', 'horario', 'persona'
-            ).prefetch_related('instalacion__zonas', 'puesto__horarios').filter(
-                estado='ACTIVO',
-                persona__is_active=True,
-            ).exclude(persona__tipo='SACAFRANCO')
-
-            if provincia_id_val:
-                qs = qs.filter(instalacion__canton__provincia_id=provincia_id_val)
-            if zona_filter:
-                qs = qs.filter(instalacion__zonas__titulo__iexact=zona_filter).distinct()
-
-            candidates = []
-            for asig in qs.order_by('orden', 'id'):
-                if not _asig_active_on_date(asig, target_date):
-                    continue
-                if not _asig_turno_matches(asig, target_turno):
-                    continue
-                candidates.append(asig)
-
-            selected = None
-            if candidates:
-                def _rank(a):
-                    cliente_nom = str(getattr(getattr(a, 'cliente', None), 'nombre_comercial', '') or '').upper()
-                    pref_cliente = 0 if 'OCEANSECURITY' in cliente_nom else 1
-                    orden_val = getattr(a, 'orden', None)
-                    orden_rank = orden_val if isinstance(orden_val, int) else 999999
-                    return (pref_cliente, orden_rank, a.id)
-
-                selected = sorted(candidates, key=_rank)[0]
-
-            if not selected:
-                return {
-                    'codigo': 'BASE',
-                    'cliente': 'OCEANSECURITY',
-                    'puesto': 'Libre en base',
-                    'zona_titulo': zona_filter or 'SIN ZONA',
-                }
-
-            zona_titulo = zona_filter or ''
-            try:
-                zona_obj = next(iter(selected.instalacion.zonas.all()), None)
-                if zona_obj and getattr(zona_obj, 'titulo', None):
-                    zona_titulo = zona_obj.titulo
-            except Exception:
-                pass
-
-            return {
-                'codigo': str(getattr(getattr(selected, 'instalacion', None), 'codigo', '') or '').strip() or 'BASE',
-                'cliente': getattr(getattr(selected, 'cliente', None), 'nombre_comercial', '') or 'OCEANSECURITY',
-                'puesto': getattr(getattr(selected, 'puesto', None), 'nombre', '') or 'Libre en base',
-                'zona_titulo': zona_titulo or 'SIN ZONA',
-            }
-
+        day_key_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
         day_key = day_key_map.get(fecha_obj.weekday())
-        token_expected = 'DB' if turno == 'Diurno' else 'NB'
         if day_key:
+            turno_letter = 'D' if turno == 'Diurno' else 'N'
+            puesto_base = 'DIA BASE' if turno == 'Diurno' else 'NOCHE BASE'
             month_base = fecha_obj.replace(day=1)
             week_start_month = month_base + datetime.timedelta(days=((fecha_obj.day - 1) // 7) * 7)
             week_start_iso = fecha_obj - datetime.timedelta(days=fecha_obj.weekday())
             zona_filter_norm = _normalize_zona_filter(zona) if zona else ''
-            base_context_cache = {}
 
             sac_qs = SacafrancoFilaSemanal.objects.select_related(
                 'sacafranco_fila', 'sacafranco_fila__persona', 'sacafranco_fila__provincia'
             ).filter(week_start__in=[week_start_month, week_start_iso])
 
-            seen_fila_ids = set()
-            for row in sac_qs:
-                token_val = str(getattr(row, day_key, '') or '').strip().upper()
-                if token_val != token_expected:
-                    continue
+            inst_cache = {}
 
-                fila = getattr(row, 'sacafranco_fila', None)
+            def _ctx_nominativo(nom):
+                if nom in inst_cache:
+                    return inst_cache[nom]
+                inst = Instalacion.objects.select_related(
+                    'cliente', 'canton', 'canton__provincia'
+                ).filter(codigo__iexact=nom).first()
+                if inst:
+                    ctx_val = {
+                        'cliente': getattr(inst.cliente, 'nombre_comercial', '') or '',
+                        'puesto': inst.nombre or '',
+                        'codigo': inst.codigo or nom,
+                        'provincia': getattr(getattr(getattr(inst, 'canton', None), 'provincia', None), 'nombre', '') or 'SIN PROVINCIA',
+                    }
+                else:
+                    ctx_val = {'cliente': '', 'puesto': '', 'codigo': nom, 'provincia': 'SIN PROVINCIA'}
+                inst_cache[nom] = ctx_val
+                return ctx_val
+
+            seen_fila_ids = set()
+            for srow in sac_qs:
+                token_val = str(getattr(srow, day_key, '') or '').strip().upper()
+                if not token_val or token_val[0] != turno_letter:
+                    continue
+                fila = getattr(srow, 'sacafranco_fila', None)
                 persona = getattr(fila, 'persona', None) if fila else None
                 if not fila or not persona:
                     continue
@@ -877,39 +796,41 @@ def _build_reporte_asistencia_data(
                     continue
                 seen_fila_ids.add(fila.id)
 
-                provincia_obj = getattr(fila, 'provincia', None) or getattr(persona, 'provincia', None)
-                provincia_id_val = getattr(fila, 'provincia_id', None) or getattr(persona, 'provincia_id', None)
-                provincia_nombre = getattr(provincia_obj, 'nombre', None) or 'SIN PROVINCIA'
                 persona_nombre = f"{persona.nombres} {persona.apellidos}".strip()
-
-                cache_key = (provincia_id_val, turno, fecha_obj, zona_filter_norm)
-                ctx = base_context_cache.get(cache_key)
-                if not ctx:
-                    ctx = _resolve_base_context(
-                        provincia_id_val=provincia_id_val,
-                        target_date=fecha_obj,
-                        target_turno=turno,
-                        zona_filter=zona_filter_norm,
-                    )
-                    base_context_cache[cache_key] = ctx
+                nominativo = token_val[1:].strip()
+                if nominativo in ('', 'B'):
+                    codigo_val = 'BASE'
+                    cliente_val = 'SEGURIDAD FISICA'
+                    puesto_val = puesto_base
+                    provincia_val = (getattr(getattr(fila, 'provincia', None), 'nombre', None)
+                                     or getattr(getattr(persona, 'provincia', None), 'nombre', None)
+                                     or 'SIN PROVINCIA')
+                else:
+                    # Cobertura: el nominativo es el código de la instalación cubierta.
+                    # Si no resuelve, se muestra el nominativo tal cual (no es base).
+                    ctx_n = _ctx_nominativo(nominativo)
+                    codigo_val = ctx_n['codigo']
+                    cliente_val = ctx_n['cliente']
+                    puesto_val = ctx_n['puesto']
+                    provincia_val = ctx_n['provincia']
 
                 data.append({
                     'asignacion_id': None,
-                    'codigo': ctx.get('codigo') or 'BASE',
-                    'cliente': ctx.get('cliente') or 'OCEANSECURITY',
-                    'puesto': ctx.get('puesto') or 'Libre en base',
+                    'codigo': codigo_val,
+                    'cliente': cliente_val,
+                    'puesto': puesto_val,
                     'horario': '',
                     'nombre_apellidos': persona_nombre or 'Libre en base',
                     'reemplazo_id': None,
                     'reemplazo': '',
                     'estado_asistencia': '',
                     'estado': 'TURNO',
-                    'descripcion': 'Libre en base',
+                    'descripcion': '',
                     'modificado_por': '',
                     'row_color': '',
                     'modificado_en': None,
-                    'zona_titulo': ctx.get('zona_titulo') or (zona_filter_norm or 'SIN ZONA'),
-                    'provincia': provincia_nombre,
+                    'zona_titulo': zona_filter_norm or 'SIN ZONA',
+                    'provincia': provincia_val,
                 })
 
     if term:

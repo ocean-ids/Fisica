@@ -1272,7 +1272,7 @@ def guardar_orden_asignacion(request):
     # si el usuario no tiene permiso de cambio de asignacion, retornar error 403
     if not request.user.has_perm('CoreFisica.change_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-    # ordenes es igual a la lista de objetos con id y orden que viene en el body de la petición. Por ejemplo: [{"id": 1, "orden": 2}, {"id": 2, "orden": 1}]  
+    # ordenes es igual a la lista de objetos con id y orden que viene en el body de la petición. Por ejemplo: [{"id": 1, "orden": 2}, {"id": 2, "orden": 1}]
     ordenes = request.data.get('ordenes', [])
 
     #itera sobre la lista de ordenes y para cada una intenta obtener la asignación por id, si existe actualiza su campo orden con el valor que viene en la petición y guarda la asignación. Si no existe, continúa con la siguiente orden sin hacer nada. Al final retorna un mensaje de éxito indicando que el orden se actualizó correctamente.
@@ -1283,7 +1283,59 @@ def guardar_orden_asignacion(request):
             asignacion.save()
         except Asignacion.DoesNotExist:
             continue
+
+    # Propagar el nuevo orden de PUESTOS a los meses SIGUIENTES (no afecta meses pasados).
+    # Se permutan los puestos reordenados dentro de los mismos "slots" de orden que ya
+    # ocupan en los meses futuros, para no alterar el orden de otros clientes.
+    try:
+        ref_mes = int(request.data.get('mes')) if request.data.get('mes') else None
+        ref_anio = int(request.data.get('anio')) if request.data.get('anio') else None
+    except (TypeError, ValueError):
+        ref_mes = ref_anio = None
+    if ref_mes and ref_anio and ordenes:
+        _propagar_orden_puestos_a_futuros(ordenes, ref_mes, ref_anio)
+
     return Response({'mensaje': 'Orden actualizado correctamente'})
+
+
+def _propagar_orden_puestos_a_futuros(ordenes, ref_mes, ref_anio):
+    """Propaga el orden de puestos del mes reordenado hacia los meses siguientes.
+
+    - Toma la secuencia de puestos según el nuevo orden del mes actual.
+    - En los meses futuros, esos mismos puestos se reubican dentro de los slots de
+      `orden` que ya ocupaban (permutación), sin tocar otros puestos/clientes ni
+      los meses pasados.
+    """
+    items = [it for it in ordenes if it.get('id') is not None]
+    ids = [it['id'] for it in items]
+    if not ids:
+        return
+    asigs = Asignacion.objects.in_bulk(ids)
+    # puesto -> su nueva posición (mínimo orden) en el mes reordenado
+    puesto_orden = {}
+    for it in items:
+        a = asigs.get(it['id'])
+        pid = getattr(a, 'puesto_id', None) if a else None
+        if pid is None:
+            continue
+        o = it.get('orden', 0)
+        if pid not in puesto_orden or o < puesto_orden[pid]:
+            puesto_orden[pid] = o
+    if not puesto_orden:
+        return
+
+    # Solo los puestos reordenados, solo meses futuros -> orden = su nuevo orden.
+    fut = Asignacion.objects.filter(
+        estado='ACTIVO', puesto_id__in=list(puesto_orden.keys())
+    ).filter(Q(anio__gt=ref_anio) | Q(anio=ref_anio, mes__gt=ref_mes))
+    cambios = []
+    for a in fut.only('id', 'orden', 'puesto_id'):
+        nv = puesto_orden.get(a.puesto_id)
+        if nv is not None and a.orden != nv:
+            a.orden = nv
+            cambios.append(a)
+    if cambios:
+        Asignacion.objects.bulk_update(cambios, ['orden'], batch_size=1000)
 
 
 @api_view(['POST'])

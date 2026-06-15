@@ -82,8 +82,8 @@ export class AsignacionService {
     return this.apiService.delete<any>(`/eliminar-asignacion/${id}/`);
   }
 
-  guardarOrden(ordenes: {id: number, orden: number}[]): Observable<any>{
-    return this.apiService.post<any>(`/guardar-orden-asignacion/`, {ordenes});
+  guardarOrden(ordenes: {id: number, orden: number}[], mes?: number, anio?: number): Observable<any>{
+    return this.apiService.post<any>(`/guardar-orden-asignacion/`, { ordenes, mes, anio });
   }
 
   guardarOrdenSacafranco(ordenes: {id: number, orden: number}[]): Observable<any>{

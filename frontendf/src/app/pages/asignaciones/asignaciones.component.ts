@@ -1653,7 +1653,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       ? ordenes
       : this.computeCombinedOrders().ordenAsignaciones;
     if (!payload.length) return;
-    this.asignacionService.guardarOrden(payload).subscribe({
+    this.asignacionService.guardarOrden(payload, this.mes, this.anio).subscribe({
       next: () => {},
       error: err => console.error('Error al guardar orden', err)
     });
