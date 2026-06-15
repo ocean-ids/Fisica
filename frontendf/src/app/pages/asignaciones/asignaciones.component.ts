@@ -1139,6 +1139,23 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Menú desplegable del botón único "Fila" (Asignación / Sacafranco).
+  showFilaMenu = false;
+
+  toggleFilaMenu(): void {
+    this.showFilaMenu = !this.showFilaMenu;
+  }
+
+  // agregarFilaTipo abre el modal según la opción elegida en el desplegable.
+  agregarFilaTipo(tipo: 'asignacion' | 'sacafranco'): void {
+    this.showFilaMenu = false;
+    if (tipo === 'sacafranco') {
+      this.crearSacafrancoFila();
+    } else {
+      this.abrirModalNuevo();
+    }
+  }
+
   //crearSacafrancoFila crea una fila de sacafranco vacía para el mes y año seleccionados
   crearSacafrancoFila(): void {
     const ref = this.dialog.open(SacafrancoPersonasModalComponent, {

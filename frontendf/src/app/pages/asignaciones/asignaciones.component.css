@@ -399,3 +399,38 @@ table.table {
   display: none;
 }
 
+/* Botón "Fila" con menú desplegable (Asignación / Sacafranco) */
+.fila-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.fila-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1000;
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fila-menu button {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  color: #1f2937;
+  cursor: pointer;
+}
+.fila-menu button:hover {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
