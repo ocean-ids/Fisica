@@ -62,10 +62,6 @@
           <option *ngFor="let v of cantonViews" [ngValue]="'view:' + v.id">Vista: {{ v.nombre }} ({{ v.tipo === 'cliente' ? v.clienteIds.length : v.cantonIds.length }})</option>
         </optgroup>
       </select>
-      <div class="btn-group" role="group" aria-label="Pagination">
-        <button class="btn btn-outline-secondary btn-sm" (click)="prevPage()" [disabled]="isVistaCantonActiva() || provinciaPage <= 1">&#x2039;</button>
-        <button class="btn btn-outline-secondary btn-sm" (click)="nextPage()" [disabled]="isVistaCantonActiva() || provinciaPage >= getTotalPages()">&#x203A;</button>
-      </div>
     </div>
   </div>
   <div class="row asig-row g-0" [ngClass]="{ 'justify-content-center': !displayRows.length }">
