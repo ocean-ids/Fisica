@@ -43,38 +43,21 @@ export class SacafrancoPersonasModalComponent implements OnInit {
   }
 
   private applyFilters(): void {
-    if (this.selectedCantonId === null){
-      this.personasFiltradas = [];
-      return;
-    }
-
-    const selectedCanton = (this.cantones || []).find(c => c.id === this.selectedCantonId);
-    const selectedName = this.normalizeText(selectedCanton?.nombre || '');
-
-    const byCanton = (this.personasAll || []).filter(p => {
-      const personaCantonId = (p as any).canton;
-      if (personaCantonId === this.selectedCantonId) return true;
-      if (!selectedName) return false;
-      const personaCantonName = this.normalizeText((p as any).canton_nombre || '');
-      return personaCantonName && personaCantonName === selectedName;
-    });
-
+    // Ya no se filtra por cantón: se muestran todas las personas sacafranco.
+    const all = this.personasAll || [];
     const q = this.normalizeText(this.filtroNombre);
     if (!q) {
-      this.personasFiltradas = byCanton;
+      this.personasFiltradas = all;
       return;
     }
-
-    this.personasFiltradas = byCanton.filter(p => {
+    this.personasFiltradas = all.filter(p => {
       const fullName = this.normalizeText(`${p.apellidos || ''} ${p.nombres || ''}`);
       return fullName.includes(q);
     });
   }
 
-  onCantonChange(): void {
-    this.selectedId = null;
-    this.filtroNombre = '';
-    this.applyFilters();
+  getProvincia(p: Persona): string {
+    return ((p as any)?.provincia_nombre || '').toString();
   }
 
   onNombreFilterChange(): void {
@@ -127,7 +110,7 @@ export class SacafrancoPersonasModalComponent implements OnInit {
 
   confirm(): void {
     if (!this.selectedId) return;
-    this.dialogRef.close({ personaId: this.selectedId, cantonId: this.selectedCantonId });
+    this.dialogRef.close({ personaId: this.selectedId, cantonId: null });
   }
 
   cancel(): void {

@@ -1,16 +1,7 @@
 <h2 mat-dialog-title class="text-center">Seleccionar Persona Sacafranco</h2>
 
 <mat-dialog-content>
-    <mat-form-field appearance="outline" class="w-100 mb-3">
-        <mat-label>Cantón</mat-label>
-        <mat-select [(ngModel)]="selectedCantonId" (selectionChange)="onCantonChange()">
-            <mat-option [value]="null" >SIN CANTÓN</mat-option>
-            <mat-option *ngFor="let canton of cantones" [value]="canton.id">
-                {{canton.nombre}}
-            </mat-option>
-        </mat-select>
-    </mat-form-field>
-    <mat-form-field appearance="outline" class="w-100 mb-2" *ngIf="selectedCantonId !== null">
+    <mat-form-field appearance="outline" class="w-100 mb-2">
         <mat-label>Filtrar por nombre o apellido</mat-label>
         <input
             matInput
@@ -19,7 +10,7 @@
             placeholder="Ej: Alvarado"
         />
     </mat-form-field>
-    <div class="list-group" style="max-height: 320px; overflow: auto;" *ngIf="selectedCantonId !== null; else noCanton">
+    <div class="list-group" style="max-height: 320px; overflow: auto;">
         <button
             type="button"
             class="list-group-item list-group-item-action"
@@ -33,6 +24,7 @@
                     <small class="text-muted">{{ p.cedula }}</small>
                 </div>
                 <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-info text-dark" *ngIf="getProvincia(p)">{{ getProvincia(p) }}</span>
                     <span class="badge" [ngClass]="isAssigned(p.id) ? 'bg-warning text-dark' : 'bg-success'">
                         {{ isAssigned(p.id) ? 'Asignado' : 'Disponible' }}
                     </span>
@@ -44,9 +36,6 @@
             No hay personas sacafranco para mostrar.
         </div>
     </div>
-    <ng-template #noCanton>
-        <div class="text-muted p-2">Seleccione un cantón para ver sacafrancos.</div>
-    </ng-template>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
