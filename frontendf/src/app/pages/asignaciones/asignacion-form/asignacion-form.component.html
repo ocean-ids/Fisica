@@ -95,7 +95,7 @@
             <div class="d-flex justify-content-between align-items-center w-100 gap-2">
               <span>{{ per.apellidos }} {{ per.nombres }}
                 <span class="badge rounded-pill bg-info text-dark" style="font-size: 10px;">
-                  {{ per.tipo }} - {{ per.canton_nombre || per.provincia_nombre || per.canton || '-' }}
+                  {{ per.tipo }}<span *ngIf="getProvinciaCanton(per)"> · {{ getProvinciaCanton(per) }}</span>
                 </span>
               </span>
               <span class="badge rounded-pill"

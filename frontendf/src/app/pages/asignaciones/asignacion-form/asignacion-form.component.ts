@@ -262,24 +262,21 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   getPersonasActivas(): Persona[] {
-    const provinciaId = this.getProvinciaIdFromInstalacion();
-    const cantonId = this.getCantonIdFromInstalacion();
-
-    const tiposPermitidos = new Set([
-      'FIJOS',
-      'SUPERVISOR MOTORIZADO',
-      'SUPERVISOR ZONAL',
-    ]);
-
+    // Todos los tipos EXCEPTO sacafranco, sin filtrar por provincia/cantón
+    // (se muestran todas y se indica su provincia/cantón con un badge).
     return this.personas.filter(persona => {
       const tipo = (persona.tipo || '').toString().toUpperCase();
-      if (persona.is_active === false || !tiposPermitidos.has(tipo)) return false;
-
-      if (provinciaId && persona.provincia && persona.provincia !== provinciaId) return false;
-      if (cantonId && persona.canton && persona.canton !== cantonId) return false;
-
+      if (persona.is_active === false) return false;
+      if (tipo === 'SACAFRANCO') return false;
       return true;
     });
+  }
+
+  getProvinciaCanton(persona: Persona): string {
+    const prov = ((persona as any)?.provincia_nombre || '').toString().trim();
+    const cant = ((persona as any)?.canton_nombre || '').toString().trim();
+    if (prov && cant) return `${prov} - ${cant}`;
+    return prov || cant || '';
   }
 
   private getProvinciaIdFromInstalacion(): number | null {
