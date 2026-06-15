@@ -116,8 +116,8 @@
                   </div>
                   <div class="calendar-weeks calendar-header-weeks">
                     <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
-                      <div class="calendar-week-days" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
-                        <div class="calendar-day-label" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
+                      <div class="calendar-week-grid" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
+                        <div class="calendar-day calendar-day-label" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
                           <div class="calendar-day-initial">{{ getDayInitial(dayKey) }}</div>
                           <div class="calendar-day-num">{{ (calendarWeekDayNumbers[ws] || {})[dayKey] || '' }}</div>
                         </div>
