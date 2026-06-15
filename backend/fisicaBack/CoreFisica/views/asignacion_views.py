@@ -382,7 +382,17 @@ def obtener_asignaciones(request, mes=None, anio=None):
                 token_filter = token_filter | Q(semanales__id=int(token))
             filtros &= token_filter
         asignaciones = asignaciones.filter(filtros).distinct()
-    
+
+    # Un cliente que ya tiene VISTA DE EMPRESA se muestra SOLO en esa vista: se
+    # excluye de las vistas por cantón / generales para que no salga duplicado.
+    if not cliente_ids:
+        from ..models import VistaCanton
+        clientes_empresa = set()
+        for v in VistaCanton.objects.filter(tipo='cliente'):
+            clientes_empresa.update(int(c) for c in (v.clientes or []) if str(c).strip())
+        if clientes_empresa:
+            asignaciones = asignaciones.exclude(cliente_id__in=clientes_empresa)
+
     # Vista por empresa: devolver TODAS las asignaciones de esos clientes (lista plana,
     # sin paginar por cantón). El frontend la trata como una vista (igual que canton_ids).
     if cliente_ids:
