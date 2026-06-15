@@ -434,3 +434,26 @@ table.table {
   color: #4338ca;
 }
 
+/* El cuerpo de la tabla scrollea internamente (necesario para el sticky) */
+.asig-table-card .card-body {
+  max-height: calc(100vh - 210px);
+  overflow: auto;
+}
+/* Encabezado fijo (sticky) al hacer scroll vertical */
+.asig-table-card .table thead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.asig-table-card .table thead th {
+  background: #f8f9fa;
+}
+/* Header del calendario: alinear los labels de día con las celdas del cuerpo */
+.calendar-header-cell {
+  padding: 4px !important;
+  vertical-align: bottom;
+}
+.calendar-header-weeks {
+  width: 100%;
+}
+
