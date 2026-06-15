@@ -15,6 +15,8 @@ import { Puesto } from '../../models';
 import { ClienteService } from '../../services/cliente.service';
 import { Cliente } from '../../models';
 import { PuestoFormComponent } from './puesto-form/puesto-form.component';
+import { NovedadPuestoDialogComponent } from './novedad-puesto-dialog/novedad-puesto-dialog.component';
+import { NovedadPuestoService } from '../../services/novedad-puesto.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import Swal from 'sweetalert2';
@@ -52,11 +54,21 @@ export class PuestosComponent implements OnInit {
   instalaciones: Array<{ id: number; nombre: string }> = [];
   instalacionSeleccionada: number | null = null;
 
+  fechaReporteNovedad = this.hoyISO();
+
   constructor(
     private puestoService: PuestoService,
     private clienteService: ClienteService,
+    private novedadService: NovedadPuestoService,
     private dialog: MatDialog
   ) {}
+
+  private hoyISO(): string {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }
 
   ngOnInit(): void {
     this.cargarClientes();
@@ -320,6 +332,59 @@ export class PuestosComponent implements OnInit {
     });
 
     input.value = '';
+  }
+
+  abrirNovedad(): void {
+    const dialogRef = this.dialog.open(NovedadPuestoDialogComponent, {
+      width: '760px',
+      maxWidth: '95vw',
+      data: {
+        puestos: this.puestosMostrados,
+        clienteNombre: this.clienteSeleccionadoNombre,
+        fecha: this.fechaReporteNovedad,
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (!result) return;
+      this.novedadService.crearNovedad(result).subscribe({
+        next: () => {
+          const esCierre = (result.novedad || '').toString().toUpperCase() === 'CIERRE';
+          const esApertura = (result.novedad || '').toString().toUpperCase() === 'APERTURA';
+          Swal.fire({
+            icon: 'success',
+            title: 'Novedad registrada',
+            text: esCierre ? 'El puesto fue marcado como Cerrado.' : (esApertura ? 'El puesto fue reactivado.' : ''),
+            timer: 1600,
+            showConfirmButton: false
+          });
+          // refresca para reflejar estado del puesto (cerrado/reactivado)
+          this.cargarPuestos();
+        },
+        error: (err) => {
+          const msg = err?.error?.detail || 'No se pudo registrar la novedad';
+          Swal.fire({ icon: 'error', title: 'Error', text: msg });
+        }
+      });
+    });
+  }
+
+  descargarNovedadesExcel(): void {
+    const fecha = this.fechaReporteNovedad || this.hoyISO();
+    const [anio, mes] = fecha.split('-');
+    this.novedadService.descargarExcel(fecha).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reporte_novedades_${mes}_${anio}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: () => {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo descargar el reporte' });
+      }
+    });
   }
 
 }

@@ -91,6 +91,7 @@ class Instalacion(models.Model):
     codigo = models.CharField(max_length=20, blank=True, null=True, db_index=True)
     nombre = models.CharField(max_length=150, blank=True, null=True)
     direccion = models.CharField(max_length=200, blank=True, null=True)
+    sector = models.CharField(max_length=150, blank=True, null=True)
 
     def __str__(self):
         prov = getattr(self.canton.provincia, 'nombre', '') if self.canton else ''
@@ -104,8 +105,9 @@ class Puesto(models.Model):
     tipo = models.CharField(max_length=50, blank=True, null=True)
     cantidad_puestos = models.IntegerField(default=1)
     horario = models.ForeignKey('Horario', null=True, blank=True, on_delete=models.SET_NULL, related_name='puestos')
-    
-    resumen = models.CharField(max_length=50, blank=True, editable=False)  
+    activo = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
+
+    resumen = models.CharField(max_length=50, blank=True, editable=False)
 
     def _format_dias_range(self, dias_nums):
         if not dias_nums:
@@ -800,5 +802,57 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.creado_en:%Y-%m-%d %H:%M} | {self.usuario_str} | {self.accion} {self.modelo}#{self.objeto_id}"
+
+
+class NovedadPuesto(models.Model):
+    """Reporte de Apertura, Modificación o Cierre de Puesto (formato FR).
+
+    Cada registro es una novedad de un puesto en una fecha y turno. El reporte FR
+    se agrupa por fecha y se separa en TURNO DIURNO / TURNO NOCTURNO.
+    """
+    TURNOS = [
+        ('Diurno', 'Diurno'),
+        ('Nocturno', 'Nocturno'),
+    ]
+    NOVEDADES = [
+        ('APERTURA', 'Apertura'),
+        ('MODIFICACION', 'Modificación'),
+        ('CIERRE', 'Cierre'),
+        ('INCREMENTO', 'Incremento'),
+        ('MODIFICACION INCREMENTO', 'Modificación / Incremento'),
+    ]
+
+    puesto = models.ForeignKey(
+        Puesto, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='novedades'
+    )
+    instalacion = models.ForeignKey(
+        Instalacion, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='novedades'
+    )
+    fecha = models.DateField()
+    turno = models.CharField(max_length=10, choices=TURNOS, default='Diurno')
+    cliente_denominativo = models.CharField(max_length=200, blank=True)
+    sector = models.CharField(max_length=150, blank=True)
+    novedad = models.CharField(max_length=40, choices=NOVEDADES)
+    tipo = models.CharField(max_length=100, blank=True)
+    horario = models.CharField(max_length=100, blank=True)
+    solicitado_por = models.CharField(max_length=150, blank=True)
+    observacion = models.TextField(blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-fecha', 'turno', 'cliente_denominativo']
+        indexes = [
+            models.Index(fields=['fecha']),
+            models.Index(fields=['fecha', 'turno']),
+        ]
+        permissions = [
+            ('export_novedadpuesto', 'Puede exportar reporte de novedades de puesto'),
+        ]
+
+    def __str__(self):
+        return f"{self.fecha} | {self.turno} | {self.novedad} | {self.cliente_denominativo}"
 
 

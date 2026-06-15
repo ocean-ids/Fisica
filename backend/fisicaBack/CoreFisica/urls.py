@@ -19,6 +19,7 @@ from .views.patron_asignacion_views import PatronAsignacionListCreateView, Patro
 from .views.reporte_asistencia_views import obtener_reporte_asistencia, listar_descripciones_reporte, insertar_reporte_asistencia, historial_reporte_asistencia, exportar_reporte_asistencia_excel, exportar_reporte_asistencia_pdf
 from .views.consolidado_views import obtener_consolidado, crear_consolidado, actualizar_consolidado, eliminar_consolidado, obtener_consolidado_armado, exportar_consolidado_excel, exportar_consolidado_pdf, obtener_consolidado_resumen, actualizar_consolidado_resumen
 from .views.vista_canton_views import vistas_cantones
+from .views.novedad_puesto_views import obtener_novedades, crear_novedad, actualizar_novedad, eliminar_novedad, exportar_novedades_excel
 
 urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
@@ -104,6 +105,11 @@ urlpatterns = [
     path('consolidado/resumen/actualizar/', actualizar_consolidado_resumen),
     path('consolidado/exportar-excel/', exportar_consolidado_excel),
     path('consolidado/exportar-pdf/', exportar_consolidado_pdf),
+    path('novedades-puesto/', obtener_novedades),
+    path('novedades-puesto/crear/', crear_novedad),
+    path('novedades-puesto/<int:id>/', actualizar_novedad),
+    path('novedades-puesto/<int:id>/eliminar/', eliminar_novedad),
+    path('novedades-puesto/exportar-excel/', exportar_novedades_excel),
 
 ]
 

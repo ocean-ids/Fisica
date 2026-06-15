@@ -256,7 +256,7 @@ class SacafrancoFilaSemanalSerializer(serializers.ModelSerializer):
 class InstalacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instalacion
-        fields = ['id', 'cliente', 'canton', 'codigo', 'nombre', 'direccion']
+        fields = ['id', 'cliente', 'canton', 'codigo', 'nombre', 'direccion', 'sector']
         read_only_fields = ['id']
         
 

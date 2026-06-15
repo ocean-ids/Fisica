@@ -175,6 +175,7 @@ def obtener_instalaciones(request):
             'provincia_id': getattr(getattr(inst.canton, 'provincia', None), 'id', None),
             'provincia_nombre': getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
             'direccion': inst.direccion or '',
+            'sector': inst.sector or '',
             'zonas': [
                 {
                     'id': z.id,
@@ -208,6 +209,8 @@ def crear_instalacion(request):
         data['nombre'] = str(data.get('nombre')).strip().upper()
     if 'direccion' in data and data.get('direccion'):
         data['direccion'] = str(data.get('direccion')).strip().upper()
+    if 'sector' in data and data.get('sector'):
+        data['sector'] = str(data.get('sector')).strip().upper()
 
     # Intentar resolver/crear provincia y cantón desde tokens (id o nombre)
     provincia_token = data.get('provincia_id') or data.get('provincia')

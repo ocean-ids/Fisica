@@ -11,8 +11,11 @@ export interface Puesto {
   descripcion?: string;
   instalacion?: number;
   instalacion_nombre?: string;
+  instalacion_codigo?: string;
+  instalacion_sector?: string;
   instalacion__provincia?: string;
   instalacion__ciudad?: string;
   turno?: string;
   turno_display?: string;
+  activo?: boolean;
 }

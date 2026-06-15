@@ -57,6 +57,7 @@ export class InstalacionFormComponent implements OnInit {
       provincia_id: [instalacion.provincia_id || '', Validators.required],
       canton_id: [instalacion.canton_id || '', Validators.required],
       direccion: [instalacion.direccion || ''],
+      sector: [instalacion.sector || ''],
       zona_id: [initialZonaId]
     });
 

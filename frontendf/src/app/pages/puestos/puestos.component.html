@@ -32,6 +32,18 @@
       </button>
     </div>
 
+    <div class="col-12 d-flex flex-wrap align-items-center justify-content-md-end gap-2 mt-1">
+      <div class="text-muted small me-1">Reporte de apertura / modificación / cierre:</div>
+      <input type="date" class="form-control form-control-sm" style="max-width: 170px;" [(ngModel)]="fechaReporteNovedad" [ngModelOptions]="{standalone:true}" />
+      <button class="btn btn-sm btn-outline-warning" (click)="abrirNovedad()">
+        <i class="bi bi-journal-plus"></i> Novedad
+      </button>
+      <button class="btn btn-sm btn-outline-success" (click)="descargarNovedadesExcel()" title="Descarga el mes: una pestaña por cada día con registros">
+        <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
+        Descargar FR (mes)
+      </button>
+    </div>
+
     <div class="col-12 col-md-7" *ngIf="instalaciones.length">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Instalación</mat-label>
@@ -61,8 +73,11 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="text-center align-middle" *ngFor="let puesto of puestosMostrados">
-              <td>{{ puesto.nombre }}</td>
+            <tr class="text-center align-middle" *ngFor="let puesto of puestosMostrados" [class.puesto-cerrado]="puesto.activo === false">
+              <td>
+                {{ puesto.nombre }}
+                <span *ngIf="puesto.activo === false" class="badge bg-danger ms-1">Cerrado</span>
+              </td>
               <td>{{puesto.tipo}}</td>
               <!--<td>{{ puesto.cantidad_puestos }}</td>-->
               <td>{{ getDias(puesto) }}</td>

@@ -1,3 +1,9 @@
+/* Puesto cerrado (inactivo): fila atenuada */
+.puesto-cerrado {
+	opacity: 0.55;
+	background-color: #f8d7da33;
+}
+
 :host-context(body.theme-dark) .mat-mdc-form-field {
 	--mat-form-field-filled-container-color: #1f2937;
 	--mat-form-field-outlined-container-color: #1f2937;

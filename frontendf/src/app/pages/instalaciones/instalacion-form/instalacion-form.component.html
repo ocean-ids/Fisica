@@ -43,6 +43,11 @@
       <input matInput formControlName="direccion" placeholder="Dirección física de la instalación">
     </mat-form-field>
 
+    <mat-form-field class="w-100">
+      <mat-label>Sector</mat-label>
+      <input matInput formControlName="sector" placeholder="Sector (ej. LA JOYA, VÍA DAULE)">
+    </mat-form-field>
+
     <mat-form-field class="w-100" *ngIf="zonaOptions.length">
       <mat-label>Zonas registradas</mat-label>
       <mat-select formControlName="zona_id">
