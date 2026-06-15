@@ -39,6 +39,7 @@ export class ReporteAsistenciaEditDialogComponent {
   reemplazos: Persona[] = [];
   reemplazoCtrl = new FormControl<Persona | string | null>('');
   reemplazosOcupadosIds = new Set<number>();
+  personasAsignadasIds = new Set<number>();
   cargandoReemplazos = false;
   guardando = false;
   error = '';
@@ -53,11 +54,18 @@ export class ReporteAsistenciaEditDialogComponent {
       row: ReporteAsistenciaRow;
       fecha?: string | null;
       occupiedReemplazoIds?: number[];
+      assignedPersonaIds?: number[];
     }
   ) {
     this.dialogRef.disableClose = true;
     this.reemplazosOcupadosIds = new Set(
       (data?.occupiedReemplazoIds || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    );
+    // Personas con asignación activa: el backend no permite usarlas como reemplazo.
+    this.personasAsignadasIds = new Set(
+      (data?.assignedPersonaIds || [])
         .map((id) => Number(id))
         .filter((id) => Number.isFinite(id) && id > 0)
     );
@@ -92,12 +100,19 @@ export class ReporteAsistenciaEditDialogComponent {
     this.personaSvc.getPersonas().subscribe({
       next: (data) => {
         const list = Array.isArray(data) ? data : [];
+        // Incluir también los ocupados: se muestran con estado ASIGNADO (deshabilitados).
         this.reemplazos = list.filter((p) =>
           !!p?.id &&
           p?.is_active !== false &&
-          this.tiposReemplazoPermitidos.has(String(p?.tipo || '')) &&
-          !this.reemplazosOcupadosIds.has(Number(p.id))
+          this.tiposReemplazoPermitidos.has(String(p?.tipo || ''))
         );
+        // Disponibles primero, luego por nombre.
+        this.reemplazos.sort((a, b) => {
+          const oa = this.esReemplazoOcupado(a) ? 1 : 0;
+          const ob = this.esReemplazoOcupado(b) ? 1 : 0;
+          if (oa !== ob) return oa - ob;
+          return this.getNombrePersona(a).localeCompare(this.getNombrePersona(b));
+        });
 
         const selectedId = this.form.get('reemplazo_id')?.value;
         if (selectedId) {
@@ -120,6 +135,17 @@ export class ReporteAsistenciaEditDialogComponent {
 
   getNombrePersona(p: Persona): string {
     return `${p.nombres || ''} ${p.apellidos || ''}`.trim();
+  }
+
+  esReemplazoOcupado(p: Persona): boolean {
+    if (!p?.id) return false;
+    const id = Number(p.id);
+    // ASIGNADO si ya está usado como reemplazo o si tiene asignación activa.
+    return this.reemplazosOcupadosIds.has(id) || this.personasAsignadasIds.has(id);
+  }
+
+  estadoReemplazo(p: Persona): 'ASIGNADO' | 'DISPONIBLE' {
+    return this.esReemplazoOcupado(p) ? 'ASIGNADO' : 'DISPONIBLE';
   }
 
   private normalizeText(value: string | null | undefined): string {

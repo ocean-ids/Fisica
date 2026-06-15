@@ -1,5 +1,5 @@
 from django.http import JsonResponse
-from django.db.models import Q, F, Subquery
+from django.db.models import Q, Subquery
 from django.http import HttpResponse
 from django.utils import timezone
 from io import BytesIO
@@ -476,6 +476,32 @@ def _resolver_reemplazo_desde_request(request, fecha_reporte=None, asignacion_id
     return persona, None
 
 
+def _calendar_dnf_for_date(fecha_obj):
+    """Letra del calendario (AsignacionSemanal) para esa fecha, por asignación.
+
+    Devuelve {asignacion_id: 'D' | 'N' | 'F'} según el valor del día:
+    D=diurno, N=nocturno, F=franco (se toma solo la primera letra del valor).
+    Considera semana estilo mensual (día 1 + saltos de 7) y estilo ISO (lunes).
+    """
+    if not fecha_obj:
+        return {}
+    day_field_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
+    day_field = day_field_map.get(fecha_obj.weekday())
+    if not day_field:
+        return {}
+    month_base = fecha_obj.replace(day=1)
+    week_start_month = month_base + datetime.timedelta(days=((fecha_obj.day - 1) // 7) * 7)
+    week_start_iso = fecha_obj - datetime.timedelta(days=fecha_obj.weekday())
+    rows = AsignacionSemanal.objects.filter(
+        week_start__in=[week_start_month, week_start_iso]
+    ).exclude(asignacion_id__isnull=True).values_list('asignacion_id', day_field)
+    out = {}
+    for aid, val in rows:
+        letra = (str(val).strip()[:1].upper()) if val else ''
+        if letra in ('D', 'N', 'F') and aid not in out:
+            out[aid] = letra
+    return out
+
 
 def _build_reporte_asistencia_data(
     fecha=None,
@@ -530,9 +556,17 @@ def _build_reporte_asistencia_data(
                 Q(id__in=historial_asig_ids_qs)
             )
         else:
-            asig_qs = asig_qs.filter(anio=fecha_obj.year, mes=fecha_obj.month)
+            # Fecha pasada: incluir asignaciones del mes/año exacto, las recurrentes
+            # activas en esa fecha (para que el día pasado muestre su calendario D/N),
+            # y las que tengan datos guardados/override.
             asig_qs = asig_qs.filter(
+                Q(mes=fecha_obj.month, anio=fecha_obj.year) |
                 Q(fecha=fecha_obj) |
+                (
+                    Q(recurring=True) &
+                    Q(start_date__lte=fecha_obj) &
+                    (Q(end_date__isnull=True) | Q(end_date__gte=fecha_obj))
+                ) |
                 Q(id__in=reporte_qs.values('asignacion_id')) |
                 Q(id__in=historial_asig_ids_qs)
             )
@@ -540,13 +574,18 @@ def _build_reporte_asistencia_data(
         asig_qs = asig_qs.filter(cliente_id=cliente_id)
     if zona:
         asig_qs = asig_qs.filter(instalacion__zonas__titulo__iexact=zona).distinct()
-    if turno in ['Diurno', 'Nocturno']:
-        asig_qs = asig_qs.filter(
-            Q(puesto__horarios__turno=turno)
-            | Q(puesto__horarios__turno='Ambos')
-            # Horario con misma hora de ingreso/salida se interpreta como cobertura 24h
-            | Q(horario__hora_ingreso=F('horario__hora_salida'))
-        ).distinct()
+
+    # Ruteo por el calendario del día (D/N), no por la config de turno del puesto.
+    # D -> Diurno, N -> Nocturno. Los francos (F) NO aparecen en el reporte.
+    dnf = _calendar_dnf_for_date(fecha_obj)
+    if fecha_obj:
+        franco_ids = {aid for aid, lt in dnf.items() if lt == 'F'}
+        if franco_ids:
+            asig_qs = asig_qs.exclude(id__in=franco_ids)
+    if turno in ['Diurno', 'Nocturno'] and fecha_obj:
+        letra_turno = 'D' if turno == 'Diurno' else 'N'
+        ids_turno = {aid for aid, lt in dnf.items() if lt == letra_turno}
+        asig_qs = asig_qs.filter(id__in=ids_turno)
 
     if exclude_sacafranco:
         # Excluir asignaciones marcadas como cobertura de sacafranco (F) en la fecha consultada.

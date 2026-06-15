@@ -385,7 +385,9 @@ def obtener_asignaciones(request, mes=None, anio=None):
 
     # Un cliente que ya tiene VISTA DE EMPRESA se muestra SOLO en esa vista: se
     # excluye de las vistas por cantón / generales para que no salga duplicado.
-    if not cliente_ids:
+    # Excepción: si hay búsqueda de texto (q), NO se excluye — una búsqueda
+    # explícita debe encontrarlo aunque tenga vista de empresa.
+    if not cliente_ids and not q:
         from ..models import VistaCanton
         clientes_empresa = set()
         for v in VistaCanton.objects.filter(tipo='cliente'):

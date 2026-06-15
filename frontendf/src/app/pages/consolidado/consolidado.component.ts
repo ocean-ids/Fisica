@@ -75,7 +75,7 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
     if (saved) {
       try {
         const f = JSON.parse(saved);
-        if (f.fecha) this.filtroFecha = f.fecha;
+        // La fecha NO se restaura: el consolidado siempre abre en HOY.
         if (f.turno) this.filtroTurno = f.turno;
         if (f.zona !== undefined) this.filtroZona = f.zona;
       } catch {}

@@ -9,6 +9,7 @@ import { ReporteAsistenciaColorDialogComponent } from './dialogs/reporte-asisten
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { PersonaService } from '../../services/persona.service';
+import { AsignacionService } from '../../services/asignacion.service';
 import { PersonaFormComponent } from '../personas/persona-form/persona-form.component';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheet, MatBottomSheetModule, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { ReporteEstadoComponent } from './reporte-estado/reporte-estado.component';
@@ -84,6 +85,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     private reporteSvc: ReporteAsistenciaService,
     private dialog: MatDialog,
     private personaService: PersonaService,
+    private asignacionService: AsignacionService,
     private bottomSheet: MatBottomSheet,
     private globalFilter: GlobalFilterStateService,
     private router: Router
@@ -107,7 +109,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     if (saved) {
       try {
         const f = JSON.parse(saved);
-        if (f.fecha) { this.filtroFecha = f.fecha; this.filtroFechaDisplay = f.fecha.split('-').reverse().join('/'); }
+        // La fecha NO se restaura: el reporte siempre abre en HOY (evita confusión
+        // al volver a entrar y ver un día viejo). Sí se mantienen turno/zona/filas.
         if (f.turno) this.filtroTurno = f.turno;
         if (f.zona !== undefined) this.filtroZona = f.zona;
         if (f.pageSize) this.pageSize = f.pageSize;
@@ -375,17 +378,39 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
         .filter((id) => Number.isFinite(id) && id > 0)
     ));
 
-    const dialogRef = this.dialog.open(ReporteAsistenciaEditDialogComponent, {
-      width: '700px',
-      maxWidth: '95vw',
-      data: {
-        row: { ...row },
-        fecha: this.filtroFecha || null,
-        occupiedReemplazoIds,
-      }
-    });
+    // Personas con asignación activa en el mes: el backend NO permite usarlas como
+    // reemplazo (debe ser personal libre). Se marcan como ASIGNADO en el modal.
+    const [anioStr, mesStr] = (this.filtroFecha || '').split('-');
+    const mes = Number(mesStr);
+    const anio = Number(anioStr);
 
-    dialogRef.afterClosed().subscribe((res) => {
+    const abrir = (assignedPersonaIds: number[]) => {
+      const dialogRef = this.dialog.open(ReporteAsistenciaEditDialogComponent, {
+        width: '700px',
+        maxWidth: '95vw',
+        data: {
+          row: { ...row },
+          fecha: this.filtroFecha || null,
+          occupiedReemplazoIds,
+          assignedPersonaIds,
+        }
+      });
+      this._afterEditClosed(dialogRef, row);
+    };
+
+    if (Number.isFinite(mes) && Number.isFinite(anio)) {
+      this.asignacionService.obtenerPersonasAsignadas(mes, anio).subscribe({
+        next: (ids) => abrir(ids || []),
+        error: () => abrir([]),
+      });
+    } else {
+      abrir([]);
+    }
+  }
+
+  private _afterEditClosed(dialogRef: any, row: ReporteAsistenciaRow): void {
+
+    dialogRef.afterClosed().subscribe((res: any) => {
       if (!res) return;
       row.codigo = res.codigo;
       row.estado_asistencia = res.estado_asistencia;
