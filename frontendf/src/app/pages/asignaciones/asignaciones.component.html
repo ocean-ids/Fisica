@@ -133,13 +133,6 @@
             </thead>
             <tbody cdkDropList [cdkDropListData]="displayRows" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropAsignaciones($event)">
               <ng-container *ngFor="let row of displayRows; trackBy: trackByDisplayRow">
-                <tr *ngIf="row.type === 'provincia' && !columnaOculta('horario')" class="provincia-row">
-                  <td [attr.colspan]="totalColumns()">
-                    <div class="d-flex align-items-center justify-content-between gap-2">
-                      <span class="provincia-label">{{ row.label }}</span>
-                    </div>
-                  </td>
-                </tr>
                 <tr 
                   *ngIf="row.type === 'asignacion' && row.asig.persona_detalle?.is_active !== false"
                   cdkDrag
