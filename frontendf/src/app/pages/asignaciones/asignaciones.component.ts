@@ -298,8 +298,18 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   isPastMonth(): boolean {
     const now = new Date();
-    return this.anio < now.getFullYear() ||
-      (this.anio === now.getFullYear() && this.mes < (now.getMonth() + 1));
+    const curIdx = now.getFullYear() * 12 + (now.getMonth() + 1);
+    const viewIdx = this.anio * 12 + this.mes;
+
+    // Mes actual o futuro -> editable.
+    if (viewIdx >= curIdx) return false;
+
+    // Período de gracia: el mes INMEDIATAMENTE anterior sigue editable hasta el
+    // día 7 del mes actual (para cerrar/corregir cosas de fin de mes).
+    if (viewIdx === curIdx - 1 && now.getDate() <= 7) return false;
+
+    // Mes pasado y fuera del período de gracia -> bloqueado.
+    return true;
   }
 
   isDayInCurrentMonth(weekStart: string, dayKey: string): boolean {
@@ -337,8 +347,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   mes: number = new Date().getMonth() + 1;
   anio: number = new Date().getFullYear();
-  dia: string | null = null; 
+  dia: string | null = null;
   monthValue: string = '';
+  dateValue: string = '';   // fecha (YYYY-MM-DD) mostrada en el selector (día/mes/año)
   filtroTexto: string = '';
   private filterSub?: Subscription;
   private abrirSub?: Subscription;
@@ -384,6 +395,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.selectedCantonKey = localStorage.getItem(this.selectedCantonKeyStorageKey) || '';
 
     this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
+    this.dateValue = this.formatDateLocal(new Date());
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
     this.buildCalendarWeekDayKeys();
 
@@ -447,6 +459,27 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
     this.buildCalendarWeekDayKeys();
     this.cargarAsignaciones();
+  }
+
+  // onDateChange maneja el selector de fecha (día/mes/año). Solo recarga si cambió
+  // el mes/año; cambiar únicamente el día no recarga (el calendario es por mes).
+  onDateChange(): void {
+    if (!this.dateValue) return;
+    const parts = this.dateValue.split('-');
+    if (parts.length !== 3) return;
+    const y = Number(parts[0]);
+    const m = Number(parts[1]);
+    if (!y || !m) return;
+    const changed = (y !== this.anio) || (m !== this.mes);
+    this.anio = y;
+    this.mes = m;
+    this.monthValue = `${y}-${String(m).padStart(2, '0')}`;
+    if (changed) {
+      this.provinciaPage = 1;
+      this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
+      this.buildCalendarWeekDayKeys();
+      this.cargarAsignaciones();
+    }
   }
 
   //onFiltroChange se encarga de manejar el cambio en el filtro de texto, recargando las asignaciones para reflejar el nuevo filtro aplicado y actualizando los calendarios para mostrar la información filtrada correctamente
@@ -571,7 +604,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   //canDeleteSacafrancoFila se encarga de determinar si una fila de sacafranco puede ser eliminada, verificando si la fila pertenece al mes y año actuales o posteriores, devolviendo un booleano para indicar si se permite la eliminación
   canDeleteSacafrancoFila(fila?: SacafrancoFila | null): boolean {
-    return !!fila;
+    // Respeta el período de gracia: no se puede eliminar en meses pasados
+    // (salvo el mes anterior hasta el día 7 del mes actual).
+    return !!fila && !this.isPastMonth();
   }
   
   // formatDateLocal se encarga de formatear un objeto Date en un string con formato YYYY-MM-DD, utilizando métodos de la clase Date para obtener el año, mes y día, y asegurándose de que el mes y día tengan dos dígitos mediante el uso de padStart, lo que facilita la manipulación de fechas en el componente

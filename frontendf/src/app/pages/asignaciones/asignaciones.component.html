@@ -112,7 +112,7 @@
                 <th *ngIf="!columnaOculta('accion')" [attr.rowspan]="headerRowspan()" style="width: 1%; white-space: nowrap; padding-left: 4px; padding-right: 4px;">Accion</th>
                 <th class="calendar-col calendar-header-cell" [attr.rowspan]="headerRowspan()">
                    <div class="d-flex justify-content-center mb-1">
-                    <input type="month" class="form-control" [(ngModel)]="monthValue" (change)="onMonthChange()" style="max-width: 190px;"/>
+                    <input type="date" class="form-control" [(ngModel)]="dateValue" (change)="onDateChange()" [ngModelOptions]="{standalone:true}" style="max-width: 190px;"/>
                   </div>
                   <div class="calendar-weeks calendar-header-weeks">
                     <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
