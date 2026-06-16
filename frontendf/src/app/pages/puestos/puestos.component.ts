@@ -16,6 +16,7 @@ import { ClienteService } from '../../services/cliente.service';
 import { Cliente } from '../../models';
 import { PuestoFormComponent } from './puesto-form/puesto-form.component';
 import { NovedadPuestoDialogComponent } from './novedad-puesto-dialog/novedad-puesto-dialog.component';
+import { NovedadPuestoListDialogComponent } from './novedad-puesto-list-dialog/novedad-puesto-list-dialog.component';
 import { NovedadPuestoService } from '../../services/novedad-puesto.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
@@ -366,6 +367,14 @@ export class PuestosComponent implements OnInit {
           Swal.fire({ icon: 'error', title: 'Error', text: msg });
         }
       });
+    });
+  }
+
+  verNovedades(): void {
+    this.dialog.open(NovedadPuestoListDialogComponent, {
+      width: '1100px',
+      maxWidth: '95vw',
+      data: { fecha: this.fechaReporteNovedad || this.hoyISO() }
     });
   }
 

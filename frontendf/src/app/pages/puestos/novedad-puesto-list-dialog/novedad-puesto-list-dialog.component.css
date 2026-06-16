@@ -1,0 +1,35 @@
+mat-dialog-content {
+  min-width: 720px;
+  max-width: 1100px;
+}
+
+@media (max-width: 800px) {
+  mat-dialog-content {
+    min-width: auto;
+  }
+}
+
+.dia-header {
+  font-weight: 600;
+  background: #eef2f7;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  text-transform: capitalize;
+}
+
+.turno-titulo {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+  margin: 4px 0;
+}
+
+table {
+  font-size: 13px;
+}
+
+.obs {
+  max-width: 260px;
+  white-space: normal;
+}
