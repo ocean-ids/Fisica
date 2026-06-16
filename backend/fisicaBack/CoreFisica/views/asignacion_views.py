@@ -296,6 +296,9 @@ def obtener_asignaciones(request, mes=None, anio=None):
         except (TypeError, ValueError):
             return Response({'error': 'Cliente IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
+    # Vista por tipo de persona (aditiva): filtra por persona__tipo, lista plana.
+    tipos_raw = (request.GET.get('tipos') or '').strip()
+    tipos: list[str] = [t.strip().upper() for t in tipos_raw.split(',') if t.strip()] if tipos_raw else []
     #q es un texto libre q se busca
     q = (request.GET.get('q') or '').strip()
     # si se proporcionan mes y año, filtrar asignaciones activas que correspondan al mes/año o que sean recurrentes y tengan rango de fechas que incluya el mes/año. Si no se proporcionan mes/año, devolver todas las asignaciones activas. En ambos casos, excluir personas de tipo SACAFRANCO y ordenar por orden y id para mantener un orden consistente.   
@@ -345,6 +348,8 @@ def obtener_asignaciones(request, mes=None, anio=None):
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
     if cliente_ids:
         asignaciones = asignaciones.filter(cliente_id__in=cliente_ids)
+    if tipos:
+        asignaciones = asignaciones.filter(persona__tipo__in=tipos)
     if instalacion_id:
         asignaciones = asignaciones.filter(instalacion_id=instalacion_id)
     if canton_ids:
@@ -388,6 +393,22 @@ def obtener_asignaciones(request, mes=None, anio=None):
     # Así el usuario ve todo lo que coincide, venga de un cantón o de una vista de empresa,
     # y nunca cae en una página vacía.
     if q and not cliente_ids and not canton_ids:
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+        return Response({
+            'results': serializer.data,
+            'canton_page': 1,
+            'canton_total': 1,
+            'canton_id': None,
+            'canton_options': [],
+            'provincia_page': 1,
+            'provincia_total': 1,
+            'provincia_id': None
+        })
+
+    # Vista por TIPO DE PERSONA: lista plana con todas las asignaciones de esos tipos.
+    # Es ADITIVA (no excluye empresas ni los saca de sus cantones): se devuelve antes
+    # de la exclusión de empresas para que aparezcan todos los del tipo.
+    if tipos:
         serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
         return Response({
             'results': serializer.data,

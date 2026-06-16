@@ -14,7 +14,13 @@ export interface CantonOption {
   nombre: string;
 }
 
-export type VistaTipo = 'canton' | 'cliente';
+export type VistaTipo = 'canton' | 'cliente' | 'persona_tipo';
+
+export const TIPOS_PERSONA: string[] = [
+  'FIJOS', 'RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAFRANCO', 'SACAVACACIONES',
+  'SUPERVISOR ZONAL', 'SUPERVISOR EVENTUAL', 'SUPERVISOR MOTORIZADO',
+  'SUPERVISOR DE ACOMPAÑAMIENTO', 'OPERADOR CENTRO CONTROL', 'SUPERVISOR CENTRO CONTROL',
+];
 
 export interface CantonMixView {
   id: string;
@@ -22,6 +28,7 @@ export interface CantonMixView {
   tipo: VistaTipo;
   cantonIds: number[];
   clienteIds: number[];
+  tipos: string[];
 }
 
 export interface CantonViewsModalData {
@@ -60,6 +67,9 @@ export interface CantonViewsModalResult {
           <button type="button"
             [class.active]="tipo === 'cliente'"
             (click)="setTipo('cliente')">Por empresas</button>
+          <button type="button"
+            [class.active]="tipo === 'persona_tipo'"
+            (click)="setTipo('persona_tipo')">Por tipo</button>
         </div>
       </div>
 
@@ -68,7 +78,13 @@ export interface CantonViewsModalResult {
         <input matInput [(ngModel)]="viewName" placeholder="Ej: GUAYAQUIL - DURÁN" />
       </mat-form-field>
 
-      @if (tipo === 'canton') {
+      @if (tipo === 'persona_tipo') {
+        <div class="tipos-grid mb-3">
+          @for (t of tiposDisponibles; track t) {
+            <button type="button" class="tipo-chip" [class.sel]="selectedTipos.includes(t)" (click)="toggleTipoPersona(t)">{{ t }}</button>
+          }
+        </div>
+      } @else if (tipo === 'canton') {
         <mat-form-field class="w-100" appearance="outline">
           <mat-label>Cantones seleccionados</mat-label>
           <mat-chip-grid #chipGrid aria-label="Seleccion de cantones">
@@ -132,12 +148,16 @@ export interface CantonViewsModalResult {
             <div class="saved-item">
               <div class="saved-title">
                 {{ v.nombre }}
-                <span class="badge-tipo">{{ v.tipo === 'cliente' ? 'EMPRESAS' : 'CANTONES' }}</span>
+                <span class="badge-tipo">{{ v.tipo === 'cliente' ? 'EMPRESAS' : (v.tipo === 'persona_tipo' ? 'TIPOS' : 'CANTONES') }}</span>
               </div>
               <div class="saved-chips">
                 @if (v.tipo === 'cliente') {
                   @for (id of v.clienteIds; track id) {
                     <span class="saved-chip">{{ getName('cliente', id) }}</span>
+                  }
+                } @else if (v.tipo === 'persona_tipo') {
+                  @for (t of v.tipos; track t) {
+                    <span class="saved-chip">{{ t }}</span>
                   }
                 } @else {
                   @for (id of v.cantonIds; track id) {
@@ -171,6 +191,9 @@ export interface CantonViewsModalResult {
     .badge-tipo { font-size: 10px; font-weight: 700; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 999px; padding: 1px 8px; }
     .saved-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
     .saved-chip { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+    .tipos-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tipo-chip { border: 1px solid #c7d2fe; background: #fff; color: #4338ca; border-radius: 999px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
+    .tipo-chip.sel { background: #4338ca; color: #fff; border-color: #4338ca; }
     `
   ]
 })
@@ -180,6 +203,8 @@ export class CantonViewsModalComponent {
   tipo: VistaTipo = 'canton';
   selectedCantonIds: number[] = [];
   selectedClienteIds: number[] = [];
+  selectedTipos: string[] = [];
+  readonly tiposDisponibles = TIPOS_PERSONA;
   query = '';
   editingId: string | null = null;
 
@@ -192,7 +217,14 @@ export class CantonViewsModalComponent {
       tipo: v.tipo || 'canton',
       cantonIds: v.cantonIds || [],
       clienteIds: v.clienteIds || [],
+      tipos: v.tipos || [],
     }));
+  }
+
+  toggleTipoPersona(t: string): void {
+    this.selectedTipos = this.selectedTipos.includes(t)
+      ? this.selectedTipos.filter(x => x !== t)
+      : [...this.selectedTipos, t];
   }
 
   setTipo(t: VistaTipo): void {
@@ -248,12 +280,14 @@ export class CantonViewsModalComponent {
     if (!nombre) return;
     if (this.tipo === 'canton' && this.selectedCantonIds.length < 2) return;
     if (this.tipo === 'cliente' && this.selectedClienteIds.length < 1) return;
+    if (this.tipo === 'persona_tipo' && this.selectedTipos.length < 1) return;
 
     const nueva: Omit<CantonMixView, 'id'> = {
       nombre,
       tipo: this.tipo,
       cantonIds: this.tipo === 'canton' ? [...this.selectedCantonIds] : [],
       clienteIds: this.tipo === 'cliente' ? [...this.selectedClienteIds] : [],
+      tipos: this.tipo === 'persona_tipo' ? [...this.selectedTipos] : [],
     };
 
     if (this.editingId) {
@@ -270,6 +304,7 @@ export class CantonViewsModalComponent {
     this.tipo = v.tipo || 'canton';
     this.selectedCantonIds = [...(v.cantonIds || [])];
     this.selectedClienteIds = [...(v.clienteIds || [])];
+    this.selectedTipos = [...(v.tipos || [])];
   }
 
   deleteView(id: string): void {
@@ -284,6 +319,7 @@ export class CantonViewsModalComponent {
     this.viewName = '';
     this.selectedCantonIds = [];
     this.selectedClienteIds = [];
+    this.selectedTipos = [];
     this.query = '';
   }
 

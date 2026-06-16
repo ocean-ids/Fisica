@@ -756,11 +756,15 @@ class VistaCanton(models.Model):
     TIPO_CHOICES = [
         ('canton', 'Cantones'),
         ('cliente', 'Empresas'),
+        ('persona_tipo', 'Tipos de persona'),
     ]
     nombre = models.CharField(max_length=100)
-    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default='canton')
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='canton')
     cantones = models.JSONField(default=list)
     clientes = models.JSONField(default=list)
+    # Para tipo='persona_tipo': lista de tipos de persona (FIJOS, SACAFRANCO, ...).
+    # Es ADITIVA: estas personas siguen apareciendo en sus vistas por cantón.
+    tipos = models.JSONField(default=list)
 
     class Meta:
         ordering = ['nombre']

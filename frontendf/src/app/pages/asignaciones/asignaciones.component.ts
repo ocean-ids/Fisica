@@ -34,7 +34,7 @@ import { Router } from '@angular/router';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
 import { environment } from '@env/environment';
-import { CantonMixView, CantonViewsModalComponent } from './canton-views-modal.component';
+import { CantonMixView, CantonViewsModalComponent, VistaTipo } from './canton-views-modal.component';
 
 @Component({
   selector: 'app-asignaciones',
@@ -693,12 +693,14 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const params: any = {};
     const activeView = this.getActiveView();
     const isClienteView = activeView?.tipo === 'cliente';
+    const isTipoView = activeView?.tipo === 'persona_tipo';
+    const tiposCsv = (activeView?.tipos || []).join(',');
     const clienteIdsCsv = (activeView?.clienteIds || []).join(',');
     const selectedViewCantons = this.getSelectedViewCantonIds();
-    const mixedView = !isClienteView && selectedViewCantons.length >= 2;
+    const mixedView = !isClienteView && !isTipoView && selectedViewCantons.length >= 2;
     const hasFilter = !!(this.filtroTexto && this.filtroTexto.trim());
-    // Vista plana (no paginar por cantón): vistas por cantones (2+), por empresa, o al BUSCAR.
-    const flatView = isClienteView || mixedView || hasFilter;
+    // Vista plana (no paginar por cantón): cantones (2+), empresa, tipo de persona, o al BUSCAR.
+    const flatView = isClienteView || isTipoView || mixedView || hasFilter;
     if (hasFilter) {
       params.q = this.filtroTexto.trim();
     }
@@ -706,6 +708,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     if (isClienteView) {
       params.cliente_ids = clienteIdsCsv;
+    } else if (isTipoView) {
+      params.tipos = tiposCsv;
     } else if (mixedView) {
       params.canton_ids = selectedViewCantons.join(',');
     } else if (hasFilter) {
@@ -738,6 +742,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           });
         }),
         switchMap(asignaciones => {
+          // En vista por TIPO de persona no se muestran filas de sacafranco
+          // (es una vista de asignaciones filtradas por tipo).
+          if (isTipoView) {
+            return of({ asignaciones, sacafranco: [] as SacafrancoFila[] });
+          }
           const cantonId = asignaciones?.cantonId ?? asignaciones?.provinciaId ?? null;
           const sacafrancoParams: any = isClienteView
             ? { cliente_ids: clienteIdsCsv }
@@ -860,14 +869,17 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const hasSacafranco = (this.sacafrancoRows || []).length > 0;
     const activeView = this.getActiveView();
     const isClienteView = activeView?.tipo === 'cliente';
+    const isTipoView = activeView?.tipo === 'persona_tipo';
     const selectedViewCantons = this.getSelectedViewCantonIds();
-    const mixedView = !isClienteView && selectedViewCantons.length >= 2;
+    const mixedView = !isClienteView && !isTipoView && selectedViewCantons.length >= 2;
     const cantonId = this.activeProvinciaId != null ? this.activeProvinciaId : null;
     const scopeParams = isClienteView
       ? { cliente_ids: (activeView?.clienteIds || []).join(',') }
-      : mixedView
-        ? { canton_ids: selectedViewCantons.join(',') }
-        : (cantonId != null ? { canton_id: cantonId } : {});
+      : isTipoView
+        ? { tipos: (activeView?.tipos || []).join(',') }
+        : mixedView
+          ? { canton_ids: selectedViewCantons.join(',') }
+          : (cantonId != null ? { canton_id: cantonId } : {});
     this.asignacionCalendarioService.obtenerAsignacionesCalendarioMes(
       this.mes,
       this.anio,
@@ -1348,17 +1360,24 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const toIds = (xs: any) => (xs || [])
       .map((id: any) => Number(id))
       .filter((id: number) => Number.isFinite(id) && id > 0);
+    const tiposNorm = (xs: any) => (xs || [])
+      .map((t: any) => String(t || '').trim().toUpperCase())
+      .filter((t: string) => !!t);
+    const tiposPermitidos = new Set<VistaTipo>(['canton', 'cliente', 'persona_tipo']);
     return (arr || [])
       .filter(v => v && typeof v.nombre === 'string')
       .map(v => ({
         id: String(v.id),
         nombre: v.nombre,
-        tipo: (v.tipo === 'cliente' ? 'cliente' : 'canton') as ('canton' | 'cliente'),
+        tipo: (tiposPermitidos.has(v.tipo) ? v.tipo : 'canton') as VistaTipo,
         cantonIds: toIds(v.cantonIds),
-        clienteIds: toIds(v.clienteIds)
+        clienteIds: toIds(v.clienteIds),
+        tipos: tiposNorm(v.tipos),
       }))
-      // Vista válida: por cantones (2+) o por empresa (1+).
-      .filter(v => (v.tipo === 'cliente' ? v.clienteIds.length >= 1 : v.cantonIds.length >= 2));
+      // Vista válida: por cantones (2+), por empresa (1+) o por tipo de persona (1+).
+      .filter(v => v.tipo === 'cliente' ? v.clienteIds.length >= 1
+        : v.tipo === 'persona_tipo' ? v.tipos.length >= 1
+        : v.cantonIds.length >= 2);
   }
 
   // Vistas compartidas: se cargan desde la BD (visibles en cualquier máquina/usuario).
