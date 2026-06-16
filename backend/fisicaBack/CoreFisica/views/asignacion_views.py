@@ -383,11 +383,28 @@ def obtener_asignaciones(request, mes=None, anio=None):
             filtros &= token_filter
         asignaciones = asignaciones.filter(filtros).distinct()
 
+    # Al BUSCAR por texto sin una vista específica: devolver TODAS las coincidencias en
+    # lista plana (sin paginar por cantón y sin excluir clientes de vista de empresa).
+    # Así el usuario ve todo lo que coincide, venga de un cantón o de una vista de empresa,
+    # y nunca cae en una página vacía.
+    if q and not cliente_ids and not canton_ids:
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+        return Response({
+            'results': serializer.data,
+            'canton_page': 1,
+            'canton_total': 1,
+            'canton_id': None,
+            'canton_options': [],
+            'provincia_page': 1,
+            'provincia_total': 1,
+            'provincia_id': None
+        })
+
     # Un cliente que ya tiene VISTA DE EMPRESA se muestra SOLO en esa vista: se
-    # excluye de las vistas por cantón / generales para que no salga duplicado.
-    # Excepción: si hay búsqueda de texto (q), NO se excluye — una búsqueda
-    # explícita debe encontrarlo aunque tenga vista de empresa.
-    if not cliente_ids and not q:
+    # excluye de las vistas por cantón / generales para que no salga duplicado,
+    # INCLUSO al buscar por texto (debe encontrarse desde su propia vista de empresa,
+    # no aparecer en los cantones a los que pertenece geográficamente).
+    if not cliente_ids:
         from ..models import VistaCanton
         clientes_empresa = set()
         for v in VistaCanton.objects.filter(tipo='cliente'):

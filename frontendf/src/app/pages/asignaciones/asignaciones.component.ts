@@ -661,9 +661,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const clienteIdsCsv = (activeView?.clienteIds || []).join(',');
     const selectedViewCantons = this.getSelectedViewCantonIds();
     const mixedView = !isClienteView && selectedViewCantons.length >= 2;
-    // Vista plana (no paginar por cantón): aplica a vistas por cantones (2+) y a vistas por empresa.
-    const flatView = isClienteView || mixedView;
-    if (this.filtroTexto && this.filtroTexto.trim()) {
+    const hasFilter = !!(this.filtroTexto && this.filtroTexto.trim());
+    // Vista plana (no paginar por cantón): vistas por cantones (2+), por empresa, o al BUSCAR.
+    const flatView = isClienteView || mixedView || hasFilter;
+    if (hasFilter) {
       params.q = this.filtroTexto.trim();
     }
     params.lite = true;
@@ -672,6 +673,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       params.cliente_ids = clienteIdsCsv;
     } else if (mixedView) {
       params.canton_ids = selectedViewCantons.join(',');
+    } else if (hasFilter) {
+      // Búsqueda global: el backend devuelve todas las coincidencias en lista plana.
     } else {
       params.canton_page = this.provinciaPage;
       const savedCantonId = localStorage.getItem('asig_canton_id');
@@ -729,6 +732,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
             this.provinciaPage = 1;
             this.activeProvinciaId = null;
             this.selectedCantonId = isClienteView ? null : (selectedViewCantons[0] || null);
+            // Al buscar, mover el selector a la vista/cantón donde realmente vive el cliente.
+            if (hasFilter) {
+              this.actualizarSelectorPorBusqueda();
+            }
           } else {
             this.provinciaTotal = asignaciones?.cantonTotal ?? asignaciones?.provinciaTotal ?? this.provinciaTotal;
             this.provinciaPage = asignaciones?.cantonPage ?? asignaciones?.provinciaPage ?? this.provinciaPage;
@@ -765,6 +772,42 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         },
         error: err => console.error('Error al cargar asignaciones/sacafranco', err)
       });
+  }
+
+  /**
+   * Tras una búsqueda (vista plana), actualiza el selector de cantón/vista para que
+   * refleje dónde vive el cliente de los resultados: prioriza su vista de empresa;
+   * si no tiene, y todos comparten un mismo cantón, selecciona ese cantón.
+   */
+  private actualizarSelectorPorBusqueda(): void {
+    const clienteIds = Array.from(new Set(
+      (this.asignaciones || [])
+        .map((a: any) => a?.cliente_detalle?.id ?? a?.cliente)
+        .filter((x: any) => x != null)
+    )) as number[];
+    if (!clienteIds.length) { return; }
+
+    // 1) ¿Pertenecen todos a una vista de empresa? -> seleccionar esa vista.
+    const empresaView = (this.cantonViews || []).find(v =>
+      v.tipo === 'cliente' &&
+      (v.clienteIds || []).length > 0 &&
+      clienteIds.every(id => (v.clienteIds || []).includes(id))
+    );
+    if (empresaView) {
+      this.selectedCantonKey = `view:${empresaView.id}`;
+      return;
+    }
+
+    // 2) Si comparten un solo cantón, seleccionar ese cantón.
+    const cantonIds = Array.from(new Set(
+      (this.asignaciones || [])
+        .map((a: any) => a?.instalacion_detalle?.canton_id)
+        .filter((x: any) => x != null)
+    )) as number[];
+    if (cantonIds.length === 1) {
+      this.selectedCantonId = cantonIds[0];
+      this.selectedCantonKey = `canton:${cantonIds[0]}`;
+    }
   }
 
   private loadCalendarWeeks(): void {
