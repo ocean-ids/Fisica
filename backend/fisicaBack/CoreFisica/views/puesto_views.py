@@ -2,11 +2,115 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import  IsAuthenticated
 import json
-from ..models import Instalacion, Puesto, PuestoHorario, Zona
+from ..models import Instalacion, Puesto, PuestoHorario, Zona, AsignacionSemanal
 from ..utils import parse_input
 import logging
 
 logger = logging.getLogger(__name__)
+
+_DOW_FIELDS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+
+
+def _norm_dnf_token(value):
+    """Normaliza un valor de celda del calendario a D / N / F."""
+    s = (value or '').strip().upper()
+    if not s:
+        return 'F'  # celda vacía = día libre (franco) para la secuencia
+    c = s[0]
+    if c == 'D':
+        return 'D'
+    if c == 'N':
+        return 'N'
+    return 'F'  # F, 1, L u otros => franco
+
+
+def _periodo(seq):
+    """Período (ciclo) más corto de la secuencia, tolerante a colas parciales."""
+    n = len(seq)
+    for p in range(1, n):
+        if all(seq[i] == seq[i + p] for i in range(n - p)):
+            return p
+    return n
+
+
+def _secuencia_dnf_puesto(puesto_id):
+    """Deriva la secuencia de rotación D/N/F del calendario de un puesto.
+
+    Toma la asignación con más semanas registradas (la representativa), arma su
+    secuencia cronológica de días, detecta el ciclo y devuelve los run-lengths
+    normalizados con el/los días libres (franco) al final. Ej: DDDNNNFF -> "3,3,2".
+    """
+    filas = list(
+        AsignacionSemanal.objects
+        .filter(puesto_id=puesto_id)
+        .order_by('asignacion_id', 'week_start')
+    )
+    if not filas:
+        return ''
+
+    por_asig = {}
+    for r in filas:
+        por_asig.setdefault(r.asignacion_id, []).append(r)
+    repr_filas = max(por_asig.values(), key=len)
+    repr_filas.sort(key=lambda r: r.week_start)
+
+    # Solo las semanas recientes: la rotación vigente (el historial completo es ruidoso).
+    recientes = repr_filas[-3:]
+
+    def _build_seq(filas_sem):
+        s = []
+        for r in filas_sem:
+            for f in _DOW_FIELDS:
+                s.append(_norm_dnf_token(getattr(r, f)))
+        return s
+
+    seq = _build_seq(recientes)
+    if not seq:
+        return ''
+
+    p = _periodo(seq)
+    # Sin ciclo claro en 3 semanas -> usar la última semana (máx. 7 días).
+    if p == len(seq) and len(recientes) > 1:
+        seq = _build_seq(repr_filas[-1:])
+        p = _periodo(seq)
+    ciclo = seq[:p]
+    if not ciclo:
+        return ''
+
+    # Normalizar: empezar en el primer día de trabajo precedido por franco,
+    # para que el/los franco queden al final (estilo "3,3,2" / "5,2").
+    n = len(ciclo)
+    if any(t != 'F' for t in ciclo) and any(t == 'F' for t in ciclo):
+        start = 0
+        for i in range(n):
+            if ciclo[i] != 'F' and ciclo[(i - 1) % n] == 'F':
+                start = i
+                break
+        ciclo = ciclo[start:] + ciclo[:start]
+
+    # run-length encode
+    runs = []
+    for t in ciclo:
+        if runs and runs[-1][0] == t:
+            runs[-1][1] += 1
+        else:
+            runs.append([t, 1])
+    return ','.join(str(cnt) for _, cnt in runs)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def secuencia_horario_puesto(request, id):
+    """Devuelve la secuencia de rotación (horario) y el resumen de un puesto."""
+    if not request.user.has_perm('CoreFisica.view_puesto'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    puesto = Puesto.objects.filter(id=id).first()
+    if not puesto:
+        return JsonResponse({'error': 'Puesto no encontrado'}, status=404)
+    return JsonResponse({
+        'secuencia': _secuencia_dnf_puesto(id),
+        'resumen': puesto.resumen or '',
+    })
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

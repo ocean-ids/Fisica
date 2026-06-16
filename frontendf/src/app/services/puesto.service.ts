@@ -46,6 +46,10 @@ export class PuestoService {
         return this.apiService.delete(`/eliminar-puesto/${id}/`);
     }
 
+    getSecuenciaHorario(id: number): Observable<{ secuencia: string; resumen: string }> {
+        return this.apiService.get<{ secuencia: string; resumen: string }>(`/puestos/${id}/secuencia-horario/`);
+    }
+
     importPuestosAsignaciones(file: File, clienteId?: number): Observable<any> {
         const formData = new FormData();
         formData.append('file', file);

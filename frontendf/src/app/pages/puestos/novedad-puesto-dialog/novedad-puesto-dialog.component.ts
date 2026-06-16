@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { NovedadPuesto } from '../../../models/novedad-puesto.model';
+import { PuestoService } from '../../../services/puesto.service';
 
 interface DialogData {
   puestos?: any[];
@@ -52,6 +53,7 @@ export class NovedadPuestoDialogComponent implements OnInit {
 
   constructor(
     private dialogRef: MatDialogRef<NovedadPuestoDialogComponent, NovedadPuesto | null>,
+    private puestoService: PuestoService,
     @Inject(MAT_DIALOG_DATA) public data: DialogData | null
   ) {}
 
@@ -87,16 +89,23 @@ export class NovedadPuestoDialogComponent implements OnInit {
       : cliente;
 
     this.model.sector = (p.instalacion_sector || '').toString();
-    this.model.tipo = (p.tipo || p.resumen || '').toString();
-
-    const horas = (p.horarios || [])
-      .map((h: any) => h.horas)
-      .filter((h: any) => h !== null && h !== undefined);
-    this.model.horario = horas.length ? horas.join(',') : '';
+    // Tipo = resumen de horario (fallback al resumen local mientras llega el endpoint)
+    this.model.tipo = (p.resumen || '').toString();
+    // Horario = secuencia de rotación D/N/F del calendario (ej. "3,3,2")
+    this.model.horario = '';
 
     const turno = (p.turno || '').toString().toLowerCase();
     if (turno.startsWith('n')) this.model.turno = 'Nocturno';
     else if (turno.startsWith('d')) this.model.turno = 'Diurno';
+
+    // Trae la secuencia real del calendario y el resumen desde el backend.
+    this.puestoService.getSecuenciaHorario(p.id).subscribe({
+      next: (res) => {
+        if (res?.secuencia) this.model.horario = res.secuencia;
+        if (res?.resumen) this.model.tipo = res.resumen;
+      },
+      error: () => {}
+    });
   }
 
   isValid(): boolean {
