@@ -2283,7 +2283,8 @@ def asignaciones_vacantes(request, mes, anio):
 
     qs = Asignacion.objects.filter(
         estado='ACTIVO',
-        persona__isnull=True
+        persona__isnull=True,
+        puesto__activo=True  # un puesto CERRADO no es una vacante por cubrir (no notifica)
     ).filter(mes_filter).select_related(
         'cliente', 'instalacion', 'instalacion__canton', 'puesto', 'horario'
     ).order_by('instalacion__canton__nombre', 'orden', 'id')
