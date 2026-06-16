@@ -1328,26 +1328,34 @@ def _propagar_orden_puestos_a_futuros(ordenes, ref_mes, ref_anio):
     if not ids:
         return
     asigs = Asignacion.objects.in_bulk(ids)
-    # puesto -> su nueva posición (mínimo orden) en el mes reordenado
-    puesto_orden = {}
+    # Mapas del mes de referencia:
+    #  - orden EXACTO por (puesto, persona): preserva el orden fila por fila.
+    #  - orden mínimo por puesto: respaldo cuando en el futuro hay otra persona
+    #    en ese puesto (p. ej. un reemplazo) que no estaba en el mes de referencia.
+    orden_by_pp = {}
+    orden_by_puesto = {}
     for it in items:
         a = asigs.get(it['id'])
         pid = getattr(a, 'puesto_id', None) if a else None
         if pid is None:
             continue
         o = it.get('orden', 0)
-        if pid not in puesto_orden or o < puesto_orden[pid]:
-            puesto_orden[pid] = o
-    if not puesto_orden:
+        orden_by_pp[(pid, getattr(a, 'persona_id', None))] = o
+        if pid not in orden_by_puesto or o < orden_by_puesto[pid]:
+            orden_by_puesto[pid] = o
+    if not orden_by_puesto:
         return
 
-    # Solo los puestos reordenados, solo meses futuros -> orden = su nuevo orden.
+    # Solo los puestos reordenados, solo meses futuros. Cada fila futura toma el
+    # orden EXACTO de su (puesto, persona) en el mes de referencia.
     fut = Asignacion.objects.filter(
-        estado='ACTIVO', puesto_id__in=list(puesto_orden.keys())
+        estado='ACTIVO', puesto_id__in=list(orden_by_puesto.keys())
     ).filter(Q(anio__gt=ref_anio) | Q(anio=ref_anio, mes__gt=ref_mes))
     cambios = []
-    for a in fut.only('id', 'orden', 'puesto_id'):
-        nv = puesto_orden.get(a.puesto_id)
+    for a in fut.only('id', 'orden', 'puesto_id', 'persona_id'):
+        nv = orden_by_pp.get((a.puesto_id, a.persona_id))
+        if nv is None:
+            nv = orden_by_puesto.get(a.puesto_id)
         if nv is not None and a.orden != nv:
             a.orden = nv
             cambios.append(a)
