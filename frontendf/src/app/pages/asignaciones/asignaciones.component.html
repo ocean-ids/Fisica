@@ -104,12 +104,12 @@
                 <th></th>
               </tr>
               <tr class="text-center align-middle m-0" style="max-height: 36px">
-                <th *ngIf="!columnaOculta('horario')" [attr.rowspan]="headerRowspan()">Horario</th>
+                <th *ngIf="!columnaOculta('horario')" [attr.rowspan]="headerRowspan()" style="width: 1%; white-space: nowrap; padding-left: 4px; padding-right: 4px;">Horario</th>
                 <th *ngIf="!columnaOculta('codigo')" [attr.rowspan]="headerRowspan()" style="width: 50px;">Nominativo</th>
                 <th *ngIf="!columnaOculta('cliente')" [attr.rowspan]="headerRowspan()" style="width: 150px; height: 30px;">Cliente</th>
                 <th *ngIf="mostrarPuesto()" style="width: 50px;" [attr.colspan]="2">Puesto</th>
                 <th *ngIf="!columnaOculta('persona')" [attr.rowspan]="headerRowspan()">Persona</th>
-                <th *ngIf="!columnaOculta('accion')" [attr.rowspan]="headerRowspan()">Accion</th>
+                <th *ngIf="!columnaOculta('accion')" [attr.rowspan]="headerRowspan()" style="width: 1%; white-space: nowrap; padding-left: 4px; padding-right: 4px;">Accion</th>
                 <th class="calendar-col calendar-header-cell" [attr.rowspan]="headerRowspan()">
                    <div class="d-flex justify-content-center mb-1">
                     <input type="month" class="form-control" [(ngModel)]="monthValue" (change)="onMonthChange()" style="max-width: 190px;"/>
@@ -146,7 +146,7 @@
                   style="height: 70px;">
                   <td *ngIf="!columnaOculta('horario')" class="align-middle overflow-hidden" style="height: 70px;">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                   <td *ngIf="!columnaOculta('codigo')" class="align-middle overflow-hidden" style="height: 70px;">{{ getCodigoInstalacionAsignacion(row.asig) }}</td>
-                  <td *ngIf="!columnaOculta('cliente')" class="align-middle text-wrap overflow-hidden" style="max-width: 150px; height: 70px;">{{ row.asig.cliente_detalle?.nombre_comercial }}</td>
+                  <td *ngIf="!columnaOculta('cliente')" class="align-middle text-start text-wrap overflow-hidden" style="max-width: 150px; height: 70px; padding-left: 6px !important;">{{ row.asig.cliente_detalle?.nombre_comercial }}</td>
                     <td *ngIf="mostrarPuesto()" class="align-middle text-wrap overflow-hidden" style="max-width: 220px; height: 70px;">
                       {{ row.asig.puesto_detalle?.nombre }}
                     </td>
