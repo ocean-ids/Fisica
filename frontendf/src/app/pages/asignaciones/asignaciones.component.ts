@@ -27,6 +27,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form/asignacion-form.component';
 import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dialogs/reporte-asistencia-color-dialog.component';
 import { Subscription, of, from } from 'rxjs';
 import { catchError, switchMap, concatMap, toArray, debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
@@ -51,6 +52,7 @@ import { CantonMixView, CantonViewsModalComponent, VistaTipo } from './canton-vi
     MatButtonModule,
     MatButtonToggleModule,
     DragDropModule,
+    ScrollingModule,
     
     
   ],
