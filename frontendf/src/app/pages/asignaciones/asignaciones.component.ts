@@ -1264,7 +1264,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         mes: this.mes,
         anio: this.anio,
         orden: (this.sacafrancoRows || []).length,
-        persona: result.personaId
+        persona: result.personaId,
+        hora_ingreso: result.horaIngreso || null,
+        hora_salida: result.horaSalida || null
       };
 
       // Atar la fila a la vista donde se crea, para que salga SOLO ahí.
@@ -2032,15 +2034,20 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       data: {
         assignedPersonaIds: this.getAssignedSacafrancoPersonaIds(),
         cantones: this.cantonesDisponibles,
-        cantonId: fila?.persona_detalle?.canton ?? this.selectedCantonId
+        cantonId: fila?.persona_detalle?.canton ?? this.selectedCantonId,
+        selectedPersonaId: fila.persona,
+        horaIngreso: fila.hora_ingreso,
+        horaSalida: fila.hora_salida
       }
     });
 
     ref.afterClosed().subscribe(result => {
       if (!result?.personaId) return;
       this.asignacionService.actualizarSacafrancoFila(fila.id as number, {
-        persona: result.personaId
-      }).subscribe({
+        persona: result.personaId,
+        hora_ingreso: result.horaIngreso || null,
+        hora_salida: result.horaSalida || null
+      } as any).subscribe({
         next: updated => {
           const idx = (this.sacafrancoRows || []).findIndex(f => f?.id === updated.id);
           if (idx >= 0) this.sacafrancoRows[idx] = updated;

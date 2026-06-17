@@ -36,6 +36,8 @@ export interface SacafrancoFila {
     provincia_nombre?: string | null;
     persona: number | null;
     persona_detalle?: Persona | null;
+    hora_ingreso?: string | null;
+    hora_salida?: string | null;
 }
 
 export interface PatronAsignacion{

@@ -26,11 +26,13 @@ export class SacafrancoPersonasModalComponent implements OnInit {
   cantones: Array<{ id: number | null; nombre: string }> = [];
   selectedCantonId: number | null = null;
   assignedIds = new Set<number>();
+  horaIngreso: string = '';
+  horaSalida: string = '';
 
   constructor(
-    private dialogRef: MatDialogRef<SacafrancoPersonasModalComponent, { personaId: number; cantonId: number | null } | null>,
+    private dialogRef: MatDialogRef<SacafrancoPersonasModalComponent, { personaId: number; cantonId: number | null; horaIngreso: string | null; horaSalida: string | null } | null>,
     private personaService: PersonaService,
-    @Inject(MAT_DIALOG_DATA) public data: { personas?: Persona[]; assignedPersonaIds?: number[]; cantones?: Array<{ id: number | null; nombre: string }>; cantonId?: number | null } | null
+    @Inject(MAT_DIALOG_DATA) public data: { personas?: Persona[]; assignedPersonaIds?: number[]; cantones?: Array<{ id: number | null; nombre: string }>; cantonId?: number | null; horaIngreso?: string | null; horaSalida?: string | null; selectedPersonaId?: number | null } | null
   ) {}
 
   private normalizeText(value: string | null | undefined): string {
@@ -75,6 +77,11 @@ export class SacafrancoPersonasModalComponent implements OnInit {
     if (this.data?.cantonId !== undefined) {
       this.selectedCantonId = this.data.cantonId ?? null;
     }
+    this.horaIngreso = (this.data?.horaIngreso || '').toString().slice(0, 5);
+    this.horaSalida = (this.data?.horaSalida || '').toString().slice(0, 5);
+    if (this.data?.selectedPersonaId) {
+      this.selectedId = this.data.selectedPersonaId;
+    }
     if (this.data?.personas && this.data.personas.length) {
       this.personasAll = this.data.personas.filter(p => (p.tipo || '').toString().toUpperCase() === 'SACAFRANCO');
       this.personas = this.personasAll;
@@ -110,7 +117,12 @@ export class SacafrancoPersonasModalComponent implements OnInit {
 
   confirm(): void {
     if (!this.selectedId) return;
-    this.dialogRef.close({ personaId: this.selectedId, cantonId: null });
+    this.dialogRef.close({
+      personaId: this.selectedId,
+      cantonId: null,
+      horaIngreso: this.horaIngreso || null,
+      horaSalida: this.horaSalida || null,
+    });
   }
 
   cancel(): void {

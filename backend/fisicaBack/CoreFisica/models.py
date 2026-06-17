@@ -363,6 +363,8 @@ class SacafrancoFila(models.Model):
     orden = models.PositiveIntegerField(default=0)
     provincia = models.ForeignKey(Provincia, null=True, blank=True, on_delete=models.PROTECT)
     persona = models.ForeignKey(Persona, null=True, blank=True, on_delete=models.SET_NULL)
+    hora_ingreso = models.TimeField(null=True, blank=True)
+    hora_salida = models.TimeField(null=True, blank=True)
     # Alcance de la vista donde se creó: si están seteados, la fila se muestra SOLO
     # en vistas que coincidan (cantones o empresas). Si ambos están vacíos, la fila
     # es "heredada" y se muestra por el cantón de su persona (compatibilidad).

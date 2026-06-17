@@ -236,7 +236,10 @@
                   cdkDragPreviewContainer="parent"
                   style="height: 45px;"
                   class="align-middle sacafranco-row">
-                  <td *ngIf="!columnaOculta('horario')" class="bg-warning-subtle"></td>
+                  <td *ngIf="!columnaOculta('horario')" class="bg-warning-subtle align-middle text-center" style="font-size: 11px;">
+                    <span *ngIf="row.fila.hora_ingreso">{{ row.fila.hora_ingreso | slice:0:5 }}</span>
+                    <span *ngIf="row.fila.hora_salida"><br>{{ row.fila.hora_salida | slice:0:5 }}</span>
+                  </td>
                   <td *ngIf="!columnaOculta('codigo')" class="bg-warning-subtle"></td>
                   <td *ngIf="!columnaOculta('cliente')" class="bg-warning-subtle"></td>
                   <td *ngIf="mostrarPuesto()" class="bg-warning-subtle text-center">SACAFRANCO</td>

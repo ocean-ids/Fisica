@@ -1,6 +1,16 @@
 <h2 mat-dialog-title class="text-center">Seleccionar Persona Sacafranco</h2>
 
 <mat-dialog-content>
+    <div class="d-flex gap-2 mb-2">
+        <mat-form-field appearance="outline" class="w-50">
+            <mat-label>Hora ingreso</mat-label>
+            <input matInput type="time" [(ngModel)]="horaIngreso" [ngModelOptions]="{standalone:true}" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="w-50">
+            <mat-label>Hora salida</mat-label>
+            <input matInput type="time" [(ngModel)]="horaSalida" [ngModelOptions]="{standalone:true}" />
+        </mat-form-field>
+    </div>
     <mat-form-field appearance="outline" class="w-100 mb-2">
         <mat-label>Filtrar por nombre o apellido</mat-label>
         <input

@@ -814,12 +814,18 @@ def _build_reporte_asistencia_data(
                     puesto_val = ctx_n['puesto']
                     provincia_val = ctx_n['provincia']
 
+                _hi = getattr(fila, 'hora_ingreso', None)
+                _ho = getattr(fila, 'hora_salida', None)
+                horario_saca = ''
+                if _hi or _ho:
+                    horario_saca = f"{_hi.strftime('%H:%M') if _hi else ''} {_ho.strftime('%H:%M') if _ho else ''}".strip()
+
                 data.append({
                     'asignacion_id': None,
                     'codigo': codigo_val,
                     'cliente': cliente_val,
                     'puesto': puesto_val,
-                    'horario': '',
+                    'horario': horario_saca,
                     'nombre_apellidos': persona_nombre or 'Libre en base',
                     'reemplazo_id': None,
                     'reemplazo': '',

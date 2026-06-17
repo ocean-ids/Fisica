@@ -1729,6 +1729,14 @@ def eliminar_sacafranco_fila(request, id):
             fila.persona = persona
             update_fields.append('persona')
 
+        # Hora de ingreso/salida (libre, formato HH:MM o vacío para limpiar).
+        for campo in ('hora_ingreso', 'hora_salida'):
+            if campo in request.data:
+                val = request.data.get(campo)
+                val = str(val).strip() if val not in (None, '') else None
+                setattr(fila, campo, val or None)
+                update_fields.append(campo)
+
         if update_fields:
             fila.save(update_fields=update_fields)
         return Response(SacafrancoFilaSerializer(fila).data)
@@ -2206,8 +2214,13 @@ def exportar_asignaciones_excel(request):
             else:
                 fila = entry['item']
                 persona = getattr(fila, 'persona', None)
+                _hi = getattr(fila, 'hora_ingreso', None)
+                _ho = getattr(fila, 'hora_salida', None)
+                horario_saca = ''
+                if _hi or _ho:
+                    horario_saca = f"{_hi.strftime('%H:%M') if _hi else ''} {_ho.strftime('%H:%M') if _ho else ''}".strip()
                 vals = [
-                    '',
+                    horario_saca,
                     '',
                     '',
                     'SACAFRANCO',
