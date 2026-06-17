@@ -45,9 +45,15 @@ python manage.py migrate
 # 5) Superusuario (para el admin de Django)
 python manage.py createsuperuser
 
-# 6) Levantar el servidor de desarrollo
+# 6) Crear los grupos de roles (ADMINISTRADOR / OPERADOR / CONSULTA)
+python manage.py crear_grupos
+
+# 7) Levantar el servidor de desarrollo
 python manage.py runserver
 ```
+
+> Roles y permisos: ver [`docs/roles-permisos.md`](../../docs/roles-permisos.md).
+> Backup/restauración: ver [`docs/backup-restore.md`](../../docs/backup-restore.md).
 
 > La extensión `unaccent` se crea automáticamente en la migración `0117`. El
 > usuario de PostgreSQL debe poder ejecutar `CREATE EXTENSION` (normalmente
