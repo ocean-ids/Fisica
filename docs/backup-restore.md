@@ -35,11 +35,26 @@ docker compose restart backend
 > ⚠️ `restore.sh` **sobrescribe** por completo la base `sf_bd`. Cierra conexiones,
 > elimina y recrea la base, y carga el dump.
 
-## Prueba realizada (no solo configurado)
+## Verificación automática (no solo configurado — probado)
 
-El procedimiento fue probado: `pg_dump` de la base → restauración en una base temporal
-→ comparación de conteo de filas (tabla `CoreFisica_asignacionsemanal`): **219200 = 219200**,
-idéntico origen/restaurado. La base temporal se eliminó tras la verificación.
+Hay un script que prueba el ciclo completo **sin intervención manual**: genera un dump,
+lo restaura en una base temporal, compara el conteo de filas origen vs restaurada,
+borra la temporal e imprime un log con timestamp (sale 0 OK / 1 FALLO):
 
-Para re-verificar en cualquier momento sin tocar producción, restaura un backup en una
-base de prueba y compara conteos antes de aplicarlo sobre `sf_bd`.
+```bash
+sh scripts/test_restore.sh                                   # corre la verificación
+sh scripts/test_restore.sh | tee -a docs/backup-restore-test.log   # y registra evidencia
+```
+
+Apto para cron/CI (p. ej. semanal) para validar que los backups son recuperables.
+
+### Evidencia de prueba
+
+Log con timestamp en [`backup-restore-test.log`](backup-restore-test.log). Última corrida:
+
+```
+[2026-06-17 11:26:08] OK backup verificado: CoreFisica_asignacionsemanal origen=219200 restaurado=219200
+```
+
+`pg_dump` de la base → restauración en base temporal → conteo de filas **idéntico**
+(219200 = 219200). La base temporal se eliminó tras la verificación.
