@@ -361,6 +361,11 @@ table.table {
   background: #cfe8ff;
 }
 
+.calendar-input.cell-base{
+  background: #34c759;
+  color: #ffffff;
+}
+
 .sacafranco-row {
   height: 45px;
 }

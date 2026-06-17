@@ -337,6 +337,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   getCalendarCellClass(value: any): string {
     const raw = (value || '').toString().trim().toUpperCase();
     if (!raw) return '';
+    if (raw === 'DB' || raw === 'NB') return  'cell-base';
     if (raw.startsWith('F')) return 'cell-franco';
     if (raw.startsWith('D')) return 'cell-dia';
     if (raw.startsWith('N')) return 'cell-noche';
