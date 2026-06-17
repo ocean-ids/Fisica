@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>Registrar Novedad de Puesto</h2>
+<h2 mat-dialog-title>Registrar Apertura / Cierre /Modificacion de Puesto</h2>
 
 <mat-dialog-content>
   <div class="row">
@@ -22,7 +22,7 @@
     <div class="col-md-6 mb-2">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Novedad</mat-label>
-        <mat-select [(ngModel)]="model.novedad" [ngModelOptions]="{standalone:true}">
+        <mat-select [(ngModel)]="model.novedad" (selectionChange)="onNovedadChange()" [ngModelOptions]="{standalone:true}">
           <mat-option *ngFor="let n of novedades" [value]="n.value">{{ n.label }}</mat-option>
         </mat-select>
       </mat-form-field>
@@ -33,7 +33,7 @@
         <mat-label>Puesto (prellena datos)</mat-label>
         <mat-select [(ngModel)]="puestoId" (selectionChange)="onPuestoChange()" [ngModelOptions]="{standalone:true}">
           <mat-option [value]="null">— Ninguno —</mat-option>
-          <mat-option *ngFor="let p of puestos" [value]="p.id">
+          <mat-option *ngFor="let p of puestosFiltrados" [value]="p.id">
             {{ p.nombre }} <span *ngIf="p.instalacion_nombre">· {{ p.instalacion_nombre }}</span>
           </mat-option>
         </mat-select>
