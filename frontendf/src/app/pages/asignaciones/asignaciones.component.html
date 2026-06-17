@@ -67,7 +67,7 @@
   <div class="row asig-row g-0" [ngClass]="{ 'justify-content-center': !displayRows.length }">
     <div class="col-lg-auto pe-0" [ngClass]="{ 'mx-auto': !displayRows.length, 'w-100': !displayRows.length }">
       <div class="card asig-table-card">
-        <div class="card-body table-responsive overflow-auto"> 
+        <div class="card-body table-responsive overflow-auto" cdkScrollable>
           <table class="table table-hover table-bordered mb-2 w-100">
             <thead class="table-light text-center" style="height: 100px;">
               <tr class="text-center align-middle header-toggle-row" style="height: 28px;">
@@ -131,14 +131,13 @@
                 <th>Resumen</th>
               </tr>
             </thead>
-            <tbody cdkDropList [cdkDropListData]="displayRows" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropAsignaciones($event)">
+            <tbody cdkDropList [cdkDropListData]="displayRows" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="false" (cdkDropListDropped)="dropAsignaciones($event)">
               <ng-container *ngFor="let row of displayRows; trackBy: trackByDisplayRow">
                 <tr 
                   *ngIf="row.type === 'asignacion' && row.asig.persona_detalle?.is_active !== false"
                   cdkDrag
                   [cdkDragData]="row"
                   cdkDragLockAxis="y"
-                  cdkDragBoundary=".asig-table-card .card-body"
                   cdkDragPreviewContainer="parent"
                   (cdkDragStarted)="onDragStarted(row.asig)"
                   (cdkDragEnded)="onDragEnded()"
@@ -232,7 +231,6 @@
                   cdkDrag
                   [cdkDragData]="row"
                   cdkDragLockAxis="y"
-                  cdkDragBoundary=".asig-table-card .card-body"
                   cdkDragPreviewContainer="parent"
                   style="height: 45px;"
                   class="align-middle sacafranco-row">
