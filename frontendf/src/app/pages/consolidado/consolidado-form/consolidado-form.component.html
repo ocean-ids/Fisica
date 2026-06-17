@@ -1,0 +1,89 @@
+<h2 mat-dialog-title>Consolidado Form</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="readonly-grid">
+    <mat-form-field appearance="outline" class="full-width" *ngIf="isConsola && isCreateMode">
+      <mat-label>Personal de Consola</mat-label>
+      <mat-select formControlName="persona_ref_id">
+        <mat-option [value]="null">Seleccionar</mat-option>
+        <mat-option *ngFor="let p of personasConsola" [value]="p.id">
+          {{ p.apellidos }} {{ p.nombres }} ({{ p.tipo || '-' }})
+        </mat-option>
+      </mat-select>
+      <mat-hint *ngIf="loadingPersonas">Cargando personal...</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="!isConsola">
+      <mat-label>Nominativo</mat-label>
+      <input matInput formControlName="nominativo" [readonly]="!isConsola">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="isConsola">
+      <mat-label>Nominativo</mat-label>
+      <mat-select
+        [value]="form.value.nominativo || ''"
+        (selectionChange)="setNominativo($event.value)">
+        <mat-option value="">Seleccionar</mat-option>
+        <mat-option *ngFor="let inst of oceanInstalaciones" [value]="inst.codigo || ''">
+          {{ inst.codigo || '-' }}
+        </mat-option>
+      </mat-select>
+      <mat-hint *ngIf="loadingInstalaciones">Cargando instalaciones...</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="!isConsola">
+      <mat-label>Proyecto</mat-label>
+      <input matInput formControlName="proyecto" [readonly]="!isConsola">
+    </mat-form-field>
+
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="isConsola">
+      <mat-label>Proyecto</mat-label>
+      <mat-select
+        [value]="form.value.proyecto || ''"
+        (selectionChange)="setProyecto($event.value)">
+        <mat-option value="">Seleccionar</mat-option>
+        <mat-option *ngFor="let inst of oceanInstalaciones" [value]="inst.nombre || ''">
+          {{ inst.nombre || 'Sin nombre' }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="!isConsola">
+      <mat-label>Puesto</mat-label>
+      <input matInput formControlName="puesto" [readonly]="!isConsola">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="isConsola">
+      <mat-label>Puesto</mat-label>
+      <mat-select formControlName="puesto">
+        <mat-option value="">Seleccionar</mat-option>
+        <mat-option *ngFor="let p of oceanPuestos" [value]="p.nombre || ''">
+          {{ p.nombre || '-' }}
+        </mat-option>
+      </mat-select>
+      <mat-hint *ngIf="loadingPuestos">Cargando puestos...</mat-hint>
+    </mat-form-field>
+  
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Apellidos y Nombre</mat-label>
+      <input matInput [value]="personaDisplayNombre" readonly>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Estado</mat-label>
+      <input matInput [value]="personaEstado" readonly>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Observacion</mat-label>
+      <textarea matInput rows="3" formControlName="observacion"></textarea>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="cerrar()">Cancelar</button>
+  <button mat-raised-button color="primary" type="button" (click)="guardar()" [disabled]="form.invalid">Guardar</button>
+</mat-dialog-actions>

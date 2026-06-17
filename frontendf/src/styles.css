@@ -1,0 +1,282 @@
+/* You can add global styles to this file, and also import other style files */
+
+html, body { 
+  height: 100%; 
+  margin: 0;
+}
+
+body { 
+  margin: 0; 
+  font-family: Roboto, "Helvetica Neue", sans-serif; 
+  background-color: var(--app-bg);
+  color: var(--text-primary);
+}
+
+body.theme-light {
+  --app-bg: #f5f5f5;
+  --panel-bg: #ffffff;
+  --navbar-bg: #ffffff;
+  --border-color: #e0e0e0;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --sidebar-active-bg: rgba(63, 81, 181, 0.1);
+  --sidebar-active-text: #3f51b5;
+  --elevation-1: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+body.theme-dark {
+  --app-bg: #111827;
+  --panel-bg: #1f2937;
+  --navbar-bg: #1f2937;
+  --border-color: #374151;
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --sidebar-active-bg: rgba(96, 165, 250, 0.2);
+  --sidebar-active-text: #93c5fd;
+  --elevation-1: 2px 0 5px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body,
+mat-toolbar,
+.main-content,
+.sidebar,
+.toggle-btn {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Dashboard modules: occupy full available width like Asignaciones. */
+.main-content .container,
+.main-content .container-fluid {
+  width: 100%;
+  max-width: 100% !important;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Superficies globales */
+body.theme-dark .card,
+body.theme-dark .card-body,
+body.theme-dark .table-responsive,
+body.theme-dark .modal-content,
+body.theme-dark .dropdown-menu {
+  background-color: var(--panel-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Tipografia utilitaria de Bootstrap */
+body.theme-dark .text-muted,
+body.theme-dark .text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+/* Tablas Bootstrap */
+body.theme-dark .table {
+  --bs-table-bg: var(--panel-bg);
+  --bs-table-color: var(--text-primary);
+  --bs-table-border-color: var(--border-color);
+  --bs-table-striped-bg: #1a2435;
+  --bs-table-hover-bg: #243247;
+  --bs-table-hover-color: var(--text-primary);
+}
+
+body.theme-dark .table-light,
+body.theme-dark .table-light > th,
+body.theme-dark .table-light > td,
+body.theme-dark .table > :not(caption) > * > th {
+  background-color: #273449 !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Inputs y selects */
+body.theme-dark .form-control,
+body.theme-dark .form-select,
+body.theme-dark .form-control:focus,
+body.theme-dark .form-select:focus {
+  background-color: #111827 !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+body.theme-dark .form-control::placeholder {
+  color: #9ca3af;
+}
+
+/* Input date en oscuro */
+body.theme-dark input[type="date"] {
+  color-scheme: dark;
+}
+
+body.theme-dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2);
+  opacity: 1;
+}
+
+body.theme-dark .form-control[type="date"] {
+  color-scheme: dark;
+}
+
+body.theme-dark .form-control[type="date"]::-webkit-calendar-picker-indicator {
+  filter: brightness(0) invert(1) !important;
+  opacity: 1;
+}
+
+body.theme-dark .form-control[type="month"]::-webkit-calendar-picker-indicator {
+  filter: brightness(0) invert(1) !important;
+  opacity: 1;
+}
+
+/* Botones outline usados en listados */
+body.theme-dark .btn-outline-secondary {
+  color: #cbd5e1;
+  border-color: #64748b;
+}
+
+body.theme-dark .btn-outline-secondary:hover {
+  background-color: #334155;
+  color: #f8fafc;
+}
+
+/* Toggle de turnos (Angular Material) */
+body.theme-dark .mat-button-toggle-group {
+  border-color: #64748b !important;
+}
+
+body.theme-dark .mat-button-toggle {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+}
+
+body.theme-dark .mat-button-toggle .mat-button-toggle-label-content,
+body.theme-dark .mat-button-toggle .mat-button-toggle-button {
+  color: #ffffff !important;
+}
+
+body.theme-dark .mat-button-toggle-checked {
+  background-color: #334155 !important;
+}
+
+body.theme-dark .mat-button-toggle-disabled,
+body.theme-dark .mat-button-toggle-disabled .mat-button-toggle-label-content,
+body.theme-dark .mat-button-toggle-disabled .mat-button-toggle-button {
+  color: #cbd5e1 !important;
+  opacity: 1 !important;
+}
+
+/* Angular Material (MDC) */
+body.theme-dark .mat-mdc-menu-panel,
+body.theme-dark .mat-mdc-dialog-surface,
+body.theme-dark .mat-mdc-select-panel {
+  background-color: var(--panel-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+body.theme-dark .mat-mdc-option,
+body.theme-dark .mat-mdc-menu-item {
+  color: var(--text-primary) !important;
+}
+
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option .mdc-list-item__primary-text,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected .mdc-list-item__primary-text,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option:hover .mdc-list-item__primary-text,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--disabled .mdc-list-item__primary-text {
+  color: #ffffff !important;
+}
+
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option {
+  background-color: #1f2937 !important;
+}
+
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option:hover,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option.mat-mdc-option-active {
+  background-color: #273449 !important;
+}
+
+body.theme-dark .mat-mdc-select-panel .mat-pseudo-checkbox,
+body.theme-dark .mat-mdc-select-panel .mat-pseudo-checkbox::after,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option .mat-pseudo-checkbox-checked,
+body.theme-dark .mat-mdc-select-panel .mat-mdc-option .mat-pseudo-checkbox-indeterminate {
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+/* SweetAlert above Material dialogs */
+.swal2-container.swal-on-top {
+  z-index: 20000 !important;
+}
+
+.swal2-container {
+  z-index: 20000 !important;
+}
+
+/* Dialogos en modo oscuro */
+body.theme-dark .mat-mdc-dialog-title,
+body.theme-dark .mat-mdc-dialog-content,
+body.theme-dark .mat-mdc-dialog-actions,
+body.theme-dark .mat-mdc-dialog-content p,
+body.theme-dark .mat-mdc-dialog-content span,
+body.theme-dark .mat-mdc-dialog-content label,
+body.theme-dark .mat-mdc-dialog-content h1,
+body.theme-dark .mat-mdc-dialog-content h2,
+body.theme-dark .mat-mdc-dialog-content h3,
+body.theme-dark .mat-mdc-dialog-content h4,
+body.theme-dark .mat-mdc-dialog-content h5,
+body.theme-dark .mat-mdc-dialog-content h6 {
+  color: #ffffff !important;
+}
+
+body.theme-dark .mat-mdc-dialog-surface .mat-mdc-form-field {
+  --mat-form-field-filled-container-color: #1f2937;
+  --mat-form-field-outlined-container-color: #1f2937;
+  --mat-form-field-outlined-label-text-color: #ffffff;
+  --mat-form-field-outlined-hover-label-text-color: #ffffff;
+  --mat-form-field-outlined-focus-label-text-color: #ffffff;
+  --mat-form-field-outlined-input-text-color: #ffffff;
+  --mat-form-field-outlined-caret-color: #93c5fd;
+  --mat-form-field-outlined-outline-color: #6b7280;
+  --mat-form-field-outlined-hover-outline-color: #9ca3af;
+  --mat-form-field-outlined-focus-outline-color: #93c5fd;
+}
+
+body.theme-dark .mat-mdc-dialog-surface .mat-mdc-input-element,
+body.theme-dark .mat-mdc-dialog-surface .mat-mdc-select-value-text,
+body.theme-dark .mat-mdc-dialog-surface .mat-mdc-select-arrow,
+body.theme-dark .mat-mdc-dialog-surface .mat-mdc-floating-label,
+body.theme-dark .mat-mdc-dialog-surface .mdc-text-field__input {
+  color: #ffffff !important;
+}
+
+body.theme-dark .mat-mdc-dialog-surface .mat-mdc-button,
+body.theme-dark .mat-mdc-dialog-surface .mat-mdc-outlined-button,
+body.theme-dark .mat-mdc-dialog-surface .mat-mdc-unelevated-button {
+  color: #e5e7eb !important;
+}
+
+/* Bootstrap modals en oscuro */
+body.theme-dark .modal-content,
+body.theme-dark .modal-header,
+body.theme-dark .modal-body,
+body.theme-dark .modal-footer,
+body.theme-dark .modal-title {
+  color: #ffffff !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Login */
+body.theme-dark .login-card {
+  background: rgba(31, 41, 55, 0.9) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Fix para que los overlays de Angular Material (mat-select, etc) estén por encima de los modals de Bootstrap */
+.cdk-overlay-container {
+  z-index: 2000 !important;
+}

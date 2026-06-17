@@ -1,0 +1,194 @@
+<div class="container-fluid px-0">
+  <h3 class="mb-3 text-center">Consolidado</h3>
+
+  <div *ngIf="loading" class="consolidado-loading-overlay" aria-live="polite" aria-busy="true">
+    <div class="consolidado-loading-card">
+      <div class="consolidado-loading-ring">
+        <img src="/logodescargable.jpg" alt="Cargando consolidado" class="consolidado-loading-logo">
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex align-items-center mb-3">
+    <div class="d-flex gap-2 align-items-center justify-content-start flex-grow-1" style="flex-basis: 0;">
+      <input
+        type="date"
+        lang="es"
+        class="form-control"
+        style="max-width:200px"
+        [value]="filtroFecha"
+        (change)="onFechaChange($event)"
+        placeholder="dd/mm/aaaa">
+    </div>
+    <div class="d-flex justify-content-center flex-grow-1" style="flex-basis: 0;">
+      <mat-button-toggle-group 
+        name="turnoFiltro"
+        [(ngModel)]="filtroTurno"
+        (change)="_saveFilters(); cargar()"
+        aria-label="Filtro de turno">
+        <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
+        <mat-button-toggle disabled>Turnos:</mat-button-toggle>
+        <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
+      </mat-button-toggle-group>
+
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end flex-grow-1" style="flex-basis: 0;">
+      <button type="button" class="btn btn-outline-primary" title="Agregar personal de consola" aria-label="Agregar personal de consola" (click)="crearPersonalConsola()">
+        <i class="bi bi-plus-lg" style="margin-right:6px;"></i>
+        Agregar consola
+      </button>
+      <button type="button" class="btn btn-outline-success" title="Descargar Excel" aria-label="Descargar Excel" (click)="descargarExcel()" >
+        <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;"  />
+        Descargar
+      </button>
+      <button type="button" class="btn btn-outline-danger" title="Descargar PDF" aria-label="Descargar PDF" (click)="descargarPdf()" >
+        <img src="assets/images/pdf.png" alt="PDF" width="15" height="15" style="margin-right:6px;"  />
+        Descargar
+      </button>
+    </div>
+  </div>
+
+  <div class="table-responsive" *ngIf="!loading">
+    <table class="table table-bordered table-hover text-center align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Nominativo</th>
+          <th>Proyecto</th>
+          <th>Puesto</th>
+          <th>Apellidos y Nombre</th>
+          <th>Estado</th>
+          <th>Observación</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let g of agrupado">
+          <tr>
+            <td colspan="7" class="fw-bold text-center">{{ g.label }}</td>
+          </tr>
+          <tr *ngFor="let r of g.rows">
+            <td>{{ r.nominativo || '-' }}</td>
+            <td>{{ r.proyecto || '-' }}</td>
+            <td>{{ r.puesto || '-' }}</td>
+            <td>{{ getNombreCompleto(r) }}</td>
+            <td>{{ r.estado || '-' }}</td>
+            <td>
+              <span class="text-center">{{ r.observacion || '-' }}</span>
+            </td>
+            <td>
+              <button mat-stroked-button type="button" color="primary" (click)="abrirObservacion(r)" aria-label="Editar observacion" style="margin-right: 6px;">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button *ngIf="r.tipo === 'CONSOLa'" mat-stroked-button type="button" color="warn" (click)="eliminarFila(r)" aria-label="Eliminar registro de consola">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </ng-container>
+        <tr *ngIf="agrupado.length === 0">
+          <td colspan="7" class="text-muted text-center">Sin registros</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="row mt-4" *ngIf="!loading">
+    <div class="col-12 col-lg-6 mb-3">
+      <table class="table table-bordered text-center align-middle">
+        <tbody class="text-center">
+          <tr>
+            <td class="fw-bold">ESTADO</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>FALTAS</td>
+            <td>{{ resumenManual.faltas }}</td>
+          </tr>
+          <tr>
+            <td>HUECAS</td>
+            <td>{{ resumenManual.huecas }}</td>
+          </tr>
+          <tr>
+            <td>APOYOS</td>
+            <td>{{ resumenManual.apoyos }}</td>
+          </tr>
+          <tr>
+            <td>CAPACITACION</td>
+            <td>{{ resumenManual.capacitacion }}</td>
+          </tr>
+          <tr>
+            <td>APERTURA DE PUESTO</td>
+            <td>{{ resumenManual.apertura_puesto }}</td>
+          </tr>
+          <tr>
+            <td>SERVICIOS TEMPORALES</td>
+            <td>{{ resumenManual.servicios_temporales }}</td>
+          </tr>
+          <tr>
+            <td>SERVICIOS ADICIONALES</td>
+            <td>{{ resumenManual.servicios_adicionales }}</td>
+          </tr>
+          <tr>
+            <td>APRENDIENDO CONSIGNAS</td>
+            <td>{{ resumenManual.aprendiendo_consignas }}</td>
+          </tr>
+          <tr>
+            <td><strong>TOTAL=</strong></td>
+            <td><strong>{{ resumenManual.total }}</strong></td>
+          </tr>
+          <tr>
+            <td colspan="2" class="text-end">
+              <button mat-icon-button type="button" color="primary" (click)="abrirResumenManual()" aria-label="Editar resumen">
+                <mat-icon>edit</mat-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col-12 col-lg-6 mb-3">
+      <table class="table table-bordered text-center align-middle">
+        <tbody>
+          <tr>
+            <td class="fw-bold">ESTADO DE AGENTES</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>DOBLA</td>
+            <td>{{ resumenEstado.dobla }}</td>
+          </tr>
+          <tr>
+            <td>FRANCO TRABAJADOS</td>
+            <td>{{ resumenEstado.franco_trabajados }}</td>
+          </tr>
+          <tr>
+            <td>UNIDADES EVENTUALES</td>
+            <td>{{ resumenEstado.unidades_eventuales }}</td>
+          </tr>
+          <tr>
+            <td>ADELANTO DE TURNO</td>
+            <td>{{ resumenEstado.adelanto_turno }}</td>
+          </tr>
+          <tr>
+            <td>RETEN</td>
+            <td>{{ resumenEstado.reten }}</td>
+          </tr>
+          <tr>
+            <td>UNIDADES ADICIONALES</td>
+            <td>{{ resumenEstado.unidades_adicionales }}</td>
+          </tr>
+          <tr>
+            <td>CUSTODIO</td>
+            <td>{{ resumenEstado.custodio }}</td>
+          </tr>
+          <tr>
+            <td><strong>TOTAL=</strong></td>
+            <td><strong>{{ resumenEstado.total }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

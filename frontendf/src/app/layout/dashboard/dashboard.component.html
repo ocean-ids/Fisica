@@ -1,0 +1,11 @@
+<div class="dashboard-container">
+  <app-navbar (toggleSidebar)="toggleSidebar()"></app-navbar>
+  <div class="dashboard-content">
+    <div class="sidebar-wrapper" [class.collapsed]="!sidebarVisible">
+      <app-sidebar *ngIf="sidebarVisible"></app-sidebar>
+    </div>
+    <main class="main-content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div> 

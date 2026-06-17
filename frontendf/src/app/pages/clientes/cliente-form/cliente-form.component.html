@@ -1,0 +1,53 @@
+<h2 mat-dialog-title>{{ cliente.id ? 'Editar' : 'Nuevo' }} Cliente</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="clienteForm">
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>RUC</mat-label>
+      <input type="text" matInput formControlName="ruc" placeholder="RUC (10 o 13 dígitos)">
+      <mat-error *ngIf="clienteForm.get('ruc')?.hasError('minlength')">
+        El RUC debe tener al menos 10 caracteres.
+      </mat-error>
+      <mat-error *ngIf="clienteForm.get('ruc')?.hasError('maxlength')">
+        El RUC no puede tener más de 13 caracteres.
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Fecha Ingreso</mat-label>
+      <input matInput type="date" formControlName="fecha_ingreso">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Fecha Salida</mat-label>
+      <input matInput type="date" formControlName="fecha_retiro">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Razón Social</mat-label>
+      <input type="text" matInput formControlName="razon_social">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nombre Comercial</mat-label>
+      <input type="text" matInput formControlName="nombre_comercial">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Tamaño del Cliente</mat-label>
+      <mat-select formControlName="size">
+        <mat-option value="PEQUENO">Pequeño</mat-option>
+        <mat-option value="MEDIANO">Mediano</mat-option>
+        <mat-option value="GRANDE">Grande</mat-option>
+        <mat-option value="OFICINA">Oficina</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Cancelar</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="clienteForm.invalid">Guardar</button>
+</mat-dialog-actions>

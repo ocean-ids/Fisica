@@ -1,0 +1,173 @@
+<div class="container-fluid px-0">
+    <h3 class="mb-3 text-center">Reporte de Asistencia</h3>
+
+    <div *ngIf="loading" class="report-loading-overlay" aria-live="polite" aria-busy="true">
+        <div class="report-loading-card">
+            <div class="report-loading-ring">
+                <img src="/logodescargable.jpg" alt="Cargando reporte" class="report-loading-logo">
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-center mb-3">
+        <div class="d-flex align-items-center justify-content-start flex-grow-1" style="flex-basis: 0;">
+            <!--<button type="button" class="btn btn-outline-primary" (click)="abrirModalNuevaPersona()">
+                <i class="bi bi-plus-circle"></i> Nueva Persona
+            </button>-->
+
+            <button class="btn btn-outline-secondary" (click)="openBottomSheet()">
+                <i class="bi bi-receipt"></i> Estado Reporte
+            </button>
+        </div>
+
+        <div class="d-flex justify-content-center align-items-center flex-grow-1" style="flex-basis: 0;">
+            <mat-button-toggle-group
+                name="turnoFiltro"
+                [(ngModel)]="filtroTurno"
+                (change)="_saveFilters(); cargarReporte(true)"
+                aria-label="Filtro de turno">
+                <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
+                <mat-button-toggle disabled>Turnos:</mat-button-toggle>
+                <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
+            </mat-button-toggle-group>
+        </div>
+
+        <div class="d-flex justify-content-end align-items-center gap-2 flex-grow-1" style="flex-basis: 0;">
+            <button
+                type="button"
+                class="btn btn-outline-secondary"
+                title="Descargar Excel"
+                aria-label="Descargar Excel"
+                (click)="descargarExcel()">
+                <img src="assets/images/excel-icon.png" alt="Excel" width="20" height="20" style="margin-right:6px;" />
+                Descargar
+            </button>
+            <button
+                type="button"
+                class="btn btn-outline-danger"
+                title="Descargar PDF"
+                aria-label="Descargar PDF"
+                (click)="descargarPdf()">
+                <img src="assets/images/pdf.png" alt="PDF" width="20" height="20" style="margin-right:6px;" />
+                Descargar
+            </button>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-start align-items-center gap-3 mb-2">
+            <input
+                type="date"
+                lang="es"
+                class="form-control form-control-sm w-auto"
+                [value]="filtroFecha"
+                (change)="onFechaChange($event)"
+                placeholder="dd/mm/aaaa">
+
+            <select
+                class="form-select form-select-sm w-auto"
+                [ngModel]="filtroZona"
+                (change)="onZonaChange($event)">
+                <option *ngFor="let z of zonaOpciones" [value]="z">{{ z || 'Todas las zonas' }}</option>
+            </select>
+
+            <div class="d-flex align-items-center gap-2">
+                <label class="small text-muted mb-0">Filas</label>
+                <select class="form-select form-select-sm w-auto" [value]="pageSize" (change)="onPageSizeChange($event)">
+                    <option *ngFor="let opt of pageSizeOptions" [value]="opt">{{ opt }}</option>
+                </select>
+            </div>
+        </div>
+
+    <div class="table-responsive" *ngIf="!loading">
+        <table class="table table-bordered table-hover align-middle text-center">
+            <thead class="table-light text-center">
+                <tr class="text-center align-middle">
+                    <th class="text-nowrap">Nominativo</th>
+                    <th class="text-nowrap">Cliente</th>
+                    <th class="text-nowrap">Puesto (Tipo)</th>
+                    <th class="text-nowrap">Horario</th>
+                    <th class="text-nowrap">Nombre y Apellidos</th>
+                    <th class="text-nowrap">Asistencia</th>
+                    <th class="text-nowrap d-none d-lg-table-cell">Reemplazo</th>
+                    <th class="text-nowrap">Estado</th>
+                    <th class="text-nowrap d-none d-lg-table-cell">Descripcion</th>
+                    <th class="text-nowrap d-none d-lg-table-cell">Ultima modificacion</th>
+                    <th class="text-nowrap">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <ng-container *ngFor="let zona of reporteAgrupado">
+                    <tr class="zona-row">
+                        <td class="text-center" colspan="11">{{ getZonaTitulo(zona.zona) }}</td>
+                    </tr>
+                    <ng-container *ngFor="let prov of zona.provincias">
+                        <tr class="provincia-row">
+                            <td colspan="11">{{ prov.provincia }}</td>
+                        </tr>
+                        <ng-container *ngFor="let r of prov.rows">
+                        <tr class="text-center align-middle" (dblclick)="onRowDoubleClick(r)">
+                            <td [style.backgroundColor]="getRowColor(r)">
+                                {{ r.codigo || '-' }}
+                            </td>
+                            <td [style.backgroundColor]="getRowColor(r)">{{ r.cliente || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">{{ r.horario || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">{{ r.nombre_apellidos || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">
+                                <ng-container *ngIf="r.asignacion_id; else noEstado">
+                                    <span [class]="estadoAsistenciaClass(r.estado_asistencia)">{{ estadoAsistenciaLabel(r.estado_asistencia) }}</span>
+                                </ng-container>
+                                <ng-template #noEstado><span [class]="estadoAsistenciaClass(r.estado_asistencia)">{{ estadoAsistenciaLabel(r.estado_asistencia) }}</span></ng-template>
+                            </td>
+                            <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">{{ r.reemplazo || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">
+                                <span [class]="estadoClass(r.estado)">{{ r.estado || '-' }}</span>
+                            </td>
+                            
+                            <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">
+                                {{ r.descripcion || '-' }}
+                            </td>
+                            <td class="text-start d-none d-lg-table-cell" style="font-size: 0.85rem;" [style.backgroundColor]="getRowColor(r)">
+                                <div><strong>{{ r.modificado_por || '-' }}</strong></div>
+                                <div class="text-muted">{{ r.modificado_en ? (r.modificado_en | date:'shortTime') : '-' }}</div>
+                                <button
+                                    type="button"
+                                    class="btn btn-link p-0 mt-1"
+                                    (click)="abrirHistorialModal(r)"
+                                    [disabled]="!r.asignacion_id">
+                                    Historial
+                                </button>
+                            </td>
+                            <td class="text-nowrap" (dblclick)="$event.stopPropagation()">
+                                <button
+                                    mat-stroked-button
+                                    type="button"
+                                    color="primary"
+                                    [disabled]="!r.asignacion_id"
+                                    (click)="abrirModalEdicion(r)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        </ng-container>
+                    </ng-container>
+                </ng-container>
+                <tr *ngIf="reporte.length === 0">
+                    <td colspan="11" class="text-center text-muted">Sin datos</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-2" *ngIf="!loading">
+        <div class="small text-muted">
+            Mostrando {{ reporte.length }} de {{ totalItems }} registros
+            <span *ngIf="filtroZona">( {{ filtroZona }} )</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="prevPage()" [disabled]="currentPage <= 1">Anterior</button>
+            <span class="small">Página {{ currentPage }} / {{ totalPages }}</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="nextPage()" [disabled]="currentPage >= totalPages">Siguiente</button>
+        </div>
+    </div>
+</div>

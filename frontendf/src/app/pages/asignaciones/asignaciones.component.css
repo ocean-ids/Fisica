@@ -1,0 +1,489 @@
+/* Use full width inside dashboard main-content padding. */
+:host {
+  display: block;
+  margin: 0;
+}
+
+/* Scroll horizontal para los calendarios semanales */
+.vertical-scroll-calendars {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Apariencia de la barra de scroll horizontal (webkit) */
+.vertical-scroll-calendars::-webkit-scrollbar { height: 8px; }
+.vertical-scroll-calendars::-webkit-scrollbar-track { background: transparent; }
+.vertical-scroll-calendars::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border-radius: 6px; }
+
+/* Cada semana es una tarjeta con ancho fijo para evitar que el calendario se vaya hacia abajo */
+.vertical-scroll-calendars > .week-card {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: none;
+  border-right: 0;
+  padding-right: 0;
+}
+
+/* Ensure the calendar column can show the horizontal scrollbar */
+.asig-row > .col {
+  min-width: 0;
+}
+
+/* Ajuste: si el contenido es más angosto, que no rompa la tarjeta */
+.vertical-scroll-calendars > .week-card app-asignacion-calendario {
+  display: block;
+}
+.tooltip-menu {
+  pointer-events: none; /* para que no se quede abierto */
+}
+
+.tooltip-content {
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 250px;
+}
+
+table tbody td{
+  padding: 0 !important;
+}
+
+/* Reduce table font size for more compact rows */
+.table {
+  font-size: 13px;
+  width: 100%;
+}
+
+.table-responsive {
+  width: 100%;
+}
+
+table.table {
+  table-layout: auto;
+}
+
+.asig-table-col {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.asig-table-card {
+  width: 100%;
+  max-width: 100%;
+}
+
+.asig-table-responsive {
+  width: 100%;
+  display: block;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.table-fit {
+  width: 100%;
+}
+
+.table-fit th,
+.table-fit td {
+  white-space: nowrap;
+}
+
+.header-eye-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  line-height: 1;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.header-eye-btn:hover {
+  color: #212529;
+}
+
+.header-toggle-row th {
+  padding: 4px 2px;
+}
+
+.columnas-popover-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.gear-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: #334155;
+  opacity: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.25s ease;
+}
+
+.gear-btn:hover,
+.gear-btn:focus,
+.gear-btn:active {
+  background: transparent;
+  color: #334155;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.gear-btn.open {
+  background: transparent;
+  color: #0d6efd;
+}
+
+.gear-icon {
+  transition: transform 0.35s ease;
+}
+
+.gear-icon.open {
+  transform: rotate(135deg);
+}
+
+.columnas-popover {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 8px);
+  z-index: 30;
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  padding: 10px;
+  min-width: 320px;
+}
+
+.columnas-title {
+  font-size: 12px;
+  color: #6c757d;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.columnas-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.column-pill {
+  border: 1px solid #d9e2ef;
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #334155;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.column-pill:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.column-pill.active {
+  border-color: #0d6efd;
+  background: #0d6efd;
+  color: #fff;
+}
+
+
+.asig-row {
+  flex-wrap: nowrap;
+  align-items: stretch;
+  overflow-x: hidden;
+}
+
+
+@media (max-width: 1400px) {
+  .asig-row {
+    flex-wrap: wrap;
+  }
+
+  .asig-table-col,
+  .asig-row > .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .columnas-popover {
+    position: static;
+    margin-top: 8px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .columnas-grid {
+    flex-wrap: wrap;
+  }
+}
+
+.bg-color {
+  background-color: #f8f9fa !important;
+}
+
+.sacafranco-hover td {
+  box-shadow: inset 0 0 0 2px #198754;
+}
+
+.shared-row {
+  height: 70px;
+}
+
+.shared-row > td {
+  height: 70px;
+  max-height: 70px;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.calendar-cell {
+  height: 70px;
+  max-height: 70px;
+  overflow: hidden;
+  padding: 4px !important;
+  width: 100%;
+}
+
+.calendar-col {
+  width: 100%;
+}
+
+.calendar-weeks {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+}
+
+.calendar-week {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+}
+
+.calendar-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(18px, 1fr));
+  gap: 0;
+  /* ocupa todo el alto de la fila para que las rayas crucen completo */
+  height: 100%;
+  grid-auto-rows: 1fr;
+}
+
+.calendar-week-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(18px, 1fr));
+  gap: 0;
+}
+
+/* El header usa la MISMA celda (.calendar-day) que el cuerpo -> mismas columnas,
+   por eso coinciden exacto. .calendar-day-label solo ajusta el contenido. */
+.calendar-header-weeks .calendar-day {
+  flex-direction: column;
+  height: 28px;
+  min-height: 28px;
+  background: transparent;
+}
+.calendar-day-label {
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+  color: #6b7280;
+}
+
+.calendar-day-initial {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.calendar-day-num {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.calendar-day {
+  width: 100%;
+  min-width: 18px;
+  height: 100%;
+  min-height: 18px;
+  /* rayas finas entre días en el cuerpo (inputs) */
+  border: 1px solid #cbd5e1;
+  border-left: none;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fbff;
+}
+.calendar-week-grid .calendar-day:first-child {
+  border-left: 1px solid #cbd5e1;
+}
+/* el header (letras + número del día) va sin bordes */
+.calendar-header-weeks .calendar-day,
+.calendar-header-weeks .calendar-week-grid .calendar-day:first-child {
+  border: 0;
+}
+
+.calendar-input {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  text-align: center;
+  font-size: 11px;
+  background: transparent;
+  color: #1f2937;
+  outline: none;
+}
+
+.calendar-input.cell-franco {
+  background: #cfe8ff;
+}
+
+.sacafranco-row {
+  height: 45px;
+}
+
+.sacafranco-row > td {
+  height: 45px;
+  max-height: 45px;
+  vertical-align: middle;
+}
+
+.sacafranco-row .calendar-cell {
+  height: 45px;
+  max-height: 45px;
+  padding: 2px !important;
+}
+
+.sacafranco-row .calendar-day {
+  height: 100%;
+  min-height: 16px;
+}
+
+.sacafranco-row .calendar-input {
+  font-size: 10px;
+}
+
+.provincia-row td {
+  font-weight: 600;
+  text-align: left;
+  background-color: #f3f4f6;
+  height: 32px;
+}
+
+.provincia-label {
+  cursor: pointer;
+}
+
+:host-context(body.theme-dark) .provincia-row td {
+  background-color: #1f2937;
+  color: #ffffff;
+}
+
+/* Allow elementFromPoint to detect underlying rows during drag. */
+.cdk-drag-preview,
+.cdk-drag-placeholder {
+  pointer-events: none;
+}
+
+.cdk-drag-preview {
+  box-sizing: border-box;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+.cdk-drag-preview {
+  display: none;
+}
+
+/* Botón "Fila" con menú desplegable (Asignación / Sacafranco) */
+.fila-dropdown {
+  position: relative;
+  display: inline-block;
+}
+/* Hover del botón "Crear Fila" igual al primary de Bootstrap (Nueva vista). */
+.fila-dropdown > .btn-primary {
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.fila-dropdown > .btn-primary:hover,
+.fila-dropdown > .btn-primary:focus {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
+  box-shadow: 0 2px 6px rgba(13, 110, 253, .35);
+}
+.fila-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1000;
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fila-menu button {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  color: #1f2937;
+  cursor: pointer;
+}
+.fila-menu button:hover {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+/* El cuerpo de la tabla scrollea internamente (necesario para el sticky) */
+.asig-table-card .card-body {
+  max-height: calc(100vh - 210px);
+  overflow: auto;
+}
+/* Encabezado fijo (sticky) al hacer scroll vertical */
+.asig-table-card .table thead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.asig-table-card .table thead th {
+  background: #f8f9fa;
+}
+/* Header del calendario: alinear los labels de día con las celdas del cuerpo.
+   Debe tener el MISMO modelo de caja que .calendar-cell (padding y overflow). */
+.calendar-header-cell {
+  padding: 4px !important;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+.calendar-header-weeks {
+  width: 100%;
+}
+

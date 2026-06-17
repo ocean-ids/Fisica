@@ -1,0 +1,55 @@
+<h2 mat-dialog-title>Novedades de Puesto — {{ mesLabel }}</h2>
+
+<mat-dialog-content>
+  <div *ngIf="cargando" class="text-center text-muted py-4">Cargando…</div>
+
+  <div *ngIf="!cargando && totalRegistros === 0" class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No hay novedades registradas en este mes.
+  </div>
+
+  <div *ngFor="let g of grupos" class="dia-grupo mb-3">
+    <div class="dia-header">{{ g.label }}</div>
+
+    <ng-container *ngFor="let bloque of [{t:'TURNO DIURNO', items:g.diurnos}, {t:'TURNO NOCTURNO', items:g.nocturnos}]">
+      <div *ngIf="bloque.items.length" class="turno-bloque">
+        <div class="turno-titulo">{{ bloque.t }}</div>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered mb-2">
+            <thead class="table-light">
+              <tr class="text-center">
+                <th>Cliente (denominativo)</th>
+                <th>Sector</th>
+                <th>Novedad</th>
+                <th>Tipo</th>
+                <th>Horario</th>
+                <th>Solicitado por</th>
+                <th>Observación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let n of bloque.items">
+                <td>{{ n.cliente_denominativo }}</td>
+                <td>{{ n.sector }}</td>
+                <td>
+                  <span class="badge"
+                    [ngClass]="(n.novedad || '').toUpperCase().includes('CIERRE') ? 'bg-danger'
+                      : ((n.novedad || '').toUpperCase().includes('APERTURA') ? 'bg-success' : 'bg-secondary')">
+                    {{ n.novedad }}
+                  </span>
+                </td>
+                <td>{{ n.tipo }}</td>
+                <td>{{ n.horario }}</td>
+                <td>{{ n.solicitado_por }}</td>
+                <td class="obs">{{ n.observacion }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cerrar()">Cerrar</button>
+</mat-dialog-actions>

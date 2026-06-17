@@ -1,0 +1,131 @@
+<div class="container-fluid px-0 px-md-2">
+  
+  <h2 class="mb-2 text-center">Gestión de Puestos</h2>
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+  </div>
+
+  <div class="row g-2 align-items-center mb-3">
+    <div class="col-12 col-md-7">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Seleccionar Cliente</mat-label>
+        <input
+          type="text"
+          matInput
+          [(ngModel)]="clienteFiltro"
+          (ngModelChange)="filtrarClientes()"
+          [matAutocomplete]="clienteAuto"
+        />
+        <mat-autocomplete #clienteAuto="matAutocomplete" [displayWith]="mostrarCliente" (optionSelected)="onClienteSeleccionado($event.option.value)">
+          <mat-option *ngFor="let cliente of clientesFiltrados" [value]="cliente">
+            {{ cliente.nombre_comercial }}
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+    </div>
+    <div class="col-12 col-md-5 d-grid d-md-flex justify-content-md-end gap-2">
+      <input type="file" #fileInput class="d-none" accept=".xlsx" (change)="onFileSelected($event)">
+      <button class="btn btn-outline-secondary" (click)="fileInput.click()">
+         <i class="bi bi-upload"></i> Importar
+      </button>
+      <button class="btn btn-outline-primary" (click)="abrirFormularioNuevo()" [disabled]="!clienteSeleccionado">
+        <i class="bi bi-plus-circle"></i> Nuevo Puesto
+      </button>
+    </div>
+
+    <div class="col-12 d-flex flex-wrap align-items-center justify-content-md-end gap-2 mt-1">
+      <div class="text-muted small me-1">Reporte de apertura / modificación / cierre:</div>
+      <input type="date" class="form-control form-control-sm" style="max-width: 170px;" [(ngModel)]="fechaReporteNovedad" [ngModelOptions]="{standalone:true}" />
+      <button class="btn btn-sm btn-outline-warning" (click)="abrirNovedad()">
+        <i class="bi bi-journal-plus"></i> Novedad
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" (click)="verNovedades()" title="Ver novedades del mes por día">
+        <i class="bi bi-eye"></i> Ver
+      </button>
+      <button class="btn btn-sm btn-outline-success" (click)="descargarNovedadesExcel()" title="Descarga el mes: una pestaña por cada día con registros">
+        <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
+        Descargar FR (mes)
+      </button>
+    </div>
+
+    <div class="col-12 col-md-7" *ngIf="instalaciones.length">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Instalación</mat-label>
+        <mat-select [(ngModel)]="instalacionSeleccionada" [ngModelOptions]="{standalone:true}">
+          <mat-option [value]="null">Todas las instalaciones</mat-option>
+          <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.nombre }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <div class="card" *ngIf="clienteSeleccionado">
+    <div class="card-body">
+      <div class="table-responsive overflow-auto">
+        <table class="table table-hover table-bordered w-100">
+          <thead class="table-light">
+            <tr class="text-center align-middle">
+              <th>Nombre de Puesto</th>
+              <th>Tipo de Puesto</th>
+              <!--<th>Cantidad de Puesto</th>-->
+              <th>Días</th>
+              <th> Horas</th>
+              <th>Turno</th>
+              <!--<th>Resumen</th> -->
+              <th>Instalación</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="text-center align-middle" *ngFor="let puesto of puestosMostrados" [class.puesto-cerrado]="puesto.activo === false">
+              <td>
+                {{ puesto.nombre }}
+                <span *ngIf="puesto.activo === false" class="badge bg-danger ms-1">Cerrado</span>
+              </td>
+              <td>{{puesto.tipo}}</td>
+              <!--<td>{{ puesto.cantidad_puestos }}</td>-->
+              <td>{{ getDias(puesto) }}</td>
+              <td>{{ getHoras(puesto) }}</td>
+              <td>{{ getTurnos(puesto) }}</td>
+              <!--<td>
+                <span
+                  [matMenuTriggerFor]="tooltipMenu"
+                  class="tooltip-trigger">
+                  {{ puesto.resumen }}
+                </span>
+
+                <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
+                  <div class="tooltip-content">
+                    <div><strong>👮 Puesto:</strong> {{ puesto.cantidad_puestos }}</div>
+                    <div><strong>⏰ Resumen:</strong> {{ puesto.resumen || '-' }}</div>
+                    <div><strong>🌙 Turno:</strong> {{ puesto.turno_display }}</div>
+                    <div><strong>📅 Días:</strong> -</div>
+                  </div>
+                </mat-menu>
+              </td> -->
+              <td>{{ puesto.instalacion_nombre || '-' }}</td>
+              <td>
+                <div class="d-flex align-middle justify-content-around gap-2">
+                <button class="btn btn-sm btn-outline-primary" (click)="abrirFormularioNuevo(puesto)">
+                  <i class="bi bi-pencil"></i> Editar
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="eliminarPuesto(puesto.id!)">
+                  <i class="bi bi-trash"></i> Eliminar
+                </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="puestosMostrados.length === 0">
+              <td colspan="7" class="text-center text-muted py-4">
+                No hay puestos registrados para este cliente
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-info" *ngIf="!clienteSeleccionado">
+    <i class="bi bi-info-circle"></i> Seleccione un cliente para ver los puestos
+  </div>
+</div>

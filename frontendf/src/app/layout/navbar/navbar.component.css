@@ -1,0 +1,75 @@
+.spacer {
+  flex: 1 1 auto;
+}
+
+mat-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: var(--navbar-bg);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.username {
+  margin-right: 15px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.theme-toggle-btn {
+  margin-right: 8px;
+  color: var(--text-primary);
+}
+
+.theme-toggle-btn i {
+  font-size: 1.1rem;
+}
+
+.btn-toggle i {
+  font-size: 1.65rem;
+}
+
+.user-menu-btn {
+  color: var(--text-primary);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border: 1px solid var(--border-color);
+  display: block;
+}
+
+:host-context(body.theme-dark) .user-menu-btn,
+:host-context(body.theme-dark) .user-menu-btn mat-icon {
+  color: #ffffff !important;
+}
+
+.border-text {
+  -webkit-text-stroke: 0.5px #0c2f5a;
+  color: #0b0b0b;
+}
+
+:host-context(body.theme-dark) .border-text {
+  -webkit-text-stroke: 0;
+  color: #f8fafc;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+:host-context(body.theme-dark) .btn-toggle,
+:host-context(body.theme-dark) .btn-toggle i {
+  color: #ffffff;
+}
+
+
+.notif-badge {
+  top: 6px;
+  left: calc(100% - 8px);
+  font-size: 15px;
+  line-height: 1;
+  padding: 3px 4px;
+  min-width: 14px;
+}

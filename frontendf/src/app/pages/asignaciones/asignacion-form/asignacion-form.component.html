@@ -1,0 +1,132 @@
+<h2 mat-dialog-title>{{ modoEdicion ? 'Editar' : 'Nueva' }} Asignación</h2>
+
+<mat-dialog-content>
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <mat-form-field class="w-100">
+        <mat-label>Cliente</mat-label>
+        <input
+          matInput
+          type="text"
+          #clienteInput
+          [matAutocomplete]="clienteAuto"
+          [ngModel]="clienteSeleccionadoObj"
+          [ngModelOptions]="{standalone:true}"
+          (input)="filtrarClientes(clienteInput.value)"
+        />
+
+        <mat-autocomplete
+          #clienteAuto="matAutocomplete"
+          [displayWith]="displayClienteLabel"
+          (optionSelected)="seleccionarCliente($event.option.value)"
+        >
+          <mat-option *ngFor="let c of clientesFiltrados" [value]="c">
+            {{ c.nombre_comercial }}
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-3">
+      <mat-form-field class="w-100">
+        <mat-label>Instalación</mat-label>
+        <mat-select [(ngModel)]="instalacionSeleccionada" (selectionChange)="onInstalacionChange()" [ngModelOptions]="{standalone:true}">
+          <mat-option [value]="null">Seleccione</mat-option>
+          <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.nombre || '-' }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-3">
+      <mat-form-field class="w-100">
+        <mat-label>Puesto</mat-label>
+        <input
+          matInput
+          type="text"
+          #puestoInput
+          [matAutocomplete]="puestoAuto"
+          [ngModel]="puestoSeleccionado"
+          [ngModelOptions]="{standalone:true}"
+          (input)="filtrarPuestos(puestoInput.value)"
+          [disabled]="!instalacionSeleccionada"
+        />
+
+        <mat-autocomplete
+          #puestoAuto="matAutocomplete"
+          [displayWith]="displayPuestoLabel"
+          (optionSelected)="seleccionarPuesto($event.option.value)"
+        >
+          <mat-option
+            *ngFor="let p of puestosFiltrados"
+            [value]="p"
+            [class.puesto-ocupado-option]="isPuestoOcupado(p.id)"
+          >
+            <div class="puesto-option-row d-flex justify-content-between align-items-center w-100">
+              <span>{{ p.nombre }} <small class="text-muted" *ngIf="getPuestoHoras(p)">- {{ getPuestoHoras(p) }}</small></span>
+              <span *ngIf="isPuestoOcupado(p.id)" class="puesto-ocupado-check" title="Puesto ocupado">
+                <i class="bi bi-person-standing"></i>
+              </span>
+            </div>
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-3">
+      <mat-form-field class="w-100">
+        <mat-label>Persona</mat-label>
+        <input
+          matInput
+          type="text"
+          #personaInput
+          [matAutocomplete]="personaAuto"
+          [ngModel]="personaSeleccionada"
+          [ngModelOptions]="{standalone:true}"
+          (input)="filtrarPersonas(personaInput.value)"
+          [disabled]="!canSelectPersona()"
+        />
+
+        <mat-autocomplete
+          #personaAuto="matAutocomplete"
+          [displayWith]="displayPersonaLabel"
+          (optionSelected)="seleccionarPersona($event.option.value)"
+        >
+          <mat-option *ngFor="let per of personasFiltradas" [value]="per">
+            <div class="d-flex justify-content-between align-items-center w-100 gap-2">
+              <span>{{ per.apellidos }} {{ per.nombres }}
+                <span class="badge rounded-pill bg-info text-dark" style="font-size: 10px;">
+                  {{ per.tipo }}<span *ngIf="getProvinciaCanton(per)"> · {{ getProvinciaCanton(per) }}</span>
+                </span>
+              </span>
+              <span class="badge rounded-pill"
+                [ngClass]="isPersonaAssigned(per) ? 'bg-warning text-dark' : 'bg-success text-white'"
+                style="font-size: 10px; white-space: nowrap;">
+                {{ isPersonaAssigned(per) ? 'En uso' : 'Disponible' }}
+              </span>
+            </div>
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-3">
+      <mat-form-field class="w-100">
+        <mat-label>Horario (del puesto)</mat-label>
+        <mat-select [(ngModel)]="asignacion.horario" [ngModelOptions]="{standalone:true}" [disabled]="puestoTieneHorario()">
+          <mat-option [value]="0">Seleccione</mat-option>
+          <mat-option *ngFor="let h of horarios" [value]="h.id">
+            {{ h.hora_ingreso | slice:0:5 }} - {{ h.hora_salida | slice:0:5 }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="onSave()" [disabled]="!isFormValid() || isSaving">
+    {{ textoBoton }}
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,58 @@
+.login-page{
+  position: relative;
+  overflow: hidden;
+}
+
+.login-bg {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transition: opacity 1.2s ease;
+}
+
+.login-bg-current {
+  opacity: 1;
+  z-index: 1;
+}
+
+.login-bg-current.is-fade {
+  opacity: 0.8;
+}
+
+.login-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 31, 68, 0.20);
+  z-index: 2;
+}
+
+.login-card {
+  max-width: 420px;
+  border-radius: 0.75rem;
+  background: rgba(250, 247, 247, 0.92);
+  position: relative;
+  z-index: 3;
+}
+
+.btn-personalizado {
+  background-color: #0c2f5a;
+  color: #ffffff;
+  border-color: #0c2f5a;
+}
+
+
+.btn-personalizado:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.link-personalizado {
+  color: #0c2f5a;
+}
+
+.link-personalizado:hover {
+  color: #0056b3;
+}

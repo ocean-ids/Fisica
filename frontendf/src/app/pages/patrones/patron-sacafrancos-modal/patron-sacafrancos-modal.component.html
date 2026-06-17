@@ -1,0 +1,31 @@
+<h2 mat-dialog-title class="text-center">Sacafrancos </h2>
+<mat-dialog-content>
+    <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Seleccionar sacafranco</mat-label>
+        <mat-select [(value)]="selected" (selectionChange)="onSelect($event)">
+            <mat-option *ngFor="let p of lista" [value]="p">
+                <div class="option-content">
+                    <div class="info">
+                        <div class="name">{{ p.nombres }} {{ p.apellidos }}</div>
+                        <div class="muted">{{ p.cedula }}</div>
+                    </div>
+                    <div class="status">
+                        <mat-chip [color]="getChipColor(p.status)">{{ displayStatus(p.status) }}</mat-chip>
+                    </div>
+                </div>
+            </mat-option>
+        </mat-select>
+    </mat-form-field>
+    <div *ngIf="slotOccupiedById" class="text-warning small mb-2">
+        Puesto ya tiene sacafranco asignado: {{ getSlotOccupiedLabel() }}
+    </div>
+  
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+        <button mat-button (click)="close()">Cerrar</button>
+        <ng-container *ngIf="data?.manage">
+            <button mat-raised-button color="primary" [disabled]="!selected || loading" (click)="asignar()">Asignar</button>
+            <button mat-stroked-button color="warn" [disabled]="!selected || loading || ((+selected.assigned_for_puesto !== +selected.id) && (+selected.id !== +(slotOccupiedById ?? 0)))" (click)="desasignar()">Quitar</button>
+        </ng-container>
+    <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
+</mat-dialog-actions>

@@ -1,0 +1,16 @@
+.full-width {
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+mat-dialog-content {
+  min-width: 400px;
+  padding: 20px 24px;
+}
+
+:host-context(body.theme-dark) h2[mat-dialog-title],
+:host-context(body.theme-dark) mat-dialog-content,
+:host-context(body.theme-dark) mat-dialog-content label,
+:host-context(body.theme-dark) mat-dialog-actions {
+  color: #ffffff;
+}

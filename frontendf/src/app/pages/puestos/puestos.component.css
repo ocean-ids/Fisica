@@ -1,0 +1,58 @@
+/* Puesto cerrado (inactivo): fila atenuada */
+.puesto-cerrado {
+	opacity: 0.55;
+	background-color: #f8d7da33;
+}
+
+:host-context(body.theme-dark) .mat-mdc-form-field {
+	--mat-form-field-filled-container-color: #1f2937;
+	--mat-form-field-outlined-container-color: #1f2937;
+	--mat-form-field-outlined-label-text-color: #ffffff;
+	--mat-form-field-outlined-hover-label-text-color: #ffffff;
+	--mat-form-field-outlined-focus-label-text-color: #ffffff;
+	--mat-form-field-outlined-input-text-color: #ffffff;
+	--mat-form-field-outlined-caret-color: #93c5fd;
+	--mat-form-field-outlined-outline-color: #6b7280;
+	--mat-form-field-outlined-hover-outline-color: #9ca3af;
+	--mat-form-field-outlined-focus-outline-color: #93c5fd;
+}
+
+:host-context(body.theme-dark) .mat-mdc-select-arrow,
+:host-context(body.theme-dark) .mat-mdc-select-value-text,
+:host-context(body.theme-dark) .mat-mdc-form-field-icon-suffix,
+:host-context(body.theme-dark) .mat-mdc-form-field .mat-mdc-floating-label {
+	color: #ffffff !important;
+}
+
+:host-context(body.theme-dark) .mat-mdc-text-field-wrapper {
+	background-color: #1f2937;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-form-field .mat-mdc-input-element,
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-form-field .mdc-text-field__input {
+	color: #ffffff !important;
+	-webkit-text-fill-color: #ffffff !important;
+	caret-color: #93c5fd !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-form-field .mat-mdc-input-element::placeholder,
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-form-field .mdc-text-field__input::placeholder {
+	color: #cbd5e1 !important;
+	opacity: 1;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-select-panel {
+	background-color: #1f2937 !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-option .mdc-list-item__primary-text {
+	color: #ffffff !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-autocomplete-panel {
+	background-color: #1f2937 !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-autocomplete-panel .mdc-list-item__primary-text {
+	color: #ffffff !important;
+}

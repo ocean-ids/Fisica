@@ -1,0 +1,53 @@
+<h2 mat-dialog-title>Consolidado Estado</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="editable-grid">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Faltas</mat-label>
+      <input matInput type="number" formControlName="faltas" readonly>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Huecas</mat-label>
+      <input matInput type="number" formControlName="huecas">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Apoyos</mat-label>
+      <input matInput type="number" formControlName="apoyos">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Capacitacion</mat-label>
+      <input matInput type="number" formControlName="capacitacion">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Apertura de Puesto</mat-label>
+      <input matInput type="number" formControlName="apertura_puesto">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Servicios Temporales</mat-label>
+      <input matInput type="number" formControlName="servicios_temporales">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Servicios Adicionales</mat-label>
+      <input matInput type="number" formControlName="servicios_adicionales">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Aprendiendo Consignas</mat-label>
+      <input matInput type="number" formControlName="aprendiendo_consignas">
+    </mat-form-field>
+  </form>
+
+  <div class="mt-2"><strong>Total:</strong> {{ total }}</div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="cerrar()">Cancelar</button>
+  <button mat-raised-button color="primary" type="button" (click)="guardar()">Guardar</button>
+</mat-dialog-actions>
+ 

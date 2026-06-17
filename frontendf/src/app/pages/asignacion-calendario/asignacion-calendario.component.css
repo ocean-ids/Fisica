@@ -1,0 +1,183 @@
+/* Cell color styles for schedule values */
+.cell-franco { background: #fff3b0 !important; }
+.cell-dia { background: #ffffff !important; }
+.cell-noche { background: #d6ecff !important; }
+.cell-desc { background: #d9f7be !important; }
+.cell-daycode { background: #f0f0f0 !important; }
+
+/* Small input styling to look like spreadsheet cells */
+table.table td input.form-control {
+	padding: 4px 6px;
+  height: 70px;
+	text-align: center;
+}
+
+table.table td { vertical-align: middle; }
+
+/* Remove outer padding/margins so calendars sit flush */
+:host .container-fluid {
+
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.table {
+  margin-bottom: 0 !important;
+  border-spacing: 0 !important;
+}
+
+.table { width: auto !important; table-layout: fixed; border-collapse: collapse; }
+.table { min-width: 0 !important; }
+.table th, .table td {
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 !important;
+  max-height: 70px;
+  height: 70px;
+}
+
+/* Stronger rules to eliminate leftover gaps */
+.table td > input,
+.table td > input.form-control,
+.table td > input.form-control-sm {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+/* Reduce horizontal padding on table cells so inputs can use space */
+.table th, .table td {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Allow cell content to wrap so inputs expand naturally */
+.table td { white-space: normal; }
+
+input {
+  width: 100%;	
+
+}
+
+/* Dejar el ancho real de las celdas sin repartir espacio extra */
+.table thead th.actions-col { width: 90px; }
+
+/* Make sure button fits and is not clipped */
+.actions-col .btn { white-space: normal; max-width: 100%; }
+
+/* Encabezado con dos líneas centradas */
+.header-day { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; height: 100%; }
+.header-day .short { font-weight:700; }
+.header-day .dayNum { font-size:.95rem; color:#222; }
+
+:host-context(body.theme-dark) .header-day .dayNum {
+  color: #ffffff;
+}
+
+/* Controlar altura y espaciado sin forzar overflow */
+.table thead { height: 100px; }
+.header-row { height: 100px; }
+.table tbody tr.data-row td { min-height: 110px; }
+
+/* Reduce table font size for more compact rows */
+.table { font-size: 13px; }
+
+/* Inline info button inside cell: absolute so it doesn't widen the cell */
+.cell-inner { position: relative; width: 100%; display: block; }
+.cell-inner .cell-letter { margin: 0; text-align: center; font-weight: 700; }
+.cell-inner input.form-control { padding-right: 40px; box-sizing: border-box; }
+.cell-inner .info-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 4px 6px;
+  min-width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  opacity: 0; /* hidden by default to keep compact look */
+  transition: opacity .12s ease-in-out, transform .12s;
+  transform: translateY(0);
+}
+/* reveal on hover of the td to keep compact default */
+td:hover .cell-inner .info-btn { opacity: 1; }
+/* slightly smaller icon */
+.cell-inner .info-btn .bi { font-size: 14px; }
+
+/* Mantener celeste fijo para las celdas con F (igual al hover del botón) */
+button.info-btn.btn-outline-info {
+  background-color: #d6ecff !important;
+  border-color: #9bd6ff !important;
+  color: #0b5ed7 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+button.info-btn.btn-outline-info:hover,
+button.info-btn.btn-outline-info:focus {
+  background-color: #d6ecff !important;
+  border-color: #9bd6ff !important;
+  color: #0b5ed7 !important;
+}
+
+button.info-btn .form-control,
+button.info-btn .form-control-sm {
+  background-color: #d6ecff !important;
+  border-color: #9bd6ff !important;
+  color: #0b5ed7 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.sacafranco-input {
+  background-color: #ffffff !important;
+  color: #6b7280 !important;
+  height: 35px !important;
+}
+
+.sacafranco-cell {
+  height: 45px !important;
+  max-height: 45px !important;
+  overflow: hidden;
+}
+
+.sacafranco-cell .sacafranco-input {
+  height: 45px !important;
+}
+
+.sacafranco-input.sacafranco-input-fq {
+  background-color: #d6ecff !important;
+  border-color: #9bd6ff !important;
+  color: #0b5ed7 !important;
+  font-weight: 600;
+}
+
+.provincia-spacer {
+  height: 32px;
+  background-color: #f3f4f6;
+}
+
+:host-context(body.theme-dark) .table thead.table-light th,
+:host-context(body.theme-dark) .table thead.table-light {
+  background-color: #1f2937 !important;
+  color: #ffffff;
+}
+
+:host-context(body.theme-dark) .provincia-spacer {
+  background-color: #1f2937;
+}
+

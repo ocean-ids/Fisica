@@ -1,0 +1,297 @@
+<div class="container-fluid  px-0 m-0">
+  <div class="position-relative d-flex justify-content-center align-items-center mb-3">
+    <h2 class="mb-0 mt-2 text-center">Gestión de Asignaciones</h2>
+
+    <div class="columnas-popover-wrap position-absolute start-0">
+      <button type="button" class="gear-btn" [class.open]="showColumnMenu" (click)="toggleColumnMenu()" aria-label="Configurar columnas">
+        <i class="bi bi-gear-fill gear-icon" [class.open]="showColumnMenu"></i>
+      </button>
+      <section class="columnas-popover" *ngIf="showColumnMenu">
+        <div class="columnas-grid">
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('horario')" (click)="toggleColumna('horario')">Horario</button>
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('codigo')" (click)="toggleColumna('codigo')">Nominativo</button>
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('cliente')" (click)="toggleColumna('cliente')">Cliente</button>
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('puesto')" (click)="toggleColumna('puesto')">Puesto</button>
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('persona')" (click)="toggleColumna('persona')">Persona</button>
+          <button type="button" class="column-pill" [class.active]="!columnaOculta('accion')" (click)="toggleColumna('accion')">Acción</button>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-3">
+    <div class="d-flex flex-wrap align-items-start gap-2 mt-2 abs">
+      <div class="fila-dropdown">
+        <button class="btn btn-primary" type="button" (click)="toggleFilaMenu()">
+          <i class="bi bi-card-checklist"></i> Crear Fila <i class="bi bi-caret-down-fill ms-1"></i>
+        </button>
+        <div class="fila-menu" *ngIf="showFilaMenu">
+          <button type="button" (click)="agregarFilaTipo('asignacion')">
+            <i class="bi bi-clipboard-check"></i> Asignación
+          </button>
+          <button type="button" (click)="agregarFilaTipo('sacafranco')">
+            <i class="bi bi-plus-square"></i> Sacafranco
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+      <!--<button class="btn btn-outline-secondary" (click)="abrirNuevoPatron()" >
+        <i class="bi bi-grid-3x3-gap"></i> Nuevo Patrón
+      </button>-->
+      <button class="btn btn-outline-primary" type="button" (click)="abrirModalVistasCantones()">
+        <i class="bi bi-layout-text-window-reverse"></i> Nueva vista
+      </button>
+      <button class="btn btn-outline-success" (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel">
+        <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
+        Descargar
+      </button>
+    </div>
+  </div>
+  <div class="d-flex justify-content-md-end gap-2">
+    <div class="text-muted" *ngIf="getTotalPages()">
+      <span *ngIf="!isVistaCantonActiva()">Canton o Ciudad {{ provinciaPage }} de {{ getTotalPages() }}</span>
+      <span *ngIf="isVistaCantonActiva()">Vista personalizada de cantones</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <select class="form-select form-select-sm" [(ngModel)]="selectedCantonKey" (change)="onCantonSelect()" [ngModelOptions]="{standalone:true}">
+        <optgroup label="Cantones">
+          <option *ngFor="let c of cantonesParaSelect" [ngValue]="'canton:' + (c.id == null ? 'null' : c.id)">{{ c.nombre }}</option>
+        </optgroup>
+        <optgroup label="Vistas guardadas" *ngIf="cantonViews.length">
+          <option *ngFor="let v of cantonViews" [ngValue]="'view:' + v.id">Vista: {{ v.nombre }} ({{ v.tipo === 'cliente' ? v.clienteIds.length : (v.tipo === 'persona_tipo' ? v.tipos.length : v.cantonIds.length) }})</option>
+        </optgroup>
+      </select>
+    </div>
+  </div>
+  <div class="row asig-row g-0" [ngClass]="{ 'justify-content-center': !displayRows.length }">
+    <div class="col-lg-auto pe-0" [ngClass]="{ 'mx-auto': !displayRows.length, 'w-100': !displayRows.length }">
+      <div class="card asig-table-card">
+        <div class="card-body table-responsive overflow-auto"> 
+          <table class="table table-hover table-bordered mb-2 w-100">
+            <thead class="table-light text-center" style="height: 100px;">
+              <tr class="text-center align-middle header-toggle-row" style="height: 28px;">
+                <th *ngIf="!columnaOculta('horario')">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('horario')" aria-label="Ocultar columna Horario">
+                    <i class="bi" [ngClass]="columnaOculta('horario') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="!columnaOculta('codigo')" style="width: 50px;">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('codigo')" aria-label="Ocultar columna Nominativo">
+                    <i class="bi" [ngClass]="columnaOculta('codigo') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="!columnaOculta('cliente')" style="width: 200px; height: 30px;">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('cliente')" aria-label="Ocultar columna Cliente">
+                    <i class="bi" [ngClass]="columnaOculta('cliente') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="mostrarPuesto()" style="width: 50px;" [attr.colspan]="2">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('puesto')" aria-label="Ocultar columna Puesto">
+                    <i class="bi" [ngClass]="columnaOculta('puesto') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="!columnaOculta('persona')">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('persona')" aria-label="Ocultar columna Persona">
+                    <i class="bi" [ngClass]="columnaOculta('persona') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th *ngIf="!columnaOculta('accion')">
+                  <button type="button" class="header-eye-btn" (click)="toggleColumna('accion')" aria-label="Ocultar columna Accion">
+                    <i class="bi" [ngClass]="columnaOculta('accion') ? 'bi-eye-slash' : 'bi-eye'"></i>
+                  </button>
+                </th>
+                <th></th>
+              </tr>
+              <tr class="text-center align-middle m-0" style="max-height: 36px">
+                <th *ngIf="!columnaOculta('horario')" [attr.rowspan]="headerRowspan()" style="width: 1%; white-space: nowrap; padding-left: 4px; padding-right: 4px;">Horario</th>
+                <th *ngIf="!columnaOculta('codigo')" [attr.rowspan]="headerRowspan()" style="width: 50px;">Nominativo</th>
+                <th *ngIf="!columnaOculta('cliente')" [attr.rowspan]="headerRowspan()" style="width: 150px; height: 30px;">Cliente</th>
+                <th *ngIf="mostrarPuesto()" style="width: 50px;" [attr.colspan]="2">Puesto</th>
+                <th *ngIf="!columnaOculta('persona')" [attr.rowspan]="headerRowspan()">Persona</th>
+                <th *ngIf="!columnaOculta('accion')" [attr.rowspan]="headerRowspan()" style="width: 1%; white-space: nowrap; padding-left: 4px; padding-right: 4px;">Accion</th>
+                <th class="calendar-col calendar-header-cell" [attr.rowspan]="headerRowspan()">
+                   <div class="d-flex justify-content-center mb-1">
+                    <input type="date" class="form-control" [(ngModel)]="dateValue" (change)="onDateChange()" [ngModelOptions]="{standalone:true}" style="max-width: 190px;"/>
+                  </div>
+                  <div class="calendar-weeks calendar-header-weeks">
+                    <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
+                      <div class="calendar-week-grid" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
+                        <div class="calendar-day calendar-day-label" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
+                          <div class="calendar-day-initial">{{ getDayInitial(dayKey) }}</div>
+                          <div class="calendar-day-num">{{ (calendarWeekDayNumbers[ws] || {})[dayKey] || '' }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </th>
+              </tr>
+              <tr *ngIf="mostrarPuesto()">
+                <th >Nombre</th>
+                <th>Resumen</th>
+              </tr>
+            </thead>
+            <tbody cdkDropList [cdkDropListData]="displayRows" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropAsignaciones($event)">
+              <ng-container *ngFor="let row of displayRows; trackBy: trackByDisplayRow">
+                <tr 
+                  *ngIf="row.type === 'asignacion' && row.asig.persona_detalle?.is_active !== false"
+                  cdkDrag
+                  [cdkDragData]="row"
+                  cdkDragLockAxis="y"
+                  cdkDragBoundary=".asig-table-card .card-body"
+                  cdkDragPreviewContainer="parent"
+                  (cdkDragStarted)="onDragStarted(row.asig)"
+                  (cdkDragEnded)="onDragEnded()"
+                  class="text-center align-middle shared-row"
+                  style="height: 70px;">
+                  <td *ngIf="!columnaOculta('horario')" class="align-middle overflow-hidden" style="height: 70px;">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
+                  <td *ngIf="!columnaOculta('codigo')" class="align-middle overflow-hidden" style="height: 70px;">{{ getCodigoInstalacionAsignacion(row.asig) }}</td>
+                  <td *ngIf="!columnaOculta('cliente')" class="align-middle text-start text-wrap overflow-hidden" style="max-width: 150px; height: 70px; padding-left: 6px !important;">{{ row.asig.cliente_detalle?.nombre_comercial }}</td>
+                    <td *ngIf="mostrarPuesto()" class="align-middle text-wrap overflow-hidden" style="max-width: 220px; height: 70px;">
+                      {{ row.asig.puesto_detalle?.nombre }}
+                    </td>
+                  <td *ngIf="mostrarPuesto()" class="align-middle overflow-hidden" style="height: 70px;">
+                    <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
+                      {{ getResumenPuestoCompacto(row.asig.puesto_detalle) }}
+                    </span>
+                    <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
+                      <div class="tooltip-content">
+                        <div><strong>👮 Puesto:</strong> {{ row.asig.puesto_detalle?.cantidad_puestos }}</div>
+                        <div><strong>⏰ Horas:</strong> {{ getHorasPuesto(row.asig.puesto_detalle) }}</div>
+                        <div><strong>🌙 Turno:</strong> {{ getTurnosPuesto(row.asig.puesto_detalle) }}</div>
+                        <div><strong>📅 Días:</strong> {{ getDiasPuesto(row.asig.puesto_detalle) }}</div>
+                      </div>
+                    </mat-menu>
+                  </td>
+                  <td
+                    *ngIf="!columnaOculta('persona')"
+                    class="text-wrap align-middle overflow-hidden"
+                    style="min-width: 180px; height: 70px;"
+                    [style.backgroundColor]="row.asig.cedula_color || ''"
+                    (dblclick)="onPersonaColorDblClick($event, row.asig)">
+                      <ng-container *ngIf="row.asig.persona_detalle; else puestoVacante">
+                        <div>
+                          {{ row.asig.persona_detalle.apellidos }}
+                        </div>
+                        <div>
+                          {{ row.asig.persona_detalle.nombres }}
+                        </div>
+                          <div class="text-muted">
+                            {{ row.asig.persona_detalle.cedula }}
+                          </div>
+                        <div>
+                          <span class="badge"
+                            [ngClass]="row.asig.persona_detalle.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
+                            {{ row.asig.persona_detalle.tipo }}
+                          </span>
+                        </div>
+                      </ng-container>
+                      <ng-template #puestoVacante>
+                        <button type="button" class="btn btn-sm btn-warning d-flex align-items-center gap-1 mx-auto"
+                          title="Puesto sin persona asignada"
+                          (click)="mostrarPuestoVacante(row.asig)">
+                          <i class="bi bi-exclamation-triangle-fill"></i> VACANTE
+                        </button>
+                      </ng-template>
+                    </td>
+                  <td *ngIf="!columnaOculta('accion')" class="p-0 align-middle overflow-hidden" style="height: 70px;">
+                    <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">
+                      <button class="btn btn-sm btn-outline-primary " (click)="abrirModalEditar(row.asig)">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger" (click)="eliminarAsignacion(row.asig)">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                  <td class="calendar-cell calendar-col align-middle overflow-hidden" style="height: 70px;">
+                    <div class="calendar-weeks">
+                      <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
+                        <div class="calendar-week-grid" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
+                          <ng-container *ngIf="getCalendarRow(row, ws) as calRow">
+                            <div class="calendar-day" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
+                              <input
+                                type="text"
+                                maxlength="4"
+                                class="calendar-input"
+                                [ngClass]="getCalendarCellClass(calRow[dayKey])"
+                                [ngModel]="calRow[dayKey]"
+                                (input)="onCalendarCellChange(row, ws, dayKey, $any($event.target).value)"
+                                (dblclick)="openRangeModal(row, ws, dayKey, false)"
+                                [disabled]="isPastMonth()"
+                                [ngModelOptions]="{standalone:true}">
+                            </div>
+                          </ng-container>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr
+                  *ngIf="row.type === 'sacafranco' && !columnaOculta('sacafranco')"
+                  cdkDrag
+                  [cdkDragData]="row"
+                  cdkDragLockAxis="y"
+                  cdkDragBoundary=".asig-table-card .card-body"
+                  cdkDragPreviewContainer="parent"
+                  style="height: 45px;"
+                  class="align-middle sacafranco-row">
+                  <td *ngIf="!columnaOculta('horario')" class="bg-warning-subtle align-middle text-center">{{ row.fila.hora_ingreso | slice:0:5 }}  {{ row.fila.hora_salida | slice:0:5 }}</td>
+                  <td *ngIf="!columnaOculta('codigo')" class="bg-warning-subtle"></td>
+                  <td *ngIf="!columnaOculta('cliente')" class="bg-warning-subtle"></td>
+                  <td *ngIf="mostrarPuesto()" class="bg-warning-subtle text-center">SACAFRANCO</td>
+                  <td *ngIf="mostrarPuesto()" class="bg-warning-subtle"></td>
+                  <td *ngIf="!columnaOculta('persona')" class="text-center align-middle bg-warning-subtle">
+                    <div>{{ row.fila.persona_detalle?.apellidos || '' }}</div>
+                    <div>{{ row.fila.persona_detalle?.nombres || '' }}</div>
+                    <div class="text-muted">{{ row.fila.persona_detalle?.cedula || '-' }}</div>
+                  </td>
+                  <td *ngIf="!columnaOculta('accion')" class="text-center align-middle bg-warning-subtle">
+                    <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">
+                      <button
+                        class="btn btn-sm btn-outline-primary"
+                        title="Actualizar sacafranco"
+                        (click)="openSacafrancoFilaModal(row.fila)">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <button
+                        class="btn btn-sm btn-outline-danger"
+                        [title]="canDeleteSacafrancoFila(row.fila) ? 'Eliminar fila sacafranco' : 'No se puede eliminar meses pasados'"
+                        [disabled]="!canDeleteSacafrancoFila(row.fila)"
+                        (click)="eliminarSacafrancoFila(row.fila)">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                  <td class="calendar-cell calendar-col align-middle bg-warning-subtle">
+                    <div class="calendar-weeks">
+                      <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
+                        <div class="calendar-week-grid" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
+                          <ng-container *ngIf="getCalendarRow(row, ws) as calRow">
+                            <div class="calendar-day" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
+                              <input
+                                type="text"
+                                maxlength="12"
+                                class="calendar-input"
+                                [ngClass]="getCalendarCellClass(calRow[dayKey])"
+                                [ngModel]="calRow[dayKey]"
+                                (input)="onSacafrancoCalendarCellChange(row, ws, dayKey, $any($event.target).value)"
+                                (dblclick)="openRangeModal(row, ws, dayKey, true)"
+                                [disabled]="isPastMonth()"
+                                [ngModelOptions]="{standalone:true}">
+                            </div>
+                          </ng-container>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

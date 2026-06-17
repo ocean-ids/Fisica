@@ -1,0 +1,46 @@
+{
+  "name": "frontendf",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "^20.3.18",
+    "@angular/cdk": "^20.2.14",
+    "@angular/common": "^20.3.18",
+    "@angular/compiler": "^20.3.18",
+    "@angular/core": "^20.3.18",
+    "@angular/forms": "^20.3.18",
+    "@angular/material": "^20.2.14",
+    "@angular/platform-browser": "^20.3.18",
+    "@angular/platform-browser-dynamic": "^20.3.18",
+    "@angular/router": "^20.3.18",
+    "@fortawesome/fontawesome-free": "^7.2.0",
+    "bootstrap": "^5.3.8",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
+    "rxjs": "~7.8.0",
+    "sweetalert2": "^11.26.18",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.3.22",
+    "@angular/cli": "^20.3.22",
+    "@angular/compiler-cli": "^20.3.18",
+    "@types/file-saver": "^2.0.7",
+    "@types/jasmine": "~5.1.0",
+    "jasmine-core": "~5.4.0",
+    "karma": "~6.4.0",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "typescript": "~5.9.3"
+  }
+}

@@ -1,0 +1,89 @@
+<div class="container-fluid px-0">
+  
+  <h2 class="mb-2 text-center">Gestión de Personal</h2>
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary" (click)="abrirModal()">
+        <i class="bi bi-person-add"></i> Nueva Persona
+      </button>
+      <button class="btn btn-outline-secondary" [disabled]="isImporting" (click)="dispararImportacion()">
+        <i class="bi bi-upload"></i> Importar
+      </button>
+      <button class="btn btn-outline-success" (click)="descargarExcel()">
+        <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
+        <!--<i class="bi bi-file-earmark-excel"></i>-->
+        Descargar
+      </button>
+    </div>
+    <div class="d-flex justify-content-end">
+        <!--Filtro por texto (cédula, nombre, apellido)-->
+        <!--<div class="input-group" style="max-width: 60%;">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input class="form-control"
+              placeholder="Buscar por cédula, nombre o apellido"
+              [(ngModel)]="filtroTexto" (ngModelChange)="cargarPersonas()">
+        </div>-->
+        <select class="form-select" style="max-width: 50%;"
+                [(ngModel)]="filtroTipo" (ngModelChange)="cargarPersonas()">
+          <option value="">Todos los tipos</option>
+          <option *ngFor="let t of tipos" [value]="t">{{ t }}</option>
+        </select>
+        <button class="btn btn-outline-secondary mx-2" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+  </div>
+  <input #fileInput type="file"
+      accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, .xlsx"
+      class="d-none" (change)="onFileSelected($event)">
+
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered">
+          <thead class="table-light">
+            <tr class="text-center">
+              <th>Cédula</th>
+              <th>Apellidos</th>
+              <th>Nombres</th>
+              <th>Provincia</th>
+              <th>Cantón</th>
+              <th style="max-width: 30px;">Tipo</th>
+              <th>Activo</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="text-center align-middle" *ngFor="let persona of personas" [class.inactive-row]="persona.is_active === false">
+              <td>{{ persona.cedula }}</td>
+              <td >{{ persona.apellidos }}</td>
+              <td >{{ persona.nombres }}</td>
+              <td>{{ persona.provincia_nombre || persona.provincia || '-' }}</td>
+              <td>{{ persona.canton_nombre || persona.canton || '-' }}</td>
+              <td style="max-width: 120px; white-space:normal;">
+                <span class="badge d-inline-block text-wrap text-break" [ngClass]="persona.tipo?.startsWith('SUPERVISOR') ? 'bg-success' : 'bg-primary'">
+                  {{ persona.tipo }}
+                </span>
+              </td>
+              <td>
+                <mat-slide-toggle [checked]="persona.is_active !== false" (change)="toggleActive(persona, $event.checked)">
+                </mat-slide-toggle>
+              </td>
+              <td class="d-flex justify-content-around align-items-center">
+                <button class="btn btn-sm btn-outline-primary me-2" (click)="abrirModal(persona)">
+                  <i class="bi bi-pencil"></i> Editar
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="confirmarEliminar(persona)">
+                  <i class="bi bi-trash"></i> Eliminar
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="personas.length === 0">
+              <td colspan="8" class="text-center text-muted py-4">
+                No hay personas registradas
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

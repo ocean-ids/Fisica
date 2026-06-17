@@ -1,0 +1,56 @@
+<h2 mat-dialog-title class="text-center">Seleccionar Persona Sacafranco</h2>
+
+<mat-dialog-content>
+    <div class="d-flex gap-2 mb-2">
+        <mat-form-field appearance="outline" class="w-50">
+            <mat-label>Hora ingreso</mat-label>
+            <input matInput type="time" [(ngModel)]="horaIngreso" [ngModelOptions]="{standalone:true}" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="w-50">
+            <mat-label>Hora salida</mat-label>
+            <input matInput type="time" [(ngModel)]="horaSalida" [ngModelOptions]="{standalone:true}" />
+        </mat-form-field>
+    </div>
+    <mat-form-field appearance="outline" class="w-100 mb-2">
+        <mat-label>Filtrar por nombre o apellido</mat-label>
+        <input
+            matInput
+            [(ngModel)]="filtroNombre"
+            (ngModelChange)="onNombreFilterChange()"
+            placeholder="Ej: Alvarado"
+        />
+    </mat-form-field>
+    <div class="list-group" style="max-height: 320px; overflow: auto;">
+        <button
+            type="button"
+            class="list-group-item list-group-item-action"
+            *ngFor="let p of personasFiltradas"
+            (click)="selectPersona(p.id)"
+            [class.active]="selectedId === p.id"
+        >
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="fw-semibold">{{ p.apellidos }} {{ p.nombres }}</div>
+                    <small class="text-muted">{{ p.cedula }}</small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-info text-dark" *ngIf="getProvincia(p)">{{ getProvincia(p) }}</span>
+                    <span class="badge" [ngClass]="isAssigned(p.id) ? 'bg-warning text-dark' : 'bg-success'">
+                        {{ isAssigned(p.id) ? 'Asignado' : 'Disponible' }}
+                    </span>
+                    <span class="badge bg-primary" *ngIf="p.tipo">{{ p.tipo }}</span>
+                </div>
+            </div>
+        </button>
+        <div class="text-muted p-2" *ngIf="!personasFiltradas.length">
+            No hay personas sacafranco para mostrar.
+        </div>
+    </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+    <button mat-button (click)="cancel()">Cancelar</button>
+    <button mat-raised-button color="primary" (click)="confirm()" [disabled]="!selectedId">
+        Seleccionar
+    </button>
+</mat-dialog-actions>

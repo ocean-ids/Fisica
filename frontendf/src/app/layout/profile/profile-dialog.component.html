@@ -1,0 +1,33 @@
+<h2 mat-dialog-title>Editar perfil</h2>
+
+<mat-dialog-content>
+  <div class="profile-dialog">
+    <div class="photo-wrap">
+      <img *ngIf="photoPreview" [src]="photoPreview" alt="Foto de perfil" class="photo" />
+      <div *ngIf="!photoPreview" class="photo placeholder">Sin foto</div>
+    </div>
+
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>Nombre completo</mat-label>
+      <input matInput [value]="fullName" readonly />
+    </mat-form-field>
+
+    <div class="field">
+      <label class="file-label" for="photoInput">Foto de perfil</label>
+      <input id="photoInput" type="file" accept="image/*" (change)="onFileChange($event)" />
+    </div>
+
+    <button mat-stroked-button color="warn" class="remove-btn" (click)="removePhoto()" [disabled]="saving || !photoPreview">
+      Quitar foto
+    </button>
+
+    <div class="error" *ngIf="errorText">{{ errorText }}</div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="save()" [disabled]="saving || !selectedFile">
+    Guardar
+  </button>
+</mat-dialog-actions>

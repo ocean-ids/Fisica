@@ -1,0 +1,67 @@
+<h2 mat-dialog-title>{{ data.instalacion?.id ? 'Editar' : 'Nueva' }} Instalación</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="instalacionForm">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Cliente</mat-label>
+      <mat-select formControlName="cliente_id" required>
+        <mat-option *ngFor="let cliente of data.clientes" [value]="cliente.id">
+          {{ cliente.nombre_comercial }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="instalacionForm.get('cliente_id')?.hasError('required')">
+        El cliente es requerido
+      </mat-error>
+    </mat-form-field>
+    <mat-form-field class="w-100">
+      <mat-label>Nominativo</mat-label>
+      <input matInput formControlName="codigo" placeholder="Nominativo">
+    </mat-form-field>
+    <mat-form-field class="w-100">
+      <mat-label>Nombre</mat-label>
+      <input matInput formControlName="nombre" placeholder="Nombre de la instalación">
+    </mat-form-field>
+
+    <mat-form-field class="w-100">
+      <mat-label>Provincia</mat-label>
+      <mat-select formControlName="provincia_id" (selectionChange)="onProvinciaChange()" required>
+        <mat-option *ngFor="let p of provincias" [value]="p.id">{{ p.nombre }}</mat-option>
+      </mat-select>
+      <mat-error *ngIf="instalacionForm.get('provincia_id')?.hasError('required')">La provincia es requerida</mat-error>
+    </mat-form-field>
+
+    <mat-form-field class="w-100">
+      <mat-label>Ciudad o Cantón</mat-label>
+      <mat-select formControlName="canton_id" required>
+        <mat-option *ngFor="let c of cantones" [value]="c.id">{{ c.nombre }}</mat-option>
+      </mat-select>
+      <mat-error *ngIf="instalacionForm.get('canton_id')?.hasError('required')">El cantón es requerido</mat-error>
+    </mat-form-field>
+
+    <mat-form-field class="w-100">
+      <mat-label>Dirección</mat-label>
+      <input matInput formControlName="direccion" placeholder="Dirección física de la instalación">
+    </mat-form-field>
+
+    <mat-form-field class="w-100">
+      <mat-label>Sector</mat-label>
+      <input matInput formControlName="sector" placeholder="Sector (ej. LA JOYA, VÍA DAULE)">
+    </mat-form-field>
+
+    <mat-form-field class="w-100" *ngIf="zonaOptions.length">
+      <mat-label>Zonas registradas</mat-label>
+      <mat-select formControlName="zona_id">
+        <mat-option [value]="null">Ninguna</mat-option>
+        <mat-option *ngFor="let z of zonaOptions" [value]="z.id">{{ z.label }}</mat-option>
+      </mat-select>
+      <mat-hint *ngIf="!data.instalacion?.id">Se creará solo la zona seleccionada</mat-hint>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!instalacionForm.valid">
+    Guardar
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,10 @@
+mat-dialog-content {
+  min-width: 520px;
+  max-width: 720px;
+}
+
+@media (max-width: 600px) {
+  mat-dialog-content {
+    min-width: auto;
+  }
+}

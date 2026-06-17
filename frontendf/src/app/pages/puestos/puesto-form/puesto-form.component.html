@@ -1,0 +1,92 @@
+<h2 mat-dialog-title>{{ data.puesto?.id ? 'Editar' : 'Nuevo' }} Puesto</h2>
+<mat-dialog-content>
+  <form [formGroup]="puestoForm">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nombre del Puesto</mat-label>
+      <input matInput formControlName="nombre" required>
+      <mat-error *ngIf="puestoForm.get('nombre')?.hasError('required')">
+        El nombre es requerido
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Tipo de Puesto</mat-label>
+      <input matInput formControlName="tipo">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Instalación</mat-label>
+      <mat-select formControlName="instalacion_id" required>
+        <mat-option *ngFor="let instalacion of instalaciones" [value]="instalacion.id">
+          {{ instalacion.nombre || '-' }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="puestoForm.get('instalacion_id')?.hasError('required')">
+        La instalación es requerida
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Cantidad de Puestos</mat-label>
+      <input matInput type="number" formControlName="cantidad_puestos" required min="1">
+      <mat-error *ngIf="puestoForm.get('cantidad_puestos')?.hasError('required')">
+        La cantidad de puestos es requerida
+      </mat-error>
+      <mat-error *ngIf="puestoForm.get('cantidad_puestos')?.hasError('min')">
+        Debe ser al menos 1
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Horario (ingreso - salida)</mat-label>
+      <mat-select formControlName="horario">
+        <mat-option [value]="null">Sin horario</mat-option>
+        <mat-option *ngFor="let h of horariosCatalogo" [value]="h.id">
+          {{ h.hora_ingreso | slice:0:5 }} - {{ h.hora_salida | slice:0:5 }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <div class=" mb-3">
+      <button mat-raised-button color="primary" class="rounded-5" (click)="addHorario()">+</button>
+    </div>
+
+    <div formArrayName="horarios">
+      <div *ngFor="let horario of horarios.controls; let i = index" [formGroupName]="i" class="horario-block">
+        <div style="display:flex; gap:12px; align-items:center;">
+          <mat-form-field appearance="outline">
+            <mat-label>Horas</mat-label>
+            <input matInput type="time" formControlName="horas" required min="0" max="24">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Turno</mat-label>
+            <mat-select formControlName="turno" required>
+              <mat-option value="Diurno">Diurno</mat-option>
+              <mat-option value="Nocturno">Nocturno</mat-option>
+              <mat-option value="24H">24H</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="days-checks" style="display:flex; gap:4px; align-items:center;">
+            <label *ngFor="let d of [1,2,3,4,5,6,7]; let idx = index">
+              <input type="checkbox" [checked]="(horario.get('days')?.value || []).indexOf(d) !== -1"
+                       (change)="toggleDay(i, d, $event)"> {{ ['L','M','X','J','V','S','D'][idx] }}
+            </label>
+          </div>
+
+          <button mat-icon-button color="warn" (click)="removeHorario(i)">
+            <mat-icon>remove_circle</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!puestoForm.valid">
+    Guardar
+  </button>
+</mat-dialog-actions>

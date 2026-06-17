@@ -1,0 +1,43 @@
+# Python
+*.py[cod]
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+/media
+/staticfiles
+/static
+
+# Entorno virtual
+venv/
+env/
+ENV/
+
+# Variables de entorno (NO subir secretos, pero SÍ el ejemplo)
+.env
+.env.local
+.env.*
+!.env.example
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Datos locales / artefactos
+*.sqlite3
+backups/*.sql
+backups/*.dump

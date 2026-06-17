@@ -1,0 +1,56 @@
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-autocomplete-panel {
+	background-color: #1f2937 !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-autocomplete-panel .mdc-list-item__primary-text {
+	color: #ffffff !important;
+}
+
+::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option.puesto-ocupado-option {
+	background-color: #e9edf5 !important;
+}
+
+::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option.puesto-ocupado-option:hover,
+::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option.puesto-ocupado-option.mdc-list-item--selected {
+	background-color: #dde4f0 !important;
+}
+
+::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option .puesto-option-row {
+	width: 100%;
+}
+
+::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option .puesto-ocupado-check {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 4px;
+	background-color: #cfd8e6;
+	color: #26364f;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+	margin-left: 8px;
+}
+
+::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option .puesto-ocupado-check .mat-icon {
+	width: 14px;
+	height: 14px;
+	font-size: 14px;
+	line-height: 14px;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option.puesto-ocupado-option {
+	background-color: #2c3748 !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option.puesto-ocupado-option:hover,
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option.puesto-ocupado-option.mdc-list-item--selected {
+	background-color: #354258 !important;
+}
+
+:host-context(body.theme-dark) ::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option .puesto-ocupado-check {
+	background-color: #4c5d77;
+	color: #f2f5fa;
+}

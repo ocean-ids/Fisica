@@ -1,0 +1,53 @@
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center login-page">
+  <div class="login-bg login-bg-current" [ngClass]="{ 'is-fade': isFading }" [ngStyle]="{ 'background-image': currentBackground }"></div>
+  <div class="card shadow-lg border-0 p-4 login-card w-100">
+    <div class="text-center mb-4">
+      <img ngSrc="assets/images/logo.png" alt="Logo" width="280" height="80" class="img-fluid" priority>
+    </div>
+
+    <form (ngSubmit)="onSubmit()" class="d-grid gap-3">
+      <div>
+        <label for="username" class="form-label fw-semibold">Usuario</label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          [(ngModel)]="username"
+          class="form-control"
+          placeholder="Ingresa tu usuario"
+          required
+          [disabled]="isLoading"
+        />
+      </div>
+
+      <div>
+        <label for="password" class="form-label fw-semibold">Contraseña</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          [(ngModel)]="password"
+          class="form-control"
+          placeholder="Ingresa tu contraseña"
+          required
+          [disabled]="isLoading"
+        />
+      </div>
+
+      <button
+        type="submit"
+        class="btn btn-personalizado w-100 py-2 fw-semibold"
+        [disabled]="isLoading"
+      >
+        <span *ngIf="!isLoading">Iniciar Sesión</span>
+        <span *ngIf="isLoading">Cargando...</span>
+      </button>
+
+      <div class="text-center mt-1">
+        <a routerLink="/forgot-password" class="link-personalizado text-decoration-none">
+          ¿Olvidaste tu contraseña?
+        </a>
+      </div>
+    </form>
+  </div>
+</div>

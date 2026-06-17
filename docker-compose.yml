@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:17
+    container_name: sf_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sf_bd
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - sf_pgdata:/var/lib/postgresql/data
+
+  backend:
+    image: oceansecurity/sf_backend:latest
+    container_name: sf_backend
+    restart: unless-stopped
+    environment:
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY}
+      ALLOWED_HOSTS:  "fisica.oceansecurity.net,89.117.146.163"
+      CORS_ALLOWED_ORIGINS:  "https://fisica.oceansecurity.net,http://fisica.oceansecurity.net,http://89.117.146.163"
+      PASSWORD_RESET_BASE_URL: "https://fisica.oceansecurity.net"
+      DB_NAME: sf_bd
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: db
+      DB_PORT: "5432"
+    volumes:
+      - sf_media:/app/media
+    depends_on:
+      - db
+
+  frontend:
+    image: oceansecurity/sf_frontend:latest
+    container_name: sf_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./frontendf/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs/fisica_oceansecurity.pem:/etc/nginx/certs/fisica_oceansecurity.pem:ro
+      - ./certs/fisica_oceansecurity.key:/etc/nginx/certs/fisica_oceansecurity.key:ro
+    depends_on:
+      - backend
+
+volumes:
+  sf_pgdata:
+  sf_media:

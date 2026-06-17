@@ -1,0 +1,82 @@
+<mat-toolbar>
+  <div class="w-100 d-flex align-items-center">
+    <div class="d-flex align-items-center">
+      <span class="fw-bold border-text">SEGURIDAD FÍSICA</span>
+      <button
+        type="button"
+        class="btn btn-toggle p-0 mx-5 text-decoration-none"
+        (click)="onToggleSidebar()"
+        aria-label="Ocultar/mostrar menu">
+        <i class="bi bi-justify"></i>
+      </button>
+    </div>
+  
+    <div class="d-flex align-items-center justify-content-center flex-grow-1 ">
+      <div class="input-group w-100" style="max-width: 600px;">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input class="form-control" type="search" placeholder="Buscar..." [(ngModel)]="searchText" (input)="onSearchChange()"/>
+      </div>
+    </div>
+
+    <div class="ms-auto d-flex align-items-center gap-3">
+      <button
+        type="button"
+        class="theme-toggle-btn d-flex align-items-center justify-content-center"
+        mat-icon-button
+        (click)="toggleTheme()"
+        [attr.aria-label]="isLightMode ? 'Activar modo nocturno' : 'Activar modo claro'">
+        <i [class]="isLightMode ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill'"></i>
+      </button>
+
+      <!-- Notificaciones: puestos sin persona (solo con permiso de asignación) -->
+      @if (puedeVerAsignaciones) {
+        <button
+          type="button"
+          mat-icon-button
+          class="position-relative"
+          (click)="abrirVacantes()"
+          aria-label="Puestos sin persona">
+          <mat-icon>notifications_active</mat-icon>
+          @if (vacantesCount > 0) {
+            <span class="position-absolute translate-middle badge rounded-pill bg-danger notif-badge">
+              {{ vacantesCount }}
+              <span class="visually-hidden">puestos sin persona</span>
+            </span>
+          }
+        </button>
+      }
+
+      @if (username) {
+        <span class="username">{{ username }}</span>
+      }
+
+
+      <!-- Botón con menú -->
+      <button
+        class="user-menu-btn d-inline-flex align-items-center justify-content-center p-0 overflow-hidden rounded-circle"
+        mat-icon-button
+        [matMenuTriggerFor]="userMenu"
+        aria-label="Menú de usuario">
+        <ng-container *ngIf="photoUrl; else defaultIcon">
+          <img class="user-avatar rounded-circle" [src]="photoUrl" alt="Foto de perfil" />
+        </ng-container>
+        <ng-template #defaultIcon>
+          <mat-icon>account_circle</mat-icon>
+        </ng-template>
+      </button>
+
+      <!-- Menú -->
+      <mat-menu #userMenu="matMenu">
+        <button mat-menu-item (click)="openProfile()">
+          <mat-icon>person</mat-icon>
+          <span>Editar perfil</span>
+        </button>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon color="warn">logout</mat-icon>
+          <span>Cerrar sesión</span>
+        </button>
+      </mat-menu>
+    </div>
+  </div>
+
+</mat-toolbar>

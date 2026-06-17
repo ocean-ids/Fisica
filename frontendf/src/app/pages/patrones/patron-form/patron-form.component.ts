@@ -1,0 +1,96 @@
+import { Component, Inject } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { PatronAsignacionService } from '../../../services/patron-asignacion.service';
+import { PatronAsignacion } from '../../../models/asignacion.model';
+import { CommonModule } from '@angular/common';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+
+export interface PatronFormData {
+  patron?: PatronAsignacion | null;
+}
+
+export interface PatronFormResult {
+  saved: boolean;
+  patron?: PatronAsignacion;
+}
+
+@Component({
+  selector: 'app-patron-form',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, MatFormFieldModule, MatDialogModule, MatInputModule, MatButtonModule],
+  templateUrl: './patron-form.component.html',
+  styleUrl: './patron-form.component.css'
+})
+export class PatronFormComponent {
+  patronForm: FormGroup;
+
+  constructor(
+    private fb: FormBuilder,
+    private dialogRef: MatDialogRef<PatronFormComponent, PatronFormResult>,
+    @Inject(MAT_DIALOG_DATA) public data: PatronAsignacion | PatronFormData | null,
+    private patronService: PatronAsignacionService
+  ) {
+    const rawData = data as PatronFormData | PatronAsignacion | null;
+    const patron = (rawData && (rawData as PatronAsignacion).codigo)
+      ? (rawData as PatronAsignacion)
+      : (rawData as PatronFormData)?.patron || null;
+
+    this.patronForm = this.fb.group({
+      codigo: [patron?.codigo || '', [Validators.required, Validators.pattern(/^\d{2}$/), Validators.maxLength(2), Validators.minLength(2)]],
+      secuencia: [patron?.secuencia?.join('-') || '', [Validators.required, Validators.pattern(/^(?:[DNF]+|[DNF](?:-[DNF])*)$/)]]
+    });
+  }
+
+  
+  onCodigoInput(event: Event): void{
+    const input = event.target as HTMLInputElement;
+    input.value = input.value.replace(/\D/g, '').slice(0, 2);
+    this.patronForm.get('codigo')?.setValue(input.value, { emitEvent: false});
+
+    if (input.value.length === 2) {
+      const [d1, d2] = input.value.split('').map(n => Number(n));
+      const seq = `${'D'.repeat(d1 || 0)}${'N'.repeat(d2 || 0)}${'F'.repeat(0)}`;
+      this.patronForm.get('secuencia')?.setValue(seq, { emitEvent: false });
+    }
+  }
+
+  onSecuenciaInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let raw = input.value.toUpperCase().replace(/[^DNF\-]/g, '').replace(/\-+/g, '-');
+    raw = raw.replace(/^\-+/, '').replace(/\-+$/, '');
+    const hadHyphen = raw.includes('-');
+    let tokens = hadHyphen ? raw.split('-').map(t => t.trim()).filter(t => t.length > 0) : raw.split('').filter(t => t.length > 0);
+    const val = hadHyphen ? tokens.join('-') : tokens.join('');
+    input.value = val;
+    this.patronForm.get('secuencia')?.setValue(val, { emitEvent: false });
+  }
+
+  onSubmit(): void {
+    if (this.patronForm.valid) {
+      const patron: PatronAsignacion = {
+        codigo: this.patronForm.value.codigo,
+        secuencia: (() => {
+          const raw = (this.patronForm.value.secuencia as string) || '';
+          if (raw.includes('-')) return raw.split('-').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+          return raw.split('').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+        })()
+      };
+      if (patron.id) {
+        this.patronService.actualizarPatron(patron.id, patron).subscribe(() => {
+          this.dialogRef.close({ saved: true, patron });
+        });
+      } else {
+        this.patronService.crearPatron(patron).subscribe(created => {
+          this.dialogRef.close({ saved: true, patron: created });
+        });
+      }
+    }
+  }
+
+  onCancel(): void {
+    this.dialogRef.close({ saved: false });
+  }
+}

@@ -1,0 +1,90 @@
+<h2 mat-dialog-title>Registrar Novedad de Puesto</h2>
+
+<mat-dialog-content>
+  <div class="row">
+    <div class="col-md-6 mb-2">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Fecha</mat-label>
+        <input matInput type="date" [(ngModel)]="model.fecha" [ngModelOptions]="{standalone:true}" />
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-2">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Turno</mat-label>
+        <mat-select [(ngModel)]="model.turno" [ngModelOptions]="{standalone:true}">
+          <mat-option value="Diurno">Diurno</mat-option>
+          <mat-option value="Nocturno">Nocturno</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-2">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Novedad</mat-label>
+        <mat-select [(ngModel)]="model.novedad" [ngModelOptions]="{standalone:true}">
+          <mat-option *ngFor="let n of novedades" [value]="n.value">{{ n.label }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-2" *ngIf="puestos.length">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Puesto (prellena datos)</mat-label>
+        <mat-select [(ngModel)]="puestoId" (selectionChange)="onPuestoChange()" [ngModelOptions]="{standalone:true}">
+          <mat-option [value]="null">— Ninguno —</mat-option>
+          <mat-option *ngFor="let p of puestos" [value]="p.id">
+            {{ p.nombre }} <span *ngIf="p.instalacion_nombre">· {{ p.instalacion_nombre }}</span>
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-2">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Cliente (denominativo)</mat-label>
+        <input matInput type="text" [(ngModel)]="model.cliente_denominativo" [ngModelOptions]="{standalone:true}" />
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-2">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Sector</mat-label>
+        <input matInput type="text" [(ngModel)]="model.sector" [ngModelOptions]="{standalone:true}" />
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-2">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Tipo</mat-label>
+        <input matInput type="text" [(ngModel)]="model.tipo" [ngModelOptions]="{standalone:true}" placeholder="ej. 1 24H L-D" />
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-2">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Horario</mat-label>
+        <input matInput type="text" [(ngModel)]="model.horario" [ngModelOptions]="{standalone:true}" placeholder="ej. 3,3,2" />
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-6 mb-2">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Solicitado por</mat-label>
+        <input matInput type="text" [(ngModel)]="model.solicitado_por" [ngModelOptions]="{standalone:true}" />
+      </mat-form-field>
+    </div>
+
+    <div class="col-12 mb-2">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Observación</mat-label>
+        <textarea matInput rows="3" [(ngModel)]="model.observacion" [ngModelOptions]="{standalone:true}"></textarea>
+      </mat-form-field>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="guardar()" [disabled]="!isValid()">Guardar</button>
+</mat-dialog-actions>
