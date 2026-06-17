@@ -72,6 +72,22 @@ export class NovedadPuestoDialogComponent implements OnInit {
     return `${d.getFullYear()}-${mm}-${dd}`;
   }
 
+  // APERTURA -> solo puestos CERRADOS (reabrir). Resto (cierre, etc.) -> solo ACTIVOS.
+  get puestosFiltrados(): any[] {
+    const esApertura = (this.model.novedad || '').toString().toUpperCase() === 'APERTURA';
+    return (this.puestos || []).filter(p =>
+      esApertura ? p.activo === false : p.activo !== false
+    );
+  }
+
+  onNovedadChange(): void {
+    // Si el puesto elegido ya no aplica al tipo de novedad, limpiarlo.
+    if (this.puestoId != null && !this.puestosFiltrados.some(p => p.id === this.puestoId)) {
+      this.puestoId = null;
+      this.onPuestoChange();
+    }
+  }
+
   onPuestoChange(): void {
     const p = this.puestos.find(x => x.id === this.puestoId);
     if (!p) {
