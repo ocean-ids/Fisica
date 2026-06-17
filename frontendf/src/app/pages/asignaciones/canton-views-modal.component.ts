@@ -79,11 +79,30 @@ export interface CantonViewsModalResult {
       </mat-form-field>
 
       @if (tipo === 'persona_tipo') {
-        <div class="tipos-grid mb-3">
-          @for (t of tiposDisponibles; track t) {
-            <button type="button" class="tipo-chip" [class.sel]="selectedTipos.includes(t)" (click)="toggleTipoPersona(t)">{{ t }}</button>
-          }
-        </div>
+        <mat-form-field class="w-100" appearance="outline">
+          <mat-label>Tipos seleccionados</mat-label>
+          <mat-chip-grid #chipGridT aria-label="Seleccion de tipos de persona">
+            @for (t of selectedTipos; track t) {
+              <mat-chip-row (removed)="removeTipo(t)">
+                {{ t }}
+                <button matChipRemove [attr.aria-label]="'Quitar ' + t">
+                  <mat-icon>cancel</mat-icon>
+                </button>
+              </mat-chip-row>
+            }
+          </mat-chip-grid>
+          <input
+            placeholder="Buscar tipo..."
+            [(ngModel)]="query"
+            [matChipInputFor]="chipGridT"
+            [matAutocomplete]="autoTipo"
+          />
+          <mat-autocomplete #autoTipo="matAutocomplete" (optionSelected)="addTipo($event.option.value)">
+            @for (t of filteredTipos; track t) {
+              <mat-option [value]="t">{{ t }}</mat-option>
+            }
+          </mat-autocomplete>
+        </mat-form-field>
       } @else if (tipo === 'canton') {
         <mat-form-field class="w-100" appearance="outline">
           <mat-label>Cantones seleccionados</mat-label>
@@ -191,9 +210,6 @@ export interface CantonViewsModalResult {
     .badge-tipo { font-size: 10px; font-weight: 700; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 999px; padding: 1px 8px; }
     .saved-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
     .saved-chip { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
-    .tipos-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-    .tipo-chip { border: 1px solid #c7d2fe; background: #fff; color: #4338ca; border-radius: 999px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
-    .tipo-chip.sel { background: #4338ca; color: #fff; border-color: #4338ca; }
     `
   ]
 })
@@ -221,10 +237,21 @@ export class CantonViewsModalComponent {
     }));
   }
 
-  toggleTipoPersona(t: string): void {
-    this.selectedTipos = this.selectedTipos.includes(t)
-      ? this.selectedTipos.filter(x => x !== t)
-      : [...this.selectedTipos, t];
+  get filteredTipos(): string[] {
+    const q = (this.query || '').trim().toLowerCase();
+    return this.tiposDisponibles
+      .filter(t => !this.selectedTipos.includes(t))
+      .filter(t => !q || t.toLowerCase().includes(q));
+  }
+
+  addTipo(t: string): void {
+    if (!t || this.selectedTipos.includes(t)) return;
+    this.selectedTipos = [...this.selectedTipos, t];
+    this.query = '';
+  }
+
+  removeTipo(t: string): void {
+    this.selectedTipos = this.selectedTipos.filter(x => x !== t);
   }
 
   setTipo(t: VistaTipo): void {

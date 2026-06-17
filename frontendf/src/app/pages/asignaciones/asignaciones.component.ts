@@ -1229,6 +1229,45 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Tras crear una asignación, abre "Aplicar secuencia" para esa fila (igual que sacafranco).
+  private openAsignacionSequenceModal(asig: any): void {
+    if (!asig?.id) return;
+    const weekStart = (this.weeksForMonth && this.weeksForMonth.length)
+      ? this.weeksForMonth[0]
+      : this.formatDateLocal(new Date(this.anio, this.mes - 1, 1));
+    if (!weekStart) return;
+    const startDefault = this.formatDateLocal(new Date(this.anio, this.mes - 1, 1));
+    const endDefault = this.formatDateLocal(new Date(this.anio, this.mes, 0));
+    const row = { type: 'asignacion', asig } as any;
+    const calRow = this.getCalendarRow(row, weekStart);
+    const ref = this.dialog.open(AsignacionCalendarioRangeModalComponent, {
+      width: '420px',
+      data: {
+        start: startDefault,
+        end: endDefault,
+        seq: '',
+        isSacafranco: false,
+        weekStart,
+        row: calRow
+      }
+    });
+
+    ref.afterClosed().subscribe((result?: AsignacionRangeModalResult) => {
+      if (!result) return;
+      const { start, end, seq } = result;
+      if (!start || !end || !seq) return;
+      const startDate = new Date(start + 'T00:00:00');
+      const endDate = new Date(end + 'T00:00:00');
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
+      const tokens = this.parseSequence(seq, false);
+      if (!tokens.length) return;
+      const anchor = this.parseWeekStart(weekStart);
+      const backendMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
+      this.applyRangeToBackend(row, backendMap, false);
+      this.applyRangeToCalendarData(row, backendMap);
+    });
+  }
+
   // Menú desplegable del botón único "Fila" (Asignación / Sacafranco).
   showFilaMenu = false;
 
@@ -2321,13 +2360,17 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     } as any;
     this.isSaving = true;
     this.asignacionService.crearAsignacion(payload).subscribe({
-      next: () => {
+      next: (created: any) => {
         Swal.fire({ icon: 'success', title: reasignar ? 'Persona reasignada' : 'Asignación creada', timer: 1200, showConfirmButton: false });
         this.cargarAsignaciones();
         this.resetAsignacionState();
         this.loadCalendarWeeks();
         this.asignacionService.notifyAsignacionesChanged();
         this.isSaving = false;
+        // Al crear (no reasignar), abrir "Aplicar secuencia" para la nueva asignación.
+        if (!reasignar && created?.id) {
+          this.openAsignacionSequenceModal(created);
+        }
       },
       error: err => {
         console.error(err);

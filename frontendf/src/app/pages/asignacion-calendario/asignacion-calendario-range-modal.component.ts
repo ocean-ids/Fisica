@@ -52,9 +52,10 @@ export class AsignacionCalendarioRangeModalComponent {
     @Inject(MAT_DIALOG_DATA) public data: AsignacionRangeModalData
   ) {
     this.start = data.start || '';
-    this.end = data.end || '';
     this.seq = data.seq || '';
-    this.noEnd = !this.end;
+    // "Sin fecha fin" marcado por defecto: arranca sin fecha de fin.
+    this.noEnd = true;
+    this.end = '';
     this.rowTitle = this.buildRowTitle(data?.row);
     this.refreshPreview();
   }
