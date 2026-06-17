@@ -1,3 +1,4 @@
+"""Vistas de autenticación: login/logout JWT, perfil de usuario y reseteo de contraseña."""
 from django.contrib.auth import authenticate
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt

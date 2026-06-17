@@ -1,3 +1,4 @@
+"""Importación masiva de clientes desde archivo Excel."""
 from datetime import date, datetime
 
 from django.http import JsonResponse

@@ -3,35 +3,68 @@
 ## Requisitos
 
 - Python 3.12+
-- PostgreSQL (o contenedor `db` del `docker-compose.yml`)
-- Entorno virtual en `backend/fisicaBack/venv`
+- PostgreSQL 17 (local) **o** el contenedor `db` del `docker-compose.yml`
+- Extensión `unaccent` disponible en Postgres (se habilita por migración)
 
-## Variables de entorno
+## 1. Clonar y crear entorno virtual
 
-Usar la plantilla `.env.example` en la raiz del repo.
+```bash
+git clone <repo>
+cd <repo>/backend/fisicaBack
+python -m venv venv
+# Linux/macOS:
+source venv/bin/activate
+# Windows PowerShell:
+# .\venv\Scripts\Activate.ps1
+```
 
-1. Copiar `.env.example` a `.env`.
-2. Completar secretos reales (`SECRET_KEY`, credenciales DB, correo).
+## 2. Dependencias
 
-## Arranque local (Windows PowerShell)
+```bash
+pip install -r requirements.txt        # runtime
+pip install -r requirements-dev.txt    # pruebas (pytest, pytest-django)
+```
 
-```powershell
-Set-Location "c:/Users/bryan/Desktop/Fisica/backend/fisicaBack"
-( Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned )
-& .\venv\Scripts\Activate.ps1
+## 3. Variables de entorno
+
+La plantilla está en `backend/fisicaBack/.env.example`.
+
+```bash
+cp .env.example .env
+# completar secretos reales: SECRET_KEY, DB_*, correo, etc.
+```
+
+## 4. Base de datos y arranque
+
+```bash
 python manage.py migrate
+python manage.py crear_grupos          # crea roles ADMINISTRADOR/OPERADOR/CONSULTA
+python manage.py createsuperuser       # usuario inicial
 python manage.py runserver
 ```
 
-## Pruebas minimas recomendadas
+## 5. Pruebas
 
-```powershell
-Set-Location "c:/Users/bryan/Desktop/Fisica/backend/fisicaBack"
-c:/Users/bryan/Desktop/Fisica/backend/fisicaBack/venv/Scripts/python.exe manage.py test CoreFisica.tests.ApiSmokeAuthTests CoreFisica.tests.UbicacionPermissionsTests CoreFisica.tests.CriticalPermissionsTests CoreFisica.tests.AsignacionCrudIntegrationTests CoreFisica.tests.ConsolidadoIntegrationTests -v 2
+```bash
+pytest                 # usa pytest.ini (DJANGO_SETTINGS_MODULE ya configurado)
+# o con Django:
+python manage.py test CoreFisica
 ```
 
-## Comprobaciones basicas
+## Comprobaciones básicas
 
 - `GET /api/docs/` abre Swagger.
 - `POST /api/login/` retorna `access` y `refresh`.
-- Endpoints protegidos retornan `403` sin permisos granulares.
+- Endpoints protegidos retornan `403` sin los permisos correspondientes.
+
+## Levantar todo con Docker (alternativa)
+
+Desde la raíz del repo, con un `.env` válido:
+
+```bash
+docker compose up -d
+docker compose exec backend python manage.py migrate --noinput
+docker compose exec backend python manage.py crear_grupos
+```
+
+Ver también: `docs/roles-permisos.md`, `docs/backup-restore.md`, `docs/deploy-checklist.md`.

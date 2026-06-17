@@ -1,3 +1,4 @@
+"""Vistas del Reporte de Asistencia: armado por día (rutea D/N/F del calendario), edición, historial y export Excel/PDF."""
 from django.http import JsonResponse
 from django.db.models import Q, Subquery
 from django.http import HttpResponse

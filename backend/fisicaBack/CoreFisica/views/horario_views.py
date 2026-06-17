@@ -1,3 +1,4 @@
+"""Vistas de Horarios: CRUD de horarios (hora de ingreso/salida) reutilizables por los puestos."""
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated

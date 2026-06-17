@@ -20,10 +20,11 @@ venv/
 env/
 ENV/
 
-# Variables de entorno
+# Variables de entorno (NO subir secretos, pero SÍ el ejemplo)
 .env
 .env.local
 .env.*
+!.env.example
 
 # IDEs
 .vscode/
@@ -36,6 +37,7 @@ ENV/
 .DS_Store
 Thumbs.db
 
-*
-!.gitignore
-!README.md
+# Datos locales / artefactos
+*.sqlite3
+backups/*.sql
+backups/*.dump

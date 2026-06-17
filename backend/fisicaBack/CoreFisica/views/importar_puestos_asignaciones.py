@@ -1,3 +1,4 @@
+"""Importación masiva de puestos y asignaciones desde archivo Excel."""
 from datetime import date, datetime, time, timedelta
 import logging
 import re

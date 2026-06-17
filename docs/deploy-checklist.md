@@ -33,3 +33,17 @@ Si hay error critico:
 1. Volver a imagen backend anterior.
 2. `docker compose up -d backend`.
 3. Revisar logs y estado de migraciones.
+
+## Backup y restauracion
+
+Scripts en `scripts/` (ver `docs/backup-restore.md` para el detalle):
+
+```bash
+cd /opt/fisica
+sh scripts/backup.sh                              # backups/sf_bd_<fecha>.sql.gz (+ media)
+sh scripts/restore.sh backups/sf_bd_<fecha>.sql.gz # restaura (sobrescribe sf_bd)
+```
+
+- **Frecuencia recomendada:** diaria (cron 02:00). Retencion: ultimos 14.
+- **Antes de cada deploy:** ejecutar `sh scripts/backup.sh`.
+- **Probado:** dump + restore verificados (conteo de filas identico origen/restaurado).

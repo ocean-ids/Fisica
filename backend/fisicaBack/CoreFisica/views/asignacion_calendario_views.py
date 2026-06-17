@@ -1,3 +1,4 @@
+"""Vistas del módulo asignacion_calendario_views."""
 from ..models import AsignacionCalendario
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated

@@ -1,3 +1,4 @@
+"""Vistas del Consolidado: armado a partir del reporte de asistencia, resumen de estados y export Excel/PDF."""
 from django.http import JsonResponse, HttpResponse
 from django.utils.dateparse import parse_date
 from django.utils import timezone

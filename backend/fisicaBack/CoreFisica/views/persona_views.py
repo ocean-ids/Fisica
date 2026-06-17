@@ -1,3 +1,4 @@
+"""Vistas de Personas: CRUD, alta/baja, import/export Excel y gestión de sacafrancos."""
 from django.http import JsonResponse, HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response

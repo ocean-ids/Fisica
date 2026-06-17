@@ -1,3 +1,4 @@
+"""Vistas de Asignaciones: listado paginado por cantón/vista, creación/edición/reasignación, filas sacafranco, orden y export Excel."""
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response

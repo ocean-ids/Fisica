@@ -1,3 +1,4 @@
+"""Vistas de Puestos: CRUD, listados por cliente/instalación y secuencia de horario (rotación D/N/F)."""
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import  IsAuthenticated

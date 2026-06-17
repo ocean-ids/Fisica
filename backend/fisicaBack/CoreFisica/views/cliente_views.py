@@ -1,3 +1,4 @@
+"""Vistas de Clientes: CRUD y búsqueda (insensible a acentos) de clientes."""
 from django.http import JsonResponse
 from django.db.models import Q
 from django.db import IntegrityError

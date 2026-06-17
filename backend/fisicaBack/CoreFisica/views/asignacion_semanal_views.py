@@ -1,3 +1,4 @@
+"""Vistas del calendario semanal: tokens D/N/F por día por asignación y por fila sacafranco; armado mensual y autocreación."""
 from ..models import (
     AsignacionSemanal,
     SacafrancoFilaSemanal,
