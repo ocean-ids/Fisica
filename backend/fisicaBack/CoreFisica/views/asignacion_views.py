@@ -633,6 +633,12 @@ def asignar_servicio(request):
     data = request.data.copy()
     data['recurring'] = True
     data['end_date'] = None
+    # El horario es opcional (proviene del puesto). Evitar enviar pk inválido (0/'').
+    try:
+        if str(data.get('horario', '')).strip() in ('', '0', 'None', 'null'):
+            data.pop('horario', None)
+    except Exception:
+        pass
 
     reasignar = str(data.get('reasignar', '')).strip().lower() in ('1', 'true', 'yes', 'si', 'sí')
     if 'reasignar' in data:

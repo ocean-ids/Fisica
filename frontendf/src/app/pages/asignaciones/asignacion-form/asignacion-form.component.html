@@ -112,18 +112,6 @@
       </mat-form-field>
     </div>
 
-    <div class="col-md-6 mb-3">
-      <mat-form-field class="w-100">
-        <mat-label>Horario (del puesto)</mat-label>
-        <mat-select [(ngModel)]="asignacion.horario" [ngModelOptions]="{standalone:true}" [disabled]="puestoTieneHorario()">
-          <mat-option [value]="0">Seleccione</mat-option>
-          <mat-option *ngFor="let h of horarios" [value]="h.id">
-            {{ h.hora_ingreso | slice:0:5 }} - {{ h.hora_salida | slice:0:5 }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-    </div>
-
   </div>
 </mat-dialog-content>
 

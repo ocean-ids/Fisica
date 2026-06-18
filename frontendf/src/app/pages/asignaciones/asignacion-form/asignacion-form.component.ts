@@ -403,11 +403,11 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   isFormValid(): boolean {
+    // El horario ya no se pide en el modal: proviene del puesto (PuestoHorario).
     return !!this.clienteSeleccionado
       && !!this.instalacionSeleccionada
       && !!this.asignacion.puesto
       && !!this.asignacion.persona
-      && !!this.asignacion.horario
       && !!this.asignacion.start_date;
     }
 

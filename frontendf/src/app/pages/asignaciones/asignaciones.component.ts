@@ -354,6 +354,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   monthValue: string = '';
   dateValue: string = '';   // fecha (YYYY-MM-DD) mostrada en el selector (día/mes/año)
   filtroTexto: string = '';
+  highlightedAsigId: number | null = null;   // fila resaltada tras una búsqueda
+  private highlightTimer: any = null;
   private filterSub?: Subscription;
   private abrirSub?: Subscription;
   // IDs de personas con asignación activa este mes en CUALQUIER cantón (no solo el cargado).
@@ -430,6 +432,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.filterSub?.unsubscribe();
     this.abrirSub?.unsubscribe();
+    if (this.highlightTimer) clearTimeout(this.highlightTimer);
   }
 
   // Abre el modal de edición de un puesto vacante (desde notificaciones): cambia al cantón y lo abre.
@@ -486,8 +489,52 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   //onFiltroChange se encarga de manejar el cambio en el filtro de texto, recargando las asignaciones para reflejar el nuevo filtro aplicado y actualizando los calendarios para mostrar la información filtrada correctamente
+  // La búsqueda NO filtra (no oculta los demás registros): solo lleva el scroll
+  // hasta el primer registro que coincide y lo resalta, para ubicarlo y arrastrarlo.
   onFiltroChange(): void {
-    this.cargarAsignaciones();
+    const term = (this.filtroTexto || '').trim().toLowerCase();
+    if (!term) {
+      this.highlightedAsigId = null;
+      if (this.highlightTimer) clearTimeout(this.highlightTimer);
+      return;
+    }
+    this.scrollALocalMatch(term);
+  }
+
+  // ¿La asignación coincide con el texto buscado? (cliente, persona, puesto, nominativo)
+  private asigCoincide(a: any, term: string): boolean {
+    const campos = [
+      a?.cliente_detalle?.nombre_comercial,
+      a?.puesto_detalle?.nombre,
+      a?.puesto_detalle?.resumen,
+      a?.persona_detalle?.nombres,
+      a?.persona_detalle?.apellidos,
+      a?.persona_detalle?.cedula,
+      this.getCodigoInstalacionAsignacion(a),
+    ];
+    return campos.some(c => (c || '').toString().toLowerCase().includes(term));
+  }
+
+  // Busca en lo ya cargado, hace scroll suave hasta la fila y la resalta.
+  private scrollALocalMatch(term: string): void {
+    const filas = this.displayRows || [];
+    const match = filas.find(r => r.type === 'asignacion' && r.asig && this.asigCoincide(r.asig, term));
+    if (!match) {
+      this.highlightedAsigId = null;
+      return;
+    }
+    const id = (match as any).asig.id as number;
+    setTimeout(() => {
+      const el = document.getElementById('asig-row-' + id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      this.highlightedAsigId = id;
+      if (this.highlightTimer) clearTimeout(this.highlightTimer);
+      this.highlightTimer = setTimeout(() => {
+        this.highlightedAsigId = null;
+      }, 3000);
+    }, 60);
   }
 
   setProvinciaFilter(key: string, label?: string): void {
@@ -701,12 +748,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const clienteIdsCsv = (activeView?.clienteIds || []).join(',');
     const selectedViewCantons = this.getSelectedViewCantonIds();
     const mixedView = !isClienteView && !isTipoView && selectedViewCantons.length >= 2;
-    const hasFilter = !!(this.filtroTexto && this.filtroTexto.trim());
-    // Vista plana (no paginar por cantón): cantones (2+), empresa, tipo de persona, o al BUSCAR.
-    const flatView = isClienteView || isTipoView || mixedView || hasFilter;
-    if (hasFilter) {
-      params.q = this.filtroTexto.trim();
-    }
+    // La BÚSQUEDA ya no filtra el servidor: se resuelve localmente (scroll + resaltado)
+    // para no ocultar los demás registros y poder arrastrarlos.
+    // Vista plana (no paginar por cantón): cantones (2+), empresa o tipo de persona.
+    const flatView = isClienteView || isTipoView || mixedView;
     params.lite = true;
 
     if (isClienteView) {
@@ -715,8 +760,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       params.tipos = tiposCsv;
     } else if (mixedView) {
       params.canton_ids = selectedViewCantons.join(',');
-    } else if (hasFilter) {
-      // Búsqueda global: el backend devuelve todas las coincidencias en lista plana.
     } else {
       params.canton_page = this.provinciaPage;
       const savedCantonId = localStorage.getItem('asig_canton_id');
@@ -756,11 +799,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
             : mixedView
               ? { canton_ids: selectedViewCantons.join(',') }
               : (cantonId != null ? { canton_id: cantonId } : {});
-          // Pasar el texto de búsqueda también a sacafranco para que no aparezcan
-          // siempre al filtrar por cliente/instalación.
-          if (this.filtroTexto && this.filtroTexto.trim()) {
-            sacafrancoParams.q = this.filtroTexto.trim();
-          }
+          // La búsqueda es local (scroll + resaltado), no se filtra el sacafranco.
           return this.asignacionService
             .obtenerSacafrancoFilas(this.mes, this.anio, sacafrancoParams)
             .pipe(
@@ -779,10 +818,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
             this.provinciaPage = 1;
             this.activeProvinciaId = null;
             this.selectedCantonId = isClienteView ? null : (selectedViewCantons[0] || null);
-            // Al buscar, mover el selector a la vista/cantón donde realmente vive el cliente.
-            if (hasFilter) {
-              this.actualizarSelectorPorBusqueda();
-            }
           } else {
             this.provinciaTotal = asignaciones?.cantonTotal ?? asignaciones?.provinciaTotal ?? this.provinciaTotal;
             this.provinciaPage = asignaciones?.cantonPage ?? asignaciones?.provinciaPage ?? this.provinciaPage;
@@ -808,6 +843,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           this.updateCalendarOrder();
           this.loadCalendarWeeks();
 
+          // Si había un texto de búsqueda activo, reubicar el scroll al registro.
+          if (this.filtroTexto && this.filtroTexto.trim()) {
+            this.scrollALocalMatch(this.filtroTexto.trim().toLowerCase());
+          }
+
           // Si se solicitó abrir un puesto vacante, abrir su modal de edición
           if (this.pendingOpenAsignacionId != null) {
             const target = (this.asignaciones || []).find(a => a.id === this.pendingOpenAsignacionId);
@@ -819,42 +859,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         },
         error: err => console.error('Error al cargar asignaciones/sacafranco', err)
       });
-  }
-
-  /**
-   * Tras una búsqueda (vista plana), actualiza el selector de cantón/vista para que
-   * refleje dónde vive el cliente de los resultados: prioriza su vista de empresa;
-   * si no tiene, y todos comparten un mismo cantón, selecciona ese cantón.
-   */
-  private actualizarSelectorPorBusqueda(): void {
-    const clienteIds = Array.from(new Set(
-      (this.asignaciones || [])
-        .map((a: any) => a?.cliente_detalle?.id ?? a?.cliente)
-        .filter((x: any) => x != null)
-    )) as number[];
-    if (!clienteIds.length) { return; }
-
-    // 1) ¿Pertenecen todos a una vista de empresa? -> seleccionar esa vista.
-    const empresaView = (this.cantonViews || []).find(v =>
-      v.tipo === 'cliente' &&
-      (v.clienteIds || []).length > 0 &&
-      clienteIds.every(id => (v.clienteIds || []).includes(id))
-    );
-    if (empresaView) {
-      this.selectedCantonKey = `view:${empresaView.id}`;
-      return;
-    }
-
-    // 2) Si comparten un solo cantón, seleccionar ese cantón.
-    const cantonIds = Array.from(new Set(
-      (this.asignaciones || [])
-        .map((a: any) => a?.instalacion_detalle?.canton_id)
-        .filter((x: any) => x != null)
-    )) as number[];
-    if (cantonIds.length === 1) {
-      this.selectedCantonId = cantonIds[0];
-      this.selectedCantonKey = `canton:${cantonIds[0]}`;
-    }
   }
 
   private loadCalendarWeeks(): void {
