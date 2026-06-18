@@ -131,8 +131,9 @@ class Puesto(models.Model):
     def save(self, *args, **kwargs):
         
         try:
-            cantidad = int(self.cantidad_puestos) if self.cantidad_puestos is not None else 0
-            
+            # El resumen representa UN puesto (registro), no su capacidad de cupos.
+            cantidad = 1
+
             horas = 0
             dias_code = ''
             try:
@@ -212,7 +213,8 @@ class Puesto(models.Model):
                         turno_letter = 'M'
             except Exception:
                 turno_letter = 'M'
-            cantidad = int(self.cantidad_puestos) if self.cantidad_puestos is not None else 0
+            # El resumen representa UN puesto (registro), no su capacidad de cupos.
+            cantidad = 1
             self.resumen = f"{cantidad} {_fmt_horas(horas)}H{turno_letter}{dias_code}"
         except Exception:
             return

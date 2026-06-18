@@ -23,6 +23,7 @@ export interface AsignacionFormData {
   clienteSeleccionado: number | null;
   instalacionSeleccionada: number | null;
   occupiedPuestoIds?: number[];
+  occupiedCounts?: { [puestoId: number]: number };
   assignedPersonaIds?: number[];
 }
 
@@ -66,6 +67,7 @@ export class AsignacionFormComponent implements OnInit {
   puestoSeleccionado: Puesto | null = null;
   puestosFiltrados: Puesto[] = [];
   occupiedPuestoIds = new Set<number>();
+  occupiedCounts: { [puestoId: number]: number } = {};
   assignedPersonaIds = new Set<number>();
 
   personaSeleccionada: Persona | null = null;
@@ -97,6 +99,7 @@ export class AsignacionFormComponent implements OnInit {
         .map(id => Number(id))
         .filter(id => Number.isFinite(id) && id > 0)
     );
+    this.occupiedCounts = data.occupiedCounts || {};
     this.assignedPersonaIds = new Set(
       (data.assignedPersonaIds || [])
         .map(id => Number(id))
@@ -199,6 +202,23 @@ export class AsignacionFormComponent implements OnInit {
 
   isPuestoOcupado(puestoId: number | null | undefined): boolean {
     return !!puestoId && this.occupiedPuestoIds.has(Number(puestoId));
+  }
+
+  // Capacidad (cupos) del puesto.
+  getPuestoCapacidad(puesto: Puesto | null | undefined): number {
+    const cap = Number((puesto as any)?.cantidad_puestos);
+    return Number.isFinite(cap) && cap > 0 ? cap : 1;
+  }
+
+  // Cupos ya ocupados de un puesto en el mes.
+  getPuestoOcupadas(puestoId: number | null | undefined): number {
+    const n = Number(this.occupiedCounts?.[Number(puestoId)]);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }
+
+  // Texto "(ocupadas/capacidad)" para mostrar junto al ícono.
+  getPuestoCupoLabel(puesto: Puesto | null | undefined): string {
+    return `${this.getPuestoOcupadas(puesto?.id)}/${this.getPuestoCapacidad(puesto)}`;
   }
 
   seleccionarPuesto(puesto: Puesto): void {

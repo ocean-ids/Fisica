@@ -23,15 +23,28 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 18px;
+	gap: 2px;
 	height: 18px;
-	border-radius: 4px;
+	padding: 0 6px;
+	border-radius: 9px;
 	background-color: #cfd8e6;
 	color: #26364f;
 	font-size: 12px;
 	font-weight: 700;
 	line-height: 1;
 	margin-left: 8px;
+	white-space: nowrap;
+}
+
+::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option .puesto-ocupado-check .puesto-cupo-num {
+	font-size: 11px;
+	font-weight: 700;
+}
+
+/* Cupo lleno: badge en rojo para distinguir el puesto sin cupos disponibles. */
+::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option .puesto-ocupado-check.puesto-cupo-lleno {
+	background-color: #f3c5c5;
+	color: #8a1f1f;
 }
 
 ::ng-deep .mat-mdc-autocomplete-panel .mat-mdc-option .puesto-ocupado-check .mat-icon {

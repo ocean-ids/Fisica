@@ -210,7 +210,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           return (isNaN(numA) ? 0 : numA) - (isNaN(numB) ? 0 : numB);
         });
 
-      const cant = puesto.cantidad_puestos ? `${puesto.cantidad_puestos}` : '';
+      // El resumen representa UN puesto (registro), no su capacidad de cupos.
+      const cant = '1';
       const body = parts.join('\n');
       if (cant && body) return `${cant} ${body}`;
       if (cant) return `${cant}`;
@@ -2033,6 +2034,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         clienteSeleccionado: this.clienteSeleccionado,
         instalacionSeleccionada: this.instalacionSeleccionada,
         occupiedPuestoIds: this.getOccupiedPuestoIds(),
+        occupiedCounts: this.getOccupiedPuestoCounts(),
         assignedPersonaIds: this.getAssignedPersonaIds()
       }
     });
@@ -2149,6 +2151,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         clienteSeleccionado: this.clienteSeleccionado,
         instalacionSeleccionada: this.instalacionSeleccionada,
         occupiedPuestoIds: this.getOccupiedPuestoIds(asignacion.id),
+        occupiedCounts: this.getOccupiedPuestoCounts(asignacion.id),
         assignedPersonaIds: this.getAssignedPersonaIds(asignacion.id)
       }
     });
@@ -2215,6 +2218,21 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       if (ocupadas >= cap) ids.push(pid);
     }
     return ids;
+  }
+
+  // Cuántos cupos OCUPADOS tiene cada puesto en el mes (para mostrar "(3/4)").
+  private getOccupiedPuestoCounts(excludeAsignacionId?: number): { [puestoId: number]: number } {
+    const list = Array.isArray(this.asignaciones) ? this.asignaciones : [];
+    const counts: { [puestoId: number]: number } = {};
+    for (const a of list) {
+      const pid = Number((a as any)?.puesto);
+      if (!Number.isFinite(pid) || pid <= 0) continue;
+      if (excludeAsignacionId && a.id === excludeAsignacionId) continue;
+      if ((a as any)?.persona === undefined || (a as any)?.persona === null || (a as any)?.persona === 0) continue;
+      if (a?.estado && String(a.estado).toUpperCase() !== 'ACTIVO') continue;
+      counts[pid] = (counts[pid] || 0) + 1;
+    }
+    return counts;
   }
 
   // Muestra una descripción del puesto vacante (sin persona) y permite reasignar.

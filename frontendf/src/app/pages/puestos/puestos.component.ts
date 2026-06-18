@@ -284,7 +284,11 @@ export class PuestosComponent implements OnInit {
   // Mismo resumen que en Asignaciones: multi-grupo, con "H" tras las horas y un grupo por línea.
   getResumenPuestoCompacto(puesto: any): string {
     try {
-      if (!puesto || !puesto.horarios || !puesto.horarios.length) return puesto?.resumen || '-';
+      // Fallback: el resumen representa UN puesto, así que el número inicial siempre es 1.
+      if (!puesto || !puesto.horarios || !puesto.horarios.length) {
+        const r = puesto?.resumen;
+        return r ? r.replace(/^\s*\d+/, '1') : '-';
+      }
       const dayMap: any = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D' };
       const groups: Record<string, { horas: number; turno: string; dias: number[] }> = {};
       puesto.horarios.forEach((h: any) => {
@@ -314,13 +318,15 @@ export class PuestosComponent implements OnInit {
           const numB = parseInt(b, 10);
           return (isNaN(numA) ? 0 : numA) - (isNaN(numB) ? 0 : numB);
         });
-      const cant = puesto.cantidad_puestos ? `${puesto.cantidad_puestos}` : '';
+      // El resumen representa UN puesto (registro), no su capacidad de cupos.
+      const cant = '1';
       const body = parts.join('\n');
       if (cant && body) return `${cant} ${body}`;
       if (cant) return `${cant}`;
       return body || '-';
     } catch (e) {
-      return puesto?.resumen || '-';
+      const r = puesto?.resumen;
+      return r ? r.replace(/^\s*\d+/, '1') : '-';
     }
   }
 
