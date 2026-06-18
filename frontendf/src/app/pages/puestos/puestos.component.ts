@@ -311,7 +311,7 @@ export class PuestosComponent implements OnInit {
           const last = ordered.length ? (dayMap[ordered[ordered.length - 1]] || '') : '';
           const diasStr = ordered.length <= 1 ? first : `${first}${last}`;
           const base = `${g.horas}H${letter(g.turno)}`.trim();
-          return diasStr ? `${base} ${diasStr}` : base;
+          return diasStr ? `${base}${diasStr}` : base;
         })
         .sort((a, b) => {
           const numA = parseInt(a, 10);
