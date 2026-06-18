@@ -15,6 +15,18 @@
       <div class="input-group w-100" style="max-width: 600px;">
         <span class="input-group-text"><i class="bi bi-search"></i></span>
         <input class="form-control" type="search" placeholder="Buscar..." [(ngModel)]="searchText" (input)="onSearchChange()"/>
+        <!-- Navegación entre coincidencias (solo si hay más de una). -->
+        <ng-container *ngIf="mostrarMatchNav">
+          <span class="input-group-text match-nav-count">{{ matchIndex + 1 }}/{{ matchCount }}</span>
+          <button class="btn btn-outline-secondary match-nav-btn" type="button"
+                  (click)="coincidenciaAnterior()" title="Coincidencia anterior" aria-label="Coincidencia anterior">
+            <i class="bi bi-chevron-up"></i>
+          </button>
+          <button class="btn btn-outline-secondary match-nav-btn" type="button"
+                  (click)="coincidenciaSiguiente()" title="Siguiente coincidencia" aria-label="Siguiente coincidencia">
+            <i class="bi bi-chevron-down"></i>
+          </button>
+        </ng-container>
       </div>
     </div>
 

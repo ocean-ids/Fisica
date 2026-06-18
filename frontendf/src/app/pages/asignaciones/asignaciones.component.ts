@@ -355,9 +355,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   dateValue: string = '';   // fecha (YYYY-MM-DD) mostrada en el selector (día/mes/año)
   filtroTexto: string = '';
   highlightedAsigId: number | null = null;   // fila resaltada tras una búsqueda
+  matchIds: number[] = [];                    // ids de las coincidencias de la búsqueda
+  currentMatchIndex: number = 0;              // índice de la coincidencia actual
   private highlightTimer: any = null;
   private filterSub?: Subscription;
   private abrirSub?: Subscription;
+  private matchNavSub?: Subscription;
   // IDs de personas con asignación activa este mes en CUALQUIER cantón (no solo el cargado).
   private personasAsignadasGlobal: number[] = [];
   // Cupos ocupados por puesto en el mes (todos los cantones), para el contador del modal.
@@ -429,11 +432,21 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.abrirSub = this.asignacionService.abrirAsignacion$.subscribe(({ id, cantonId }) => {
       this.abrirAsignacionVacante(id, cantonId);
     });
+
+    // Flechas del buscador: navegar entre coincidencias.
+    this.matchNavSub = this.globalFilter.matchNavAction$.subscribe(action => {
+      if (!this.router.url.startsWith('/dashboard/asignaciones')) return;
+      if (action === 'next') this.irSiguienteCoincidencia();
+      else this.irAnteriorCoincidencia();
+    });
   }
 
   ngOnDestroy(): void {
     this.filterSub?.unsubscribe();
     this.abrirSub?.unsubscribe();
+    this.matchNavSub?.unsubscribe();
+    // Limpiar el estado de coincidencias del buscador al salir de la página.
+    this.globalFilter.setMatchNav(0, 0, '/dashboard/asignaciones');
     if (this.highlightTimer) clearTimeout(this.highlightTimer);
   }
 
@@ -497,10 +510,18 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const term = (this.filtroTexto || '').trim().toLowerCase();
     if (!term) {
       this.highlightedAsigId = null;
+      this.matchIds = [];
+      this.currentMatchIndex = 0;
+      this.publicarMatchNav();
       if (this.highlightTimer) clearTimeout(this.highlightTimer);
       return;
     }
     this.scrollALocalMatch(term);
+  }
+
+  // Publica el estado de coincidencias al buscador global (flechas dentro del input).
+  private publicarMatchNav(): void {
+    this.globalFilter.setMatchNav(this.matchIds.length, this.currentMatchIndex, '/dashboard/asignaciones');
   }
 
   // ¿La asignación coincide con el texto buscado? (cliente, persona, puesto, nominativo)
@@ -517,15 +538,26 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return campos.some(c => (c || '').toString().toLowerCase().includes(term));
   }
 
-  // Busca en lo ya cargado, hace scroll suave hasta la fila y la resalta.
+  // Busca en lo ya cargado TODAS las coincidencias, guarda sus ids y va a la primera.
   private scrollALocalMatch(term: string): void {
     const filas = this.displayRows || [];
-    const match = filas.find(r => r.type === 'asignacion' && r.asig && this.asigCoincide(r.asig, term));
-    if (!match) {
+    this.matchIds = filas
+      .filter(r => r.type === 'asignacion' && (r as any).asig && this.asigCoincide((r as any).asig, term))
+      .map(r => (r as any).asig.id as number)
+      .filter(id => id != null);
+    if (!this.matchIds.length) {
       this.highlightedAsigId = null;
+      this.currentMatchIndex = 0;
+      this.publicarMatchNav();
       return;
     }
-    const id = (match as any).asig.id as number;
+    this.currentMatchIndex = 0;
+    this.publicarMatchNav();
+    this.scrollAId(this.matchIds[0]);
+  }
+
+  // Hace scroll suave a la fila indicada y la resalta unos segundos.
+  private scrollAId(id: number): void {
     setTimeout(() => {
       const el = document.getElementById('asig-row-' + id);
       if (el) {
@@ -537,6 +569,25 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         this.highlightedAsigId = null;
       }, 3000);
     }, 60);
+  }
+
+  // Navegación entre coincidencias (flechas del buscador).
+  get tieneVariasCoincidencias(): boolean {
+    return (this.matchIds?.length || 0) > 1;
+  }
+
+  irSiguienteCoincidencia(): void {
+    if (!this.matchIds.length) return;
+    this.currentMatchIndex = (this.currentMatchIndex + 1) % this.matchIds.length;
+    this.publicarMatchNav();
+    this.scrollAId(this.matchIds[this.currentMatchIndex]);
+  }
+
+  irAnteriorCoincidencia(): void {
+    if (!this.matchIds.length) return;
+    this.currentMatchIndex = (this.currentMatchIndex - 1 + this.matchIds.length) % this.matchIds.length;
+    this.publicarMatchNav();
+    this.scrollAId(this.matchIds[this.currentMatchIndex]);
   }
 
   setProvinciaFilter(key: string, label?: string): void {
