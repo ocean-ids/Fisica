@@ -133,7 +133,7 @@
             </thead>
             <tbody cdkDropList [cdkDropListData]="displayRows" cdkDropListLockAxis="y" cdkDropListOrientation="vertical" [cdkDropListAutoScrollDisabled]="false" (cdkDropListDropped)="dropAsignaciones($event)">
               <ng-container *ngFor="let row of displayRows; trackBy: trackByDisplayRow">
-                <tr 
+                <tr
                   *ngIf="row.type === 'asignacion' && row.asig.persona_detalle?.is_active !== false"
                   cdkDrag
                   [cdkDragData]="row"
@@ -141,6 +141,8 @@
                   cdkDragPreviewContainer="parent"
                   (cdkDragStarted)="onDragStarted(row.asig)"
                   (cdkDragEnded)="onDragEnded()"
+                  [attr.id]="'asig-row-' + row.asig.id"
+                  [class.row-busqueda-activa]="row.asig.id === highlightedAsigId"
                   class="text-center align-middle shared-row"
                   style="height: 70px;">
                   <td *ngIf="!columnaOculta('horario')" class="align-middle overflow-hidden" style="height: 70px;">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>

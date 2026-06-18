@@ -403,7 +403,9 @@ class Asignacion(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE)
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE)
-    horario = models.ForeignKey(Horario, on_delete=models.CASCADE)
+    # El horario real proviene del puesto (PuestoHorario). Este FK queda como
+    # fallback opcional: ya no es obligatorio al crear una asignación.
+    horario = models.ForeignKey(Horario, on_delete=models.SET_NULL, null=True, blank=True)
     patronAsignacion = models.ForeignKey(
         PatronAsignacion,
         on_delete=models.SET_NULL,
