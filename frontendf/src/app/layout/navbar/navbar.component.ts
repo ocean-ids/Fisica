@@ -31,6 +31,11 @@ export class NavbarComponent implements OnInit {
   puedeVerAsignaciones = false;
   private vacantesCargando = false;
 
+  // Navegación de coincidencias dentro del buscador.
+  matchCount = 0;
+  matchIndex = 0;
+  private matchRoute = '';
+
   constructor(
     private authService: AuthService,
     private router: Router,
@@ -46,6 +51,19 @@ export class NavbarComponent implements OnInit {
       this.searchText = upper;
     }
     this.globalFilter.setQuery(this.searchText, this.router.url);
+  }
+
+  // Mostrar flechas solo cuando hay más de una coincidencia en la ruta actual.
+  get mostrarMatchNav(): boolean {
+    return this.matchCount > 1 && !!this.router.url && this.router.url.startsWith(this.matchRoute || '###');
+  }
+
+  coincidenciaSiguiente(): void {
+    this.globalFilter.emitMatchNavAction('next');
+  }
+
+  coincidenciaAnterior(): void {
+    this.globalFilter.emitMatchNavAction('prev');
   }
 
   ngOnInit(): void {
@@ -67,6 +85,13 @@ export class NavbarComponent implements OnInit {
       // Refrescar el contador cuando se crean/editan/eliminan asignaciones
       this.asignacionService.asignacionesChanged$.subscribe(() => this.cargarVacantesCount());
     }
+
+    // Estado de coincidencias publicado por la página activa (ej. Asignaciones).
+    this.globalFilter.matchNav$.subscribe(nav => {
+      this.matchCount = nav?.count || 0;
+      this.matchIndex = nav?.index || 0;
+      this.matchRoute = nav?.route || '';
+    });
   }
 
   private getMesAnio(): { mes: number; anio: number } {

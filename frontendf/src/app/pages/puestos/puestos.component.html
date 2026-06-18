@@ -97,9 +97,9 @@
                 <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
                   <div class="tooltip-content">
                     <div><strong>👮 Puesto:</strong> {{ puesto.cantidad_puestos }}</div>
-                    <div><strong>⏰ Resumen:</strong> {{ puesto.resumen || '-' }}</div>
-                    <div><strong>🌙 Turno:</strong> {{ puesto.turno_display }}</div>
-                    <div><strong>📅 Días:</strong> -</div>
+                    <div><strong>⏰ Horas:</strong> {{ getHoras(puesto) }}</div>
+                    <div><strong>🌙 Turno:</strong> {{ getTurnos(puesto) }}</div>
+                    <div><strong>📅 Días:</strong> {{ getDias(puesto) }}</div>
                   </div>
                 </mat-menu>
               </td>

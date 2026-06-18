@@ -1976,7 +1976,7 @@ def exportar_asignaciones_excel(request):
                 last = day_map.get(ordered[-1], '') if ordered else ''
                 dias_str = first if len(ordered) <= 1 else f"{first}{last}"
                 base = f"{g['horas']:g}H{turno_letter(g['turno'])}".strip()
-                parts.append(f"{base} {dias_str}".strip())
+                parts.append(f"{base}{dias_str}".strip())
 
             # Ordenar priorizando horas numéricas bajas primero (coincide con la vista)
             def sort_key(p: str):

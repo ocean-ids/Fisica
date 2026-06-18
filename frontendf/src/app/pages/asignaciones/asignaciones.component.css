@@ -4,6 +4,22 @@
   margin: 0;
 }
 
+/* Navegación entre coincidencias de la búsqueda. */
+.match-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  line-height: 1;
+}
+.match-nav-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #495057;
+  min-width: 34px;
+  text-align: center;
+}
+
 /* Fila resaltada al ubicar un resultado de búsqueda con scroll. */
 .row-busqueda-activa > td {
   background-color: #fff3cd !important;
