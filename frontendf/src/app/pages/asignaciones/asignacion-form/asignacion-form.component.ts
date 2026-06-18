@@ -201,7 +201,10 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   isPuestoOcupado(puestoId: number | null | undefined): boolean {
-    return !!puestoId && this.occupiedPuestoIds.has(Number(puestoId));
+    if (!puestoId) return false;
+    const puesto = this.puestos.find(p => p.id === Number(puestoId));
+    // Lleno = cupos ocupados alcanzan la capacidad del puesto.
+    return this.getPuestoOcupadas(puestoId) >= this.getPuestoCapacidad(puesto);
   }
 
   // Capacidad (cupos) del puesto.

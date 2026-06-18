@@ -2384,3 +2384,28 @@ def personas_asignadas(request, mes, anio):
     ).values_list('persona_id', flat=True).distinct()
 
     return JsonResponse({'persona_ids': list(ids)}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def puestos_ocupacion(request, mes, anio):
+    """Cuántas asignaciones OCUPADAS tiene cada puesto en el mes (todos los cantones).
+
+    Sirve para mostrar el contador de cupos (ocupadas/capacidad) en el modal de
+    asignación, independientemente del cantón/vista cargado en pantalla.
+    """
+    if not request.user.has_perm('CoreFisica.view_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        mes = int(mes)
+        anio = int(anio)
+    except (TypeError, ValueError):
+        return Response({'error': 'mes o anio invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from django.db.models import Count
+    filas = (Asignacion.objects
+             .filter(estado='ACTIVO', persona__isnull=False, mes=mes, anio=anio)
+             .values('puesto_id')
+             .annotate(total=Count('id')))
+    ocupacion = {str(f['puesto_id']): f['total'] for f in filas if f['puesto_id'] is not None}
+    return JsonResponse({'ocupacion': ocupacion}, status=status.HTTP_200_OK)

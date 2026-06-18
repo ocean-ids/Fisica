@@ -360,6 +360,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   private abrirSub?: Subscription;
   // IDs de personas con asignación activa este mes en CUALQUIER cantón (no solo el cargado).
   private personasAsignadasGlobal: number[] = [];
+  // Cupos ocupados por puesto en el mes (todos los cantones), para el contador del modal.
+  private puestosOcupacionGlobal: { [puestoId: number]: number } = {};
   columnasOcultas: string[] = [];
   provinciaPage = 1;
   provinciaTotal = 0;
@@ -2038,7 +2040,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         clienteSeleccionado: this.clienteSeleccionado,
         instalacionSeleccionada: this.instalacionSeleccionada,
         occupiedPuestoIds: this.getOccupiedPuestoIds(),
-        occupiedCounts: this.getOccupiedPuestoCounts(),
+        occupiedCounts: { ...this.puestosOcupacionGlobal },
         assignedPersonaIds: this.getAssignedPersonaIds()
       }
     });
@@ -2155,7 +2157,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         clienteSeleccionado: this.clienteSeleccionado,
         instalacionSeleccionada: this.instalacionSeleccionada,
         occupiedPuestoIds: this.getOccupiedPuestoIds(asignacion.id),
-        occupiedCounts: this.getOccupiedPuestoCounts(asignacion.id),
+        occupiedCounts: this.ocupacionExcluyendo(asignacion),
         assignedPersonaIds: this.getAssignedPersonaIds(asignacion.id)
       }
     });
@@ -2176,6 +2178,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.asignacionService.obtenerPersonasAsignadas(this.mes, this.anio).subscribe({
       next: ids => this.personasAsignadasGlobal = ids || [],
       error: () => this.personasAsignadasGlobal = []
+    });
+    this.asignacionService.obtenerPuestosOcupacion(this.mes, this.anio).subscribe({
+      next: mapa => this.puestosOcupacionGlobal = mapa || {},
+      error: () => this.puestosOcupacionGlobal = {}
     });
   }
 
@@ -2224,19 +2230,16 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return ids;
   }
 
-  // Cuántos cupos OCUPADOS tiene cada puesto en el mes (para mostrar "(3/4)").
-  private getOccupiedPuestoCounts(excludeAsignacionId?: number): { [puestoId: number]: number } {
-    const list = Array.isArray(this.asignaciones) ? this.asignaciones : [];
-    const counts: { [puestoId: number]: number } = {};
-    for (const a of list) {
-      const pid = Number((a as any)?.puesto);
-      if (!Number.isFinite(pid) || pid <= 0) continue;
-      if (excludeAsignacionId && a.id === excludeAsignacionId) continue;
-      if ((a as any)?.persona === undefined || (a as any)?.persona === null || (a as any)?.persona === 0) continue;
-      if (a?.estado && String(a.estado).toUpperCase() !== 'ACTIVO') continue;
-      counts[pid] = (counts[pid] || 0) + 1;
+  // Mapa de ocupación global, descontando la asignación que se está editando
+  // (para que su propio cupo no cuente como ocupado al cambiarla de puesto).
+  private ocupacionExcluyendo(asig: Asignacion): { [puestoId: number]: number } {
+    const mapa = { ...this.puestosOcupacionGlobal };
+    const pid = Number((asig as any)?.puesto);
+    if (Number.isFinite(pid) && pid > 0 && (asig as any)?.persona) {
+      const actual = Number(mapa[pid] || 0);
+      if (actual > 0) mapa[pid] = actual - 1;
     }
-    return counts;
+    return mapa;
   }
 
   // Muestra una descripción del puesto vacante (sin persona) y permite reasignar.
@@ -2282,10 +2285,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       Swal.fire({ icon: 'warning', title: 'Falta Persona', text: 'Debe seleccionar una Persona' });
       return;
     }
-    if (!this.asignacionActual.horario) {
-      Swal.fire({ icon: 'warning', title: 'Falta Horario', text: 'Debe seleccionar un Horario' });
-      return;
-    }
+    // El horario ya no se pide: proviene del puesto (PuestoHorario).
 
     this.asignacionActual.cliente = this.clienteSeleccionado;
     this.asignacionActual.instalacion = this.instalacionSeleccionada;
@@ -2397,7 +2397,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.isSaving = true;
     this.asignacionService.crearAsignacion(payload).subscribe({
       next: (created: any) => {
-        Swal.fire({ icon: 'success', title: reasignar ? 'Persona reasignada' : 'Asignación creada', timer: 1200, showConfirmButton: false });
+        // Al crear no se muestra alerta (sigue el flujo de "Aplicar secuencia").
+        if (reasignar) {
+          Swal.fire({ icon: 'success', title: 'Persona reasignada', timer: 1200, showConfirmButton: false });
+        }
         this.cargarAsignaciones();
         this.resetAsignacionState();
         this.loadCalendarWeeks();
