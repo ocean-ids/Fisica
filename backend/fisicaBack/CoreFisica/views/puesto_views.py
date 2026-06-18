@@ -187,7 +187,9 @@ def crear_puesto(request):
         horarios_payload = []
 
     puestos_creados = []
-    for _ in range(cantidad_puestos):
+    # Se crea UN solo puesto con `cantidad_puestos = N` como CAPACIDAD (cupos).
+    # Las asignaciones se crean luego hasta llenar esos N cupos.
+    for _ in range(1):
         puesto = Puesto.objects.create(
             nombre=data.get('nombre'),
             tipo=tipo,
@@ -433,40 +435,8 @@ def actualizar_puesto(request, id):
         except Exception:
             pass
 
-        # crear puestos adicionales si la cantidad es mayor al grupo existente
-        try:
-            group_count = Puesto.objects.filter(
-                nombre=puesto.nombre,
-                instalacion_id=puesto.instalacion_id,
-                zona_id=puesto.zona_id,
-                tipo=puesto.tipo
-            ).count()
-            faltantes = max(cantidad_puestos - group_count, 0)
-            for _ in range(faltantes):
-                extra = Puesto.objects.create(
-                    nombre=puesto.nombre,
-                    tipo=puesto.tipo,
-                    cantidad_puestos=cantidad_puestos,
-                    instalacion_id=puesto.instalacion_id,
-                    zona=puesto.zona
-                )
-                for h in horarios_payload:
-                    if h.get('dia'):
-                        PuestoHorario.objects.create(
-                            puesto=extra,
-                            dia=h['dia'],
-                            horas=h.get('horas', 12),
-                            turno=h.get('turno') or 'Diurno',
-                            hora_ingreso=h.get('hora_ingreso') or None,
-                            hora_salida=h.get('hora_salida') or None,
-                        )
-                try:
-                    extra.sync_from_horarios()
-                    extra.save()
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        # Ya NO se crean puestos adicionales: la cantidad es la CAPACIDAD (cupos)
+        # de este único registro y se respeta al crear asignaciones.
         return JsonResponse({
             'message': 'Puesto actualizado correctamente',
             'puesto': {

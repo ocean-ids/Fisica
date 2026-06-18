@@ -2191,18 +2191,30 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   private getOccupiedPuestoIds(excludeAsignacionId?: number): number[] {
     const list = Array.isArray(this.asignaciones) ? this.asignaciones : [];
-    const ids = list
-      .filter((a: Asignacion) => {
-        if (!a?.puesto) return false;
-        if (excludeAsignacionId && a.id === excludeAsignacionId) return false;
-        if (a?.persona === undefined || a?.persona === null || a?.persona === 0) return false;
-        if (a?.estado && String(a.estado).toUpperCase() !== 'ACTIVO') return false;
-        return true;
-      })
-      .map((a: Asignacion) => Number(a.puesto))
-      .filter((id: number) => Number.isFinite(id) && id > 0);
+    // Cuenta cuántas asignaciones OCUPADAS tiene cada puesto y compara contra su capacidad.
+    const ocupadasPorPuesto = new Map<number, number>();
+    const capacidadPorPuesto = new Map<number, number>();
+    for (const a of list) {
+      const pid = Number((a as any)?.puesto);
+      if (!Number.isFinite(pid) || pid <= 0) continue;
+      // Capacidad (cupos) del puesto: cantidad_puestos del detalle, por defecto 1.
+      if (!capacidadPorPuesto.has(pid)) {
+        const cap = Number((a as any)?.puesto_detalle?.cantidad_puestos);
+        capacidadPorPuesto.set(pid, Number.isFinite(cap) && cap > 0 ? cap : 1);
+      }
+      if (excludeAsignacionId && a.id === excludeAsignacionId) continue;
+      if ((a as any)?.persona === undefined || (a as any)?.persona === null || (a as any)?.persona === 0) continue;
+      if (a?.estado && String(a.estado).toUpperCase() !== 'ACTIVO') continue;
+      ocupadasPorPuesto.set(pid, (ocupadasPorPuesto.get(pid) || 0) + 1);
+    }
 
-    return Array.from(new Set(ids));
+    // Un puesto solo se considera "ocupado" (no seleccionable) cuando llenó todos sus cupos.
+    const ids: number[] = [];
+    for (const [pid, ocupadas] of ocupadasPorPuesto.entries()) {
+      const cap = capacidadPorPuesto.get(pid) || 1;
+      if (ocupadas >= cap) ids.push(pid);
+    }
+    return ids;
   }
 
   // Muestra una descripción del puesto vacante (sin persona) y permite reasignar.
