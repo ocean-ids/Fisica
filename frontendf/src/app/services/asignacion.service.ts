@@ -114,6 +114,13 @@ export class AsignacionService {
     );
   }
 
+  // Conteo de cupos ocupados por puesto en el mes (todos los cantones).
+  obtenerPuestosOcupacion(mes: number, anio: number): Observable<{ [puestoId: number]: number }> {
+    return this.apiService.get<any>(`/puestos-ocupacion/${mes}/${anio}/`).pipe(
+      map(response => (response?.ocupacion ?? {}) as { [puestoId: number]: number })
+    );
+  }
+
   obtenerAsignacionesVacantes(mes: number, anio: number): Observable<{ total: number; results: Array<{ id: number; codigo: string; cliente: string; instalacion: string; puesto: string; canton: string; canton_id: number | null; horario: string }> }> {
     return this.apiService.get<any>(`/asignaciones-vacantes/${mes}/${anio}/`).pipe(
       map(response => ({
