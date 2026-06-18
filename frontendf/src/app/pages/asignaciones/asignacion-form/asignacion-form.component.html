@@ -63,8 +63,11 @@
           >
             <div class="puesto-option-row d-flex justify-content-between align-items-center w-100">
               <span>{{ p.nombre }} <small class="text-muted" *ngIf="getPuestoHoras(p)">- {{ getPuestoHoras(p) }}</small></span>
-              <span *ngIf="isPuestoOcupado(p.id)" class="puesto-ocupado-check" title="Puesto ocupado">
+              <span class="puesto-ocupado-check"
+                    [class.puesto-cupo-lleno]="isPuestoOcupado(p.id)"
+                    [title]="isPuestoOcupado(p.id) ? 'Puesto lleno (' + getPuestoCupoLabel(p) + ')' : 'Cupos asignados: ' + getPuestoCupoLabel(p)">
                 <i class="bi bi-person-standing"></i>
+                <small class="puesto-cupo-num">({{ getPuestoCupoLabel(p) }})</small>
               </span>
             </div>
           </mat-option>

@@ -1981,7 +1981,8 @@ def exportar_asignaciones_excel(request):
 
             parts = sorted(parts, key=sort_key)
             body = ' / '.join([p for p in parts if p])
-            cant = str(getattr(puesto, 'cantidad_puestos', '') or '').strip()
+            # El resumen representa UN puesto (registro), no su capacidad de cupos.
+            cant = '1'
             if cant and body:
                 return f"{cant} {body}"
             if cant:
