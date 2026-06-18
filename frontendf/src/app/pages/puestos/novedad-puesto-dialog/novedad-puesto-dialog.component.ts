@@ -107,14 +107,15 @@ export class NovedadPuestoDialogComponent implements OnInit {
     this.model.sector = (p.instalacion_sector || '').toString();
     // Tipo = resumen de horario (fallback al resumen local mientras llega el endpoint)
     this.model.tipo = (p.resumen || '').toString();
-    // Horario = secuencia de rotación D/N/F del calendario (ej. "3,3,2")
-    this.model.horario = '';
+    // Horario = secuencia de rotación D/N/F del calendario (ej. "331"). NO se borra aquí:
+    // si la detección viene vacía, se conserva lo que el usuario ya tenga escrito.
 
     const turno = (p.turno || '').toString().toLowerCase();
     if (turno.startsWith('n')) this.model.turno = 'Nocturno';
     else if (turno.startsWith('d')) this.model.turno = 'Diurno';
 
     // Trae la secuencia real del calendario y el resumen desde el backend.
+    // Solo sobrescribe el horario si detectó algo (si viene vacío, respeta lo existente).
     this.puestoService.getSecuenciaHorario(p.id).subscribe({
       next: (res) => {
         if (res?.secuencia) this.model.horario = res.secuencia;

@@ -716,10 +716,16 @@ def asignar_servicio(request):
                 except Exception:
                     pass
                 return Response(AsignacionSerializer(vacante).data, status=status.HTTP_200_OK)
-            # Si existe una asignación OCUPADA, sí bloquear (el front ofrece reasignar).
-            if existentes.filter(persona__isnull=False).exists():
+            # Capacidad del puesto: cuántos cupos (asignaciones) admite en el mes.
+            try:
+                cupo = Puesto.objects.filter(id=int(puesto_id)).values_list('cantidad_puestos', flat=True).first() or 1
+            except Exception:
+                cupo = 1
+            ocupadas = existentes.filter(persona__isnull=False).count()
+            # Solo se bloquea cuando ya se llenaron todos los cupos del puesto.
+            if ocupadas >= cupo:
                 return Response(
-                    {'error': 'Ya existe una asignación para este puesto en el mes seleccionado.'},
+                    {'error': 'Este puesto ya alcanzó su cantidad máxima de asignaciones para el mes seleccionado.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
     except Exception:
@@ -1955,9 +1961,7 @@ def exportar_asignaciones_excel(request):
                     return 'D'
                 if lower.startswith('n'):
                     return 'N'
-                if lower.startswith('a'):
-                    return 'H'
-                return ''
+                return ''  # 24h/Ambos: sin letra de turno (evita la doble H)
 
             parts = []
             for g in groups.values():
