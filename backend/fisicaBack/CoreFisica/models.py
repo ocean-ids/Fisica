@@ -262,6 +262,8 @@ class PuestoHorario(models.Model):
     dia = models.PositiveSmallIntegerField(choices=DIAS)
     # Duración del turno en horas. Decimal para soportar minutos (ej. 19.33 = 19:20).
     horas = models.DecimalField(max_digits=4, decimal_places=2, default=12)
+    hora_ingreso = models.TimeField(null=True, blank=True)
+    hora_salida = models.TimeField(null=True, blank=True)
     turno = models.CharField(
         max_length=10,
         choices=[('Diurno', 'Diurno'), ('Nocturno', 'Nocturno'), ('Ambos', 'Ambos')],

@@ -37,6 +37,8 @@
       </mat-error>
     </mat-form-field>
 
+    <!-- Selector "Horario (ingreso - salida)" oculto: el horario ahora se define por fila (Ingreso/Salida).
+         Se deja el control en el form (no se renderiza) para no romper el guardado.
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Horario (ingreso - salida)</mat-label>
       <mat-select formControlName="horario">
@@ -46,6 +48,7 @@
         </mat-option>
       </mat-select>
     </mat-form-field>
+    -->
 
     <div class=" mb-3">
       <button mat-raised-button color="primary" class="rounded-5" (click)="addHorario()">+</button>
@@ -55,8 +58,19 @@
       <div *ngFor="let horario of horarios.controls; let i = index" [formGroupName]="i" class="horario-block">
         <div style="display:flex; gap:12px; align-items:center;">
           <mat-form-field appearance="outline">
-            <mat-label>Horas</mat-label>
-            <input matInput type="time" formControlName="horas" required min="0" max="24">
+            <mat-label>Ingreso</mat-label>
+            <input matInput type="time" formControlName="ingreso" required>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Salida</mat-label>
+            <input matInput type="time" formControlName="salida" required>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" style="max-width: 110px;">
+            <mat-label>Horas (HH:MM)</mat-label>
+            <input matInput type="time" formControlName="horas"
+                   title="Se calcula de Ingreso→Salida; puedes editarla. En el resumen sale en decimal (13:30 = 13.5)">
           </mat-form-field>
 
           <mat-form-field appearance="outline">

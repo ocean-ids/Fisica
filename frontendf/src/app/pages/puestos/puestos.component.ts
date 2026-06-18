@@ -150,7 +150,8 @@ export class PuestosComponent implements OnInit {
 
   abrirFormularioNuevo(puesto?: Puesto): void {
     const dialogRef = this.dialog.open(PuestoFormComponent, {
-      width: '500px',
+      width: '780px',
+      maxWidth: '95vw',
       data: { puesto: puesto || null, clienteId: this.clienteSeleccionado }
     });
 

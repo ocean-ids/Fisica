@@ -93,6 +93,18 @@ class AsignacionSerializer(serializers.ModelSerializer):
         }
 
     def get_horario_detalle(self, obj):
+        # El horario del PUESTO (ingreso/salida configurado) manda sobre el de la asignación.
+        if obj.puesto_id:
+            phs = [h for h in obj.puesto.horarios.all() if getattr(h, 'hora_ingreso', None)]
+            if phs:
+                ph = phs[0]
+                return {
+                    'id': None,
+                    'hora_ingreso': str(ph.hora_ingreso),
+                    'hora_salida': str(ph.hora_salida) if ph.hora_salida else '',
+                }
+        if not obj.horario:
+            return None
         return {
             'id': obj.horario.id,
             'hora_ingreso': str(obj.horario.hora_ingreso),
@@ -163,6 +175,18 @@ class AsignacionLiteSerializer(serializers.ModelSerializer):
         }
 
     def get_horario_detalle(self, obj):
+        # El horario del PUESTO (ingreso/salida configurado) manda sobre el de la asignación.
+        if obj.puesto_id:
+            phs = [h for h in obj.puesto.horarios.all() if getattr(h, 'hora_ingreso', None)]
+            if phs:
+                ph = phs[0]
+                return {
+                    'id': None,
+                    'hora_ingreso': str(ph.hora_ingreso),
+                    'hora_salida': str(ph.hora_salida) if ph.hora_salida else '',
+                }
+        if not obj.horario:
+            return None
         return {
             'id': obj.horario.id,
             'hora_ingreso': str(obj.horario.hora_ingreso),
@@ -263,7 +287,7 @@ class InstalacionSerializer(serializers.ModelSerializer):
 class PuestoHorarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = PuestoHorario
-        fields = ('id', 'dia', 'horas', 'turno')
+        fields = ('id', 'dia', 'horas', 'turno', 'hora_ingreso', 'hora_salida')
 
 class PuestoSerializer(serializers.ModelSerializer):
     horarios = PuestoHorarioSerializer(many=True, required=False)
