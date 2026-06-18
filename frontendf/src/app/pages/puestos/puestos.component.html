@@ -70,7 +70,7 @@
               <th>Días</th>
               <th> Horas</th>
               <th>Turno</th>
-              <!--<th>Resumen</th> -->
+              <th>Resumen</th>
               <th>Instalación</th>
               <th class="text-center">Acciones</th>
             </tr>
@@ -86,11 +86,12 @@
               <td>{{ getDias(puesto) }}</td>
               <td>{{ getHoras(puesto) }}</td>
               <td>{{ getTurnos(puesto) }}</td>
-              <!--<td>
+              <td>
                 <span
                   [matMenuTriggerFor]="tooltipMenu"
-                  class="tooltip-trigger">
-                  {{ puesto.resumen }}
+                  class="tooltip-trigger"
+                  style="white-space: pre-line;">
+                  {{ getResumenPuestoCompacto(puesto) }}
                 </span>
 
                 <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">
@@ -101,7 +102,7 @@
                     <div><strong>📅 Días:</strong> -</div>
                   </div>
                 </mat-menu>
-              </td> -->
+              </td>
               <td>{{ puesto.instalacion_nombre || '-' }}</td>
               <td>
                 <div class="d-flex align-middle justify-content-around gap-2">
