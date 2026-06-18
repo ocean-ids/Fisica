@@ -252,7 +252,8 @@ DIAS = (
 class PuestoHorario(models.Model):
     puesto = models.ForeignKey(Puesto, related_name='horarios', on_delete=models.CASCADE)
     dia = models.PositiveSmallIntegerField(choices=DIAS)
-    horas = models.PositiveIntegerField(default=12)
+    # Duración del turno en horas. Decimal para soportar minutos (ej. 19.33 = 19:20).
+    horas = models.DecimalField(max_digits=4, decimal_places=2, default=12)
     turno = models.CharField(
         max_length=10,
         choices=[('Diurno', 'Diurno'), ('Nocturno', 'Nocturno'), ('Ambos', 'Ambos')],

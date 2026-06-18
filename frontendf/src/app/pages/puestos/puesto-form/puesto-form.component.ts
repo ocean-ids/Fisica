@@ -33,6 +33,7 @@ export class PuestoFormComponent implements OnInit {
   horariosCatalogo: Horario[] = [];
   private readonly TURNO_24H_UI = '24H';
   private readonly TURNO_24H_BACKEND = 'Ambos';
+  private readonly MAX_HORAS_TURNO = 24
 
   constructor(
     private fb: FormBuilder,
@@ -162,7 +163,7 @@ export class PuestoFormComponent implements OnInit {
     if (!horasCtrl) return;
     const raw = horasCtrl.value;
     const val = this.toNumberHours(raw, turno);
-    const max = this.is24hTurn(turno) ? 24 : 12;
+    const max = this.is24hTurn(turno) ? 24 : this.MAX_HORAS_TURNO;
     const clamped = Math.min(Math.max(val, 0), max);
     if (clamped !== val) {
       
@@ -178,11 +179,11 @@ export class PuestoFormComponent implements OnInit {
       if (total > 23.9833 && this.is24hTurn(turno)) {
         total = 24; 
       }
-      const max = this.is24hTurn(turno) ? 24 : 12;
+      const max = this.is24hTurn(turno) ? 24 : this.MAX_HORAS_TURNO;
       return Math.min(Math.max(total, 0), max);
     }
     const n = Number(raw) || 0;
-    const max = this.is24hTurn(turno) ? 24 : 12;
+    const max = this.is24hTurn(turno) ? 24 : this.MAX_HORAS_TURNO;
     return Math.min(Math.max(n, 0), max);
   }
 
