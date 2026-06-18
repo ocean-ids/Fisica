@@ -69,8 +69,8 @@
 
           <mat-form-field appearance="outline" style="max-width: 110px;">
             <mat-label>Horas (HH:MM)</mat-label>
-            <input matInput type="time" formControlName="horas"
-                   title="Se calcula de Ingreso→Salida; puedes editarla. En el resumen sale en decimal (13:30 = 13.5)">
+            <input matInput type="text" formControlName="horas" placeholder="HH:MM" pattern="[0-9]{1,2}:[0-9]{2}"
+                   title="Se calcula de Ingreso→Salida; puedes editarla. En el resumen sale en decimal (13:30 = 13.5). 24h = 24:00">
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -78,7 +78,7 @@
             <mat-select formControlName="turno" required>
               <mat-option value="Diurno">Diurno</mat-option>
               <mat-option value="Nocturno">Nocturno</mat-option>
-              <mat-option value="24H">24H</mat-option>
+              <mat-option value="24">24</mat-option>
             </mat-select>
           </mat-form-field>
 

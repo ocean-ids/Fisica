@@ -1955,9 +1955,7 @@ def exportar_asignaciones_excel(request):
                     return 'D'
                 if lower.startswith('n'):
                     return 'N'
-                if lower.startswith('a'):
-                    return 'H'
-                return ''
+                return ''  # 24h/Ambos: sin letra de turno (evita la doble H)
 
             parts = []
             for g in groups.values():

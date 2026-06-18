@@ -192,8 +192,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         const t = turno.toLowerCase();
         if (t.startsWith('d')) return 'D';
         if (t.startsWith('n')) return 'N';
-        if (t.startsWith('a')) return 'H';
-        return '';
+        return '';  // 24h/Ambos: sin letra de turno (evita la doble H "24HH")
       };
 
       const parts = Object.values(groups)

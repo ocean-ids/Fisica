@@ -31,7 +31,7 @@ export class PuestoFormComponent implements OnInit {
   puestoForm!: FormGroup;
   instalaciones: Instalacion[] = [];
   horariosCatalogo: Horario[] = [];
-  private readonly TURNO_24H_UI = '24H';
+  private readonly TURNO_24H_UI = '24';
   private readonly TURNO_24H_BACKEND = 'Ambos';
   private readonly MAX_HORAS_TURNO = 24
 
@@ -161,6 +161,13 @@ export class PuestoFormComponent implements OnInit {
     group.get('ingreso')?.valueChanges.subscribe(recalcular);
     group.get('salida')?.valueChanges.subscribe(recalcular);
 
+    // Al elegir Turno = 24, cargar 24:00 en Horas.
+    group.get('turno')?.valueChanges.subscribe((t: string | null) => {
+      if (this.is24hTurn(t)) {
+        group.get('horas')?.setValue('24:00', { emitEvent: false });
+      }
+    });
+
     this.horarios.push(group);
   }
 
@@ -224,7 +231,7 @@ export class PuestoFormComponent implements OnInit {
 
   private is24hTurn(turno?: string | null): boolean {
     const t = String(turno || '').trim().toLowerCase();
-    return t === '24h' || t === 'ambos';
+    return t === '24' || t === '24h' || t === 'ambos';
   }
 
   private toUiTurno(turno?: string | null): string {
@@ -261,11 +268,8 @@ export class PuestoFormComponent implements OnInit {
     const current: number[] = group.get('days').value || [];
 
     if (checked) {
-      if (current.length >= 2) {
-        
-        if (input) input.checked = false;
-        return;
-      }
+      // Se pueden marcar todos los días (sin límite). El resumen muestra el rango
+      // primero–último (ej. todos = L–D).
       if (current.indexOf(day) === -1) current.push(day);
     } else {
       const idx = current.indexOf(day);

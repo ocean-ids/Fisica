@@ -41,22 +41,17 @@ def _secuencia_dnf_puesto(puesto_id):
     secuencia cronológica de días, detecta el ciclo y devuelve los run-lengths
     normalizados con el/los días libres (franco) al final. Ej: DDDNNNFF -> "3,3,2".
     """
-    filas = list(
+    filas_all = list(
         AsignacionSemanal.objects
         .filter(puesto_id=puesto_id)
         .order_by('asignacion_id', 'week_start')
     )
-    if not filas:
+    if not filas_all:
         return ''
 
     por_asig = {}
-    for r in filas:
+    for r in filas_all:
         por_asig.setdefault(r.asignacion_id, []).append(r)
-    repr_filas = max(por_asig.values(), key=len)
-    repr_filas.sort(key=lambda r: r.week_start)
-
-    # Solo las semanas recientes: la rotación vigente (el historial completo es ruidoso).
-    recientes = repr_filas[-3:]
 
     def _build_seq(filas_sem):
         s = []
@@ -65,38 +60,54 @@ def _secuencia_dnf_puesto(puesto_id):
                 s.append(_norm_dnf_token(getattr(r, f)))
         return s
 
-    seq = _build_seq(recientes)
-    if not seq:
-        return ''
-
-    p = _periodo(seq)
-    # Sin ciclo claro en 3 semanas -> usar la última semana (máx. 7 días).
-    if p == len(seq) and len(recientes) > 1:
-        seq = _build_seq(repr_filas[-1:])
+    def _runs_de(filas):
+        filas = sorted(filas, key=lambda r: r.week_start)
+        recientes = filas[-3:]                      # rotación vigente (no todo el historial)
+        seq = _build_seq(recientes)
+        if not seq:
+            return []
         p = _periodo(seq)
-    ciclo = seq[:p]
-    if not ciclo:
+        if p == len(seq) and len(recientes) > 1:    # sin ciclo claro -> última semana
+            seq = _build_seq(filas[-1:])
+            p = _periodo(seq)
+        ciclo = seq[:p]
+        if not ciclo:
+            return []
+        # Normalizar: que el/los franco queden al final (ej. DDDNNNF -> 331).
+        n = len(ciclo)
+        if any(t != 'F' for t in ciclo) and any(t == 'F' for t in ciclo):
+            start = 0
+            for i in range(n):
+                if ciclo[i] != 'F' and ciclo[(i - 1) % n] == 'F':
+                    start = i
+                    break
+            ciclo = ciclo[start:] + ciclo[:start]
+        runs = []
+        for t in ciclo:
+            if runs and runs[-1][0] == t:
+                runs[-1][1] += 1
+            else:
+                runs.append([t, 1])
+        return runs
+
+    # Elegir la asignación que MEJOR refleja la rotación: la que tiene más variedad
+    # de letras (D/N/F), luego la de bloques más limpios. Una persona fija (todo "D")
+    # da un solo bloque y se descarta -> evita el "1".
+    mejor = []
+    mejor_score = (0, 0)
+    for filas in por_asig.values():
+        runs = _runs_de(filas)
+        if len(runs) <= 1:
+            continue
+        score = (len(set(r[0] for r in runs)), -len(runs))
+        if score > mejor_score:
+            mejor_score = score
+            mejor = runs
+
+    if len(mejor) <= 1:
         return ''
-
-    # Normalizar: empezar en el primer día de trabajo precedido por franco,
-    # para que el/los franco queden al final (estilo "3,3,2" / "5,2").
-    n = len(ciclo)
-    if any(t != 'F' for t in ciclo) and any(t == 'F' for t in ciclo):
-        start = 0
-        for i in range(n):
-            if ciclo[i] != 'F' and ciclo[(i - 1) % n] == 'F':
-                start = i
-                break
-        ciclo = ciclo[start:] + ciclo[:start]
-
-    # run-length encode
-    runs = []
-    for t in ciclo:
-        if runs and runs[-1][0] == t:
-            runs[-1][1] += 1
-        else:
-            runs.append([t, 1])
-    return ','.join(str(cnt) for _, cnt in runs)
+    # Formato sin separadores para coincidir con el del Excel original: DDDNNNF -> "331".
+    return ''.join(str(cnt) for _, cnt in mejor)
 
 
 @api_view(['GET'])

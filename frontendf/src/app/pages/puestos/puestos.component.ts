@@ -274,7 +274,7 @@ export class PuestosComponent implements OnInit {
       const sorted = ordered.filter(t => unique.has(t));
       const extras = [...unique].filter(t => !ordered.includes(t));
       const all = [...sorted, ...extras];
-      const display = all.map(t => (t === 'Ambos' ? '24h' : t));
+      const display = all.map(t => (t === 'Ambos' ? '24' : t));
       return display.length ? display.join(' / ') : '-';
     } catch (e) {
       return '-';
@@ -298,8 +298,7 @@ export class PuestosComponent implements OnInit {
         const t = turno.toLowerCase();
         if (t.startsWith('d')) return 'D';
         if (t.startsWith('n')) return 'N';
-        if (t.startsWith('a')) return 'H';
-        return '';
+        return '';  // 24h/Ambos: sin letra de turno (evita la doble H "24HH")
       };
       const parts = Object.values(groups)
         .map(g => {

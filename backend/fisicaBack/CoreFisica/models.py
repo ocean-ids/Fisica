@@ -165,7 +165,7 @@ class Puesto(models.Model):
                             elif val.startswith('n'):
                                 turno_letter = 'N'
                             else:
-                                turno_letter = 'H'
+                                turno_letter = ''  # 24h/Ambos: sin letra (evita doble H)
                         else:
                             turno_letter = 'M'
             except Exception:
