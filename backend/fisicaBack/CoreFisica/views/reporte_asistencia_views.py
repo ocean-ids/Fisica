@@ -665,6 +665,19 @@ def _build_reporte_asistencia_data(
 
     data = []
     personas_con_asignacion = set()
+
+    # Horario del PUESTO para el día del reporte (manda sobre el Horario de la asignación):
+    # se busca el PuestoHorario del puesto para ese día de la semana.
+    horario_puesto_dia = {}
+    if fecha_obj:
+        from ..models import PuestoHorario
+        dia_semana = fecha_obj.weekday() + 1  # 1=Lunes ... 7=Domingo
+        puesto_ids = [getattr(a, 'puesto_id', None) for a in asig_list if getattr(a, 'puesto_id', None)]
+        if puesto_ids:
+            for ph in PuestoHorario.objects.filter(dia=dia_semana, puesto_id__in=puesto_ids):
+                if ph.hora_ingreso and ph.puesto_id not in horario_puesto_dia:
+                    horario_puesto_dia[ph.puesto_id] = (ph.hora_ingreso, ph.hora_salida)
+
     for asig in asig_list:
         p = asig.persona
         personas_con_asignacion.add(p.id)
@@ -676,7 +689,11 @@ def _build_reporte_asistencia_data(
         if not puesto_nombre and asig:
             puesto_nombre = getattr(asig.puesto, 'tipo', '')
         horario_str = ''
-        if asig and asig.horario:
+        ph_horas = horario_puesto_dia.get(getattr(asig, 'puesto_id', None)) if asig else None
+        if ph_horas and ph_horas[0]:
+            hi, ho = ph_horas
+            horario_str = f"{hi.strftime('%H:%M')} - {ho.strftime('%H:%M')}" if ho else hi.strftime('%H:%M')
+        elif asig and asig.horario:
             horario_str = f"{asig.horario.hora_ingreso.strftime('%H:%M')} - {asig.horario.hora_salida.strftime('%H:%M')}"
         nombre_apellidos = f"{p.nombres} {p.apellidos}".strip()
         auto_sacafranco = _is_auto_sacafranco_desc(getattr(override, 'descripcion', '')) if override else False

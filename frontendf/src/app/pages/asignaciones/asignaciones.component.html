@@ -48,18 +48,18 @@
       </button>
     </div>
   </div>
-  <div class="d-flex justify-content-md-end gap-2">
+  <div class="d-flex justify-content-md-end gap-2 mb-4">
     <div class="text-muted" *ngIf="getTotalPages()">
       <span *ngIf="!isVistaCantonActiva()">Canton o Ciudad {{ provinciaPage }} de {{ getTotalPages() }}</span>
-      <span *ngIf="isVistaCantonActiva()">Vista personalizada de cantones</span>
+      <span *ngIf="isVistaCantonActiva()">Vista personalizada</span>
     </div>
     <div class="d-flex align-items-center gap-2">
       <select class="form-select form-select-sm" [(ngModel)]="selectedCantonKey" (change)="onCantonSelect()" [ngModelOptions]="{standalone:true}">
-        <optgroup label="Cantones">
-          <option *ngFor="let c of cantonesParaSelect" [ngValue]="'canton:' + (c.id == null ? 'null' : c.id)">{{ c.nombre }}</option>
-        </optgroup>
         <optgroup label="Vistas guardadas" *ngIf="cantonViews.length">
           <option *ngFor="let v of cantonViews" [ngValue]="'view:' + v.id">Vista: {{ v.nombre }} ({{ v.tipo === 'cliente' ? v.clienteIds.length : (v.tipo === 'persona_tipo' ? v.tipos.length : v.cantonIds.length) }})</option>
+        </optgroup>
+        <optgroup label="Cantones">
+          <option *ngFor="let c of cantonesParaSelect" [ngValue]="'canton:' + (c.id == null ? 'null' : c.id)">{{ c.nombre }}</option>
         </optgroup>
       </select>
     </div>
@@ -150,7 +150,7 @@
                       {{ row.asig.puesto_detalle?.nombre }}
                     </td>
                   <td *ngIf="mostrarPuesto()" class="align-middle overflow-hidden" style="height: 70px;">
-                    <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
+                    <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger" style="white-space: pre-line;">
                       {{ getResumenPuestoCompacto(row.asig.puesto_detalle) }}
                     </span>
                     <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">

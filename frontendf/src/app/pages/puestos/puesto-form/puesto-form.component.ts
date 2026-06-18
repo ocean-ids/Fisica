@@ -33,6 +33,7 @@ export class PuestoFormComponent implements OnInit {
   horariosCatalogo: Horario[] = [];
   private readonly TURNO_24H_UI = '24H';
   private readonly TURNO_24H_BACKEND = 'Ambos';
+  private readonly MAX_HORAS_TURNO = 24
 
   constructor(
     private fb: FormBuilder,
@@ -62,21 +63,22 @@ export class PuestoFormComponent implements OnInit {
     const initialHorarios = puesto?.horarios && Array.isArray(puesto.horarios) ? puesto.horarios : [];
     if (initialHorarios.length) {
       
-      const grouped: Record<string, { horas: string; turno: string; days: number[] }> = {};
+      const grouped: Record<string, { ingreso: string; salida: string; turno: string; days: number[]; horas: any }> = {};
       for (const h of initialHorarios) {
         const turno = this.toUiTurno(h.turno || 'Diurno');
-        const horasStr = this.toTimeString(h.horas ?? '12:00');
-        const key = `${horasStr}-${turno}`;
+        const ingreso = ((h as any).hora_ingreso || '07:00').toString().slice(0, 5);
+        const salida = ((h as any).hora_salida || '19:00').toString().slice(0, 5);
+        const key = `${ingreso}-${salida}-${turno}`;
         if (!grouped[key]) {
-          grouped[key] = { horas: horasStr, turno, days: [] };
+          grouped[key] = { ingreso, salida, turno, days: [], horas: (h as any).horas };
         }
         if (h.dia) {
           grouped[key].days.push(h.dia);
         }
       }
-      Object.values(grouped).forEach(g => this.addHorario(g.horas, g.turno, g.days));
+      Object.values(grouped).forEach(g => this.addHorario(g.ingreso, g.salida, g.turno, g.days, g.horas));
     } else {
-      this.addHorario('12:00', 'Diurno', []);
+      this.addHorario('07:00', '19:00', 'Diurno', []);
     }
 
     this.instalacionService.getInstalaciones().subscribe({
@@ -107,14 +109,19 @@ export class PuestoFormComponent implements OnInit {
       const horariosPayload: any[] = [];
       const horariosFA = this.puestoForm.get('horarios') as any;
       for (let i = 0; i < horariosFA.length; i++) {
-        const h = horariosFA.at(i).value;
+        const h = horariosFA.at(i).getRawValue();
         const days: number[] = h.days || [];
+        // El campo Horas viene en HH:MM (editable). Se convierte a decimal para guardar/resumen.
+        const horasManual = this.hhmmToDecimal(h.horas);
+        const horasDur = horasManual > 0 ? horasManual : this.calcDuracion(h.ingreso, h.salida);
         if (days.length) {
           for (const d of days) {
             horariosPayload.push({
               dia: d,
-              horas: this.toNumberHours(h.horas, h.turno),
-              turno: this.toBackendTurno(h.turno)
+              horas: horasDur,
+              turno: this.toBackendTurno(h.turno),
+              hora_ingreso: h.ingreso,
+              hora_salida: h.salida
             });
           }
         }
@@ -134,27 +141,56 @@ export class PuestoFormComponent implements OnInit {
     return this.puestoForm.get('horarios') as any;
   }
 
-  addHorario(horas: string | number | null = '12:00', turno: string = 'Diurno', days: number[] = []) {
+  addHorario(ingreso: string = '07:00', salida: string = '19:00', turno: string = 'Diurno', days: number[] = [], horasGuardadas?: number | string | null) {
+    // Si viene un valor guardado (al editar), úsalo; si no, calcula desde Ingreso→Salida.
+    const horasStr = (horasGuardadas !== undefined && horasGuardadas !== null && horasGuardadas !== '')
+      ? this.decimalToHHMM(Number(horasGuardadas))
+      : this.decimalToHHMM(this.calcDuracion(ingreso, salida));
     const group = this.fb.group({
-      horas: [horas ?? '12:00', Validators.required],
+      ingreso: [ingreso, Validators.required],
+      salida: [salida, Validators.required],
+      horas: [horasStr],  // duración en HH:MM (editable)
       turno: [turno, Validators.required],
       days: [days]
     });
 
-    
-    group.get('turno')?.valueChanges.subscribe((t: string | null) => {
-      const turnoVal = t ?? undefined;
-
-      if (this.is24hTurn(turnoVal)) {
-        group.get('horas')?.setValue('23:59', { emitEvent: false });
-      }
-      this.enforceHourLimit(group, turnoVal);
-    });
-    group.get('horas')?.valueChanges.subscribe(() => {
-      this.enforceHourLimit(group, group.get('turno')?.value);
-    });
+    const recalcular = () => {
+      const dur = this.calcDuracion(group.get('ingreso')?.value, group.get('salida')?.value);
+      group.get('horas')?.setValue(this.decimalToHHMM(dur), { emitEvent: false });
+    };
+    group.get('ingreso')?.valueChanges.subscribe(recalcular);
+    group.get('salida')?.valueChanges.subscribe(recalcular);
 
     this.horarios.push(group);
+  }
+
+  // Decimal de horas -> "HH:MM" (13.5 -> "13:30").
+  private decimalToHHMM(dec: number): string {
+    const n = Number(dec) || 0;
+    const h = Math.floor(n);
+    const m = Math.round((n - h) * 60);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  // "HH:MM" -> decimal de horas (13:30 -> 13.5). Si ya es número, lo devuelve.
+  private hhmmToDecimal(value: any): number {
+    if (value === null || value === undefined || value === '') return 0;
+    const s = value.toString();
+    if (s.includes(':')) {
+      const [hh, mm] = s.split(':').map(Number);
+      return Math.round(((hh || 0) + (mm || 0) / 60) * 100) / 100;
+    }
+    return Math.round((Number(s) || 0) * 100) / 100;
+  }
+
+  // Duración en horas (decimal) entre ingreso y salida; contempla turnos que cruzan medianoche.
+  private calcDuracion(ingreso?: string | null, salida?: string | null): number {
+    if (!ingreso || !salida) return 0;
+    const [hi, mi] = ingreso.split(':').map(Number);
+    const [hs, ms] = salida.split(':').map(Number);
+    let mins = (hs * 60 + ms) - (hi * 60 + mi);
+    if (mins <= 0) mins += 24 * 60;             // ej. 19:00 -> 07:00 = 12h
+    return Math.round((mins / 60) * 100) / 100; // 2 decimales (ej. 13.5)
   }
 
   private enforceHourLimit(group: any, turno?: string | null) {
@@ -162,7 +198,7 @@ export class PuestoFormComponent implements OnInit {
     if (!horasCtrl) return;
     const raw = horasCtrl.value;
     const val = this.toNumberHours(raw, turno);
-    const max = this.is24hTurn(turno) ? 24 : 12;
+    const max = this.is24hTurn(turno) ? 24 : this.MAX_HORAS_TURNO;
     const clamped = Math.min(Math.max(val, 0), max);
     if (clamped !== val) {
       
@@ -178,11 +214,11 @@ export class PuestoFormComponent implements OnInit {
       if (total > 23.9833 && this.is24hTurn(turno)) {
         total = 24; 
       }
-      const max = this.is24hTurn(turno) ? 24 : 12;
+      const max = this.is24hTurn(turno) ? 24 : this.MAX_HORAS_TURNO;
       return Math.min(Math.max(total, 0), max);
     }
     const n = Number(raw) || 0;
-    const max = this.is24hTurn(turno) ? 24 : 12;
+    const max = this.is24hTurn(turno) ? 24 : this.MAX_HORAS_TURNO;
     return Math.min(Math.max(n, 0), max);
   }
 

@@ -150,7 +150,8 @@ export class PuestosComponent implements OnInit {
 
   abrirFormularioNuevo(puesto?: Puesto): void {
     const dialogRef = this.dialog.open(PuestoFormComponent, {
-      width: '500px',
+      width: '780px',
+      maxWidth: '95vw',
       data: { puesto: puesto || null, clienteId: this.clienteSeleccionado }
     });
 
@@ -277,6 +278,50 @@ export class PuestosComponent implements OnInit {
       return display.length ? display.join(' / ') : '-';
     } catch (e) {
       return '-';
+    }
+  }
+
+  // Mismo resumen que en Asignaciones: multi-grupo, con "H" tras las horas y un grupo por línea.
+  getResumenPuestoCompacto(puesto: any): string {
+    try {
+      if (!puesto || !puesto.horarios || !puesto.horarios.length) return puesto?.resumen || '-';
+      const dayMap: any = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D' };
+      const groups: Record<string, { horas: number; turno: string; dias: number[] }> = {};
+      puesto.horarios.forEach((h: any) => {
+        const horasVal = Number(h.horas) || 0;
+        const turnoVal = (h.turno || '').toString();
+        const key = `${horasVal}-${turnoVal}`;
+        if (!groups[key]) groups[key] = { horas: horasVal, turno: turnoVal, dias: [] };
+        if (h.dia && groups[key].dias.indexOf(h.dia) === -1) groups[key].dias.push(h.dia);
+      });
+      const letter = (turno: string): string => {
+        const t = turno.toLowerCase();
+        if (t.startsWith('d')) return 'D';
+        if (t.startsWith('n')) return 'N';
+        if (t.startsWith('a')) return 'H';
+        return '';
+      };
+      const parts = Object.values(groups)
+        .map(g => {
+          const ordered = g.dias.sort((a: number, b: number) => a - b);
+          const first = ordered.length ? (dayMap[ordered[0]] || '') : '';
+          const last = ordered.length ? (dayMap[ordered[ordered.length - 1]] || '') : '';
+          const diasStr = ordered.length <= 1 ? first : `${first}${last}`;
+          const base = `${g.horas}H${letter(g.turno)}`.trim();
+          return diasStr ? `${base} ${diasStr}` : base;
+        })
+        .sort((a, b) => {
+          const numA = parseInt(a, 10);
+          const numB = parseInt(b, 10);
+          return (isNaN(numA) ? 0 : numA) - (isNaN(numB) ? 0 : numB);
+        });
+      const cant = puesto.cantidad_puestos ? `${puesto.cantidad_puestos}` : '';
+      const body = parts.join('\n');
+      if (cant && body) return `${cant} ${body}`;
+      if (cant) return `${cant}`;
+      return body || '-';
+    } catch (e) {
+      return puesto?.resumen || '-';
     }
   }
 

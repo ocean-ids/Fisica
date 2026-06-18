@@ -168,7 +168,9 @@ def crear_puesto(request):
                     horarios_payload.append({
                         'dia': dia,
                         'horas': h.get('horas', 12),
-                        'turno': h.get('turno') or 'Diurno'
+                        'turno': h.get('turno') or 'Diurno',
+                        'hora_ingreso': h.get('hora_ingreso') or None,
+                        'hora_salida': h.get('hora_salida') or None,
                     })
     except Exception:
         horarios_payload = []
@@ -190,7 +192,9 @@ def crear_puesto(request):
                     puesto=puesto,
                     dia=h['dia'],
                     horas=h.get('horas', 12),
-                    turno=h.get('turno') or 'Diurno'
+                    turno=h.get('turno') or 'Diurno',
+                    hora_ingreso=h.get('hora_ingreso') or None,
+                    hora_salida=h.get('hora_salida') or None,
                 )
 
         try:
@@ -206,7 +210,10 @@ def crear_puesto(request):
             'cantidad_puestos': puesto.cantidad_puestos,
             'turno': puesto.get_turno(),
             'turno_display': puesto.get_turno_display(),
-            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in puesto.horarios.all()],
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno,
+                          'hora_ingreso': str(h.hora_ingreso) if h.hora_ingreso else None,
+                          'hora_salida': str(h.hora_salida) if h.hora_salida else None}
+                         for h in puesto.horarios.all()],
             'instalacion_id': puesto.instalacion_id,
             'zona_id': puesto.zona_id,
             'resumen': puesto.resumen,
@@ -236,7 +243,10 @@ def obtener_puestos(request):
             'cantidad_puestos': p.cantidad_puestos,
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
-            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno,
+                          'hora_ingreso': str(h.hora_ingreso) if h.hora_ingreso else None,
+                          'hora_salida': str(h.hora_salida) if h.hora_salida else None}
+                         for h in p.horarios.all()],
             'horario': p.horario_id,
             'horario_detalle': ({
                 'id': p.horario.id,
@@ -267,7 +277,10 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
             'cantidad_puestos': p.cantidad_puestos,
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
-            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno,
+                          'hora_ingreso': str(h.hora_ingreso) if h.hora_ingreso else None,
+                          'hora_salida': str(h.hora_salida) if h.hora_salida else None}
+                         for h in p.horarios.all()],
             'horario': p.horario_id,
             'horario_detalle': ({
                 'id': p.horario.id,
@@ -299,7 +312,10 @@ def obtener_puestos_por_cliente(request, cliente_id):
             'cantidad_puestos': p.cantidad_puestos,
             'turno': p.get_turno(),
             'turno_display': p.get_turno_display(),
-            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in p.horarios.all()],
+            'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno,
+                          'hora_ingreso': str(h.hora_ingreso) if h.hora_ingreso else None,
+                          'hora_salida': str(h.hora_salida) if h.hora_salida else None}
+                         for h in p.horarios.all()],
             'horario': p.horario_id,
             'horario_detalle': ({
                 'id': p.horario.id,
@@ -387,11 +403,16 @@ def actualizar_puesto(request, id):
                     horas = h.get('horas')
                     if dia and horas is not None:
                         turno_val = h.get('turno') or 'Diurno'
-                        PuestoHorario.objects.create(puesto=puesto, dia=dia, horas=horas, turno=turno_val)
+                        hi = h.get('hora_ingreso') or None
+                        ho = h.get('hora_salida') or None
+                        PuestoHorario.objects.create(puesto=puesto, dia=dia, horas=horas, turno=turno_val,
+                                                     hora_ingreso=hi, hora_salida=ho)
                         horarios_payload.append({
                             'dia': dia,
                             'horas': horas,
-                            'turno': turno_val
+                            'turno': turno_val,
+                            'hora_ingreso': hi,
+                            'hora_salida': ho,
                         })
         except Exception:
             pass
@@ -424,7 +445,9 @@ def actualizar_puesto(request, id):
                             puesto=extra,
                             dia=h['dia'],
                             horas=h.get('horas', 12),
-                            turno=h.get('turno') or 'Diurno'
+                            turno=h.get('turno') or 'Diurno',
+                            hora_ingreso=h.get('hora_ingreso') or None,
+                            hora_salida=h.get('hora_salida') or None,
                         )
                 try:
                     extra.sync_from_horarios()
@@ -442,7 +465,10 @@ def actualizar_puesto(request, id):
                 'cantidad_puestos': puesto.cantidad_puestos,
                 'turno': puesto.get_turno(),
                 'turno_display': puesto.get_turno_display(),
-                'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno} for h in puesto.horarios.all()],
+                'horarios': [{'dia': h.dia, 'horas': h.horas, 'turno': h.turno,
+                          'hora_ingreso': str(h.hora_ingreso) if h.hora_ingreso else None,
+                          'hora_salida': str(h.hora_salida) if h.hora_salida else None}
+                         for h in puesto.horarios.all()],
                 'instalacion_id': puesto.instalacion_id,
                 'zona_id': puesto.zona_id,
             }

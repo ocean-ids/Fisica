@@ -1940,7 +1940,7 @@ def exportar_asignaciones_excel(request):
             groups = {}
 
             for h in horarios:
-                horas_val = int(getattr(h, 'horas', 0) or 0)
+                horas_val = float(getattr(h, 'horas', 0) or 0)
                 turno_val = (getattr(h, 'turno', '') or '').strip()
                 key = f"{horas_val}-{turno_val}"
                 if key not in groups:
@@ -1965,7 +1965,7 @@ def exportar_asignaciones_excel(request):
                 first = day_map.get(ordered[0], '') if ordered else ''
                 last = day_map.get(ordered[-1], '') if ordered else ''
                 dias_str = first if len(ordered) <= 1 else f"{first}{last}"
-                base = f"{g['horas']}{turno_letter(g['turno'])}".strip()
+                base = f"{g['horas']:g}H{turno_letter(g['turno'])}".strip()
                 parts.append(f"{base} {dias_str}".strip())
 
             # Ordenar priorizando horas numéricas bajas primero (coincide con la vista)
