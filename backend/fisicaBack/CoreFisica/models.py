@@ -98,6 +98,14 @@ class Instalacion(models.Model):
         canton_nombre = getattr(self.canton, 'nombre', '') if self.canton else ''
         return f"{self.cliente.nombre_comercial} - {prov}, {canton_nombre}".strip(' - ,')
 
+def _fmt_horas(h):
+    """Formatea las horas para el resumen: 12 -> '12', 10.5 -> '10.5' (sin ceros sobrantes)."""
+    try:
+        return f"{float(h):g}"
+    except (TypeError, ValueError):
+        return str(h or '')
+
+
 class Puesto(models.Model):
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='puestos')
     zona = models.ForeignKey(Zona, on_delete=models.PROTECT, related_name='puestos', null=True, blank=True)
@@ -135,7 +143,7 @@ class Puesto(models.Model):
                     if horas_list:
                         unique = set(horas_list)
                         if len(unique) == 1:
-                            horas = int(unique.pop())
+                            horas = unique.pop()
                     if dias_nums:
                         dias_code = self._format_dias_range(dias_nums)
             except Exception:
@@ -162,7 +170,7 @@ class Puesto(models.Model):
                             turno_letter = 'M'
             except Exception:
                 turno_letter = 'M'
-            self.resumen = f"{cantidad} {horas}{turno_letter}{dias_code}"
+            self.resumen = f"{cantidad} {_fmt_horas(horas)}H{turno_letter}{dias_code}"
         except Exception:
             try:
                 self.resumen = f"{self.nombre} - {self.get_turno_display()}"
@@ -205,7 +213,7 @@ class Puesto(models.Model):
             except Exception:
                 turno_letter = 'M'
             cantidad = int(self.cantidad_puestos) if self.cantidad_puestos is not None else 0
-            self.resumen = f"{cantidad} {horas}{turno_letter}{dias_code}"
+            self.resumen = f"{cantidad} {_fmt_horas(horas)}H{turno_letter}{dias_code}"
         except Exception:
             return
 

@@ -150,7 +150,7 @@
                       {{ row.asig.puesto_detalle?.nombre }}
                     </td>
                   <td *ngIf="mostrarPuesto()" class="align-middle overflow-hidden" style="height: 70px;">
-                    <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger">
+                    <span [matMenuTriggerFor]="tooltipMenu" class="tooltip-trigger" style="white-space: pre-line;">
                       {{ getResumenPuestoCompacto(row.asig.puesto_detalle) }}
                     </span>
                     <mat-menu #tooltipMenu="matMenu" class="tooltip-menu">

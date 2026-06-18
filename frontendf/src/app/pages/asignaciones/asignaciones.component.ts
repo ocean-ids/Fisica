@@ -202,7 +202,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           const first = ordered.length ? (dayMap[ordered[0]] || '') : '';
           const last = ordered.length ? (dayMap[ordered[ordered.length - 1]] || '') : '';
           const diasStr = ordered.length <= 1 ? first : `${first}${last}`;
-          const base = `${g.horas}${letter(g.turno)}`.trim();
+          const base = `${g.horas}H${letter(g.turno)}`.trim();
           return diasStr ? `${base} ${diasStr}` : base;
         })
         .sort((a, b) => {
@@ -212,7 +212,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         });
 
       const cant = puesto.cantidad_puestos ? `${puesto.cantidad_puestos}` : '';
-      const body = parts.join(' / ');
+      const body = parts.join('\n');
       if (cant && body) return `${cant} ${body}`;
       if (cant) return `${cant}`;
       return body || '-';
