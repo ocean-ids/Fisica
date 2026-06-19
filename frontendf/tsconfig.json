@@ -18,11 +18,9 @@
     "target": "ES2022",
     "module": "ES2022",
     "rootDir": "./src",
-    "baseUrl": ".",
-    
     "paths": {
       "@env/*": [
-        "src/environments/*"
+        "./src/environments/*"
       ]
     }
   },
