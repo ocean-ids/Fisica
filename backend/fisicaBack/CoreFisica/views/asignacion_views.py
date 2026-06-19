@@ -669,10 +669,23 @@ def asignar_servicio(request):
                     reemplazo=None, descripcion=None, row_color=None
                 )
 
-            # 2. Tomar el puesto destino si ya está ocupado (el ocupante queda libre)
-            target = Asignacion.objects.filter(
+            # 2. Buscar cupo en el puesto destino RESPETANDO su capacidad.
+            existentes = Asignacion.objects.filter(
                 puesto_id=puesto_id, mes=mes_val, anio=anio_val, estado='ACTIVO'
-            ).first()
+            )
+            # 2a. Si hay un cupo VACANTE (sin persona), llenarlo.
+            target = existentes.filter(persona__isnull=True).first()
+            # 2b. Si NO hay vacante: solo reemplazar a un ocupante si el puesto está LLENO.
+            #     Si todavía hay cupo libre, target queda None y se CREA una asignación nueva
+            #     (no se sobreescribe a nadie).
+            if not target:
+                try:
+                    cupo = Puesto.objects.filter(id=puesto_id).values_list('cantidad_puestos', flat=True).first() or 1
+                except Exception:
+                    cupo = 1
+                ocupadas = existentes.filter(persona__isnull=False).count()
+                if ocupadas >= cupo:
+                    target = existentes.filter(persona__isnull=False).first()
             if target:
                 target.persona_id = persona_id
                 if horario_id:
@@ -686,7 +699,7 @@ def asignar_servicio(request):
                     reemplazo=None, descripcion=None, row_color=None
                 )
                 return Response(AsignacionSerializer(target).data, status=status.HTTP_200_OK)
-            # Si el puesto destino está vacío, continúa al flujo normal de creación.
+            # Si queda cupo libre en el puesto, continúa al flujo normal de creación.
 
     try:
         puesto_id = data.get('puesto') or data.get('puesto_id')

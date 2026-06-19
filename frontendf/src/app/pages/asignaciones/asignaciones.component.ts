@@ -2359,13 +2359,20 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       (!this.modoEdicion || a.id !== this.asignacionActual.id)
     );
     const personaConflict = !esMismaPersona && (conflictoLocal || enGlobal);
-    const puestoConflict = this.asignaciones.some(a =>
-      a.puesto === this.asignacionActual.puesto &&
+    // El puesto solo es "conflicto" cuando YA LLENÓ todos sus cupos (capacidad).
+    // Si todavía hay cupo libre, se crea una asignación más (no se sobreescribe).
+    const pidSel = Number(this.asignacionActual.puesto);
+    const capPuesto = Number(
+      (this.asignaciones.find(a => Number(a.puesto) === pidSel)?.puesto_detalle as any)?.cantidad_puestos
+    ) || 1;
+    const ocupadasPuesto = this.asignaciones.filter(a =>
+      Number(a.puesto) === pidSel &&
       !!a.persona &&
       a.mes === this.mes &&
       a.anio === this.anio &&
       (!this.modoEdicion || a.id !== this.asignacionActual.id)
-    );
+    ).length;
+    const puestoConflict = ocupadasPuesto >= capPuesto;
 
     // Modo edición: si la persona ya está en otro puesto este mes, ofrecer reasignar
     if (this.modoEdicion && this.asignacionActual.id) {
