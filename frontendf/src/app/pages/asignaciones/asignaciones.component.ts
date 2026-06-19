@@ -1629,129 +1629,38 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     const draggedRow = event.item?.data as any;
     if (!draggedRow) return;
-    const dragged = draggedRow.type === 'asignacion' ? draggedRow.asig as Asignacion : null;
-    const draggedId = dragged?.id ?? null;
-
     if (event.previousIndex === event.currentIndex) return;
     if (!this.displayRows || !this.displayRows.length) return;
 
-    const getHeaderKeyAbove = (rows: any[], index: number): string | null => {
-      if (rows[index]?.type === 'provincia') return rows[index].key || null;
-      for (let i = index; i >= 0; i -= 1) {
-        const row = rows[i];
-        if (row?.type === 'provincia') return row.key || null;
-      }
-      return null;
-    };
-
-    const getRowProvinciaKey = (row: any): string | null => {
-      if (!row) return null;
-      if (row.type === 'provincia') return row.key || null;
-      if (row.type === 'asignacion') return this.getProvinciaKeyFromAsignacion(row.asig);
-      if (row.type === 'sacafranco') return this.getProvinciaKeyFromSacafranco(row.fila);
-      return null;
-    };
-
-    const vistaMixta = this.isVistaCantonActiva();
-    const orderableRows = (this.displayRows || []).filter(r => r?.type === 'asignacion' || r?.type === 'sacafranco');
-    const ordenAsignaciones: { id: number; orden: number }[] = [];
-    const ordenSacafranco: { id: number; orden: number }[] = [];
-
-    if (vistaMixta) {
-      // Lista plana con una sola franja (nombre de la vista): arrastrar libremente.
-      moveItemInArray(orderableRows, event.previousIndex, event.currentIndex);
-      this.displayRows = [
-        { type: 'provincia', key: 'mixed-view', label: this.getActiveViewName() },
-        ...orderableRows
-      ] as any;
-      orderableRows.forEach((row, idx) => {
-        if (row.type === 'asignacion' && row.asig?.id) {
-          row.asig.orden = idx;
-          ordenAsignaciones.push({ id: row.asig.id, orden: idx });
-        }
-        if (row.type === 'sacafranco' && row.fila?.id) {
-          row.fila.orden = idx;
-          ordenSacafranco.push({ id: row.fila.id, orden: idx });
-        }
-      });
-
-      this.displayAssignmentRows = orderableRows
-        .filter(r => r?.type === 'asignacion')
-        .map(r => (r as any).asig)
-        .filter(a => !!a);
-      this.asignaciones = [...this.displayAssignmentRows];
-      this.sacafrancoRows = orderableRows
-        .filter(r => r?.type === 'sacafranco')
-        .map(r => (r as any).fila)
-        .filter(f => !!f);
-
-      this.updateCalendarOrder();
-      this.persistOrder(ordenAsignaciones);
-      this.persistSacafrancoOrder(ordenSacafranco);
-      return;
-    }
-
-    // La franja de provincia se toma del ENCABEZADO VISUAL de arriba (no de los datos
-    // de la fila), porque sacafranco agrupa por canton de la persona y la asignacion
-    // por canton de la instalacion: usar los datos directamente abortaba el arrastre
-    // del sacafranco (volvia a su sitio).
-    const targetRowPre = orderableRows[event.currentIndex] || null;
-    const draggedIdx = (this.displayRows || []).indexOf(draggedRow);
-    const targetIdx = targetRowPre ? (this.displayRows || []).indexOf(targetRowPre) : -1;
-    const sourceKey = (draggedIdx >= 0 ? getHeaderKeyAbove(this.displayRows || [], draggedIdx) : null)
-      || getRowProvinciaKey(draggedRow);
-    const targetKey = (targetIdx >= 0 ? getHeaderKeyAbove(this.displayRows || [], targetIdx) : null)
-      || getRowProvinciaKey(targetRowPre);
-    if (!sourceKey || !targetKey || sourceKey !== targetKey) {
-      return;
-    }
-
+    // LISTA PLANA Y LIBRE: se puede arrastrar cualquier fila (asignacion o
+    // sacafranco) a cualquier posicion, sin limites de canton. El orden es global.
+    const orderableRows = (this.displayRows || []).filter(
+      r => r?.type === 'asignacion' || r?.type === 'sacafranco'
+    );
+    if (event.previousIndex < 0 || event.previousIndex >= orderableRows.length) return;
     moveItemInArray(orderableRows, event.previousIndex, event.currentIndex);
 
-    const rebuiltRows: Array<any> = [];
-    let lastKey: string | null = null;
-    orderableRows.forEach(row => {
-      const key = getRowProvinciaKey(row) || 'provincia-none';
-      if (key !== lastKey) {
-        const label = row.type === 'asignacion'
-          ? this.getProvinciaLabel(row.asig)
-          : this.getSacafrancoProvinciaLabel(row.fila);
-        rebuiltRows.push({ type: 'provincia', key, label });
-        lastKey = key;
-      }
-      rebuiltRows.push(row);
-    });
-    this.displayRows = rebuiltRows as any;
-
-    this.buildProvinciaSortOrderFromRows(this.displayRows || []);
-
-    // Reasignar orden recorriendo las filas YA reordenadas y reiniciando el contador
-    // en cada franja de provincia (encabezado visual). Esto numera por igual a
-    // asignaciones y sacafranco segun su posicion visual, sin depender del campo
-    // provincia propio de cada tipo.
-    let ordenBloque = 0;
-    rebuiltRows.forEach(row => {
-      if (row.type === 'provincia') { ordenBloque = 0; return; }
+    const ordenAsignaciones: { id: number; orden: number }[] = [];
+    const ordenSacafranco: { id: number; orden: number }[] = [];
+    orderableRows.forEach((row, idx) => {
       if (row.type === 'asignacion' && row.asig?.id) {
-        row.asig.orden = ordenBloque;
-        ordenAsignaciones.push({ id: row.asig.id, orden: ordenBloque });
-        ordenBloque += 1;
+        row.asig.orden = idx;
+        ordenAsignaciones.push({ id: row.asig.id, orden: idx });
       } else if (row.type === 'sacafranco' && row.fila?.id) {
-        row.fila.orden = ordenBloque;
-        ordenSacafranco.push({ id: row.fila.id, orden: ordenBloque });
-        ordenBloque += 1;
+        row.fila.orden = idx;
+        ordenSacafranco.push({ id: row.fila.id, orden: idx });
       }
     });
 
-    this.displayAssignmentRows = (this.displayRows || [])
+    this.displayRows = orderableRows as any;
+    this.displayAssignmentRows = orderableRows
       .filter(r => r?.type === 'asignacion')
-      .map(r => r.asig)
+      .map(r => (r as any).asig)
       .filter(a => !!a);
     this.asignaciones = [...this.displayAssignmentRows];
-
-    this.sacafrancoRows = (this.displayRows || [])
+    this.sacafrancoRows = orderableRows
       .filter(r => r?.type === 'sacafranco')
-      .map(r => r.fila)
+      .map(r => (r as any).fila)
       .filter(f => !!f);
 
     this.updateCalendarOrder();
@@ -1805,55 +1714,21 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       ...sacRows.map(f => ({ kind: 'sacafranco' as const, fila: f }))
     ];
 
-    // En vista mixta de cantones: una sola franja con el nombre de la vista,
-    // y lista plana ordenada solo por orden para arrastrar libremente.
-    const vistaMixta = this.isVistaCantonActiva();
-    if (vistaMixta) {
-      rows.push({ type: 'provincia', key: 'mixed-view', label: this.getActiveViewName() });
-    }
-
-    let lastProvincia: string | null = null;
-
+    // LISTA PLANA: se ordena solo por 'orden' global (sin agrupar por canton),
+    // para que el arrastre libre quede tal cual el usuario lo deja.
     orderables
       .sort((a, b) => {
-        if (!vistaMixta) {
-          const aKey = a.kind === 'asignacion'
-            ? this.getProvinciaKeyFromAsignacion(a.asig)
-            : this.getProvinciaKeyFromSacafranco(a.fila);
-          const bKey = b.kind === 'asignacion'
-            ? this.getProvinciaKeyFromAsignacion(b.asig)
-            : this.getProvinciaKeyFromSacafranco(b.fila);
-          const aGroup = this.provinciaSortOrder[aKey] ?? 0;
-          const bGroup = this.provinciaSortOrder[bKey] ?? 0;
-          if (aGroup !== bGroup) return aGroup - bGroup;
-        }
         const aOrd = a.kind === 'asignacion' ? (a.asig.orden ?? 0) : (a.fila.orden ?? 0);
         const bOrd = b.kind === 'asignacion' ? (b.asig.orden ?? 0) : (b.fila.orden ?? 0);
         return aOrd - bOrd;
       })
       .forEach(item => {
         if (item.kind === 'asignacion') {
-          if (!vistaMixta) {
-            const provinciaKey = this.getProvinciaKeyFromAsignacion(item.asig);
-            const provinciaLabel = this.getProvinciaLabel(item.asig);
-            if (provinciaKey !== lastProvincia) {
-              rows.push({ type: 'provincia', key: provinciaKey, label: provinciaLabel });
-              lastProvincia = provinciaKey;
-            }
-          }
           rows.push({ type: 'asignacion', asig: item.asig, isGroupedChild: false });
           displayAssignments.push(item.asig);
-          return;
+        } else {
+          rows.push({ type: 'sacafranco', id: item.fila.id as number, fila: item.fila });
         }
-        if (!vistaMixta) {
-          const sacProvinciaKey = this.getProvinciaKeyFromSacafranco(item.fila);
-          const sacProvinciaLabel = this.getSacafrancoProvinciaLabel(item.fila);
-          if (sacProvinciaKey !== lastProvincia) {
-            rows.push({ type: 'provincia', key: sacProvinciaKey, label: sacProvinciaLabel });
-            lastProvincia = sacProvinciaKey;
-          }
-        }
-        rows.push({ type: 'sacafranco', id: item.fila.id as number, fila: item.fila });
       });
 
     this.displayRows = rows;
