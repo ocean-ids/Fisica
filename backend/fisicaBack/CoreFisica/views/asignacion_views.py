@@ -1296,7 +1296,7 @@ def editar_servicio(request, id):
                         reemplazo=None, descripcion=None, row_color=None
                     )
 
-                # Cambiar la persona EN LA MISMA fila: el puesto conserva su calendario.
+                # Cambiar la persona EN LA MISMA fila.
                 asignacion.persona_id = new_persona_id
                 nuevo_horario = data.get('horario')
                 if nuevo_horario:
@@ -1304,10 +1304,19 @@ def editar_servicio(request, id):
                         asignacion.horario_id = int(nuevo_horario)
                     except (TypeError, ValueError):
                         pass
+                # Si tambien se cambio el puesto, moverlo (antes solo cambiaba la persona
+                # y el puesto se quedaba igual, por eso el contador no reflejaba el cambio).
+                nuevo_puesto = data.get('puesto') or data.get('puesto_id')
+                if nuevo_puesto:
+                    try:
+                        asignacion.puesto_id = int(nuevo_puesto)
+                    except (TypeError, ValueError):
+                        pass
                 asignacion.save()
-                # Nueva persona: resetear estado del reporte (no heredar el de la anterior)
+                # Nueva persona/puesto: resetear estado del reporte (no heredar el anterior)
                 ReporteAsistencia.objects.filter(asignacion=asignacion).update(
-                    persona_id=new_persona_id, estado='TURNO', estado_asistencia='',
+                    persona_id=new_persona_id, puesto_id=asignacion.puesto_id,
+                    estado='TURNO', estado_asistencia='',
                     reemplazo=None, descripcion=None, row_color=None
                 )
                 return Response(AsignacionSerializer(asignacion).data, status=status.HTTP_200_OK)
