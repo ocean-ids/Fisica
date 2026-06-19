@@ -1691,9 +1691,17 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const sourceKey = getRowProvinciaKey(draggedRow) || getHeaderKeyAbove(this.displayRows || [], event.previousIndex);
+    // La franja de provincia se toma del ENCABEZADO VISUAL de arriba (no de los datos
+    // de la fila), porque sacafranco agrupa por canton de la persona y la asignacion
+    // por canton de la instalacion: usar los datos directamente abortaba el arrastre
+    // del sacafranco (volvia a su sitio).
     const targetRowPre = orderableRows[event.currentIndex] || null;
-    const targetKey = getRowProvinciaKey(targetRowPre);
+    const draggedIdx = (this.displayRows || []).indexOf(draggedRow);
+    const targetIdx = targetRowPre ? (this.displayRows || []).indexOf(targetRowPre) : -1;
+    const sourceKey = (draggedIdx >= 0 ? getHeaderKeyAbove(this.displayRows || [], draggedIdx) : null)
+      || getRowProvinciaKey(draggedRow);
+    const targetKey = (targetIdx >= 0 ? getHeaderKeyAbove(this.displayRows || [], targetIdx) : null)
+      || getRowProvinciaKey(targetRowPre);
     if (!sourceKey || !targetKey || sourceKey !== targetKey) {
       return;
     }
@@ -1717,21 +1725,21 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     this.buildProvinciaSortOrderFromRows(this.displayRows || []);
 
-    const provinceKey = sourceKey;
-    const blockRows = orderableRows.filter(r => {
-      if (!r || (r.type !== 'asignacion' && r.type !== 'sacafranco')) return false;
-      return (getRowProvinciaKey(r) || '') === provinceKey;
-    });
-
-    // Reasignar orden solo dentro del bloque de la provincia
-    blockRows.forEach((row, idx) => {
+    // Reasignar orden recorriendo las filas YA reordenadas y reiniciando el contador
+    // en cada franja de provincia (encabezado visual). Esto numera por igual a
+    // asignaciones y sacafranco segun su posicion visual, sin depender del campo
+    // provincia propio de cada tipo.
+    let ordenBloque = 0;
+    rebuiltRows.forEach(row => {
+      if (row.type === 'provincia') { ordenBloque = 0; return; }
       if (row.type === 'asignacion' && row.asig?.id) {
-        row.asig.orden = idx;
-        ordenAsignaciones.push({ id: row.asig.id, orden: idx });
-      }
-      if (row.type === 'sacafranco' && row.fila?.id) {
-        row.fila.orden = idx;
-        ordenSacafranco.push({ id: row.fila.id, orden: idx });
+        row.asig.orden = ordenBloque;
+        ordenAsignaciones.push({ id: row.asig.id, orden: ordenBloque });
+        ordenBloque += 1;
+      } else if (row.type === 'sacafranco' && row.fila?.id) {
+        row.fila.orden = ordenBloque;
+        ordenSacafranco.push({ id: row.fila.id, orden: ordenBloque });
+        ordenBloque += 1;
       }
     });
 
