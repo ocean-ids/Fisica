@@ -802,7 +802,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const clienteIdsCsv = (activeView?.clienteIds || []).join(',');
     const instalacionIdsCsv = (activeView?.instalacionIds || []).join(',');
     const selectedViewCantons = this.getSelectedViewCantonIds();
-    const mixedView = !isClienteView && !isTipoView && selectedViewCantons.length >= 2;
+    const mixedView = !isClienteView && !isTipoView && selectedViewCantons.length >= 1;
     // La BÚSQUEDA ya no filtra el servidor: se resuelve localmente (scroll + resaltado)
     // para no ocultar los demás registros y poder arrastrarlos.
     // Vista plana (no paginar por cantón): cantones (2+), empresa o tipo de persona.
@@ -937,7 +937,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const isClienteView = activeView?.tipo === 'cliente';
     const isTipoView = activeView?.tipo === 'persona_tipo';
     const selectedViewCantons = this.getSelectedViewCantonIds();
-    const mixedView = !isClienteView && !isTipoView && selectedViewCantons.length >= 2;
+    const mixedView = !isClienteView && !isTipoView && selectedViewCantons.length >= 1;
     const cantonId = this.activeProvinciaId != null ? this.activeProvinciaId : null;
     const scopeParams = isClienteView
       ? { cliente_ids: (activeView?.clienteIds || []).join(',') }
@@ -1488,10 +1488,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         instalacionIds: toIds(v.instalacionIds),
         tipos: tiposNorm(v.tipos),
       }))
-      // Vista válida: por cantones (2+), por empresa (1+) o por tipo de persona (1+).
+      // Vista válida: por cantones (1+), por empresa (1+) o por tipo de persona (1+).
       .filter(v => v.tipo === 'cliente' ? v.clienteIds.length >= 1
         : v.tipo === 'persona_tipo' ? v.tipos.length >= 1
-        : v.cantonIds.length >= 2);
+        : v.cantonIds.length >= 1);
   }
 
   // Vistas compartidas: se cargan desde la BD (visibles en cualquier máquina/usuario).

@@ -414,7 +414,7 @@ export class CantonViewsModalComponent {
   saveView(): void {
     const nombre = (this.viewName || '').trim();
     if (!nombre) return;
-    if (this.tipo === 'canton' && this.selectedCantonIds.length < 2) return;
+    if (this.tipo === 'canton' && this.selectedCantonIds.length < 1) return;
     if (this.tipo === 'cliente' && this.selectedClienteId == null) return;
     if (this.tipo === 'persona_tipo' && this.selectedTipos.length < 1) return;
 
