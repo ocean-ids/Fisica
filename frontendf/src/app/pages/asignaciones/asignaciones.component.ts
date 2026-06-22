@@ -1436,6 +1436,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   abrirModalVistasCantones(): void {
+    // Refrescar la lista actual ANTES de abrir, para que el modal tenga TODAS las
+    // vistas y al guardar (que hace prune en backend) no se borre ninguna.
+    this.loadCantonViews(() => this.abrirModalVistasCantonesInterno());
+  }
+
+  private abrirModalVistasCantonesInterno(): void {
     const ref = this.dialog.open(CantonViewsModalComponent, {
       width: '680px',
       maxWidth: '95vw',

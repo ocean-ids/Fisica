@@ -88,6 +88,10 @@ def vistas_cantones(request):
             )
         kept_ids.append(obj.id)
 
-    VistaCanton.objects.exclude(id__in=kept_ids).delete()
+    # Salvaguarda: solo se hace prune (borrado de las no enviadas) si efectivamente
+    # llegaron vistas válidas. Un payload vacío NO borra todo (evita perder vistas
+    # si el cliente sincroniza con una lista vacía por error o sin haber cargado).
+    if kept_ids:
+        VistaCanton.objects.exclude(id__in=kept_ids).delete()
 
     return Response({'views': [_serialize(v) for v in VistaCanton.objects.all()]})
