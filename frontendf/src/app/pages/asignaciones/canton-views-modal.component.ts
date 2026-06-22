@@ -137,7 +137,7 @@ export interface CantonViewsModalResult {
           <input
             matInput
             placeholder="Buscar empresa..."
-            [(ngModel)]="empresaQuery"
+            [(ngModel)]="empresaModel"
             [matAutocomplete]="autoCliente"
           />
           <mat-autocomplete #autoCliente="matAutocomplete"
@@ -252,7 +252,9 @@ export class CantonViewsModalComponent {
   selectedTipos: string[] = [];
   // Vista por empresa: UNA empresa + instalaciones opcionales (vacio = todas).
   selectedClienteId: number | null = null;
-  empresaQuery = '';
+  // Modelo del autocomplete: guarda el id (number) cuando hay empresa elegida,
+  // o el texto (string) mientras se busca. displayEmpresa lo formatea.
+  empresaModel: number | string | null = null;
   selectedInstalacionIds: number[] = [];
   instalacionesEmpresa: { id: number; nombre: string }[] = [];
   cargandoInstalaciones = false;
@@ -310,18 +312,23 @@ export class CantonViewsModalComponent {
     return this.filterOptions(this.data?.cantones || [], this.selectedCantonIds);
   }
 
-  // Empresas que coinciden con la búsqueda (selección única).
+  // Empresas que coinciden con el texto escrito (cuando el modelo es string).
   get filteredEmpresas(): CantonOption[] {
-    const q = (this.empresaQuery || '').trim().toLowerCase();
+    const v = this.empresaModel;
+    const q = (typeof v === 'string' ? v : '').trim().toLowerCase();
     return (this.data?.empresas || [])
       .filter(c => c.id != null)
       .filter(c => !q || (c.nombre || '').toLowerCase().includes(q));
   }
 
-  displayEmpresa = (id: number | null): string => {
-    if (id == null) return '';
-    const c = (this.data?.empresas || []).find(x => x.id === id);
-    return c?.nombre || '';
+  // Muestra el nombre cuando el modelo es un id; deja el texto cuando se está buscando.
+  displayEmpresa = (value: number | string | null): string => {
+    if (value == null || value === '') return '';
+    if (typeof value === 'number') {
+      const c = (this.data?.empresas || []).find(x => x.id === value);
+      return c?.nombre || '';
+    }
+    return String(value);
   };
 
   // Instalaciones de la empresa elegida, no seleccionadas aún, filtradas por texto.
@@ -354,9 +361,10 @@ export class CantonViewsModalComponent {
   }
 
   // Elegir empresa: carga sus instalaciones y limpia la selección previa.
+  // (Material deja el id en empresaModel y displayEmpresa muestra el nombre.)
   onSelectCliente(id: number): void {
     this.selectedClienteId = id ?? null;
-    this.empresaQuery = this.displayEmpresa(id);
+    this.empresaModel = id ?? null;
     this.selectedInstalacionIds = [];
     this.cargarInstalacionesEmpresa(id);
   }
@@ -420,7 +428,7 @@ export class CantonViewsModalComponent {
     this.selectedClienteId = (v.clienteIds && v.clienteIds.length) ? v.clienteIds[0] : null;
     this.selectedInstalacionIds = [];
     this.instalacionesEmpresa = [];
-    this.empresaQuery = this.selectedClienteId != null ? this.displayEmpresa(this.selectedClienteId) : '';
+    this.empresaModel = this.selectedClienteId;
     if (this.selectedClienteId != null) {
       this.cargarInstalacionesEmpresa(this.selectedClienteId, [...(v.instalacionIds || [])]);
     }
@@ -439,7 +447,7 @@ export class CantonViewsModalComponent {
     this.selectedCantonIds = [];
     this.selectedTipos = [];
     this.selectedClienteId = null;
-    this.empresaQuery = '';
+    this.empresaModel = null;
     this.selectedInstalacionIds = [];
     this.instalacionesEmpresa = [];
     this.cargandoInstalaciones = false;
