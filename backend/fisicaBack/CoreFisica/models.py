@@ -779,6 +779,9 @@ class VistaCanton(models.Model):
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='canton')
     cantones = models.JSONField(default=list)
     clientes = models.JSONField(default=list)
+    # Para tipo='cliente': instalaciones especificas de la empresa. Si va vacio,
+    # la vista incluye TODAS las instalaciones del cliente.
+    instalaciones = models.JSONField(default=list)
     # Para tipo='persona_tipo': lista de tipos de persona (FIJOS, SACAFRANCO, ...).
     # Es ADITIVA: estas personas siguen apareciendo en sus vistas por cantón.
     tipos = models.JSONField(default=list)

@@ -8,6 +8,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { InstalacionService } from '../../services/instalacion.service';
 
 export interface CantonOption {
   id: number | null;
@@ -28,6 +29,7 @@ export interface CantonMixView {
   tipo: VistaTipo;
   cantonIds: number[];
   clienteIds: number[];
+  instalacionIds: number[];
   tipos: string[];
 }
 
@@ -129,30 +131,52 @@ export interface CantonViewsModalResult {
           </mat-autocomplete>
         </mat-form-field>
       } @else {
+        <!-- 1) Una empresa por vista -->
         <mat-form-field class="w-100" appearance="outline">
-          <mat-label>Empresas seleccionadas</mat-label>
-          <mat-chip-grid #chipGridE aria-label="Seleccion de empresas">
-            @for (id of selectedClienteIds; track id) {
-              <mat-chip-row (removed)="removeCliente(id)">
-                {{ getName('cliente', id) }}
-                <button matChipRemove [attr.aria-label]="'Quitar ' + getName('cliente', id)">
-                  <mat-icon>cancel</mat-icon>
-                </button>
-              </mat-chip-row>
-            }
-          </mat-chip-grid>
+          <mat-label>Empresa</mat-label>
           <input
+            matInput
             placeholder="Buscar empresa..."
-            [(ngModel)]="query"
-            [matChipInputFor]="chipGridE"
+            [(ngModel)]="empresaQuery"
             [matAutocomplete]="autoCliente"
           />
-          <mat-autocomplete #autoCliente="matAutocomplete" (optionSelected)="addCliente($event.option.value)">
+          <mat-autocomplete #autoCliente="matAutocomplete"
+            (optionSelected)="onSelectCliente($event.option.value)"
+            [displayWith]="displayEmpresa">
             @for (c of filteredEmpresas; track c.id) {
               <mat-option [value]="c.id">{{ c.nombre }}</mat-option>
             }
           </mat-autocomplete>
         </mat-form-field>
+
+        <!-- 2) Instalaciones de esa empresa (opcional: vacio = todas) -->
+        @if (selectedClienteId != null) {
+          <div class="hint-inst">Instalaciones (opcional). Si no eliges ninguna, entra <b>toda la empresa</b>.</div>
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Instalaciones seleccionadas</mat-label>
+            <mat-chip-grid #chipGridI aria-label="Seleccion de instalaciones">
+              @for (id of selectedInstalacionIds; track id) {
+                <mat-chip-row (removed)="removeInstalacion(id)">
+                  {{ getInstName(id) }}
+                  <button matChipRemove [attr.aria-label]="'Quitar ' + getInstName(id)">
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                </mat-chip-row>
+              }
+            </mat-chip-grid>
+            <input
+              [placeholder]="cargandoInstalaciones ? 'Cargando...' : (instalacionesEmpresa.length ? 'Buscar instalacion...' : 'Sin instalaciones')"
+              [(ngModel)]="query"
+              [matChipInputFor]="chipGridI"
+              [matAutocomplete]="autoInst"
+            />
+            <mat-autocomplete #autoInst="matAutocomplete" (optionSelected)="addInstalacion($event.option.value)">
+              @for (i of filteredInstalaciones; track i.id) {
+                <mat-option [value]="i.id">{{ i.nombre }}</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+        }
       }
 
       <div class="d-flex gap-2 mb-3">
@@ -173,6 +197,11 @@ export interface CantonViewsModalResult {
                 @if (v.tipo === 'cliente') {
                   @for (id of v.clienteIds; track id) {
                     <span class="saved-chip">{{ getName('cliente', id) }}</span>
+                  }
+                  @if (v.instalacionIds && v.instalacionIds.length) {
+                    <span class="saved-chip saved-chip-inst">{{ v.instalacionIds.length }} instalación(es)</span>
+                  } @else {
+                    <span class="saved-chip saved-chip-inst">toda la empresa</span>
                   }
                 } @else if (v.tipo === 'persona_tipo') {
                   @for (t of v.tipos; track t) {
@@ -210,6 +239,8 @@ export interface CantonViewsModalResult {
     .badge-tipo { font-size: 10px; font-weight: 700; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 999px; padding: 1px 8px; }
     .saved-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
     .saved-chip { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+    .saved-chip-inst { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+    .hint-inst { font-size: 12px; color: #6b7280; margin: -4px 0 8px; }
     `
   ]
 })
@@ -218,14 +249,20 @@ export class CantonViewsModalComponent {
   viewName = '';
   tipo: VistaTipo = 'canton';
   selectedCantonIds: number[] = [];
-  selectedClienteIds: number[] = [];
   selectedTipos: string[] = [];
+  // Vista por empresa: UNA empresa + instalaciones opcionales (vacio = todas).
+  selectedClienteId: number | null = null;
+  empresaQuery = '';
+  selectedInstalacionIds: number[] = [];
+  instalacionesEmpresa: { id: number; nombre: string }[] = [];
+  cargandoInstalaciones = false;
   readonly tiposDisponibles = TIPOS_PERSONA;
   query = '';
   editingId: string | null = null;
 
   constructor(
     private dialogRef: MatDialogRef<CantonViewsModalComponent, CantonViewsModalResult>,
+    private instalacionService: InstalacionService,
     @Inject(MAT_DIALOG_DATA) public data: CantonViewsModalData,
   ) {
     this.views = (data?.views || []).map(v => ({
@@ -233,6 +270,7 @@ export class CantonViewsModalComponent {
       tipo: v.tipo || 'canton',
       cantonIds: v.cantonIds || [],
       clienteIds: v.clienteIds || [],
+      instalacionIds: v.instalacionIds || [],
       tipos: v.tipos || [],
     }));
   }
@@ -272,14 +310,37 @@ export class CantonViewsModalComponent {
     return this.filterOptions(this.data?.cantones || [], this.selectedCantonIds);
   }
 
+  // Empresas que coinciden con la búsqueda (selección única).
   get filteredEmpresas(): CantonOption[] {
-    return this.filterOptions(this.data?.empresas || [], this.selectedClienteIds);
+    const q = (this.empresaQuery || '').trim().toLowerCase();
+    return (this.data?.empresas || [])
+      .filter(c => c.id != null)
+      .filter(c => !q || (c.nombre || '').toLowerCase().includes(q));
+  }
+
+  displayEmpresa = (id: number | null): string => {
+    if (id == null) return '';
+    const c = (this.data?.empresas || []).find(x => x.id === id);
+    return c?.nombre || '';
+  };
+
+  // Instalaciones de la empresa elegida, no seleccionadas aún, filtradas por texto.
+  get filteredInstalaciones(): { id: number; nombre: string }[] {
+    const q = (this.query || '').trim().toLowerCase();
+    return (this.instalacionesEmpresa || [])
+      .filter(i => !this.selectedInstalacionIds.includes(i.id))
+      .filter(i => !q || (i.nombre || '').toLowerCase().includes(q));
   }
 
   getName(tipo: VistaTipo, id: number): string {
     const source = tipo === 'cliente' ? (this.data?.empresas || []) : (this.data?.cantones || []);
     const c = source.find(x => x.id === id);
     return c?.nombre || `${tipo === 'cliente' ? 'EMPRESA' : 'CANTON'} ${id}`;
+  }
+
+  getInstName(id: number): string {
+    const i = (this.instalacionesEmpresa || []).find(x => x.id === id);
+    return i?.nombre || `INSTALACION ${id}`;
   }
 
   addCanton(id: number): void {
@@ -292,28 +353,53 @@ export class CantonViewsModalComponent {
     this.selectedCantonIds = this.selectedCantonIds.filter(x => x !== id);
   }
 
-  addCliente(id: number): void {
-    if (!id || this.selectedClienteIds.includes(id)) return;
-    this.selectedClienteIds = [...this.selectedClienteIds, id];
+  // Elegir empresa: carga sus instalaciones y limpia la selección previa.
+  onSelectCliente(id: number): void {
+    this.selectedClienteId = id ?? null;
+    this.empresaQuery = this.displayEmpresa(id);
+    this.selectedInstalacionIds = [];
+    this.cargarInstalacionesEmpresa(id);
+  }
+
+  private cargarInstalacionesEmpresa(clienteId: number, preset?: number[]): void {
+    if (!clienteId) { this.instalacionesEmpresa = []; return; }
+    this.cargandoInstalaciones = true;
+    this.instalacionService.getInstalaciones({ cliente_id: clienteId }).subscribe({
+      next: (data: any[]) => {
+        this.instalacionesEmpresa = (data || []).map(i => ({ id: i.id, nombre: i.nombre || `Instalación ${i.id}` }));
+        if (preset && preset.length) {
+          const validos = new Set(this.instalacionesEmpresa.map(i => i.id));
+          this.selectedInstalacionIds = preset.filter(id => validos.has(id));
+        }
+        this.cargandoInstalaciones = false;
+      },
+      error: () => { this.instalacionesEmpresa = []; this.cargandoInstalaciones = false; }
+    });
+  }
+
+  addInstalacion(id: number): void {
+    if (!id || this.selectedInstalacionIds.includes(id)) return;
+    this.selectedInstalacionIds = [...this.selectedInstalacionIds, id];
     this.query = '';
   }
 
-  removeCliente(id: number): void {
-    this.selectedClienteIds = this.selectedClienteIds.filter(x => x !== id);
+  removeInstalacion(id: number): void {
+    this.selectedInstalacionIds = this.selectedInstalacionIds.filter(x => x !== id);
   }
 
   saveView(): void {
     const nombre = (this.viewName || '').trim();
     if (!nombre) return;
     if (this.tipo === 'canton' && this.selectedCantonIds.length < 2) return;
-    if (this.tipo === 'cliente' && this.selectedClienteIds.length < 1) return;
+    if (this.tipo === 'cliente' && this.selectedClienteId == null) return;
     if (this.tipo === 'persona_tipo' && this.selectedTipos.length < 1) return;
 
     const nueva: Omit<CantonMixView, 'id'> = {
       nombre,
       tipo: this.tipo,
       cantonIds: this.tipo === 'canton' ? [...this.selectedCantonIds] : [],
-      clienteIds: this.tipo === 'cliente' ? [...this.selectedClienteIds] : [],
+      clienteIds: this.tipo === 'cliente' && this.selectedClienteId != null ? [this.selectedClienteId] : [],
+      instalacionIds: this.tipo === 'cliente' ? [...this.selectedInstalacionIds] : [],
       tipos: this.tipo === 'persona_tipo' ? [...this.selectedTipos] : [],
     };
 
@@ -330,8 +416,14 @@ export class CantonViewsModalComponent {
     this.viewName = v.nombre;
     this.tipo = v.tipo || 'canton';
     this.selectedCantonIds = [...(v.cantonIds || [])];
-    this.selectedClienteIds = [...(v.clienteIds || [])];
     this.selectedTipos = [...(v.tipos || [])];
+    this.selectedClienteId = (v.clienteIds && v.clienteIds.length) ? v.clienteIds[0] : null;
+    this.selectedInstalacionIds = [];
+    this.instalacionesEmpresa = [];
+    this.empresaQuery = this.selectedClienteId != null ? this.displayEmpresa(this.selectedClienteId) : '';
+    if (this.selectedClienteId != null) {
+      this.cargarInstalacionesEmpresa(this.selectedClienteId, [...(v.instalacionIds || [])]);
+    }
   }
 
   deleteView(id: string): void {
@@ -345,8 +437,12 @@ export class CantonViewsModalComponent {
     this.editingId = null;
     this.viewName = '';
     this.selectedCantonIds = [];
-    this.selectedClienteIds = [];
     this.selectedTipos = [];
+    this.selectedClienteId = null;
+    this.empresaQuery = '';
+    this.selectedInstalacionIds = [];
+    this.instalacionesEmpresa = [];
+    this.cargandoInstalaciones = false;
     this.query = '';
   }
 

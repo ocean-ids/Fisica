@@ -13,6 +13,7 @@ def _serialize(v):
         'tipo': v.tipo or 'canton',
         'cantonIds': v.cantones or [],
         'clienteIds': v.clientes or [],
+        'instalacionIds': getattr(v, 'instalaciones', None) or [],
         'tipos': v.tipos or [],
     }
 
@@ -54,6 +55,7 @@ def vistas_cantones(request):
             tipo = 'canton'
         cantones = _int_list(item.get('cantonIds'))
         clientes = _int_list(item.get('clienteIds'))
+        instalaciones = _int_list(item.get('instalacionIds'))
         tipos = [str(t).strip().upper() for t in (item.get('tipos') or []) if str(t).strip()]
 
         # Validación por tipo: cantones agrupa 2+, empresas 1+, tipo-persona 1+.
@@ -68,16 +70,21 @@ def vistas_cantones(request):
 
         raw_id = str(item.get('id') or '')
         obj = VistaCanton.objects.filter(id=int(raw_id)).first() if raw_id.isdigit() else None
+        # Las instalaciones solo aplican a vistas de empresa.
+        if tipo != 'cliente':
+            instalaciones = []
         if obj:
             obj.nombre = nombre
             obj.tipo = tipo
             obj.cantones = cantones
             obj.clientes = clientes
+            obj.instalaciones = instalaciones
             obj.tipos = tipos
-            obj.save(update_fields=['nombre', 'tipo', 'cantones', 'clientes', 'tipos'])
+            obj.save(update_fields=['nombre', 'tipo', 'cantones', 'clientes', 'instalaciones', 'tipos'])
         else:
             obj = VistaCanton.objects.create(
-                nombre=nombre, tipo=tipo, cantones=cantones, clientes=clientes, tipos=tipos
+                nombre=nombre, tipo=tipo, cantones=cantones, clientes=clientes,
+                instalaciones=instalaciones, tipos=tipos
             )
         kept_ids.append(obj.id)
 

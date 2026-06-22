@@ -401,7 +401,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.cargarCatalogos();
-    this.loadCantonViews();
     this.selectedCantonKey = localStorage.getItem(this.selectedCantonKeyStorageKey) || '';
 
     this.monthValue = `${this.anio}-${String(this.mes).padStart(2,'0')}`;
@@ -409,7 +408,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
     this.buildCalendarWeekDayKeys();
 
-    this.cargarAsignaciones();
+    // Cargar las vistas PRIMERO; recién entonces cargar asignaciones, para que
+    // si lo guardado es una vista (view:X) se restaure correctamente al volver.
+    this.loadCantonViews(() => this.cargarAsignaciones());
 
     this.filterSub = this.globalFilter.state$
       .pipe(
@@ -799,6 +800,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const isTipoView = activeView?.tipo === 'persona_tipo';
     const tiposCsv = (activeView?.tipos || []).join(',');
     const clienteIdsCsv = (activeView?.clienteIds || []).join(',');
+    const instalacionIdsCsv = (activeView?.instalacionIds || []).join(',');
     const selectedViewCantons = this.getSelectedViewCantonIds();
     const mixedView = !isClienteView && !isTipoView && selectedViewCantons.length >= 2;
     // La BÚSQUEDA ya no filtra el servidor: se resuelve localmente (scroll + resaltado)
@@ -809,6 +811,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     if (isClienteView) {
       params.cliente_ids = clienteIdsCsv;
+      // Si la vista de empresa está acotada a instalaciones, filtrar por ellas.
+      if (instalacionIdsCsv) {
+        params.instalacion_ids = instalacionIdsCsv;
+      }
     } else if (isTipoView) {
       params.tipos = tiposCsv;
     } else if (mixedView) {
@@ -1473,6 +1479,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         tipo: (tiposPermitidos.has(v.tipo) ? v.tipo : 'canton') as VistaTipo,
         cantonIds: toIds(v.cantonIds),
         clienteIds: toIds(v.clienteIds),
+        instalacionIds: toIds(v.instalacionIds),
         tipos: tiposNorm(v.tipos),
       }))
       // Vista válida: por cantones (2+), por empresa (1+) o por tipo de persona (1+).
@@ -1482,10 +1489,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   // Vistas compartidas: se cargan desde la BD (visibles en cualquier máquina/usuario).
-  private loadCantonViews(): void {
+  private loadCantonViews(done?: () => void): void {
     this.asignacionService.obtenerVistasCantones().subscribe({
-      next: views => { this.cantonViews = this.normalizeCantonViews(views); },
-      error: () => { this.cantonViews = []; }
+      next: views => { this.cantonViews = this.normalizeCantonViews(views); if (done) done(); },
+      error: () => { this.cantonViews = []; if (done) done(); }
     });
   }
 
