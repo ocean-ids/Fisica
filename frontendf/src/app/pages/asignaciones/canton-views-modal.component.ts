@@ -9,6 +9,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { InstalacionService } from '../../services/instalacion.service';
+import { UbicacionService } from '../../services/ubicacion.service';
 
 export interface CantonOption {
   id: number | null;
@@ -261,12 +262,27 @@ export class CantonViewsModalComponent {
   readonly tiposDisponibles = TIPOS_PERSONA;
   query = '';
   editingId: string | null = null;
+  // Lista completa de cantones (la carga el propio modal para no depender de la
+  // vista actualmente cargada en la pantalla de asignaciones).
+  cantonesAll: CantonOption[] = [];
 
   constructor(
     private dialogRef: MatDialogRef<CantonViewsModalComponent, CantonViewsModalResult>,
     private instalacionService: InstalacionService,
+    private ubicacionService: UbicacionService,
     @Inject(MAT_DIALOG_DATA) public data: CantonViewsModalData,
   ) {
+    this.cantonesAll = (data?.cantones || []).slice();
+    // Cargar TODOS los cantones (independiente de la vista activa).
+    this.ubicacionService.getCantones().subscribe({
+      next: (data: any[]) => {
+        const lista = (data || [])
+          .map(c => ({ id: c.id, nombre: c.nombre } as CantonOption))
+          .filter(c => c.id != null && c.nombre);
+        if (lista.length) this.cantonesAll = lista;
+      },
+      error: () => {}
+    });
     this.views = (data?.views || []).map(v => ({
       ...v,
       tipo: v.tipo || 'canton',
@@ -309,7 +325,7 @@ export class CantonViewsModalComponent {
   }
 
   get filteredCantones(): CantonOption[] {
-    return this.filterOptions(this.data?.cantones || [], this.selectedCantonIds);
+    return this.filterOptions(this.cantonesAll || [], this.selectedCantonIds);
   }
 
   // Empresas que coinciden con el texto escrito (cuando el modelo es string).
@@ -340,7 +356,7 @@ export class CantonViewsModalComponent {
   }
 
   getName(tipo: VistaTipo, id: number): string {
-    const source = tipo === 'cliente' ? (this.data?.empresas || []) : (this.data?.cantones || []);
+    const source = tipo === 'cliente' ? (this.data?.empresas || []) : (this.cantonesAll || []);
     const c = source.find(x => x.id === id);
     return c?.nombre || `${tipo === 'cliente' ? 'EMPRESA' : 'CANTON'} ${id}`;
   }
