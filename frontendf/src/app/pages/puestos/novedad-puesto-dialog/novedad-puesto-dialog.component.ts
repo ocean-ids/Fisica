@@ -114,11 +114,11 @@ export class NovedadPuestoDialogComponent implements OnInit {
     if (turno.startsWith('n')) this.model.turno = 'Nocturno';
     else if (turno.startsWith('d')) this.model.turno = 'Diurno';
 
-    // Trae la secuencia real del calendario y el resumen desde el backend.
-    // Solo sobrescribe el horario si detectó algo (si viene vacío, respeta lo existente).
+    // Trae el resumen desde el backend para el "Tipo".
+    // El "Horario" NO se autocompleta (antes salía "1"): se deja vacío y, si se
+    // necesita, el usuario lo escribe manualmente.
     this.puestoService.getSecuenciaHorario(p.id).subscribe({
       next: (res) => {
-        if (res?.secuencia) this.model.horario = res.secuencia;
         if (res?.resumen) this.model.tipo = res.resumen;
       },
       error: () => {}
