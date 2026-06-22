@@ -296,6 +296,14 @@ def obtener_asignaciones(request, mes=None, anio=None):
             cliente_ids = [int(x) for x in cliente_ids_raw.split(',') if str(x).strip()]
         except (TypeError, ValueError):
             return Response({'error': 'Cliente IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+    # Vista por empresa acotada a instalaciones especificas (opcional).
+    instalacion_ids_raw = (request.GET.get('instalacion_ids') or '').strip()
+    instalacion_ids: list[int] = []
+    if instalacion_ids_raw:
+        try:
+            instalacion_ids = [int(x) for x in instalacion_ids_raw.split(',') if str(x).strip()]
+        except (TypeError, ValueError):
+            return Response({'error': 'Instalacion IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
     lite = str(request.GET.get('lite', 'false')).lower() in ['true', '1', 'yes']
     # Vista por tipo de persona (aditiva): filtra por persona__tipo, lista plana.
     tipos_raw = (request.GET.get('tipos') or '').strip()
@@ -349,6 +357,8 @@ def obtener_asignaciones(request, mes=None, anio=None):
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
     if cliente_ids:
         asignaciones = asignaciones.filter(cliente_id__in=cliente_ids)
+    if instalacion_ids:
+        asignaciones = asignaciones.filter(instalacion_id__in=instalacion_ids)
     if tipos:
         asignaciones = asignaciones.filter(persona__tipo__in=tipos)
     if instalacion_id:
