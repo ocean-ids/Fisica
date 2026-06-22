@@ -69,12 +69,19 @@ def _payload(request):
 
 
 def _cerrar_asignaciones_futuras(puesto):
-    """Quita del calendario las asignaciones del puesto del mes en curso hacia
-    adelante, sin tocar meses pasados.
+    """Libera a la persona del puesto del mes en curso hacia adelante, dejando la
+    asignación VISIBLE pero vacante (sin persona) y sin tocar meses pasados.
 
-    - Recurrentes: se les pone fecha fin al último día del mes anterior, así
-      siguen apareciendo en meses pasados pero no del mes actual en adelante.
-    - No recurrentes (por mes): las del mes actual y futuros pasan a INACTIVO.
+    Objetivo:
+      - En Asignación el puesto cerrado sigue saliendo (vacante; el front lo pinta
+        gris/deshabilitado porque puesto.activo=False).
+      - En Reporte/Consolidado NO sale (esos filtran persona__isnull=False, y aquí
+        la asignación queda sin persona).
+      - La persona queda disponible (se libera la llave persona+mes+año).
+
+    Recurrentes CON historial: se cortan a fin del mes anterior (conserva el pasado
+    con su persona) y se crea un registro vacante desde el mes actual, para que el
+    puesto siga visible sin borrar el historial.
     """
     hoy = timezone.localdate()
     cy, cm = hoy.year, hoy.month
@@ -82,20 +89,41 @@ def _cerrar_asignaciones_futuras(puesto):
     prev_last = month_start - datetime.timedelta(days=1)
 
     recurrentes = Asignacion.objects.filter(puesto=puesto, estado='ACTIVO', recurring=True)
-    # Recurrentes que empezaron este mes o después: no tienen pasado que conservar -> eliminar
-    # (libera la llave única persona+mes+año para poder reasignar a la persona).
-    recurrentes.filter(Q(start_date__isnull=True) | Q(start_date__gte=month_start)).delete()
-    # Recurrentes con historial previo: terminarlas a fin del mes anterior (conserva el pasado).
-    recurrentes.filter(start_date__lt=month_start).filter(
-        Q(end_date__isnull=True) | Q(end_date__gte=month_start)
-    ).update(end_date=prev_last)
 
-    # No recurrentes del mes actual en adelante: eliminar (libera persona y cupo, sin tocar el pasado).
+    # Recurrentes CON historial: terminar a fin del mes anterior (conserva el pasado)
+    # y crear un registro vacante desde el mes actual (visible, sin persona).
+    con_historial = list(
+        recurrentes.filter(start_date__lt=month_start).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=month_start)
+        )
+    )
+    for asig in con_historial:
+        asig.end_date = prev_last
+        asig.save(update_fields=['end_date'])
+        Asignacion.objects.create(
+            cliente=asig.cliente,
+            instalacion=asig.instalacion,
+            puesto=puesto,
+            horario_id=asig.horario_id,
+            persona=None,
+            mes=cm,
+            anio=cy,
+            estado='ACTIVO',
+            recurring=True,
+            start_date=month_start,
+            end_date=None,
+        )
+
+    # Recurrentes SIN historial (empezaron este mes o sin start_date): liberar persona,
+    # se mantienen ACTIVO (se ven vacantes/deshabilitadas).
+    recurrentes.filter(Q(start_date__isnull=True) | Q(start_date__gte=month_start)).update(persona=None)
+
+    # No recurrentes del mes actual en adelante: liberar persona, se mantienen ACTIVO.
     Asignacion.objects.filter(
         puesto=puesto, estado='ACTIVO', recurring=False
     ).filter(
         Q(anio__gt=cy) | Q(anio=cy, mes__gte=cm)
-    ).delete()
+    ).update(persona=None)
 
 
 def _aplicar_estado_puesto(puesto, novedad_tipo):

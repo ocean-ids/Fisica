@@ -313,7 +313,16 @@ class Persona(models.Model):
     canton = models.ForeignKey(Canton, null=True, blank=True, on_delete=models.PROTECT)
     
     is_active = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
-
+    
+    fecha_nacimiento = models.DateField(null=True, blank=True)
+    departamento = models.CharField(max_length=120, blank=True, default='')
+    seccion = models.CharField(max_length=120, blank=True, default='')
+    sexo = models.CharField(max_length=10, blank=True, default='')
+    cargo = models.CharField(max_length=120, blank=True, default='')
+    fecha_ingreso = models.DateField(null=True, blank=True)
+    fecha_salida = models.DateField(null=True, blank=True)
+    correo_personal = models.EmailField(blank=True, default='')
+    direccion = models.CharField(max_length=255, blank=True, default='')
    
     objects = models.Manager()
     active = ActiveManager()

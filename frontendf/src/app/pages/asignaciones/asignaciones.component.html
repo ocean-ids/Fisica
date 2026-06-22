@@ -140,6 +140,7 @@
                   (cdkDragEnded)="onDragEnded()"
                   [attr.id]="'asig-row-' + row.asig.id"
                   [class.row-busqueda-activa]="row.asig.id === highlightedAsigId"
+                  [class.fila-puesto-cerrado]="row.asig.puesto_detalle?.activo === false"
                   class="text-center align-middle shared-row"
                   style="height: 70px;">
                   <td *ngIf="!columnaOculta('horario')" class="align-middle overflow-hidden" style="height: 70px;">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
@@ -185,7 +186,13 @@
                         </div>
                       </ng-container>
                       <ng-template #puestoVacante>
-                        <button type="button" class="btn btn-sm btn-warning d-flex align-items-center gap-1 mx-auto"
+                        <!-- Puesto cerrado: se muestra deshabilitado, sin opción de reasignar -->
+                        <span *ngIf="row.asig.puesto_detalle?.activo === false"
+                          class="badge bg-secondary d-inline-flex align-items-center gap-1">
+                          <i class="bi bi-lock-fill"></i> CERRADO
+                        </span>
+                        <button *ngIf="row.asig.puesto_detalle?.activo !== false"
+                          type="button" class="btn btn-sm btn-warning d-flex align-items-center gap-1 mx-auto"
                           title="Puesto sin persona asignada"
                           (click)="mostrarPuestoVacante(row.asig)">
                           <i class="bi bi-exclamation-triangle-fill"></i> VACANTE

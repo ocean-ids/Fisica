@@ -20,6 +20,13 @@
   text-align: center;
 }
 
+/* Fila de un puesto CERRADO: se ve deshabilitada (gris). */
+.fila-puesto-cerrado > td {
+  background-color: #f1f3f5 !important;
+  color: #9aa0a6;
+}
+.fila-puesto-cerrado .tooltip-trigger { color: #9aa0a6; }
+
 /* Fila resaltada al ubicar un resultado de búsqueda con scroll. */
 .row-busqueda-activa > td {
   background-color: #fff3cd !important;
