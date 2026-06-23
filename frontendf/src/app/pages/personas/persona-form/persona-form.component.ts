@@ -6,9 +6,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { Persona } from '../../../models/persona.model';
 import { UbicacionService } from '../../../services/ubicacion.service';
 import { ProvinciasService } from '../../../services/provincias.service';
+import { ClienteService } from '../../../services/cliente.service';
 import { Province, City } from '../../../data/provincias';
 
 @Component({
@@ -21,7 +24,9 @@ import { Province, City } from '../../../data/provincias';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatSelectModule
+    MatSelectModule,
+    MatRadioModule,
+    MatCheckboxModule
   ],
   templateUrl: './persona-form.component.html',
   styleUrl: './persona-form.component.css'
@@ -30,6 +35,12 @@ export class PersonaFormComponent implements OnInit {
   personaForm!: FormGroup;
   provincias: (any | Province)[] = [];
   cantones: (any | City)[] = [];
+  clientes: { id: number; nombre: string }[] = [];
+  fotoFile: File | null = null;
+  fotoPreview: string | null = null;
+  sexos = [{ v: 'MASCULINO', l: 'Masculino' }, { v: 'FEMENINO', l: 'Femenino' }];
+  estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }, { v: 'DIVORCIADO', l: 'Divorciado' }, { v: 'VIUDO', l: 'Viudo' }, { v: 'UNION_LIBRE', l: 'Unión libre' }];
+  tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero' }, { v: 'OPERADOR', l: 'Operador' }];
   private useStaticProvincias = false;
   private initialCanton: string | null = null;
   private initialCantonName: string | null = null;
@@ -54,20 +65,61 @@ export class PersonaFormComponent implements OnInit {
     private dialogRef: MatDialogRef<PersonaFormComponent>,
     @Inject(MAT_DIALOG_DATA) public persona: Persona,
     private ubicacionService: UbicacionService,
-    private provinciasService: ProvinciasService
+    private provinciasService: ProvinciasService,
+    private clienteService: ClienteService
   ) {}
 
   ngOnInit(): void {
+    const p: any = this.persona || {};
     this.personaForm = this.fb.group({
-      nombres: [this.persona?.nombres || '', Validators.required],
-      apellidos: [this.persona?.apellidos || '', Validators.required],
-      cedula: [this.persona?.cedula || '', [Validators.required, Validators.pattern('^[0-9]{1,10}$'), Validators.maxLength(10)]],
-      provincia: [this.persona?.provincia ?? null],
-      canton: [this.persona?.canton ?? null],
-      tipo: [this.persona?.tipo ?? 'FIJOS', Validators.required]
+      // Datos base de la app
+      cedula: [p.cedula || '', [Validators.required, Validators.pattern('^[0-9]{1,10}$'), Validators.maxLength(10)]],
+      nombres: [p.nombres || '', Validators.required],
+      apellidos: [p.apellidos || '', Validators.required],
+      tipo: [p.tipo ?? 'FIJOS', Validators.required],
+      provincia: [p.provincia ?? null],
+      canton: [p.canton ?? null],
+      is_active: [p.is_active ?? true],
+      // Datos del ERP
+      codigo_erp: [p.codigo_erp || ''],
+      centro_costo: [p.centro_costo || ''],
+      sexo: [p.sexo || ''],
+      estatura: [p.estatura ?? null],
+      lugar_nacimiento: [p.lugar_nacimiento || ''],
+      fecha_nacimiento: [p.fecha_nacimiento || null],
+      direccion: [p.direccion || ''],
+      parroquia: [p.parroquia || ''],
+      estado_civil: [p.estado_civil || ''],
+      telefono: [p.telefono || ''],
+      conyuge: [p.conyuge || ''],
+      nacionalidad: [p.nacionalidad || ''],
+      cliente: [p.cliente ?? null],
+      unidad_negocio: [p.unidad_negocio || ''],
+      tipo_empleado: [p.tipo_empleado || ''],
+      cargo: [p.cargo || ''],
+      fecha_ingreso: [p.fecha_ingreso || null],
+      fecha_salida: [p.fecha_salida || null],
+      forma_pago: [p.forma_pago || ''],
+      numero_afiliacion: [p.numero_afiliacion || ''],
+      numero_contrato: [p.numero_contrato || ''],
+      actividad: [p.actividad || ''],
+      seccion: [p.seccion || ''],
+      departamento: [p.departamento || ''],
+      perfil: [p.perfil || ''],
+      fecha_pago_liquidacion: [p.fecha_pago_liquidacion || null],
+      motivo_salida: [p.motivo_salida || ''],
+      correo_personal: [p.correo_personal || ''],
+      region: [p.region || ''],
+      gypaseg: [p.gypaseg ?? false],
+      affis: [p.affis ?? false],
+      pbip: [p.pbip ?? false],
     });
 
     this.loadProvincias();
+    this.clienteService.getClientes().subscribe({
+      next: (list: any[]) => { this.clientes = (list || []).map(c => ({ id: c.id, nombre: c.razon_social || c.nombre_comercial })); },
+      error: () => { this.clientes = []; }
+    });
   }
 
   onProvinciaChange(): void {
@@ -148,9 +200,20 @@ export class PersonaFormComponent implements OnInit {
     this.personaForm.get('canton')?.setValue(null);
   }
 
+  onFotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files && input.files.length ? input.files[0] : null;
+    this.fotoFile = file;
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => { this.fotoPreview = reader.result as string; };
+      reader.readAsDataURL(file);
+    }
+  }
+
   onSubmit(): void {
     if (this.personaForm.valid) {
-      this.dialogRef.close(this.personaForm.value);
+      this.dialogRef.close({ ...this.personaForm.value, _fotoFile: this.fotoFile });
     }
   }
 

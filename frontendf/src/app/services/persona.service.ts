@@ -30,6 +30,12 @@ export class PersonaService {
     return this.apiService.delete(`/eliminar-persona/${id}/`);
   }
 
+  subirFotoPersona(id: number, file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('foto', file);
+    return this.apiService.post<any>(`/personas/${id}/foto/`, formData);
+  }
+
   disablePersona(id: number): Observable<any>{
     return this.apiService.post(`/disable-persona/${id}/`, {});
   }

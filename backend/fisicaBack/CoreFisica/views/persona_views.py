@@ -258,6 +258,68 @@ def _resolve_canton_id(token, provincia_id=None):
         return None
 
 
+def _foto_url(request, foto):
+    """URL absoluta de la foto (cae a la relativa si build_absolute_uri falla)."""
+    if not foto:
+        return None
+    try:
+        return request.build_absolute_uri(foto.url)
+    except Exception:
+        try:
+            return foto.url
+        except Exception:
+            return None
+
+
+def _fecha_persona(v):
+    """Parsea 'YYYY-MM-DD' (o vacio/None) a date o None."""
+    if not v:
+        return None
+    try:
+        import datetime as _dt
+        return _dt.date.fromisoformat(str(v)[:10])
+    except (TypeError, ValueError):
+        return None
+
+
+def _aplicar_campos_persona(persona, data):
+    """Asigna a la persona los campos editables del ERP que vengan en data.
+
+    Solo toca los campos presentes (para no borrar lo que no se envia).
+    """
+    CHAR = [
+        'sexo', 'estado_civil', 'lugar_nacimiento', 'direccion', 'telefono',
+        'conyuge', 'nacionalidad', 'parroquia', 'cargo', 'departamento', 'seccion',
+        'correo_personal', 'codigo_erp', 'centro_costo', 'unidad_negocio',
+        'tipo_empleado', 'forma_pago', 'numero_afiliacion', 'numero_contrato',
+        'actividad', 'perfil', 'motivo_salida', 'region',
+    ]
+    for f in CHAR:
+        if f in data:
+            setattr(persona, f, str(data.get(f) or '').strip())
+
+    for f in ['fecha_nacimiento', 'fecha_ingreso', 'fecha_salida', 'fecha_pago_liquidacion']:
+        if f in data:
+            setattr(persona, f, _fecha_persona(data.get(f)))
+
+    if 'estatura' in data:
+        try:
+            persona.estatura = data.get('estatura') if data.get('estatura') not in ('', None) else None
+        except Exception:
+            persona.estatura = None
+
+    for f in ['gypaseg', 'affis', 'pbip']:
+        if f in data:
+            setattr(persona, f, bool(data.get(f)))
+
+    if 'cliente' in data or 'cliente_id' in data:
+        cid = data.get('cliente') if 'cliente' in data else data.get('cliente_id')
+        try:
+            persona.cliente_id = int(cid) if cid not in ('', None) else None
+        except (TypeError, ValueError):
+            persona.cliente_id = None
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_persona(request):
@@ -284,7 +346,7 @@ def crear_persona(request):
     canton_id = _resolve_canton_id(canton_token, provincia_id)
 
     try:
-        persona = Persona.objects.create(
+        persona = Persona(
             nombres=nombres,
             apellidos=apellidos,
             cedula=cedula,
@@ -292,6 +354,8 @@ def crear_persona(request):
             provincia_id=provincia_id,
             canton_id=canton_id,
         )
+        _aplicar_campos_persona(persona, data)
+        persona.save()
         return JsonResponse({'message': 'Persona creada correctamente', 'id': persona.id}, status=201)
     except IntegrityError:
         return JsonResponse({'error': 'Cédula ya registrada'}, status=400)
@@ -325,7 +389,7 @@ def obtener_personas(request):
         if tipo:
             personas = personas.filter(tipo=tipo)
 
-        personas = personas.select_related('provincia', 'canton').order_by('apellidos')
+        personas = personas.select_related('provincia', 'canton', 'cliente').order_by('apellidos')
 
         data = []
         for p in personas:
@@ -340,6 +404,26 @@ def obtener_personas(request):
                 'canton': p.canton_id,
                 'provincia_nombre': getattr(p.provincia, 'nombre', None),
                 'canton_nombre': getattr(p.canton, 'nombre', None),
+                'foto': _foto_url(request, p.foto),
+                'codigo_erp': p.codigo_erp,
+                'cargo': p.cargo,
+                'sexo': p.sexo,
+                'estado_civil': p.estado_civil,
+                'fecha_nacimiento': p.fecha_nacimiento,
+                'lugar_nacimiento': p.lugar_nacimiento,
+                'nacionalidad': p.nacionalidad,
+                'telefono': p.telefono,
+                'correo_personal': p.correo_personal,
+                'direccion': p.direccion,
+                'parroquia': p.parroquia,
+                'fecha_ingreso': p.fecha_ingreso,
+                'fecha_salida': p.fecha_salida,
+                'seccion': p.seccion,
+                'departamento': p.departamento,
+                'unidad_negocio': p.unidad_negocio,
+                'tipo_empleado': p.tipo_empleado,
+                'cliente': p.cliente_id,
+                'cliente_nombre': getattr(p.cliente, 'razon_social', None),
             })
 
         return JsonResponse(data, safe=False)
@@ -390,6 +474,9 @@ def actualizar_persona(request, id):
         canton_token = data.get('canton') if 'canton' in data else data.get('canton_id')
         persona.canton_id = _resolve_canton_id(canton_token, persona.provincia_id)
 
+    # Campos del ERP editables (los que vengan en el request)
+    _aplicar_campos_persona(persona, data)
+
     try:
         persona.save()
         return JsonResponse({'message': 'Persona actualizada correctamente', 'id': persona.id})
@@ -398,6 +485,29 @@ def actualizar_persona(request, id):
     except Exception:
         logger.exception('Error actualizando persona id=%s', id)
         return JsonResponse({'error': 'No se pudo actualizar persona'}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def subir_foto_persona(request, id):
+    """Sube/reemplaza la foto de una persona (multipart, campo 'foto')."""
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    archivo = request.FILES.get('foto')
+    if not archivo:
+        return JsonResponse({'error': 'No se envió ninguna foto'}, status=400)
+    try:
+        persona.foto = archivo
+        persona.save(update_fields=['foto'])
+        return JsonResponse({'message': 'Foto actualizada', 'foto': _foto_url(request, persona.foto)})
+    except Exception:
+        logger.exception('Error subiendo foto persona id=%s', id)
+        return JsonResponse({'error': 'No se pudo subir la foto'}, status=500)
 
 
 @api_view(['DELETE'])
