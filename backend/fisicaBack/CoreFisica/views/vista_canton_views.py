@@ -58,10 +58,10 @@ def vistas_cantones(request):
         instalaciones = _int_list(item.get('instalacionIds'))
         tipos = [str(t).strip().upper() for t in (item.get('tipos') or []) if str(t).strip()]
 
-        # Validación por tipo: cantones agrupa 2+, empresas 1+, tipo-persona 1+.
+        # Validación por tipo: cantones 1+, empresas 1+, tipo-persona 1+.
         if not nombre:
             continue
-        if tipo == 'canton' and len(cantones) < 2:
+        if tipo == 'canton' and len(cantones) < 1:
             continue
         if tipo == 'cliente' and len(clientes) < 1:
             continue
