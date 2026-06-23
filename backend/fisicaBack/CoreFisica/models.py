@@ -305,6 +305,23 @@ class Persona(models.Model):
         ('OPERADOR CENTRO CONTROL', 'OPERADOR CENTRO CONTROL'),
         ('SUPERVISOR CENTRO CONTROL', 'SUPERVISOR CENTRO CONTROL'),
     ]
+
+    SEXO_CHOICES = [
+        ('MASCULINO', 'Masculino'),
+        ('FEMENINO', 'Femenino')
+    ]
+
+    ESTADO_CIVIL_CHOICES = [
+        ('SOLTERO', 'Soltero'),
+        ('CASADO', 'Casado'),
+    ]
+
+    TIPO_EMPLEADO_CHOICES = [
+        ('EMPLEADO', 'Empleado'),
+        ('OPERADOR', 'Operador'),
+        ('OBRERO', 'Obrero'),
+    ]
+
     tipo = models.CharField(null=True, max_length=28, choices=TIPO_CHOICES)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
@@ -317,13 +334,38 @@ class Persona(models.Model):
     fecha_nacimiento = models.DateField(null=True, blank=True)
     departamento = models.CharField(max_length=120, blank=True, default='')
     seccion = models.CharField(max_length=120, blank=True, default='')
-    sexo = models.CharField(max_length=10, blank=True, default='')
+    sexo = models.CharField(max_length=10, blank=True, default='', choices=SEXO_CHOICES)
     cargo = models.CharField(max_length=120, blank=True, default='')
     fecha_ingreso = models.DateField(null=True, blank=True)
     fecha_salida = models.DateField(null=True, blank=True)
     correo_personal = models.EmailField(blank=True, default='')
     direccion = models.CharField(max_length=255, blank=True, default='')
-   
+    
+    foto = models.ImageField(upload_to='personas/', null=True, blank=True)
+    codigo_erp = models.CharField(max_length=255, blank=True, default='')
+    centro_costo = models.CharField(max_length=60, blank=True, default='')
+    estatura = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    lugar_nacimiento = models.CharField(max_length=120, blank=True, default='')
+    parroquia = models.CharField(max_length=120, blank=True, default='')
+    estado_civil = models.CharField(max_length=20, blank=True, default='', choices=ESTADO_CIVIL_CHOICES)
+    telefono = models.CharField(max_length=20, blank=True, default='')
+    conyuge = models.CharField(max_length=150, blank=True, default='')
+    nacionalidad = models.CharField(max_length=40, blank=True, default='')
+    cliente = models.ForeignKey(Cliente, null=True, blank=True, on_delete=models.SET_NULL, related_name='empleados')
+    unidad_negocio = models.CharField(max_length=60, blank=True, default='')
+    tipo_empleado = models.CharField(max_length=20, blank=True, default='', choices=TIPO_EMPLEADO_CHOICES)
+    forma_pago = models.CharField(max_length=20, blank=True, default='')
+    numero_afiliacion = models.CharField(max_length=30, blank=True, default='')
+    numero_contrato = models.CharField(max_length=30, blank=30, default='')
+    actividad = models.CharField(max_length=120, blank=True, default='')
+    perfil = models.CharField(max_length=60, blank=True, default='')
+    fecha_pago_liquidacion = models.DateField(null=True, blank=True)
+    motivo_salida = models.CharField(max_length=120, blank=True, default='')
+    region = models.CharField(max_length=60, blank=True, default='')
+    gypaseg = models.BooleanField(default=False)
+    affis = models.BooleanField(default=False)
+    pbip = models.BooleanField(default=False)
+
     objects = models.Manager()
     active = ActiveManager()
 

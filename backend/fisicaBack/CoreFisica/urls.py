@@ -20,6 +20,8 @@ from .views.reporte_asistencia_views import obtener_reporte_asistencia, listar_d
 from .views.consolidado_views import obtener_consolidado, crear_consolidado, actualizar_consolidado, eliminar_consolidado, obtener_consolidado_armado, exportar_consolidado_excel, exportar_consolidado_pdf, obtener_consolidado_resumen, actualizar_consolidado_resumen
 from .views.vista_canton_views import vistas_cantones
 from .views.novedad_puesto_views import obtener_novedades, crear_novedad, actualizar_novedad, eliminar_novedad, exportar_novedades_excel
+from .views.sync_views import sincronizar_empleado
+
 
 urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
@@ -82,6 +84,7 @@ urlpatterns = [
     path('sacafranco-filas/', sacafranco_filas),
     path('sacafranco-filas/<int:id>/', eliminar_sacafranco_fila),
     path('vistas-cantones/', vistas_cantones),
+    path('sync/empleado/', sincronizar_empleado),
     path('reporte-asignaciones/', exportar_asignaciones_excel, name='reporte_asignaciones'),
     path('asignacion-semanal/', listar_asignacion_semanal),
     path('asignacion-semanal/mes/', listar_asignacion_semanal_mes),
@@ -112,6 +115,7 @@ urlpatterns = [
     path('novedades-puesto/<int:id>/', actualizar_novedad),
     path('novedades-puesto/<int:id>/eliminar/', eliminar_novedad),
     path('novedades-puesto/exportar-excel/', exportar_novedades_excel),
+    
 
 ]
 
