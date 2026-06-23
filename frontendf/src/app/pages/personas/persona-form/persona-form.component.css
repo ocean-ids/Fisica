@@ -6,6 +6,8 @@
 mat-dialog-content {
   min-width: 960px;
   max-width: 1180px;
+  max-height: none;     /* sin scroll interno: el modal crece lo que necesite */
+  overflow: visible;
   padding: 16px 24px;
 }
 
