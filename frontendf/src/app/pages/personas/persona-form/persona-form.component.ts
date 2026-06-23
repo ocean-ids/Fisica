@@ -39,8 +39,10 @@ export class PersonaFormComponent implements OnInit {
   fotoFile: File | null = null;
   fotoPreview: string | null = null;
   sexos = [{ v: 'MASCULINO', l: 'Masculino' }, { v: 'FEMENINO', l: 'Femenino' }];
-  estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }, { v: 'DIVORCIADO', l: 'Divorciado' }, { v: 'VIUDO', l: 'Viudo' }, { v: 'UNION_LIBRE', l: 'Unión libre' }];
+  estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }];
   tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero' }, { v: 'OPERADOR', l: 'Operador' }];
+  regiones = ['SIERRA', 'COSTA'];
+  unidadesNegocio = ['SEGURIDAD FISICA'];
   private useStaticProvincias = false;
   private initialCanton: string | null = null;
   private initialCantonName: string | null = null;
@@ -94,7 +96,7 @@ export class PersonaFormComponent implements OnInit {
       conyuge: [p.conyuge || ''],
       nacionalidad: [p.nacionalidad || ''],
       cliente: [p.cliente ?? null],
-      unidad_negocio: [p.unidad_negocio || ''],
+      unidad_negocio: [p.unidad_negocio || 'SEGURIDAD FISICA'],
       tipo_empleado: [p.tipo_empleado || ''],
       cargo: [p.cargo || ''],
       fecha_ingreso: [p.fecha_ingreso || null],

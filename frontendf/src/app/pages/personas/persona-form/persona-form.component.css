@@ -17,6 +17,7 @@ mat-dialog-content {
   grid-template-columns: repeat(4, 1fr);
   column-gap: 22px;
   row-gap: 14px;
+  align-items: start;   /* los campos NO se estiran a la altura de la fila (la foto ocupa 3 filas) */
 }
 .pf-grid mat-form-field { width: 100%; font-size: 13px; }
 .pf-full { grid-column: 1 / -1; }
@@ -51,7 +52,9 @@ mat-dialog-content {
 
 .pf-radio { display: flex; align-items: center; gap: 12px; padding: 6px 0 16px; }
 .pf-radio-label { color: rgba(0,0,0,.6); font-size: 13px; }
-.pf-radio mat-radio-button { margin-right: 12px; }
+/* Radios en fila (horizontal), no en columna */
+.pf-radio mat-radio-group { display: inline-flex; flex-direction: row; gap: 16px; align-items: center; }
+.pf-radio mat-radio-button { margin-right: 0; }
 
 .pf-checks {
   grid-column: 1 / -1;
