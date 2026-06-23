@@ -74,8 +74,8 @@ export class PersonasComponent implements OnInit, OnDestroy {
 
   abrirModal(persona?: Persona): void {
     const dialogRef = this.dialog.open(PersonaFormComponent, {
-      width: '880px',
-      maxWidth: '95vw',
+      width: '1180px',
+      maxWidth: '96vw',
       data: persona || {}
     });
 

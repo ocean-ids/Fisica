@@ -3,32 +3,25 @@
 <mat-dialog-content>
   <form [formGroup]="personaForm">
 
-    <!-- Foto arriba a la derecha (como el ERP) -->
-    <div class="pf-foto-box">
-      <img *ngIf="fotoPreview || persona.foto" [src]="fotoPreview || persona.foto" alt="Foto" class="pf-foto" />
-      <div *ngIf="!fotoPreview && !persona.foto" class="pf-foto pf-foto-vacia">Sin foto</div>
-      <label class="pf-foto-btn text-center">
-        Subir foto
-        <input type="file" accept="image/*" (change)="onFotoSelected($event)" hidden>
-      </label>
-    </div>
-
     <div class="pf-grid">
+      <!-- Foto: esquina superior derecha (columna 4, filas 1-3) -->
+      <div class="pf-foto-box">
+        <img *ngIf="fotoPreview || persona.foto" [src]="fotoPreview || persona.foto" alt="Foto" class="pf-foto" />
+        <div *ngIf="!fotoPreview && !persona.foto" class="pf-foto pf-foto-vacia">Sin foto</div>
+        <label class="pf-foto-btn text-center">
+          Subir foto
+          <input type="file" accept="image/*" (change)="onFotoSelected($event)" hidden>
+        </label>
+      </div>
+
       <mat-form-field appearance="outline">
         <mat-label>Código</mat-label>
         <input matInput formControlName="codigo_erp">
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Centro de costo</mat-label>
+        <mat-label>Costo de Variable</mat-label>
         <input matInput formControlName="centro_costo">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Cédula</mat-label>
-        <input matInput formControlName="cedula" maxlength="10" required>
-        <mat-error *ngIf="personaForm.get('cedula')?.hasError('required')">La cédula es requerida</mat-error>
-        <mat-error *ngIf="personaForm.get('cedula')?.hasError('pattern')">Sólo dígitos (máximo 10)</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -37,6 +30,13 @@
           <mat-option *ngFor="let t of tipos" [value]="t">{{ t }}</mat-option>
         </mat-select>
         <mat-error *ngIf="personaForm.get('tipo')?.hasError('required')">El tipo es requerido</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Cédula</mat-label>
+        <input matInput formControlName="cedula" maxlength="10" required>
+        <mat-error *ngIf="personaForm.get('cedula')?.hasError('required')">La cédula es requerida</mat-error>
+        <mat-error *ngIf="personaForm.get('cedula')?.hasError('pattern')">Sólo dígitos (máximo 10)</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -58,11 +58,18 @@
         </mat-radio-group>
       </div>
 
+      <!-- Sexo + Dirección + Teléfono en la misma fila -->
       <mat-form-field appearance="outline">
-        <mat-label>Estatura</mat-label>
-        <input matInput type="number" step="0.01" formControlName="estatura">
+        <mat-label>Dirección</mat-label>
+        <input matInput formControlName="direccion">
       </mat-form-field>
 
+      <mat-form-field appearance="outline">
+        <mat-label>Teléfono</mat-label>
+        <input matInput formControlName="telefono">
+      </mat-form-field>
+
+      <!-- Lugar y Fecha de nacimiento en la misma fila -->
       <mat-form-field appearance="outline">
         <mat-label>Lugar de nacimiento</mat-label>
         <input matInput formControlName="lugar_nacimiento">
@@ -73,9 +80,14 @@
         <input matInput type="date" formControlName="fecha_nacimiento">
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="pf-full">
-        <mat-label>Dirección</mat-label>
-        <input matInput formControlName="direccion">
+      <mat-form-field appearance="outline">
+        <mat-label>Estatura</mat-label>
+        <input matInput type="number" step="0.01" formControlName="estatura">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Nacionalidad</mat-label>
+        <input matInput formControlName="nacionalidad">
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -108,18 +120,8 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Teléfono</mat-label>
-        <input matInput formControlName="telefono">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
         <mat-label>Cónyuge</mat-label>
         <input matInput formControlName="conyuge">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Nacionalidad</mat-label>
-        <input matInput formControlName="nacionalidad">
       </mat-form-field>
 
       <mat-form-field appearance="outline">
