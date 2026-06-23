@@ -1,63 +1,225 @@
-<h2 mat-dialog-title>{{ persona.id ? 'Editar' : 'Nueva' }} Persona</h2>
+<h2 mat-dialog-title>{{ persona.id ? 'Editar' : 'Nuevo' }} Empleado</h2>
 
 <mat-dialog-content>
   <form [formGroup]="personaForm">
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Cédula</mat-label>
-      <input type="text" matInput formControlName="cedula" maxlength="10" required>
-      <mat-error *ngIf="personaForm.get('cedula')?.hasError('required')">
-        La cédula es requerida
-      </mat-error>
-      <mat-error *ngIf="personaForm.get('cedula')?.hasError('pattern')">
-        Sólo dígitos (máximo 10)
-      </mat-error>
-      <mat-error *ngIf="personaForm.get('cedula')?.hasError('maxlength')">
-        Máximo 10 caracteres
-      </mat-error>
-    </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Nombres</mat-label>
-      <input matInput formControlName="nombres" required>
-      <mat-error *ngIf="personaForm.get('nombres')?.hasError('required')">
-        El nombre es requerido
-      </mat-error>
-    </mat-form-field>
+    <!-- Foto arriba a la derecha (como el ERP) -->
+    <div class="pf-foto-box">
+      <img *ngIf="fotoPreview || persona.foto" [src]="fotoPreview || persona.foto" alt="Foto" class="pf-foto" />
+      <div *ngIf="!fotoPreview && !persona.foto" class="pf-foto pf-foto-vacia">Sin foto</div>
+      <label class="pf-foto-btn text-center">
+        Subir foto
+        <input type="file" accept="image/*" (change)="onFotoSelected($event)" hidden>
+      </label>
+    </div>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Apellidos</mat-label>
-      <input matInput formControlName="apellidos" required>
-      <mat-error *ngIf="personaForm.get('apellidos')?.hasError('required')">
-        El apellido es requerido
-      </mat-error>
-    </mat-form-field>
+    <div class="pf-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Código</mat-label>
+        <input matInput formControlName="codigo_erp">
+      </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Tipo</mat-label>
-      <mat-select formControlName="tipo" required>
-        <mat-option *ngFor="let tipo of tipos" [value]="tipo">{{ tipo }}</mat-option>
-        
-      </mat-select>
-      <mat-error *ngIf="personaForm.get('tipo')?.hasError('required')">
-        El tipo es requerido
-      </mat-error>
-    </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Centro de costo</mat-label>
+        <input matInput formControlName="centro_costo">
+      </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Provincia</mat-label>
-      <mat-select formControlName="provincia" (selectionChange)="onProvinciaChange()">
-        <mat-option [value]="null">-</mat-option>
-        <mat-option *ngFor="let p of provincias" [value]="p.id">{{ p.nombre }}</mat-option>
-      </mat-select>
-    </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Cédula</mat-label>
+        <input matInput formControlName="cedula" maxlength="10" required>
+        <mat-error *ngIf="personaForm.get('cedula')?.hasError('required')">La cédula es requerida</mat-error>
+        <mat-error *ngIf="personaForm.get('cedula')?.hasError('pattern')">Sólo dígitos (máximo 10)</mat-error>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Cantón</mat-label>
-      <mat-select formControlName="canton">
-        <mat-option [value]="null">-</mat-option>
-        <mat-option *ngFor="let c of cantones" [value]="c.id">{{ c.nombre }}</mat-option>
-      </mat-select>
-    </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo (clasificación)</mat-label>
+        <mat-select formControlName="tipo" required>
+          <mat-option *ngFor="let t of tipos" [value]="t">{{ t }}</mat-option>
+        </mat-select>
+        <mat-error *ngIf="personaForm.get('tipo')?.hasError('required')">El tipo es requerido</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Nombres</mat-label>
+        <input matInput formControlName="nombres" required>
+        <mat-error *ngIf="personaForm.get('nombres')?.hasError('required')">El nombre es requerido</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Apellidos</mat-label>
+        <input matInput formControlName="apellidos" required>
+        <mat-error *ngIf="personaForm.get('apellidos')?.hasError('required')">El apellido es requerido</mat-error>
+      </mat-form-field>
+
+      <div class="pf-radio">
+        <span class="pf-radio-label">Sexo:</span>
+        <mat-radio-group formControlName="sexo">
+          <mat-radio-button *ngFor="let s of sexos" [value]="s.v">{{ s.l }}</mat-radio-button>
+        </mat-radio-group>
+      </div>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Estatura</mat-label>
+        <input matInput type="number" step="0.01" formControlName="estatura">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Lugar de nacimiento</mat-label>
+        <input matInput formControlName="lugar_nacimiento">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Fecha de nacimiento</mat-label>
+        <input matInput type="date" formControlName="fecha_nacimiento">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="pf-full">
+        <mat-label>Dirección</mat-label>
+        <input matInput formControlName="direccion">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Provincia</mat-label>
+        <mat-select formControlName="provincia" (selectionChange)="onProvinciaChange()">
+          <mat-option [value]="null">-</mat-option>
+          <mat-option *ngFor="let p of provincias" [value]="p.id">{{ p.nombre }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Cantón</mat-label>
+        <mat-select formControlName="canton">
+          <mat-option [value]="null">-</mat-option>
+          <mat-option *ngFor="let c of cantones" [value]="c.id">{{ c.nombre }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Parroquia</mat-label>
+        <input matInput formControlName="parroquia">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Estado civil</mat-label>
+        <mat-select formControlName="estado_civil">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let e of estadosCiviles" [value]="e.v">{{ e.l }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Teléfono</mat-label>
+        <input matInput formControlName="telefono">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Cónyuge</mat-label>
+        <input matInput formControlName="conyuge">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Nacionalidad</mat-label>
+        <input matInput formControlName="nacionalidad">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Cliente</mat-label>
+        <mat-select formControlName="cliente">
+          <mat-option [value]="null">-</mat-option>
+          <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Unidad de negocio</mat-label>
+        <input matInput formControlName="unidad_negocio">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo empleado</mat-label>
+        <mat-select formControlName="tipo_empleado">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let t of tiposEmpleado" [value]="t.v">{{ t.l }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Cargo</mat-label>
+        <input matInput formControlName="cargo">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Fecha de ingreso</mat-label>
+        <input matInput type="date" formControlName="fecha_ingreso">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Fecha de salida</mat-label>
+        <input matInput type="date" formControlName="fecha_salida">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Forma de pago</mat-label>
+        <input matInput formControlName="forma_pago">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>No. Afiliación</mat-label>
+        <input matInput formControlName="numero_afiliacion">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Nº Contrato</mat-label>
+        <input matInput formControlName="numero_contrato">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Actividad</mat-label>
+        <input matInput formControlName="actividad">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Sección</mat-label>
+        <input matInput formControlName="seccion">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Departamento</mat-label>
+        <input matInput formControlName="departamento">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Perfil</mat-label>
+        <input matInput formControlName="perfil">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input matInput formControlName="correo_personal">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>F. Pago Liquidación</mat-label>
+        <input matInput type="date" formControlName="fecha_pago_liquidacion">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Motivo de salida</mat-label>
+        <input matInput formControlName="motivo_salida">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Región</mat-label>
+        <input matInput formControlName="region">
+      </mat-form-field>
+
+      <div class="pf-checks">
+        <mat-checkbox formControlName="is_active">Activo</mat-checkbox>
+        <mat-checkbox formControlName="gypaseg">GYPASEG</mat-checkbox>
+        <mat-checkbox formControlName="affis">AFFIS</mat-checkbox>
+        <mat-checkbox formControlName="pbip">PBIP</mat-checkbox>
+      </div>
+    </div>
   </form>
 </mat-dialog-content>
 

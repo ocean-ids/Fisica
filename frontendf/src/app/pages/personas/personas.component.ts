@@ -74,25 +74,36 @@ export class PersonasComponent implements OnInit, OnDestroy {
 
   abrirModal(persona?: Persona): void {
     const dialogRef = this.dialog.open(PersonaFormComponent, {
-      width: '500px',
+      width: '880px',
+      maxWidth: '95vw',
       data: persona || {}
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
+        const fotoFile: File | null = result._fotoFile || null;
+        delete result._fotoFile;
         if (persona?.id) {
-          this.actualizarPersona(persona.id, result);
+          this.actualizarPersona(persona.id, result, fotoFile);
         } else {
-          this.crearPersona(result);
+          this.crearPersona(result, fotoFile);
         }
       }
     });
   }
 
-  crearPersona(data: any): void {
+  crearPersona(data: any, fotoFile?: File | null): void {
     this.personaService.createPersona(data).subscribe({
-      next: () => {
-        this.cargarPersonas();
+      next: (res: any) => {
+        const nuevoId = res?.id;
+        if (fotoFile && nuevoId) {
+          this.personaService.subirFotoPersona(nuevoId, fotoFile).subscribe({
+            next: () => this.cargarPersonas(),
+            error: () => this.cargarPersonas()
+          });
+        } else {
+          this.cargarPersonas();
+        }
         Swal.fire({ icon: 'success', title: 'Creada', timer: 1200, showConfirmButton: false });
       },
       error: (error) => {
@@ -103,10 +114,17 @@ export class PersonasComponent implements OnInit, OnDestroy {
     });
   }
 
-  actualizarPersona(id: number, data: any): void {
+  actualizarPersona(id: number, data: any, fotoFile?: File | null): void {
     this.personaService.updatePersona(id, data).subscribe({
       next: () => {
-        this.cargarPersonas();
+        if (fotoFile) {
+          this.personaService.subirFotoPersona(id, fotoFile).subscribe({
+            next: () => this.cargarPersonas(),
+            error: () => this.cargarPersonas()
+          });
+        } else {
+          this.cargarPersonas();
+        }
         Swal.fire({ icon: 'success', title: 'Actualizada', timer: 1200, showConfirmButton: false });
       },
       error: (error) => {
