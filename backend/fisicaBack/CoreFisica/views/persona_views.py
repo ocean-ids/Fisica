@@ -312,6 +312,10 @@ def _aplicar_campos_persona(persona, data):
         if f in data:
             setattr(persona, f, bool(data.get(f)))
 
+    # Activo/inactivo desde el checkbox del formulario (refleja el toggle de la lista).
+    if 'is_active' in data:
+        persona.is_active = bool(data.get('is_active'))
+
     if 'cliente' in data or 'cliente_id' in data:
         cid = data.get('cliente') if 'cliente' in data else data.get('cliente_id')
         try:

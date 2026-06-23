@@ -134,7 +134,14 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Unidad de negocio</mat-label>
-        <input matInput formControlName="unidad_negocio">
+        <mat-select formControlName="unidad_negocio">
+          <mat-option *ngFor="let u of unidadesNegocio" [value]="u">{{ u }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Sección</mat-label>
+        <input matInput formControlName="seccion">
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -181,11 +188,6 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Sección</mat-label>
-        <input matInput formControlName="seccion">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
         <mat-label>Departamento</mat-label>
         <input matInput formControlName="departamento">
       </mat-form-field>
@@ -212,7 +214,10 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Región</mat-label>
-        <input matInput formControlName="region">
+        <mat-select formControlName="region">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let r of regiones" [value]="r">{{ r }}</mat-option>
+        </mat-select>
       </mat-form-field>
 
       <div class="pf-checks">
