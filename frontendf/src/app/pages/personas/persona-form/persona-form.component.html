@@ -332,7 +332,67 @@
 
       <!-- ===================== OTROS DATOS ===================== -->
       <mat-tab label="Otros Datos">
-        <div class="pf-tab-vacia">Otros datos — próximamente.</div>
+        <div class="nom" formGroupName="otros_datos">
+
+          <div class="nom-sec">Datos Generales</div>
+          <div class="nom-checks">
+            <mat-checkbox formControlName="incluir_en_rol">Incluir en el Rol</mat-checkbox>
+            <mat-checkbox formControlName="acreditar">Acreditar</mat-checkbox>
+          </div>
+          <div class="nom-grid">
+            <mat-form-field appearance="outline"><mat-label>Última liquidación</mat-label>
+              <input matInput type="date" formControlName="ultima_liquidacion"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Grupo Sanguíneo</mat-label>
+              <input matInput formControlName="grupo_sanguineo"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Banco</mat-label>
+              <input matInput formControlName="banco"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Cuenta Ahorros</mat-label>
+              <input matInput formControlName="cuenta_ahorros"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Cuenta Corriente</mat-label>
+              <input matInput formControlName="cuenta_corriente"></mat-form-field>
+          </div>
+
+          <div class="nom-sec">Vacaciones</div>
+          <div class="nom-grid">
+            <mat-form-field appearance="outline"><mat-label>Fecha Ini. Vac.</mat-label>
+              <input matInput type="date" formControlName="fecha_ini_vacaciones"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Fecha Fin Vac.</mat-label>
+              <input matInput type="date" formControlName="fecha_fin_vacaciones"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Días Vacac.</mat-label>
+              <input matInput type="number" formControlName="dias_vacaciones"></mat-form-field>
+          </div>
+
+          <div class="nom-sec">Cuentas Contables</div>
+          <div class="nom-grid">
+            <mat-form-field appearance="outline"><mat-label>Código cta.</mat-label>
+              <input matInput formControlName="codigo_cuenta"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Cta. departamento</mat-label>
+              <input matInput formControlName="cuenta_departamento"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Cta. auxiliar</mat-label>
+              <input matInput formControlName="cuenta_auxiliar"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Número de cargas</mat-label>
+              <input matInput type="number" formControlName="numero_cargas"></mat-form-field>
+          </div>
+
+          <div class="nom-sec">Relación de Dependencia (gastos)</div>
+          <div class="nom-grid">
+            <mat-form-field appearance="outline"><mat-label>Salud</mat-label>
+              <input matInput type="number" step="0.01" formControlName="gasto_salud"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Vestimenta</mat-label>
+              <input matInput type="number" step="0.01" formControlName="gasto_vestimenta"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Educación</mat-label>
+              <input matInput type="number" step="0.01" formControlName="gasto_educacion"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Vivienda</mat-label>
+              <input matInput type="number" step="0.01" formControlName="gasto_vivienda"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Alimentación</mat-label>
+              <input matInput type="number" step="0.01" formControlName="gasto_alimentacion"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Arte y Cultura</mat-label>
+              <input matInput type="number" step="0.01" formControlName="gasto_arte_cultura"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Turismo</mat-label>
+              <input matInput type="number" step="0.01" formControlName="gasto_turismo"></mat-form-field>
+          </div>
+
+        </div>
       </mat-tab>
 
       <!-- ===================== CERTIFICADOS ===================== -->

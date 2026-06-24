@@ -138,12 +138,27 @@ export class PersonaFormComponent implements OnInit {
         subsidio_accidente: [false], subsidio_accidente_pct: [0],
         subsidio_maternidad: [false], subsidio_maternidad_pct: [0],
       }),
+      // Otros Datos (bancario / contable / vacaciones / cargas / gastos) — pestaña "Otros Datos"
+      otros_datos: this.fb.group({
+        incluir_en_rol: [true], acreditar: [false],
+        ultima_liquidacion: [null], grupo_sanguineo: [''],
+        banco: [''], cuenta_ahorros: [''], cuenta_corriente: [''],
+        fecha_ini_vacaciones: [null], fecha_fin_vacaciones: [null], dias_vacaciones: [0],
+        codigo_cuenta: [''], cuenta_departamento: [''], cuenta_auxiliar: [''],
+        numero_cargas: [0],
+        gasto_salud: [0], gasto_vestimenta: [0], gasto_educacion: [0], gasto_vivienda: [0],
+        gasto_alimentacion: [0], gasto_arte_cultura: [0], gasto_turismo: [0],
+      }),
     });
 
-    // Al editar, cargar la nómina existente del empleado.
+    // Al editar, cargar la nómina y otros datos existentes del empleado.
     if (p.id) {
       this.personaService.getNomina(p.id).subscribe({
         next: (n) => { if (n) this.personaForm.get('nomina')?.patchValue(n); },
+        error: () => {}
+      });
+      this.personaService.getOtrosDatos(p.id).subscribe({
+        next: (o) => { if (o) this.personaForm.get('otros_datos')?.patchValue(o); },
         error: () => {}
       });
     }

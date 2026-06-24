@@ -588,6 +588,92 @@ def guardar_nomina(request, id):
     return JsonResponse({'message': 'Nómina guardada', 'nomina': _serialize_nomina(nomina)})
 
 
+# --- Otros Datos del empleado (bancario / contable / vacaciones / cargas / gastos) ---
+_OTROS_DECIMALES = [
+    'gasto_salud', 'gasto_vestimenta', 'gasto_educacion', 'gasto_vivienda',
+    'gasto_alimentacion', 'gasto_arte_cultura', 'gasto_turismo',
+]
+_OTROS_ENTEROS = ['dias_vacaciones', 'numero_cargas']
+_OTROS_BOOLEANOS = ['incluir_en_rol', 'acreditar']
+_OTROS_FECHAS = ['ultima_liquidacion', 'fecha_ini_vacaciones', 'fecha_fin_vacaciones']
+_OTROS_TEXTO = [
+    'grupo_sanguineo', 'banco', 'cuenta_ahorros', 'cuenta_corriente',
+    'codigo_cuenta', 'cuenta_departamento', 'cuenta_auxiliar',
+]
+
+
+def _serialize_otros(o):
+    data = {f: str(getattr(o, f)) for f in _OTROS_DECIMALES}
+    data.update({f: int(getattr(o, f) or 0) for f in _OTROS_ENTEROS})
+    data.update({f: bool(getattr(o, f)) for f in _OTROS_BOOLEANOS})
+    data.update({f: (getattr(o, f).isoformat() if getattr(o, f) else None) for f in _OTROS_FECHAS})
+    data.update({f: getattr(o, f) or '' for f in _OTROS_TEXTO})
+    data['persona'] = o.persona_id
+    return data
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_otros_datos(request, id):
+    """Devuelve los 'Otros Datos' del empleado. Los crea vacíos si no existen."""
+    if not request.user.has_perm('CoreFisica.view_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+    from ..models import EmpleadoOtrosDatos
+    otros, _ = EmpleadoOtrosDatos.objects.get_or_create(persona=persona)
+    return JsonResponse(_serialize_otros(otros))
+
+
+@api_view(['PUT', 'POST'])
+@permission_classes([IsAuthenticated])
+def guardar_otros_datos(request, id):
+    """Crea/actualiza los 'Otros Datos' del empleado."""
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    from decimal import Decimal, InvalidOperation
+    from ..models import EmpleadoOtrosDatos
+    data = request.data if request.data else {}
+    otros, _ = EmpleadoOtrosDatos.objects.get_or_create(persona=persona)
+
+    def to_dec(v):
+        try:
+            return Decimal(str(v if v not in (None, '') else 0))
+        except (InvalidOperation, ValueError):
+            return Decimal('0')
+
+    def to_int(v):
+        try:
+            return int(v) if v not in (None, '') else 0
+        except (ValueError, TypeError):
+            return 0
+
+    for f in _OTROS_DECIMALES:
+        if f in data:
+            setattr(otros, f, to_dec(data.get(f)))
+    for f in _OTROS_ENTEROS:
+        if f in data:
+            setattr(otros, f, to_int(data.get(f)))
+    for f in _OTROS_BOOLEANOS:
+        if f in data:
+            setattr(otros, f, bool(data.get(f)))
+    for f in _OTROS_FECHAS:
+        if f in data:
+            setattr(otros, f, _fecha_persona(data.get(f)))
+    for f in _OTROS_TEXTO:
+        if f in data:
+            setattr(otros, f, (data.get(f) or '').strip())
+    otros.save()
+    return JsonResponse({'message': 'Otros datos guardados', 'otros_datos': _serialize_otros(otros)})
+
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_persona(request, id):
