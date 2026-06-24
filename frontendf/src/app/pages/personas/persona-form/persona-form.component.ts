@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTabsModule } from '@angular/material/tabs';
 import { Persona } from '../../../models/persona.model';
 import { UbicacionService } from '../../../services/ubicacion.service';
 import { ProvinciasService } from '../../../services/provincias.service';
@@ -26,7 +27,8 @@ import { Province, City } from '../../../data/provincias';
     MatButtonModule,
     MatSelectModule,
     MatRadioModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatTabsModule
   ],
   templateUrl: './persona-form.component.html',
   styleUrl: './persona-form.component.css'

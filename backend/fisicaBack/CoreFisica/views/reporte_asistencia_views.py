@@ -576,6 +576,13 @@ def _build_reporte_asistencia_data(
     if zona:
         asig_qs = asig_qs.filter(instalacion__zonas__titulo__iexact=zona).distinct()
 
+    # Corte exacto al día: una asignación con end_date NO debe mostrarse en fechas
+    # POSTERIORES a su end_date. Esto hace efectivo el cierre de puesto al día
+    # (la persona se ve hasta el día anterior al cierre) y evita que filas con
+    # historial fuguen a meses siguientes.
+    if fecha_obj:
+        asig_qs = asig_qs.exclude(end_date__isnull=False, end_date__lt=fecha_obj)
+
     # Ruteo por el calendario del día (D/N), no por la config de turno del puesto.
     # D -> Diurno, N -> Nocturno. Los francos (F) NO aparecen en el reporte.
     dnf = _calendar_dnf_for_date(fecha_obj)

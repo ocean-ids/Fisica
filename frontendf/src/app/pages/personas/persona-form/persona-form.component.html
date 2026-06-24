@@ -3,7 +3,11 @@
 <mat-dialog-content>
   <form [formGroup]="personaForm">
 
-    <div class="pf-grid">
+    <mat-tab-group class="pf-tabs" animationDuration="0ms" mat-stretch-tabs="false">
+
+      <!-- ===================== DATOS GENERALES ===================== -->
+      <mat-tab label="Datos Generales">
+        <div class="pf-grid">
       <!-- Foto: esquina superior derecha (columna 4, filas 1-3) -->
       <div class="pf-foto-box">
         <img *ngIf="fotoPreview || persona.foto" [src]="fotoPreview || persona.foto" alt="Foto" class="pf-foto" />
@@ -228,7 +232,40 @@
         <mat-checkbox formControlName="affis">AFFIS</mat-checkbox>
         <mat-checkbox formControlName="pbip">PBIP</mat-checkbox>
       </div>
-    </div>
+        </div>
+      </mat-tab>
+
+      <!-- ===================== INGRESOS DCTOS. ===================== -->
+      <mat-tab label="Ingresos Dctos.">
+        <div class="pf-tab-vacia">Ingresos y documentos — próximamente.</div>
+      </mat-tab>
+
+      <!-- ===================== OBSERVACIONES ===================== -->
+      <mat-tab label="Observaciones">
+        <div class="pf-tab-vacia">Observaciones — próximamente.</div>
+      </mat-tab>
+
+      <!-- ===================== OTROS DATOS ===================== -->
+      <mat-tab label="Otros Datos">
+        <div class="pf-tab-vacia">Otros datos — próximamente.</div>
+      </mat-tab>
+
+      <!-- ===================== CERTIFICADOS ===================== -->
+      <mat-tab label="Certificados">
+        <div class="pf-tab-vacia">Certificados — próximamente.</div>
+      </mat-tab>
+
+      <!-- ===================== REFERENCIAS ===================== -->
+      <mat-tab label="Referencias">
+        <div class="pf-tab-vacia">Referencias — próximamente.</div>
+      </mat-tab>
+
+      <!-- ===================== MÁS REFERENCIAS ===================== -->
+      <mat-tab label="Más Referencias">
+        <div class="pf-tab-vacia">Experiencia profesional, referencias personales, nivel de estudio y formación — próximamente.</div>
+      </mat-tab>
+
+    </mat-tab-group>
   </form>
 </mat-dialog-content>
 

@@ -57,8 +57,51 @@
     <div class="col-md-6 mb-2">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Tipo</mat-label>
-        <input matInput type="text" [(ngModel)]="model.tipo" [ngModelOptions]="{standalone:true}" placeholder="ej. 1 24H L-D" />
+        <input matInput type="text" [(ngModel)]="model.tipo" [ngModelOptions]="{standalone:true}"
+               [readonly]="mostrarEditorHorario" placeholder="ej. 1 24H L-D" />
       </mat-form-field>
+    </div>
+
+    <!-- Editor de horario (solo Modificación): ingreso/salida se mantienen; se editan
+         horas, turno y días. El "Tipo" (resumen) se recalcula automáticamente. -->
+    <div class="col-12 mb-2" *ngIf="mostrarEditorHorario">
+      <div class="pf-horarios">
+        <div class="pf-horarios-head">
+          <span>Horario del puesto (Modificación)</span>
+          <button type="button" class="pf-add" (click)="addHorario()">+ Fila</button>
+        </div>
+        <div class="pf-hrow" *ngFor="let r of horariosEdit; let i = index">
+          <mat-form-field appearance="outline" class="pf-hcell">
+            <mat-label>Ingreso</mat-label>
+            <input matInput type="time" [(ngModel)]="r.ingreso" [ngModelOptions]="{standalone:true}"
+                   (ngModelChange)="onIngresoSalida(r)" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="pf-hcell">
+            <mat-label>Salida</mat-label>
+            <input matInput type="time" [(ngModel)]="r.salida" [ngModelOptions]="{standalone:true}"
+                   (ngModelChange)="onIngresoSalida(r)" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="pf-hcell">
+            <mat-label>Horas</mat-label>
+            <input matInput type="text" [(ngModel)]="r.horas" [ngModelOptions]="{standalone:true}"
+                   (ngModelChange)="recomputeTipo()" placeholder="HH:MM" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="pf-hcell">
+            <mat-label>Turno</mat-label>
+            <mat-select [(ngModel)]="r.turno" [ngModelOptions]="{standalone:true}"
+                        (selectionChange)="onTurnoEditorChange(r)">
+              <mat-option *ngFor="let t of turnosEditor" [value]="t.v">{{ t.l }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <div class="pf-dias">
+            <label *ngFor="let d of dias" class="pf-dia">
+              <input type="checkbox" [checked]="r.days.includes(d.n)" (change)="toggleDay(r, d.n, $event)" />
+              <span>{{ d.l }}</span>
+            </label>
+          </div>
+          <button type="button" class="pf-del" (click)="removeHorario(i)" title="Quitar">−</button>
+        </div>
+      </div>
     </div>
 
     <div class="col-md-6 mb-2">

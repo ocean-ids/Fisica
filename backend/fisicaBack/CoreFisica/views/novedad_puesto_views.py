@@ -68,65 +68,109 @@ def _payload(request):
         return {}
 
 
-def _cerrar_asignaciones_futuras(puesto):
-    """Libera a la persona del puesto del mes en curso hacia adelante, dejando la
-    asignación VISIBLE pero vacante (sin persona) y sin tocar meses pasados.
+def _cerrar_asignaciones_futuras(puesto, fecha_cierre=None):
+    """Cierra el puesto con corte EXACTO AL DÍA del cierre.
 
     Objetivo:
-      - En Asignación el puesto cerrado sigue saliendo (vacante; el front lo pinta
-        gris/deshabilitado porque puesto.activo=False).
-      - En Reporte/Consolidado NO sale (esos filtran persona__isnull=False, y aquí
-        la asignación queda sin persona).
-      - La persona queda disponible (se libera la llave persona+mes+año).
+      - Reporte/Consolidado: la persona se ve hasta el día ANTERIOR al cierre
+        (conserva los días ya trabajados del mes en curso) y desaparece desde el
+        día del cierre en adelante.
+      - Asignación: el puesto sigue saliendo (mes del cierre con la persona hasta
+        el corte; meses siguientes vacantes). El front lo pinta gris porque
+        puesto.activo=False.
+      - Meses pasados quedan intactos.
 
-    Recurrentes CON historial: se cortan a fin del mes anterior (conserva el pasado
-    con su persona) y se crea un registro vacante desde el mes actual, para que el
-    puesto siga visible sin borrar el historial.
+    Mecánica:
+      - Mes del cierre: a las asignaciones con persona se les fija
+        end_date = fecha_cierre - 1 día (el Reporte respeta end_date). Si el cierre
+        es el día 1, el mes entero queda vacante (persona=None).
+      - Meses posteriores: persona=None (vacante), se mantienen ACTIVO/visibles.
     """
     hoy = timezone.localdate()
-    cy, cm = hoy.year, hoy.month
+    fc = fecha_cierre or hoy
+    cy, cm = fc.year, fc.month
     month_start = datetime.date(cy, cm, 1)
-    prev_last = month_start - datetime.timedelta(days=1)
+    cutoff = fc - datetime.timedelta(days=1)  # último día que conserva persona
 
-    recurrentes = Asignacion.objects.filter(puesto=puesto, estado='ACTIVO', recurring=True)
+    acts = Asignacion.objects.filter(puesto=puesto, estado='ACTIVO')
 
-    # Recurrentes CON historial: terminar a fin del mes anterior (conserva el pasado)
-    # y crear un registro vacante desde el mes actual (visible, sin persona).
-    con_historial = list(
-        recurrentes.filter(start_date__lt=month_start).filter(
-            Q(end_date__isnull=True) | Q(end_date__gte=month_start)
-        )
-    )
-    for asig in con_historial:
-        asig.end_date = prev_last
-        asig.save(update_fields=['end_date'])
-        Asignacion.objects.create(
-            cliente=asig.cliente,
-            instalacion=asig.instalacion,
-            puesto=puesto,
-            horario_id=asig.horario_id,
-            persona=None,
-            mes=cm,
-            anio=cy,
-            estado='ACTIVO',
-            recurring=True,
-            start_date=month_start,
-            end_date=None,
-        )
+    # 1) Meses ANTERIORES al del cierre: las filas-mes recurrentes "arrastran"
+    #    (end_date=None) hacia adelante. Se cortan en cutoff conservando la persona,
+    #    para que dejen de proyectarse desde el día del cierre. Las que ya terminaron
+    #    antes del cutoff no se tocan.
+    acts.filter(persona__isnull=False).filter(
+        Q(anio__lt=cy) | Q(anio=cy, mes__lt=cm)
+    ).filter(Q(end_date__isnull=True) | Q(end_date__gt=cutoff)).update(end_date=cutoff)
 
-    # Recurrentes SIN historial (empezaron este mes o sin start_date): liberar persona,
-    # se mantienen ACTIVO (se ven vacantes/deshabilitadas).
-    recurrentes.filter(Q(start_date__isnull=True) | Q(start_date__gte=month_start)).update(persona=None)
+    # 2) Mes del cierre:
+    mes_cierre = acts.filter(persona__isnull=False, anio=cy, mes=cm)
+    if fc > month_start:
+        # Corte a mitad de mes: conserva la persona hasta el día anterior al cierre.
+        mes_cierre.filter(
+            Q(end_date__isnull=True) | Q(end_date__gt=cutoff)
+        ).update(end_date=cutoff)
+    else:
+        # Cierre el día 1: el mes entero queda sin persona (vacante).
+        mes_cierre.update(persona=None, end_date=None)
 
-    # No recurrentes del mes actual en adelante: liberar persona, se mantienen ACTIVO.
-    Asignacion.objects.filter(
-        puesto=puesto, estado='ACTIVO', recurring=False
-    ).filter(
-        Q(anio__gt=cy) | Q(anio=cy, mes__gte=cm)
-    ).update(persona=None)
+    # 3) Meses POSTERIORES al del cierre: vacante (persona=None), se mantienen ACTIVO
+    #    para que el puesto siga visible (gris) en Asignación.
+    acts.filter(Q(anio__gt=cy) | Q(anio=cy, mes__gt=cm)).update(persona=None)
 
 
-def _aplicar_estado_puesto(puesto, novedad_tipo):
+def _abrir_asignaciones(puesto, fecha_apertura=None):
+    """Reabre el puesto como VACANTE con corte EXACTO AL DÍA de la apertura.
+
+    No restaura a la persona anterior (se reasigna manualmente). Como la novedad
+    APERTURA solo se permite sobre puestos CERRADOS, las filas vacantes existentes
+    provienen del cierre previo, por lo que es seguro reordenarlas:
+
+      - Meses ANTERIORES al de la apertura: las filas vacantes pasan a INACTIVO
+        (el periodo cerrado no debe notificar vacante ni reaparecer).
+      - Mes de la apertura: se garantiza UNA fila vacante que arranca en la fecha
+        exacta de apertura (start_date = fecha_apertura), disponible por cubrir.
+      - Meses POSTERIORES: quedan vacantes (persona=None) y sin tope (end_date=None).
+    """
+    hoy = timezone.localdate()
+    fa = fecha_apertura or hoy
+    ay, am = fa.year, fa.month
+
+    acts = Asignacion.objects.filter(puesto=puesto, estado='ACTIVO')
+
+    # 1) Periodo cerrado anterior a la apertura: vacantes -> INACTIVO (no notifica).
+    acts.filter(persona__isnull=True).filter(
+        Q(anio__lt=ay) | Q(anio=ay, mes__lt=am)
+    ).update(estado='INACTIVO')
+
+    # 2) Mes de la apertura: una fila vacante que arranca en la fecha exacta.
+    vacante_mes = acts.filter(persona__isnull=True, anio=ay, mes=am).first()
+    if vacante_mes:
+        vacante_mes.start_date = fa
+        vacante_mes.end_date = None
+        vacante_mes.recurring = True
+        vacante_mes.save(update_fields=['start_date', 'end_date', 'recurring'])
+    else:
+        ref = Asignacion.objects.filter(puesto=puesto).order_by('-anio', '-mes').first()
+        if ref:
+            Asignacion.objects.create(
+                cliente=ref.cliente,
+                instalacion=ref.instalacion,
+                puesto=puesto,
+                horario_id=ref.horario_id,
+                persona=None,
+                mes=am,
+                anio=ay,
+                estado='ACTIVO',
+                recurring=True,
+                start_date=fa,
+                end_date=None,
+            )
+
+    # 3) Meses posteriores: vacantes sin tope (siguen visibles/por cubrir).
+    acts.filter(Q(anio__gt=ay) | Q(anio=ay, mes__gt=am)).update(persona=None, end_date=None)
+
+
+def _aplicar_estado_puesto(puesto, novedad_tipo, fecha_evento=None):
     """Habilita/inhabilita el puesto según el tipo de novedad."""
     if not puesto:
         return
@@ -135,11 +179,12 @@ def _aplicar_estado_puesto(puesto, novedad_tipo):
         if puesto.activo:
             puesto.activo = False
             puesto.save(update_fields=['activo'])
-        _cerrar_asignaciones_futuras(puesto)
+        _cerrar_asignaciones_futuras(puesto, fecha_evento)
     elif tipo == 'APERTURA':
         if not puesto.activo:
             puesto.activo = True
             puesto.save(update_fields=['activo'])
+        _abrir_asignaciones(puesto, fecha_evento)
 
 
 @api_view(['GET'])
@@ -210,8 +255,9 @@ def crear_novedad(request):
         observacion=(data.get('observacion') or '').strip(),
     )
 
-    # CIERRE -> inhabilita el puesto y quita asignaciones futuras. APERTURA -> reactiva.
-    _aplicar_estado_puesto(puesto, novedad_tipo)
+    # CIERRE -> inhabilita el puesto y corta asignaciones al día del cierre.
+    # APERTURA -> reactiva. Se usa la fecha de la novedad como fecha de corte.
+    _aplicar_estado_puesto(puesto, novedad_tipo, n.fecha)
 
     return JsonResponse(_serialize(n), status=201)
 
