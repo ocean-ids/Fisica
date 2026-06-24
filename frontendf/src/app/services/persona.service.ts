@@ -52,6 +52,22 @@ export class PersonaService {
     return this.apiService.put<any>(`/personas/${id}/otros-datos/guardar/`, otros);
   }
 
+  getReferencias(id: number): Observable<any> {
+    return this.apiService.get<any>(`/personas/${id}/referencias/`);
+  }
+
+  guardarReferencias(id: number, ref: any): Observable<any> {
+    return this.apiService.put<any>(`/personas/${id}/referencias/guardar/`, ref);
+  }
+
+  getDocumentos(id: number): Observable<any[]> {
+    return this.apiService.get<any[]>(`/personas/${id}/documentos/`);
+  }
+
+  guardarDocumentos(id: number, documentos: any[]): Observable<any> {
+    return this.apiService.put<any>(`/personas/${id}/documentos/guardar/`, { documentos });
+  }
+
   disablePersona(id: number): Observable<any>{
     return this.apiService.post(`/disable-persona/${id}/`, {});
   }
