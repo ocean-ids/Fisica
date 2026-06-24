@@ -92,13 +92,13 @@ export class PersonaFormComponent implements OnInit {
       direccion: [p.direccion || ''],
       parroquia: [p.parroquia || ''],
       estado_civil: [p.estado_civil || ''],
-      telefono: [p.telefono || ''],
+      telefono: [p.telefono || '', Validators.pattern('^[0-9]*$')],
       conyuge: [p.conyuge || ''],
       nacionalidad: [p.nacionalidad || ''],
       cliente: [p.cliente ?? null],
       unidad_negocio: [p.unidad_negocio || 'SEGURIDAD FISICA'],
       tipo_empleado: [p.tipo_empleado || ''],
-      cargo: [p.cargo || ''],
+      cargo: [p.cargo || 'AGENTE DE SEGURIDAD G'],
       fecha_ingreso: [p.fecha_ingreso || null],
       fecha_salida: [p.fecha_salida || null],
       forma_pago: [p.forma_pago || ''],
@@ -200,6 +200,17 @@ export class PersonaFormComponent implements OnInit {
       return;
     }
     this.personaForm.get('canton')?.setValue(null);
+  }
+
+  soloNumeros(event: KeyboardEvent): void {
+    // Permite teclas de control (Backspace, Tab, flechas, Supr, etc.) y atajos
+    if (event.key.length > 1 || event.ctrlKey || event.metaKey) {
+      return;
+    }
+    // Bloquea cualquier caracter que no sea digito
+    if (!/[0-9]/.test(event.key)) {
+      event.preventDefault();
+    }
   }
 
   onFotoSelected(event: Event): void {

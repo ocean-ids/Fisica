@@ -66,7 +66,9 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Teléfono</mat-label>
-        <input matInput formControlName="telefono">
+        <input matInput formControlName="telefono"
+                inputmode="numeric" maxlength="10"
+                (keydown)="soloNumeros($event)">
       </mat-form-field>
 
       <!-- Lugar y Fecha de nacimiento en la misma fila -->
@@ -221,7 +223,7 @@
       </mat-form-field>
 
       <div class="pf-checks">
-        <mat-checkbox formControlName="is_active">Activo</mat-checkbox>
+        <mat-checkbox formControlName="is_active">Estado</mat-checkbox>
         <mat-checkbox formControlName="gypaseg">GYPASEG</mat-checkbox>
         <mat-checkbox formControlName="affis">AFFIS</mat-checkbox>
         <mat-checkbox formControlName="pbip">PBIP</mat-checkbox>

@@ -16,10 +16,8 @@ export class SidebarComponent implements OnInit {
     { path: '/dashboard/instalaciones', label: 'Instalaciones', icon: 'location_city', permission: 'CoreFisica.view_instalacion' },
     { path: '/dashboard/puestos', label: 'Puestos', icon: 'work', permission: 'CoreFisica.view_puesto' },
     { path: '/dashboard/personas', label: 'Personal', icon: 'admin_panel_settings', permission: 'CoreFisica.view_persona' },
-    // Franja Horaria oculta del menú: el horario ahora se define por puesto (ingreso/salida por fila).
-    // La ruta /dashboard/horarios sigue existiendo por si se necesita; solo no aparece en el menú.
-    { path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'how_to_reg', permission: 'CoreFisica.view_asignacion' },
-    { path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'assignment_ind', permission: 'CoreFisica.view_reporteasistencia' },
+    { path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'assignment_ind', permission: 'CoreFisica.view_asignacion' },
+    { path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'how_to_reg', permission: 'CoreFisica.view_reporteasistencia' },
     { path: '/dashboard/consolidado', label: 'Consolidado', icon: 'assignment', permission: 'CoreFisica.view_consolidado' },
   ];
 
