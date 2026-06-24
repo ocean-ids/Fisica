@@ -235,9 +235,94 @@
         </div>
       </mat-tab>
 
-      <!-- ===================== INGRESOS DCTOS. ===================== -->
+      <!-- ===================== INGRESOS DCTOS. (Nómina) ===================== -->
       <mat-tab label="Ingresos Dctos.">
-        <div class="pf-tab-vacia">Ingresos y documentos — próximamente.</div>
+        <div class="nom" formGroupName="nomina">
+
+          <div class="nom-sec">Sueldo y Beneficios de Ley</div>
+          <div class="nom-grid">
+            <mat-form-field appearance="outline"><mat-label>Sueldo</mat-label>
+              <input matInput type="number" step="0.01" formControlName="sueldo"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Bonificación</mat-label>
+              <input matInput type="number" step="0.01" formControlName="bonificacion"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Compensación</mat-label>
+              <input matInput type="number" step="0.01" formControlName="compensacion"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Desc. Génesis</mat-label>
+              <input matInput type="number" step="0.01" formControlName="desc_genesis"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Transporte</mat-label>
+              <input matInput type="number" step="0.01" formControlName="transporte"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Horas 25%</mat-label>
+              <input matInput type="number" step="0.01" formControlName="horas_25"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Horas 50%</mat-label>
+              <input matInput type="number" step="0.01" formControlName="horas_50"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Horas 100%</mat-label>
+              <input matInput type="number" step="0.01" formControlName="horas_100"></mat-form-field>
+          </div>
+          <div class="nom-checks">
+            <mat-checkbox formControlName="pagar_fondo_reserva">Pagar Fondo Reserva</mat-checkbox>
+          </div>
+          <mat-form-field appearance="outline" class="nom-full"><mat-label>Observaciones</mat-label>
+            <textarea matInput rows="2" formControlName="observaciones"></textarea></mat-form-field>
+
+          <div class="nom-sec">Acumulados de Beneficios Sociales</div>
+          <div class="nom-grid">
+            <mat-form-field appearance="outline"><mat-label>Décimo 3ro</mat-label>
+              <input matInput type="number" step="0.01" formControlName="decimo_tercer"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Décimo 4to</mat-label>
+              <input matInput type="number" step="0.01" formControlName="decimo_cuarto"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Vacaciones</mat-label>
+              <input matInput type="number" step="0.01" formControlName="vacaciones"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Fondo de Reserva</mat-label>
+              <input matInput type="number" step="0.01" formControlName="fondo_reserva"></mat-form-field>
+            <mat-form-field appearance="outline" class="nom-col2"><mat-label>Nº Liquidación Ministerio</mat-label>
+              <input matInput formControlName="numero_liquidacion_ministerio"></mat-form-field>
+          </div>
+          <div class="nom-checks">
+            <mat-checkbox formControlName="pagar_rol_10mo_3ero">Pagar en Rol 10mo 3ero</mat-checkbox>
+            <mat-checkbox formControlName="pagar_rol_10mo_4to">Pagar en Rol 10mo 4to</mat-checkbox>
+            <mat-checkbox formControlName="pagar_rol_vacaciones">Pagar en Rol Vacaciones</mat-checkbox>
+            <mat-checkbox formControlName="desc_aporte_conyuge">Desc. Aporte Cónyuge</mat-checkbox>
+            <mat-checkbox formControlName="giro_contable_liquidacion">Giro Contable por Liquidación</mat-checkbox>
+          </div>
+
+          <div class="nom-sec">Rol Extra</div>
+          <div class="nom-grid">
+            <mat-form-field appearance="outline"><mat-label>Moviliza</mat-label>
+              <input matInput type="number" step="0.01" formControlName="moviliza"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Lunch</mat-label>
+              <input matInput type="number" step="0.01" formControlName="lunch"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>V/.Anticipo %22</mat-label>
+              <input matInput type="number" step="0.01" formControlName="anticipo_22"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Viáticos</mat-label>
+              <input matInput type="number" step="0.01" formControlName="viaticos"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Descuento</mat-label>
+              <input matInput type="number" step="0.01" formControlName="descuento"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Ing. Extra</mat-label>
+              <input matInput type="number" step="0.01" formControlName="ingreso_extra"></mat-form-field>
+            <mat-form-field appearance="outline" class="nom-col2"><mat-label>Concepto</mat-label>
+              <input matInput formControlName="concepto"></mat-form-field>
+          </div>
+
+          <div class="nom-sec">Subsidio</div>
+          <div class="nom-grid">
+            <div class="nom-sub">
+              <mat-checkbox formControlName="subsidio_enfermedad">Por Enfermedad</mat-checkbox>
+              <mat-form-field appearance="outline"><mat-label>%</mat-label>
+                <input matInput type="number" step="0.01" formControlName="subsidio_enfermedad_pct"></mat-form-field>
+            </div>
+            <div class="nom-sub">
+              <mat-checkbox formControlName="subsidio_accidente">Por Accidente</mat-checkbox>
+              <mat-form-field appearance="outline"><mat-label>%</mat-label>
+                <input matInput type="number" step="0.01" formControlName="subsidio_accidente_pct"></mat-form-field>
+            </div>
+            <div class="nom-sub">
+              <mat-checkbox formControlName="subsidio_maternidad">Por Maternidad</mat-checkbox>
+              <mat-form-field appearance="outline"><mat-label>%</mat-label>
+                <input matInput type="number" step="0.01" formControlName="subsidio_maternidad_pct"></mat-form-field>
+            </div>
+          </div>
+
+        </div>
       </mat-tab>
 
       <!-- ===================== OBSERVACIONES ===================== -->

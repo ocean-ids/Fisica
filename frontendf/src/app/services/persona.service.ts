@@ -36,6 +36,14 @@ export class PersonaService {
     return this.apiService.post<any>(`/personas/${id}/foto/`, formData);
   }
 
+  getNomina(id: number): Observable<any> {
+    return this.apiService.get<any>(`/personas/${id}/nomina/`);
+  }
+
+  guardarNomina(id: number, nomina: any): Observable<any> {
+    return this.apiService.put<any>(`/personas/${id}/nomina/guardar/`, nomina);
+  }
+
   disablePersona(id: number): Observable<any>{
     return this.apiService.post(`/disable-persona/${id}/`, {});
   }

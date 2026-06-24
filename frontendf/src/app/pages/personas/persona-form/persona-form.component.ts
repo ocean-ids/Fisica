@@ -13,6 +13,7 @@ import { Persona } from '../../../models/persona.model';
 import { UbicacionService } from '../../../services/ubicacion.service';
 import { ProvinciasService } from '../../../services/provincias.service';
 import { ClienteService } from '../../../services/cliente.service';
+import { PersonaService } from '../../../services/persona.service';
 import { Province, City } from '../../../data/provincias';
 
 @Component({
@@ -70,7 +71,8 @@ export class PersonaFormComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public persona: Persona,
     private ubicacionService: UbicacionService,
     private provinciasService: ProvinciasService,
-    private clienteService: ClienteService
+    private clienteService: ClienteService,
+    private personaService: PersonaService
   ) {}
 
   ngOnInit(): void {
@@ -117,7 +119,34 @@ export class PersonaFormComponent implements OnInit {
       gypaseg: [p.gypaseg ?? false],
       affis: [p.affis ?? false],
       pbip: [p.pbip ?? false],
+      // Nómina (Ingresos / Descuentos) — pestaña "Ingresos Dctos."
+      nomina: this.fb.group({
+        // Sueldo y Beneficios de Ley
+        sueldo: [0], desc_genesis: [0], bonificacion: [0], transporte: [0], compensacion: [0],
+        horas_25: [0], horas_50: [0], horas_100: [0],
+        pagar_fondo_reserva: [false], observaciones: [''],
+        // Acumulados de Beneficios Sociales
+        decimo_tercer: [0], decimo_cuarto: [0], vacaciones: [0], fondo_reserva: [0],
+        pagar_rol_10mo_3ero: [false], pagar_rol_10mo_4to: [false], pagar_rol_vacaciones: [false],
+        desc_aporte_conyuge: [false], giro_contable_liquidacion: [false],
+        numero_liquidacion_ministerio: [''],
+        // Rol Extra
+        moviliza: [0], lunch: [0], anticipo_22: [0], viaticos: [0], descuento: [0], ingreso_extra: [0],
+        concepto: [''],
+        // Subsidio
+        subsidio_enfermedad: [false], subsidio_enfermedad_pct: [0],
+        subsidio_accidente: [false], subsidio_accidente_pct: [0],
+        subsidio_maternidad: [false], subsidio_maternidad_pct: [0],
+      }),
     });
+
+    // Al editar, cargar la nómina existente del empleado.
+    if (p.id) {
+      this.personaService.getNomina(p.id).subscribe({
+        next: (n) => { if (n) this.personaForm.get('nomina')?.patchValue(n); },
+        error: () => {}
+      });
+    }
 
     this.loadProvincias();
     this.clienteService.getClientes().subscribe({

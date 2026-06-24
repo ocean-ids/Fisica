@@ -514,6 +514,80 @@ def subir_foto_persona(request, id):
         return JsonResponse({'error': 'No se pudo subir la foto'}, status=500)
 
 
+# --- Nómina del empleado (Ingresos / Descuentos) ---
+_NOMINA_DECIMALES = [
+    'sueldo', 'desc_genesis', 'bonificacion', 'transporte', 'compensacion',
+    'horas_25', 'horas_50', 'horas_100',
+    'decimo_tercer', 'decimo_cuarto', 'vacaciones', 'fondo_reserva',
+    'moviliza', 'lunch', 'anticipo_22', 'viaticos', 'descuento', 'ingreso_extra',
+    'subsidio_enfermedad_pct', 'subsidio_accidente_pct', 'subsidio_maternidad_pct',
+]
+_NOMINA_BOOLEANOS = [
+    'pagar_fondo_reserva', 'pagar_rol_10mo_3ero', 'pagar_rol_10mo_4to', 'pagar_rol_vacaciones',
+    'desc_aporte_conyuge', 'giro_contable_liquidacion',
+    'subsidio_enfermedad', 'subsidio_accidente', 'subsidio_maternidad',
+]
+_NOMINA_TEXTO = ['observaciones', 'numero_liquidacion_ministerio', 'concepto']
+
+
+def _serialize_nomina(n):
+    data = {f: str(getattr(n, f)) for f in _NOMINA_DECIMALES}
+    data.update({f: bool(getattr(n, f)) for f in _NOMINA_BOOLEANOS})
+    data.update({f: getattr(n, f) or '' for f in _NOMINA_TEXTO})
+    data['persona'] = n.persona_id
+    return data
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_nomina(request, id):
+    """Devuelve la nómina (ingresos/descuentos) del empleado. La crea vacía si no existe."""
+    if not request.user.has_perm('CoreFisica.view_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+    from ..models import EmpleadoNomina
+    nomina, _ = EmpleadoNomina.objects.get_or_create(persona=persona)
+    return JsonResponse(_serialize_nomina(nomina))
+
+
+@api_view(['PUT', 'POST'])
+@permission_classes([IsAuthenticated])
+def guardar_nomina(request, id):
+    """Crea/actualiza la nómina (ingresos/descuentos) del empleado."""
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    from decimal import Decimal, InvalidOperation
+    from ..models import EmpleadoNomina
+    data = request.data if request.data else {}
+    nomina, _ = EmpleadoNomina.objects.get_or_create(persona=persona)
+
+    def to_dec(v):
+        try:
+            return Decimal(str(v if v not in (None, '') else 0))
+        except (InvalidOperation, ValueError):
+            return Decimal('0')
+
+    for f in _NOMINA_DECIMALES:
+        if f in data:
+            setattr(nomina, f, to_dec(data.get(f)))
+    for f in _NOMINA_BOOLEANOS:
+        if f in data:
+            setattr(nomina, f, bool(data.get(f)))
+    for f in _NOMINA_TEXTO:
+        if f in data:
+            setattr(nomina, f, (data.get(f) or '').strip())
+    nomina.save()
+    return JsonResponse({'message': 'Nómina guardada', 'nomina': _serialize_nomina(nomina)})
+
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_persona(request, id):
