@@ -531,6 +531,65 @@ class EmpleadoDocumento(models.Model):
         return f"{self.nombre_archivo or self.ruta_archivo} ({self.persona_id})"
 
 
+class EmpleadoExperiencia(models.Model):
+    """Más Referencias: experiencia profesional del empleado."""
+    persona = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='experiencias')
+    empresa = models.CharField(max_length=150, blank=True, default='')
+    puesto_cargo = models.CharField(max_length=150, blank=True, default='')
+    tiempo = models.CharField(max_length=60, blank=True, default='')
+    motivo_salida = models.CharField(max_length=150, blank=True, default='')
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.empresa} ({self.persona_id})"
+
+
+class EmpleadoReferenciaPersonal(models.Model):
+    """Más Referencias: referencia personal del empleado."""
+    persona = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='referencias_personales')
+    persona_contactar = models.CharField(max_length=150, blank=True, default='')
+    relacion = models.CharField(max_length=60, blank=True, default='')
+    telefonos = models.CharField(max_length=80, blank=True, default='')
+    comentario = models.CharField(max_length=255, blank=True, default='')
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.persona_contactar} ({self.persona_id})"
+
+
+class EmpleadoNivelEstudio(models.Model):
+    """Más Referencias: nivel de estudio del empleado."""
+    persona = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='niveles_estudio')
+    nivel_estudio = models.CharField(max_length=80, blank=True, default='')
+    completa = models.BooleanField(default=False)
+    centro_capacitacion = models.CharField(max_length=150, blank=True, default='')
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.nivel_estudio} ({self.persona_id})"
+
+
+class EmpleadoFormacion(models.Model):
+    """Más Referencias: formación / cursos del empleado."""
+    persona = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='formaciones')
+    centro_capacitacion = models.CharField(max_length=150, blank=True, default='')
+    curso = models.CharField(max_length=150, blank=True, default='')
+    area = models.CharField(max_length=100, blank=True, default='')
+    horas = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.curso} ({self.persona_id})"
+
+
 class PatronAsignacion(models.Model):
     codigo = models.CharField(
         max_length=4,

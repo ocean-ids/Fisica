@@ -68,6 +68,14 @@ export class PersonaService {
     return this.apiService.put<any>(`/personas/${id}/documentos/guardar/`, { documentos });
   }
 
+  getMasReferencias(id: number): Observable<any> {
+    return this.apiService.get<any>(`/personas/${id}/mas-referencias/`);
+  }
+
+  guardarMasReferencias(id: number, payload: any): Observable<any> {
+    return this.apiService.put<any>(`/personas/${id}/mas-referencias/guardar/`, payload);
+  }
+
   disablePersona(id: number): Observable<any>{
     return this.apiService.post(`/disable-persona/${id}/`, {});
   }

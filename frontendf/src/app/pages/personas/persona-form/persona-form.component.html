@@ -482,7 +482,83 @@
 
       <!-- ===================== MÁS REFERENCIAS ===================== -->
       <mat-tab label="Más Referencias">
-        <div class="pf-tab-vacia">Experiencia profesional, referencias personales, nivel de estudio y formación — próximamente.</div>
+        <div class="nom">
+
+          <div class="nom-sec doc-sec">
+            <span>Experiencia Profesional</span>
+            <button type="button" class="pf-add" (click)="addExperiencia()">+ Fila</button>
+          </div>
+          <div class="doc-tabla">
+            <div class="doc-head exp-grid">
+              <span>Empresa</span><span>Puesto/Cargo</span><span>Tiempo</span><span>Motivo Salida</span><span></span>
+            </div>
+            <div class="doc-row exp-grid" *ngFor="let e of experiencias; let i = index">
+              <input class="doc-i" [(ngModel)]="e.empresa" [ngModelOptions]="{standalone:true}" placeholder="Empresa">
+              <input class="doc-i" [(ngModel)]="e.puesto_cargo" [ngModelOptions]="{standalone:true}" placeholder="Puesto/Cargo">
+              <input class="doc-i" [(ngModel)]="e.tiempo" [ngModelOptions]="{standalone:true}" placeholder="Tiempo">
+              <input class="doc-i" [(ngModel)]="e.motivo_salida" [ngModelOptions]="{standalone:true}" placeholder="Motivo de salida">
+              <button type="button" class="pf-del" (click)="removeExperiencia(i)">−</button>
+            </div>
+            <div class="doc-vacia" *ngIf="!experiencias.length">Sin registros.</div>
+          </div>
+
+          <div class="nom-sec doc-sec">
+            <span>Referencia Personal</span>
+            <button type="button" class="pf-add" (click)="addReferenciaPersonal()">+ Fila</button>
+          </div>
+          <div class="doc-tabla">
+            <div class="doc-head ref-grid">
+              <span>Persona a contactar</span><span>Relación</span><span>Teléfonos</span><span>Comentario</span><span></span>
+            </div>
+            <div class="doc-row ref-grid" *ngFor="let r of referenciasPersonales; let i = index">
+              <input class="doc-i" [(ngModel)]="r.persona_contactar" [ngModelOptions]="{standalone:true}" placeholder="Nombre">
+              <input class="doc-i" [(ngModel)]="r.relacion" [ngModelOptions]="{standalone:true}" placeholder="Relación">
+              <input class="doc-i" [(ngModel)]="r.telefonos" [ngModelOptions]="{standalone:true}" placeholder="Teléfonos">
+              <input class="doc-i" [(ngModel)]="r.comentario" [ngModelOptions]="{standalone:true}" placeholder="Comentario">
+              <button type="button" class="pf-del" (click)="removeReferenciaPersonal(i)">−</button>
+            </div>
+            <div class="doc-vacia" *ngIf="!referenciasPersonales.length">Sin registros.</div>
+          </div>
+
+          <div class="nom-sec doc-sec">
+            <span>Nivel de Estudio</span>
+            <button type="button" class="pf-add" (click)="addNivelEstudio()">+ Fila</button>
+          </div>
+          <div class="doc-tabla">
+            <div class="doc-head niv-grid">
+              <span>Nivel de Estudio</span><span>Completa</span><span>Centro de Capacitación</span><span></span>
+            </div>
+            <div class="doc-row niv-grid" *ngFor="let n of nivelesEstudio; let i = index">
+              <input class="doc-i" [(ngModel)]="n.nivel_estudio" [ngModelOptions]="{standalone:true}" placeholder="Nivel">
+              <select class="doc-i" [(ngModel)]="n.completa" [ngModelOptions]="{standalone:true}">
+                <option [ngValue]="true">SI</option>
+                <option [ngValue]="false">NO</option>
+              </select>
+              <input class="doc-i" [(ngModel)]="n.centro_capacitacion" [ngModelOptions]="{standalone:true}" placeholder="Centro">
+              <button type="button" class="pf-del" (click)="removeNivelEstudio(i)">−</button>
+            </div>
+            <div class="doc-vacia" *ngIf="!nivelesEstudio.length">Sin registros.</div>
+          </div>
+
+          <div class="nom-sec doc-sec">
+            <span>Formación</span>
+            <button type="button" class="pf-add" (click)="addFormacion()">+ Fila</button>
+          </div>
+          <div class="doc-tabla">
+            <div class="doc-head form-grid">
+              <span>Centro de Capacitación</span><span>Curso</span><span>Área</span><span>Horas</span><span></span>
+            </div>
+            <div class="doc-row form-grid" *ngFor="let f of formaciones; let i = index">
+              <input class="doc-i" [(ngModel)]="f.centro_capacitacion" [ngModelOptions]="{standalone:true}" placeholder="Centro">
+              <input class="doc-i" [(ngModel)]="f.curso" [ngModelOptions]="{standalone:true}" placeholder="Curso">
+              <input class="doc-i" [(ngModel)]="f.area" [ngModelOptions]="{standalone:true}" placeholder="Área">
+              <input class="doc-i" type="number" [(ngModel)]="f.horas" [ngModelOptions]="{standalone:true}" placeholder="Horas">
+              <button type="button" class="pf-del" (click)="removeFormacion(i)">−</button>
+            </div>
+            <div class="doc-vacia" *ngIf="!formaciones.length">Sin registros.</div>
+          </div>
+
+        </div>
       </mat-tab>
 
     </mat-tab-group>

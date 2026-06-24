@@ -45,6 +45,11 @@ export class PersonaFormComponent implements OnInit {
   // Documentos (rutas compartidas) — pestaña Referencias
   documentos: { tipo: string; nombre_archivo: string; ruta_archivo: string; extension: string }[] = [];
   tiposDocumento = ['PDF GENERAL', 'CÉDULA', 'CERTIFICADO', 'CONTRATO', 'FOTO', 'OTRO'];
+  // Más Referencias (4 listas)
+  experiencias: { empresa: string; puesto_cargo: string; tiempo: string; motivo_salida: string }[] = [];
+  referenciasPersonales: { persona_contactar: string; relacion: string; telefonos: string; comentario: string }[] = [];
+  nivelesEstudio: { nivel_estudio: string; completa: boolean; centro_capacitacion: string }[] = [];
+  formaciones: { centro_capacitacion: string; curso: string; area: string; horas: number }[] = [];
   sexos = [{ v: 'MASCULINO', l: 'Masculino' }, { v: 'FEMENINO', l: 'Femenino' }];
   estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }];
   tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero' }, { v: 'OPERADOR', l: 'Operador' }];
@@ -200,6 +205,15 @@ export class PersonaFormComponent implements OnInit {
         })); },
         error: () => {}
       });
+      this.personaService.getMasReferencias(p.id).subscribe({
+        next: (m) => {
+          this.experiencias = m?.experiencias || [];
+          this.referenciasPersonales = m?.referencias_personales || [];
+          this.nivelesEstudio = m?.niveles_estudio || [];
+          this.formaciones = m?.formaciones || [];
+        },
+        error: () => {}
+      });
     }
 
     this.loadProvincias();
@@ -306,6 +320,15 @@ export class PersonaFormComponent implements OnInit {
     this.documentos.splice(i, 1);
   }
 
+  addExperiencia(): void { this.experiencias.push({ empresa: '', puesto_cargo: '', tiempo: '', motivo_salida: '' }); }
+  removeExperiencia(i: number): void { this.experiencias.splice(i, 1); }
+  addReferenciaPersonal(): void { this.referenciasPersonales.push({ persona_contactar: '', relacion: '', telefonos: '', comentario: '' }); }
+  removeReferenciaPersonal(i: number): void { this.referenciasPersonales.splice(i, 1); }
+  addNivelEstudio(): void { this.nivelesEstudio.push({ nivel_estudio: '', completa: false, centro_capacitacion: '' }); }
+  removeNivelEstudio(i: number): void { this.nivelesEstudio.splice(i, 1); }
+  addFormacion(): void { this.formaciones.push({ centro_capacitacion: '', curso: '', area: '', horas: 0 }); }
+  removeFormacion(i: number): void { this.formaciones.splice(i, 1); }
+
   onFotoSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files && input.files.length ? input.files[0] : null;
@@ -319,7 +342,17 @@ export class PersonaFormComponent implements OnInit {
 
   onSubmit(): void {
     if (this.personaForm.valid) {
-      this.dialogRef.close({ ...this.personaForm.value, _fotoFile: this.fotoFile, _documentos: this.documentos });
+      this.dialogRef.close({
+        ...this.personaForm.value,
+        _fotoFile: this.fotoFile,
+        _documentos: this.documentos,
+        _masReferencias: {
+          experiencias: this.experiencias,
+          referencias_personales: this.referenciasPersonales,
+          niveles_estudio: this.nivelesEstudio,
+          formaciones: this.formaciones,
+        },
+      });
     }
   }
 
