@@ -479,6 +479,58 @@ class EmpleadoOtrosDatos(models.Model):
     def __str__(self):
         return f"Otros datos de {self.persona}"
 
+class EmpleadoReferencias(models.Model):
+    """Pestaña 'Referencias': datos referenciales, estudios y servicios."""
+    persona = models.OneToOneField(
+        Persona, on_delete=models.CASCADE, related_name='referencias', primary_key=True
+    )
+
+    # --- Datos Referenciales ---
+    cedula_militar = models.CharField(max_length=30, blank=True, default='')
+    observacion = models.CharField(max_length=255, blank=True, default='')
+    edad = models.IntegerField(null=True, blank=True)
+    maniobras = models.CharField(max_length=120, blank=True, default='')
+    carnet_conadis = models.CharField(max_length=40, blank=True, default='')
+    numero_certificado_votacion = models.CharField(max_length=40, blank=True, default='')
+    licencia_conducir = models.CharField(max_length=20, blank=True, default='')
+    codigo_iess = models.CharField(max_length=40, blank=True, default='')
+    certificado_violencia_intrafamiliar = models.CharField(max_length=120, blank=True, default='')
+
+    # --- Estudios ---
+    primaria = models.BooleanField(default=False)
+    secundaria = models.BooleanField(default=False)
+    universidad = models.BooleanField(default=False)
+    titulo = models.CharField(max_length=120, blank=True, default='')
+    anios_estudio = models.IntegerField(default=0)
+
+    # --- Servicios ---
+    miembro_fuerza_publica = models.BooleanField(default=False)
+    realizo_servicio_militar = models.BooleanField(default=False)
+    contrato_inspectoria = models.CharField(max_length=120, blank=True, default='')
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Referencias de {self.persona}"
+
+
+class EmpleadoDocumento(models.Model):
+    """Documentos del empleado: referencias a archivos en rutas compartidas de red
+    (\\\\Servidor\\...). No sube archivos; guarda la ruta/nombre que lleva a ellos."""
+    persona = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='documentos')
+    tipo = models.CharField(max_length=60, blank=True, default='PDF GENERAL')
+    nombre_archivo = models.CharField(max_length=255, blank=True, default='')
+    ruta_archivo = models.CharField(max_length=500, blank=True, default='')
+    extension = models.CharField(max_length=10, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.nombre_archivo or self.ruta_archivo} ({self.persona_id})"
+
+
 class PatronAsignacion(models.Model):
     codigo = models.CharField(
         max_length=4,

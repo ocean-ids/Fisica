@@ -674,6 +674,138 @@ def guardar_otros_datos(request, id):
     return JsonResponse({'message': 'Otros datos guardados', 'otros_datos': _serialize_otros(otros)})
 
 
+# --- Referencias del empleado (datos referenciales / estudios / servicios) ---
+_REF_ENTEROS = ['edad', 'anios_estudio']
+_REF_BOOLEANOS = [
+    'primaria', 'secundaria', 'universidad',
+    'miembro_fuerza_publica', 'realizo_servicio_militar',
+]
+_REF_TEXTO = [
+    'cedula_militar', 'observacion', 'maniobras', 'carnet_conadis',
+    'numero_certificado_votacion', 'licencia_conducir', 'codigo_iess',
+    'certificado_violencia_intrafamiliar', 'titulo', 'contrato_inspectoria',
+]
+
+
+def _serialize_referencias(r):
+    data = {f: getattr(r, f) for f in _REF_ENTEROS}
+    data.update({f: bool(getattr(r, f)) for f in _REF_BOOLEANOS})
+    data.update({f: getattr(r, f) or '' for f in _REF_TEXTO})
+    data['persona'] = r.persona_id
+    return data
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_referencias(request, id):
+    """Devuelve las 'Referencias' del empleado. Las crea vacías si no existen."""
+    if not request.user.has_perm('CoreFisica.view_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+    from ..models import EmpleadoReferencias
+    ref, _ = EmpleadoReferencias.objects.get_or_create(persona=persona)
+    return JsonResponse(_serialize_referencias(ref))
+
+
+@api_view(['PUT', 'POST'])
+@permission_classes([IsAuthenticated])
+def guardar_referencias(request, id):
+    """Crea/actualiza las 'Referencias' del empleado."""
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    from ..models import EmpleadoReferencias
+    data = request.data if request.data else {}
+    ref, _ = EmpleadoReferencias.objects.get_or_create(persona=persona)
+
+    def to_int(v):
+        try:
+            return int(v) if v not in (None, '') else None
+        except (ValueError, TypeError):
+            return None
+
+    for f in _REF_ENTEROS:
+        if f in data:
+            setattr(ref, f, to_int(data.get(f)))
+    for f in _REF_BOOLEANOS:
+        if f in data:
+            setattr(ref, f, bool(data.get(f)))
+    for f in _REF_TEXTO:
+        if f in data:
+            setattr(ref, f, (data.get(f) or '').strip())
+    ref.save()
+    return JsonResponse({'message': 'Referencias guardadas', 'referencias': _serialize_referencias(ref)})
+
+
+# --- Documentos del empleado (rutas compartidas de red) ---
+def _serialize_documento(d):
+    return {
+        'id': d.id,
+        'tipo': d.tipo or '',
+        'nombre_archivo': d.nombre_archivo or '',
+        'ruta_archivo': d.ruta_archivo or '',
+        'extension': d.extension or '',
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_documentos(request, id):
+    """Lista los documentos (referencias a rutas) del empleado."""
+    if not request.user.has_perm('CoreFisica.view_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    if not Persona.objects.filter(id=id).exists():
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+    from ..models import EmpleadoDocumento
+    docs = EmpleadoDocumento.objects.filter(persona_id=id)
+    return JsonResponse([_serialize_documento(d) for d in docs], safe=False)
+
+
+@api_view(['PUT', 'POST'])
+@permission_classes([IsAuthenticated])
+def guardar_documentos(request, id):
+    """Reemplaza la lista completa de documentos del empleado con la enviada."""
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    from ..models import EmpleadoDocumento
+    data = request.data if request.data else {}
+    lista = data.get('documentos') if isinstance(data, dict) else None
+    if lista is None:
+        lista = data if isinstance(data, list) else []
+
+    with transaction.atomic():
+        EmpleadoDocumento.objects.filter(persona=persona).delete()
+        creados = []
+        for item in lista:
+            if not isinstance(item, dict):
+                continue
+            ruta = (item.get('ruta_archivo') or '').strip()
+            nombre = (item.get('nombre_archivo') or '').strip()
+            if not ruta and not nombre:
+                continue  # fila vacía: se descarta
+            creados.append(EmpleadoDocumento.objects.create(
+                persona=persona,
+                tipo=(item.get('tipo') or 'PDF GENERAL').strip(),
+                nombre_archivo=nombre,
+                ruta_archivo=ruta,
+                extension=(item.get('extension') or '').strip(),
+            ))
+    return JsonResponse({'message': 'Documentos guardados',
+                         'documentos': [_serialize_documento(d) for d in creados]})
+
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_persona(request, id):

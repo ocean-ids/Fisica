@@ -345,7 +345,11 @@
             <mat-form-field appearance="outline"><mat-label>Grupo Sanguíneo</mat-label>
               <input matInput formControlName="grupo_sanguineo"></mat-form-field>
             <mat-form-field appearance="outline"><mat-label>Banco</mat-label>
-              <input matInput formControlName="banco"></mat-form-field>
+              <mat-select formControlName="banco">
+                <mat-option value="">-</mat-option>
+                <mat-option *ngFor="let b of bancos" [value]="b">{{ b }}</mat-option>
+              </mat-select>
+            </mat-form-field>
             <mat-form-field appearance="outline"><mat-label>Cuenta Ahorros</mat-label>
               <input matInput formControlName="cuenta_ahorros"></mat-form-field>
             <mat-form-field appearance="outline"><mat-label>Cuenta Corriente</mat-label>
@@ -402,7 +406,78 @@
 
       <!-- ===================== REFERENCIAS ===================== -->
       <mat-tab label="Referencias">
-        <div class="pf-tab-vacia">Referencias — próximamente.</div>
+        <div class="nom" formGroupName="referencias">
+
+          <div class="nom-sec">Datos Referenciales</div>
+          <div class="nom-grid">
+            <mat-form-field appearance="outline"><mat-label>Cédula Militar</mat-label>
+              <input matInput formControlName="cedula_militar"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Edad</mat-label>
+              <input matInput type="number" formControlName="edad"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Maniobras</mat-label>
+              <input matInput formControlName="maniobras"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Carnet del Conadis</mat-label>
+              <input matInput formControlName="carnet_conadis"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Nº Certificado de Votación</mat-label>
+              <input matInput formControlName="numero_certificado_votacion"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Licencia de Conducir</mat-label>
+              <input matInput formControlName="licencia_conducir"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Código del IESS</mat-label>
+              <input matInput formControlName="codigo_iess"></mat-form-field>
+            <mat-form-field appearance="outline" class="nom-col2"><mat-label>Observación</mat-label>
+              <input matInput formControlName="observacion"></mat-form-field>
+            <mat-form-field appearance="outline" class="nom-col2"><mat-label>Certificado de violencia intrafamiliar</mat-label>
+              <input matInput formControlName="certificado_violencia_intrafamiliar"></mat-form-field>
+          </div>
+
+          <div class="nom-sec">Estudios</div>
+          <div class="nom-checks">
+            <mat-checkbox formControlName="primaria">Primaria</mat-checkbox>
+            <mat-checkbox formControlName="secundaria">Secundaria</mat-checkbox>
+            <mat-checkbox formControlName="universidad">Universidad</mat-checkbox>
+          </div>
+          <div class="nom-grid">
+            <mat-form-field appearance="outline" class="nom-col2"><mat-label>Título</mat-label>
+              <input matInput formControlName="titulo"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Años de Estudio</mat-label>
+              <input matInput type="number" formControlName="anios_estudio"></mat-form-field>
+          </div>
+
+          <div class="nom-sec">Servicios</div>
+          <div class="nom-checks">
+            <mat-checkbox formControlName="miembro_fuerza_publica">Miembro activo de la Fuerza Pública (FAE, Marina, FF.TT., Policía, Bombero, Tránsito)</mat-checkbox>
+            <mat-checkbox formControlName="realizo_servicio_militar">Realizó el servicio militar</mat-checkbox>
+          </div>
+          <div class="nom-grid">
+            <mat-form-field appearance="outline" class="nom-col2"><mat-label>Contrato de Inspectoría</mat-label>
+              <input matInput formControlName="contrato_inspectoria"></mat-form-field>
+          </div>
+
+          <div class="nom-sec doc-sec">
+            <span>Documentos (rutas compartidas)</span>
+            <button type="button" class="pf-add" (click)="addDocumento()">+ Documento</button>
+          </div>
+          <div class="doc-tabla">
+            <div class="doc-head">
+              <span class="doc-c-tipo">Documento</span>
+              <span class="doc-c-nom">Nombre Archivo</span>
+              <span class="doc-c-ruta">Ruta Archivo</span>
+              <span class="doc-c-ext">Ext.</span>
+              <span class="doc-c-del"></span>
+            </div>
+            <div class="doc-row" *ngFor="let d of documentos; let i = index">
+              <select class="doc-i doc-c-tipo" [(ngModel)]="d.tipo" [ngModelOptions]="{standalone:true}">
+                <option *ngFor="let t of tiposDocumento" [value]="t">{{ t }}</option>
+              </select>
+              <input class="doc-i doc-c-nom" [(ngModel)]="d.nombre_archivo" [ngModelOptions]="{standalone:true}" placeholder="Nombre del archivo">
+              <input class="doc-i doc-c-ruta" [(ngModel)]="d.ruta_archivo" [ngModelOptions]="{standalone:true}" placeholder="\\Servidor\...\archivo">
+              <input class="doc-i doc-c-ext" [(ngModel)]="d.extension" [ngModelOptions]="{standalone:true}" placeholder="pdf">
+              <button type="button" class="pf-del doc-c-del" (click)="removeDocumento(i)" title="Quitar">−</button>
+            </div>
+            <div class="doc-vacia" *ngIf="!documentos.length">Sin documentos. Usa "+ Documento" para agregar una ruta.</div>
+          </div>
+
+        </div>
       </mat-tab>
 
       <!-- ===================== MÁS REFERENCIAS ===================== -->

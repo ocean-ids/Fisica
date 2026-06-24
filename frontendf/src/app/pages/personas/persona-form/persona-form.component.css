@@ -45,6 +45,29 @@ mat-dialog-content {
   .nom-grid { grid-template-columns: 1fr 1fr; }
 }
 
+/* Tabla de documentos (rutas compartidas) */
+.doc-sec { display: flex; align-items: center; justify-content: space-between; }
+.doc-tabla { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.doc-head, .doc-row {
+  display: grid;
+  grid-template-columns: 140px 1.4fr 2fr 70px 32px;
+  gap: 8px; align-items: center; padding: 6px 10px;
+}
+.doc-head { background: #f1f5f9; font-size: 12px; font-weight: 600; color: #475569; }
+.doc-row { border-top: 1px solid #f1f5f9; }
+.doc-i {
+  height: 30px; border: 1px solid #cbd5e1; border-radius: 6px;
+  padding: 2px 8px; font-size: 12px; width: 100%; box-sizing: border-box;
+}
+.doc-i:focus { outline: none; border-color: #6366f1; }
+.doc-c-del { display: flex; justify-content: center; }
+.doc-vacia { padding: 14px; text-align: center; color: #94a3b8; font-size: 12px; }
+
+@media (max-width: 760px) {
+  .doc-head { display: none; }
+  .doc-row { grid-template-columns: 1fr 1fr; }
+}
+
 /* Layout estilo ERP: 4 columnas compactas; la foto ocupa la celda superior derecha */
 .pf-grid {
   display: grid;

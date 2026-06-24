@@ -1,6 +1,6 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -22,6 +22,7 @@ import { Province, City } from '../../../data/provincias';
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    FormsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
@@ -41,11 +42,22 @@ export class PersonaFormComponent implements OnInit {
   clientes: { id: number; nombre: string }[] = [];
   fotoFile: File | null = null;
   fotoPreview: string | null = null;
+  // Documentos (rutas compartidas) — pestaña Referencias
+  documentos: { tipo: string; nombre_archivo: string; ruta_archivo: string; extension: string }[] = [];
+  tiposDocumento = ['PDF GENERAL', 'CÉDULA', 'CERTIFICADO', 'CONTRATO', 'FOTO', 'OTRO'];
   sexos = [{ v: 'MASCULINO', l: 'Masculino' }, { v: 'FEMENINO', l: 'Femenino' }];
   estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }];
   tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero' }, { v: 'OPERADOR', l: 'Operador' }];
   regiones = ['SIERRA', 'COSTA'];
   unidadesNegocio = ['SEGURIDAD FISICA'];
+  bancos = [
+    'Banco Pichincha', 'Banco del Pacífico', 'Banco Guayaquil', 'Produbanco',
+    'Banco Internacional', 'Banco Bolivariano', 'Banco del Austro', 'Banco de Machala',
+    'Banco ProCredit', 'Banco Solidario', 'Banco General Rumiñahui', 'Banco Amazonas',
+    'Banco del Litoral', 'Banco Coopnacional', 'Banco Capital', 'BanEcuador',
+    'Cooperativa JEP', 'Cooperativa Jardín Azuayo', 'Cooperativa Policía Nacional',
+    'Cooperativa 29 de Octubre', 'Cooperativa Cooprogreso', 'Cooperativa Alianza del Valle',
+  ];
   private useStaticProvincias = false;
   private initialCanton: string | null = null;
   private initialCantonName: string | null = null;
@@ -149,6 +161,16 @@ export class PersonaFormComponent implements OnInit {
         gasto_salud: [0], gasto_vestimenta: [0], gasto_educacion: [0], gasto_vivienda: [0],
         gasto_alimentacion: [0], gasto_arte_cultura: [0], gasto_turismo: [0],
       }),
+      // Referencias (datos referenciales / estudios / servicios) — pestaña "Referencias"
+      referencias: this.fb.group({
+        cedula_militar: [''], observacion: [''], edad: [null], maniobras: [''],
+        carnet_conadis: [''], numero_certificado_votacion: [''], licencia_conducir: [''],
+        codigo_iess: [''], certificado_violencia_intrafamiliar: [''],
+        primaria: [false], secundaria: [false], universidad: [false],
+        titulo: [''], anios_estudio: [0],
+        miembro_fuerza_publica: [false], realizo_servicio_militar: [false],
+        contrato_inspectoria: [''],
+      }),
     });
 
     // Al editar, cargar la nómina y otros datos existentes del empleado.
@@ -158,7 +180,24 @@ export class PersonaFormComponent implements OnInit {
         error: () => {}
       });
       this.personaService.getOtrosDatos(p.id).subscribe({
-        next: (o) => { if (o) this.personaForm.get('otros_datos')?.patchValue(o); },
+        next: (o) => {
+          if (o) {
+            const banco = (o.banco || '').toString().trim();
+            if (banco && !this.bancos.includes(banco)) this.bancos = [banco, ...this.bancos];
+            this.personaForm.get('otros_datos')?.patchValue(o);
+          }
+        },
+        error: () => {}
+      });
+      this.personaService.getReferencias(p.id).subscribe({
+        next: (r) => { if (r) this.personaForm.get('referencias')?.patchValue(r); },
+        error: () => {}
+      });
+      this.personaService.getDocumentos(p.id).subscribe({
+        next: (docs) => { this.documentos = (docs || []).map(d => ({
+          tipo: d.tipo || 'PDF GENERAL', nombre_archivo: d.nombre_archivo || '',
+          ruta_archivo: d.ruta_archivo || '', extension: d.extension || ''
+        })); },
         error: () => {}
       });
     }
@@ -259,6 +298,14 @@ export class PersonaFormComponent implements OnInit {
     }
   }
 
+  addDocumento(): void {
+    this.documentos.push({ tipo: 'PDF GENERAL', nombre_archivo: '', ruta_archivo: '', extension: '' });
+  }
+
+  removeDocumento(i: number): void {
+    this.documentos.splice(i, 1);
+  }
+
   onFotoSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files && input.files.length ? input.files[0] : null;
@@ -272,7 +319,7 @@ export class PersonaFormComponent implements OnInit {
 
   onSubmit(): void {
     if (this.personaForm.valid) {
-      this.dialogRef.close({ ...this.personaForm.value, _fotoFile: this.fotoFile });
+      this.dialogRef.close({ ...this.personaForm.value, _fotoFile: this.fotoFile, _documentos: this.documentos });
     }
   }
 
