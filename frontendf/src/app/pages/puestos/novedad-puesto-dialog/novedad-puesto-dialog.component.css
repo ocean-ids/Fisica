@@ -8,3 +8,33 @@ mat-dialog-content {
     min-width: auto;
   }
 }
+
+/* Editor de horario (Modificación) */
+.pf-horarios {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+}
+.pf-horarios-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px;
+}
+.pf-add, .pf-del {
+  border: 1px solid #c7d2fe; background: #eef2ff; color: #4338ca;
+  border-radius: 6px; cursor: pointer; font-weight: 700;
+}
+.pf-add { padding: 3px 10px; font-size: 12px; }
+.pf-del { width: 28px; height: 28px; line-height: 1; flex: 0 0 auto; align-self: center; }
+.pf-hrow {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 4px 0;
+}
+.pf-hcell { width: 110px; }
+.pf-hcell ::ng-deep .mat-mdc-form-field-subscript-wrapper { height: 0; min-height: 0; }
+.pf-dias { display: flex; gap: 6px; align-items: center; }
+.pf-dia {
+  display: inline-flex; flex-direction: column; align-items: center;
+  font-size: 11px; color: #475569; cursor: pointer; user-select: none;
+}
+.pf-dia input { cursor: pointer; }

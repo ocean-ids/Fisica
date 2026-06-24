@@ -11,6 +11,16 @@ mat-dialog-content {
   padding: 16px 24px;
 }
 
+/* Pestañas estilo ERP */
+.pf-tabs { margin-bottom: 4px; }
+.pf-tabs ::ng-deep .mat-mdc-tab-body-content { padding: 14px 2px 4px; overflow: visible; }
+.pf-tab-vacia {
+  padding: 36px 12px;
+  color: #94a3b8;
+  font-size: 14px;
+  text-align: center;
+}
+
 /* Layout estilo ERP: 4 columnas compactas; la foto ocupa la celda superior derecha */
 .pf-grid {
   display: grid;
