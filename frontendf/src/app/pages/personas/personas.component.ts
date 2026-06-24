@@ -83,26 +83,50 @@ export class PersonasComponent implements OnInit, OnDestroy {
       if (result) {
         const fotoFile: File | null = result._fotoFile || null;
         delete result._fotoFile;
+        const nomina: any = result.nomina || null;
+        delete result.nomina;
+        const otros: any = result.otros_datos || null;
+        delete result.otros_datos;
         if (persona?.id) {
-          this.actualizarPersona(persona.id, result, fotoFile);
+          this.actualizarPersona(persona.id, result, fotoFile, nomina, otros);
         } else {
-          this.crearPersona(result, fotoFile);
+          this.crearPersona(result, fotoFile, nomina, otros);
         }
       }
     });
   }
 
-  crearPersona(data: any, fotoFile?: File | null): void {
+  // Guarda nómina y otros datos (si vienen) y luego recarga la lista.
+  private guardarExtrasSiHay(id: number, nomina: any | null, otros: any | null): void {
+    if (!id) { this.cargarPersonas(); return; }
+    const guardarOtros = () => {
+      if (!otros) { this.cargarPersonas(); return; }
+      this.personaService.guardarOtrosDatos(id, otros).subscribe({
+        next: () => this.cargarPersonas(),
+        error: () => this.cargarPersonas()
+      });
+    };
+    if (nomina) {
+      this.personaService.guardarNomina(id, nomina).subscribe({
+        next: guardarOtros,
+        error: guardarOtros
+      });
+    } else {
+      guardarOtros();
+    }
+  }
+
+  crearPersona(data: any, fotoFile?: File | null, nomina?: any | null, otros?: any | null): void {
     this.personaService.createPersona(data).subscribe({
       next: (res: any) => {
         const nuevoId = res?.id;
         if (fotoFile && nuevoId) {
           this.personaService.subirFotoPersona(nuevoId, fotoFile).subscribe({
-            next: () => this.cargarPersonas(),
-            error: () => this.cargarPersonas()
+            next: () => this.guardarExtrasSiHay(nuevoId, nomina ?? null, otros ?? null),
+            error: () => this.guardarExtrasSiHay(nuevoId, nomina ?? null, otros ?? null)
           });
         } else {
-          this.cargarPersonas();
+          this.guardarExtrasSiHay(nuevoId, nomina ?? null, otros ?? null);
         }
         Swal.fire({ icon: 'success', title: 'Creada', timer: 1200, showConfirmButton: false });
       },
@@ -114,16 +138,16 @@ export class PersonasComponent implements OnInit, OnDestroy {
     });
   }
 
-  actualizarPersona(id: number, data: any, fotoFile?: File | null): void {
+  actualizarPersona(id: number, data: any, fotoFile?: File | null, nomina?: any | null, otros?: any | null): void {
     this.personaService.updatePersona(id, data).subscribe({
       next: () => {
         if (fotoFile) {
           this.personaService.subirFotoPersona(id, fotoFile).subscribe({
-            next: () => this.cargarPersonas(),
-            error: () => this.cargarPersonas()
+            next: () => this.guardarExtrasSiHay(id, nomina ?? null, otros ?? null),
+            error: () => this.guardarExtrasSiHay(id, nomina ?? null, otros ?? null)
           });
         } else {
-          this.cargarPersonas();
+          this.guardarExtrasSiHay(id, nomina ?? null, otros ?? null);
         }
         Swal.fire({ icon: 'success', title: 'Actualizada', timer: 1200, showConfirmButton: false });
       },

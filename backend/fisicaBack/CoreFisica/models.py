@@ -384,6 +384,101 @@ class Persona(models.Model):
     def __str__(self):
         return f"{self.nombres} {self.apellidos}"
 
+
+class EmpleadoNomina(models.Model):
+    """Datos de nómina (Ingresos / Descuentos) del empleado. 1 registro por Persona."""
+    persona = models.OneToOneField(
+        Persona, on_delete=models.CASCADE, related_name='nomina', primary_key=True
+    )
+
+    # --- Sueldo y Beneficios de Ley ---
+    sueldo = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    desc_genesis = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    bonificacion = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    transporte = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    compensacion = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    horas_25 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    horas_50 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    horas_100 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    pagar_fondo_reserva = models.BooleanField(default=False)
+    observaciones = models.TextField(blank=True, default='')
+
+    # --- Acumulados de Beneficios Sociales Históricos ---
+    decimo_tercer = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    decimo_cuarto = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    vacaciones = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    fondo_reserva = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    pagar_rol_10mo_3ero = models.BooleanField(default=False)
+    pagar_rol_10mo_4to = models.BooleanField(default=False)
+    pagar_rol_vacaciones = models.BooleanField(default=False)
+    desc_aporte_conyuge = models.BooleanField(default=False)
+    giro_contable_liquidacion = models.BooleanField(default=False)
+    numero_liquidacion_ministerio = models.CharField(max_length=60, blank=True, default='')
+
+    # --- Rol Extra ---
+    moviliza = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    lunch = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    anticipo_22 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    viaticos = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    descuento = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    ingreso_extra = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    concepto = models.CharField(max_length=255, blank=True, default='')
+
+    # --- Subsidio ---
+    subsidio_enfermedad = models.BooleanField(default=False)
+    subsidio_enfermedad_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    subsidio_accidente = models.BooleanField(default=False)
+    subsidio_accidente_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    subsidio_maternidad = models.BooleanField(default=False)
+    subsidio_maternidad_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Nómina de {self.persona}"
+
+class EmpleadoOtrosDatos(models.Model):
+    """Pestaña 'Otros Datos': bancario, contable, vacaciones, cargas y gastos deducibles."""
+    persona = models.OneToOneField(
+        Persona, on_delete=models.CASCADE, related_name='otros_datos', primary_key=True
+    )
+
+    # --- Datos Generales ---
+    incluir_en_rol = models.BooleanField(default=True)
+    acreditar = models.BooleanField(default=False)
+    ultima_liquidacion = models.DateField(null=True, blank=True)
+    grupo_sanguineo = models.CharField(max_length=8, blank=True, default='')
+    banco = models.CharField(max_length=80, blank=True, default='')
+    cuenta_ahorros = models.CharField(max_length=30, blank=True, default='')
+    cuenta_corriente = models.CharField(max_length=30, blank=True, default='')
+
+    # --- Vacaciones ---
+    fecha_ini_vacaciones = models.DateField(null=True, blank=True)
+    fecha_fin_vacaciones = models.DateField(null=True, blank=True)
+    dias_vacaciones = models.IntegerField(default=0)
+
+    # --- Cuentas Contables ---
+    codigo_cuenta = models.CharField(max_length=30, blank=True, default='')
+    cuenta_departamento = models.CharField(max_length=20, blank=True, default='')
+    cuenta_auxiliar = models.CharField(max_length=30, blank=True, default='')
+
+    # --- Cargas del empleado ---
+    numero_cargas = models.IntegerField(default=0)
+
+    # --- Relación de Dependencia (gastos deducibles) ---
+    gasto_salud = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gasto_vestimenta = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gasto_educacion = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gasto_vivienda = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gasto_alimentacion = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gasto_arte_cultura = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gasto_turismo = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Otros datos de {self.persona}"
+
 class PatronAsignacion(models.Model):
     codigo = models.CharField(
         max_length=4,

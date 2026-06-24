@@ -5,6 +5,7 @@ from django.db.models import Q
 from io import BytesIO
 import datetime
 import json
+import re
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -13,7 +14,8 @@ import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from openpyxl.drawing.image import Image as XLImage
 
-from ..models import NovedadPuesto, Puesto, Instalacion, Asignacion
+from ..models import NovedadPuesto, Puesto, Instalacion, Asignacion, PuestoHorario
+from ..utils import parse_input
 from .reporte_asistencia_views import _find_logo_path
 
 
@@ -211,6 +213,61 @@ def obtener_novedades(request):
     return JsonResponse([_serialize(n) for n in qs], safe=False)
 
 
+def _normalizar_tipo(text):
+    """Convierte el resumen compacto ('1 24HDLD') al formato que entiende parse_input
+    ('1 24H L-D Diurno'). Si ya viene en formato legible/parseable, lo deja igual.
+
+    El resumen compacto guarda turno como una letra (D/N) o vacío (24h/Ambos) y los días
+    como inicio+fin del rango (ej. 'LD' = L a D). Por eso los días se interpretan como rango.
+    """
+    s = (text or '').strip()
+    m = re.match(r'^\s*(\d+)\s+(\d+(?:\.\d+)?)\s*H\s*([DNM]?)\s*([LMXJVSD]{1,2})\s*$', s, re.I)
+    if not m:
+        return s
+    qty, horas, tl, dias = m.group(1), m.group(2), (m.group(3) or '').upper(), m.group(4).upper()
+    turno = {'D': 'Diurno', 'N': 'Nocturno'}.get(tl, 'Ambos')  # '' o 'M' -> 24h/Ambos
+    dias_txt = f'{dias[0]}-{dias[1]}' if len(dias) == 2 else dias
+    return f'{qty} {horas}H {dias_txt} {turno}'
+
+
+def _aplicar_tipo_a_puesto(puesto, tipo_text):
+    """Aplica el 'Tipo' (resumen de horario) al horario real del puesto.
+
+    Reconstruye los PuestoHorario desde el texto (parse_input) y conserva las horas de
+    ingreso/salida actuales del puesto. Recalcula el resumen. Si el texto no es válido,
+    no toca nada.
+    """
+    texto = _normalizar_tipo(tipo_text)
+    try:
+        reglas = parse_input(texto)
+    except (ValueError, TypeError):
+        return False
+    if not reglas:
+        return False
+    # Conservar ingreso/salida actuales (representativos) del puesto.
+    ingreso = salida = None
+    for h in puesto.horarios.all():
+        if h.hora_ingreso:
+            ingreso, salida = h.hora_ingreso, h.hora_salida
+            break
+    puesto.horarios.all().delete()
+    for r in reglas:
+        PuestoHorario.objects.create(
+            puesto=puesto,
+            dia=r['dia'],
+            horas=r['horas'],
+            turno=r.get('turno') or 'Diurno',
+            hora_ingreso=ingreso,
+            hora_salida=salida,
+        )
+    try:
+        puesto.sync_from_horarios()
+        puesto.save()
+    except Exception:
+        pass
+    return True
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_novedad(request):
@@ -235,6 +292,13 @@ def crear_novedad(request):
             instalacion = puesto.instalacion
     if instalacion_id:
         instalacion = Instalacion.objects.filter(id=instalacion_id).first()
+
+    # En Modificación, el "Tipo" editado se aplica al horario real del puesto.
+    if puesto and novedad_tipo in ('MODIFICACION', 'MODIFICACION INCREMENTO'):
+        sent_tipo = (data.get('tipo') or '').strip()
+        if sent_tipo and sent_tipo != (puesto.resumen or '').strip():
+            _aplicar_tipo_a_puesto(puesto, sent_tipo)
+            puesto.refresh_from_db()
 
     # El "tipo" del reporte FR es el RESUMEN de horario del puesto (no el texto del puesto).
     tipo_val = (data.get('tipo') or '').strip()
