@@ -806,6 +806,111 @@ def guardar_documentos(request, id):
                          'documentos': [_serialize_documento(d) for d in creados]})
 
 
+# --- Más Referencias: experiencia, referencias personales, nivel de estudio, formación ---
+def _ser_experiencia(e):
+    return {'empresa': e.empresa or '', 'puesto_cargo': e.puesto_cargo or '',
+            'tiempo': e.tiempo or '', 'motivo_salida': e.motivo_salida or ''}
+
+
+def _ser_ref_personal(r):
+    return {'persona_contactar': r.persona_contactar or '', 'relacion': r.relacion or '',
+            'telefonos': r.telefonos or '', 'comentario': r.comentario or ''}
+
+
+def _ser_nivel(n):
+    return {'nivel_estudio': n.nivel_estudio or '', 'completa': bool(n.completa),
+            'centro_capacitacion': n.centro_capacitacion or ''}
+
+
+def _ser_formacion(f):
+    return {'centro_capacitacion': f.centro_capacitacion or '', 'curso': f.curso or '',
+            'area': f.area or '', 'horas': int(f.horas or 0)}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_mas_referencias(request, id):
+    """Devuelve experiencia, referencias personales, nivel de estudio y formación."""
+    if not request.user.has_perm('CoreFisica.view_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    if not Persona.objects.filter(id=id).exists():
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+    from ..models import (EmpleadoExperiencia, EmpleadoReferenciaPersonal,
+                          EmpleadoNivelEstudio, EmpleadoFormacion)
+    return JsonResponse({
+        'experiencias': [_ser_experiencia(x) for x in EmpleadoExperiencia.objects.filter(persona_id=id)],
+        'referencias_personales': [_ser_ref_personal(x) for x in EmpleadoReferenciaPersonal.objects.filter(persona_id=id)],
+        'niveles_estudio': [_ser_nivel(x) for x in EmpleadoNivelEstudio.objects.filter(persona_id=id)],
+        'formaciones': [_ser_formacion(x) for x in EmpleadoFormacion.objects.filter(persona_id=id)],
+    })
+
+
+@api_view(['PUT', 'POST'])
+@permission_classes([IsAuthenticated])
+def guardar_mas_referencias(request, id):
+    """Reemplaza las 4 listas de 'Más Referencias' con las enviadas."""
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    from ..models import (EmpleadoExperiencia, EmpleadoReferenciaPersonal,
+                          EmpleadoNivelEstudio, EmpleadoFormacion)
+    data = request.data if request.data else {}
+
+    def txt(item, key):
+        return (item.get(key) or '').strip()
+
+    def rows(key):
+        v = data.get(key)
+        return v if isinstance(v, list) else []
+
+    with transaction.atomic():
+        EmpleadoExperiencia.objects.filter(persona=persona).delete()
+        for it in rows('experiencias'):
+            if not isinstance(it, dict):
+                continue
+            if any([txt(it, 'empresa'), txt(it, 'puesto_cargo'), txt(it, 'tiempo'), txt(it, 'motivo_salida')]):
+                EmpleadoExperiencia.objects.create(
+                    persona=persona, empresa=txt(it, 'empresa'), puesto_cargo=txt(it, 'puesto_cargo'),
+                    tiempo=txt(it, 'tiempo'), motivo_salida=txt(it, 'motivo_salida'))
+
+        EmpleadoReferenciaPersonal.objects.filter(persona=persona).delete()
+        for it in rows('referencias_personales'):
+            if not isinstance(it, dict):
+                continue
+            if any([txt(it, 'persona_contactar'), txt(it, 'relacion'), txt(it, 'telefonos'), txt(it, 'comentario')]):
+                EmpleadoReferenciaPersonal.objects.create(
+                    persona=persona, persona_contactar=txt(it, 'persona_contactar'), relacion=txt(it, 'relacion'),
+                    telefonos=txt(it, 'telefonos'), comentario=txt(it, 'comentario'))
+
+        EmpleadoNivelEstudio.objects.filter(persona=persona).delete()
+        for it in rows('niveles_estudio'):
+            if not isinstance(it, dict):
+                continue
+            if any([txt(it, 'nivel_estudio'), txt(it, 'centro_capacitacion')]):
+                EmpleadoNivelEstudio.objects.create(
+                    persona=persona, nivel_estudio=txt(it, 'nivel_estudio'),
+                    completa=bool(it.get('completa')), centro_capacitacion=txt(it, 'centro_capacitacion'))
+
+        EmpleadoFormacion.objects.filter(persona=persona).delete()
+        for it in rows('formaciones'):
+            if not isinstance(it, dict):
+                continue
+            if any([txt(it, 'centro_capacitacion'), txt(it, 'curso'), txt(it, 'area')]):
+                try:
+                    horas = int(it.get('horas') or 0)
+                except (ValueError, TypeError):
+                    horas = 0
+                EmpleadoFormacion.objects.create(
+                    persona=persona, centro_capacitacion=txt(it, 'centro_capacitacion'),
+                    curso=txt(it, 'curso'), area=txt(it, 'area'), horas=horas)
+
+    return JsonResponse({'message': 'Más referencias guardadas'})
+
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_persona(request, id):

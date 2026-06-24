@@ -68,6 +68,15 @@ mat-dialog-content {
   .doc-row { grid-template-columns: 1fr 1fr; }
 }
 
+/* Más Referencias: grillas por tabla */
+.exp-grid  { grid-template-columns: 1.4fr 1.4fr 0.8fr 1.4fr 32px; }
+.ref-grid  { grid-template-columns: 1.4fr 0.9fr 1fr 1.6fr 32px; }
+.niv-grid  { grid-template-columns: 1.4fr 0.7fr 1.8fr 32px; }
+.form-grid { grid-template-columns: 1.6fr 1.4fr 1fr 0.7fr 32px; }
+@media (max-width: 760px) {
+  .exp-grid, .ref-grid, .niv-grid, .form-grid { grid-template-columns: 1fr 1fr; }
+}
+
 /* Layout estilo ERP: 4 columnas compactas; la foto ocupa la celda superior derecha */
 .pf-grid {
   display: grid;
