@@ -98,6 +98,10 @@ export class PersonaService {
     return this.apiService.post<any>(`/personas/${id}/certificados/${tipoId}/archivo/`, formData);
   }
 
+  eliminarArchivoCertificado(id: number, tipoId: number): Observable<any> {
+    return this.apiService.delete<any>(`/personas/${id}/certificados/${tipoId}/archivo/eliminar/`);
+  }
+
   disablePersona(id: number): Observable<any>{
     return this.apiService.post(`/disable-persona/${id}/`, {});
   }

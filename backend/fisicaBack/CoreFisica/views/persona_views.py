@@ -1062,6 +1062,21 @@ def subir_archivo_certificado(request, id, tipo_id):
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
+def eliminar_archivo_certificado(request, id, tipo_id):
+    """Quita el archivo de un certificado y lo desmarca."""
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    from ..models import EmpleadoCertificado
+    cert = EmpleadoCertificado.objects.filter(persona_id=id, tipo_id=tipo_id).first()
+    if cert:
+        if cert.archivo:
+            cert.archivo.delete(save=False)
+        cert.delete()
+    return JsonResponse({'message': 'Archivo eliminado', 'tipo_id': int(tipo_id)})
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def eliminar_persona(request, id):
     # si solo el usuario tiene permiso de eliminar persona, se intenta obtener la persona por id, si no existe se retorna un error 404, si existe se elimina y se retorna un mensaje de éxito. Si ocurre cualquier otro error, se registra en el log y se retorna un error 500
     if not request.user.has_perm('CoreFisica.delete_persona'):
