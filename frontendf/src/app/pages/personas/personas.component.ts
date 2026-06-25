@@ -93,23 +93,32 @@ export class PersonasComponent implements OnInit, OnDestroy {
         delete result._documentos;
         const masRef: any = result._masReferencias || null;
         delete result._masReferencias;
+        const certificados: number[] | null = Array.isArray(result._certificados) ? result._certificados : null;
+        delete result._certificados;
         if (persona?.id) {
-          this.actualizarPersona(persona.id, result, fotoFile, nomina, otros, referencias, documentos, masRef);
+          this.actualizarPersona(persona.id, result, fotoFile, nomina, otros, referencias, documentos, masRef, certificados);
         } else {
-          this.crearPersona(result, fotoFile, nomina, otros, referencias, documentos, masRef);
+          this.crearPersona(result, fotoFile, nomina, otros, referencias, documentos, masRef, certificados);
         }
       }
     });
   }
 
   // Guarda nómina, otros datos, referencias y documentos (si vienen) y recarga la lista.
-  private guardarExtrasSiHay(id: number, nomina: any | null, otros: any | null, referencias: any | null, documentos: any[] | null, masRef: any | null): void {
+  private guardarExtrasSiHay(id: number, nomina: any | null, otros: any | null, referencias: any | null, documentos: any[] | null, masRef: any | null, certificados: number[] | null): void {
     if (!id) { this.cargarPersonas(); return; }
-    const guardarMasRef = () => {
-      if (!masRef) { this.cargarPersonas(); return; }
-      this.personaService.guardarMasReferencias(id, masRef).subscribe({
+    const guardarCertificados = () => {
+      if (!certificados) { this.cargarPersonas(); return; }
+      this.personaService.guardarCertificados(id, certificados).subscribe({
         next: () => this.cargarPersonas(),
         error: () => this.cargarPersonas()
+      });
+    };
+    const guardarMasRef = () => {
+      if (!masRef) { guardarCertificados(); return; }
+      this.personaService.guardarMasReferencias(id, masRef).subscribe({
+        next: guardarCertificados,
+        error: guardarCertificados
       });
     };
     const guardarDocumentos = () => {
@@ -143,17 +152,17 @@ export class PersonasComponent implements OnInit, OnDestroy {
     }
   }
 
-  crearPersona(data: any, fotoFile?: File | null, nomina?: any | null, otros?: any | null, referencias?: any | null, documentos?: any[] | null, masRef?: any | null): void {
+  crearPersona(data: any, fotoFile?: File | null, nomina?: any | null, otros?: any | null, referencias?: any | null, documentos?: any[] | null, masRef?: any | null, certificados?: number[] | null): void {
     this.personaService.createPersona(data).subscribe({
       next: (res: any) => {
         const nuevoId = res?.id;
         if (fotoFile && nuevoId) {
           this.personaService.subirFotoPersona(nuevoId, fotoFile).subscribe({
-            next: () => this.guardarExtrasSiHay(nuevoId, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null),
-            error: () => this.guardarExtrasSiHay(nuevoId, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null)
+            next: () => this.guardarExtrasSiHay(nuevoId, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null, certificados ?? null),
+            error: () => this.guardarExtrasSiHay(nuevoId, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null, certificados ?? null)
           });
         } else {
-          this.guardarExtrasSiHay(nuevoId, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null);
+          this.guardarExtrasSiHay(nuevoId, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null, certificados ?? null);
         }
         Swal.fire({ icon: 'success', title: 'Creada', timer: 1200, showConfirmButton: false });
       },
@@ -165,16 +174,16 @@ export class PersonasComponent implements OnInit, OnDestroy {
     });
   }
 
-  actualizarPersona(id: number, data: any, fotoFile?: File | null, nomina?: any | null, otros?: any | null, referencias?: any | null, documentos?: any[] | null, masRef?: any | null): void {
+  actualizarPersona(id: number, data: any, fotoFile?: File | null, nomina?: any | null, otros?: any | null, referencias?: any | null, documentos?: any[] | null, masRef?: any | null, certificados?: number[] | null): void {
     this.personaService.updatePersona(id, data).subscribe({
       next: () => {
         if (fotoFile) {
           this.personaService.subirFotoPersona(id, fotoFile).subscribe({
-            next: () => this.guardarExtrasSiHay(id, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null),
-            error: () => this.guardarExtrasSiHay(id, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null)
+            next: () => this.guardarExtrasSiHay(id, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null, certificados ?? null),
+            error: () => this.guardarExtrasSiHay(id, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null, certificados ?? null)
           });
         } else {
-          this.guardarExtrasSiHay(id, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null);
+          this.guardarExtrasSiHay(id, nomina ?? null, otros ?? null, referencias ?? null, documentos ?? null, masRef ?? null, certificados ?? null);
         }
         Swal.fire({ icon: 'success', title: 'Actualizada', timer: 1200, showConfirmButton: false });
       },

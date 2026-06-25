@@ -76,6 +76,28 @@ export class PersonaService {
     return this.apiService.put<any>(`/personas/${id}/mas-referencias/guardar/`, payload);
   }
 
+  getCatalogoCertificados(): Observable<any> {
+    return this.apiService.get<any>(`/certificados/catalogo/`);
+  }
+
+  getCertificados(id: number): Observable<any> {
+    return this.apiService.get<any>(`/personas/${id}/certificados/`);
+  }
+
+  guardarCertificados(id: number, marcados: number[]): Observable<any> {
+    return this.apiService.put<any>(`/personas/${id}/certificados/guardar/`, { marcados });
+  }
+
+  crearTipoCertificado(nombre: string, grupo?: string): Observable<any> {
+    return this.apiService.post<any>(`/certificados/tipos/`, { nombre, grupo });
+  }
+
+  subirArchivoCertificado(id: number, tipoId: number, file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('archivo', file);
+    return this.apiService.post<any>(`/personas/${id}/certificados/${tipoId}/archivo/`, formData);
+  }
+
   disablePersona(id: number): Observable<any>{
     return this.apiService.post(`/disable-persona/${id}/`, {});
   }

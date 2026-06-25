@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Persona } from '../../../models/persona.model';
 import { UbicacionService } from '../../../services/ubicacion.service';
@@ -30,6 +31,7 @@ import { Province, City } from '../../../data/provincias';
     MatSelectModule,
     MatRadioModule,
     MatCheckboxModule,
+    MatSlideToggleModule,
     MatTabsModule
   ],
   templateUrl: './persona-form.component.html',
@@ -50,6 +52,12 @@ export class PersonaFormComponent implements OnInit {
   referenciasPersonales: { persona_contactar: string; relacion: string; telefonos: string; comentario: string }[] = [];
   nivelesEstudio: { nivel_estudio: string; completa: boolean; centro_capacitacion: string }[] = [];
   formaciones: { centro_capacitacion: string; curso: string; area: string; horas: number }[] = [];
+  // Certificados (catálogo + marcados)
+  certTipos: { id: number; nombre: string; grupo: string; orden: number }[] = [];
+  certMarcados = new Set<number>();
+  certArchivos: Record<number, string> = {};
+  certSubiendo: number | null = null;
+  private personaId: number | null = null;
   sexos = [{ v: 'MASCULINO', l: 'Masculino' }, { v: 'FEMENINO', l: 'Femenino' }];
   estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }];
   tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero' }, { v: 'OPERADOR', l: 'Operador' }];
@@ -214,7 +222,10 @@ export class PersonaFormComponent implements OnInit {
         },
         error: () => {}
       });
+      this.personaId = p.id;
     }
+    // El catálogo de certificados siempre se muestra (también en empleado nuevo).
+    this.cargarCertificados(p.id || null);
 
     this.loadProvincias();
     this.clienteService.getClientes().subscribe({
@@ -329,6 +340,88 @@ export class PersonaFormComponent implements OnInit {
   addFormacion(): void { this.formaciones.push({ centro_capacitacion: '', curso: '', area: '', horas: 0 }); }
   removeFormacion(i: number): void { this.formaciones.splice(i, 1); }
 
+  // ---- Certificados ----
+  private cargarCertificados(id: number | null): void {
+    const obs = id
+      ? this.personaService.getCertificados(id)
+      : this.personaService.getCatalogoCertificados();
+    obs.subscribe({
+      next: (res) => {
+        this.certTipos = res?.tipos || [];
+        this.certMarcados = new Set<number>(res?.marcados || []);
+        this.certArchivos = res?.archivos || {};
+        this.rebuildCertGrupos();
+      },
+      error: () => {}
+    });
+  }
+
+  onCertFileSelected(tipoId: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files && input.files.length ? input.files[0] : null;
+    if (!file) return;
+    if (!this.personaId) {
+      window.alert('Primero guarda el empleado para poder adjuntar archivos.');
+      return;
+    }
+    this.certSubiendo = tipoId;
+    this.personaService.subirArchivoCertificado(this.personaId, tipoId, file).subscribe({
+      next: (res) => {
+        if (res?.archivo) this.certArchivos = { ...this.certArchivos, [tipoId]: res.archivo };
+        this.certMarcados.add(tipoId);
+        this.certSubiendo = null;
+        window.alert('Archivo subido correctamente ✓');
+      },
+      error: (err) => {
+        this.certSubiendo = null;
+        const detalle = err?.status ? `(HTTP ${err.status})` : '';
+        window.alert('No se pudo subir el archivo ' + detalle + '. ' + (err?.error?.error || ''));
+      }
+    });
+    input.value = '';
+  }
+
+  certGrupos: { grupo: string; tipos: any[] }[] = [];
+
+  private rebuildCertGrupos(): void {
+    const grupos: { grupo: string; tipos: any[] }[] = [];
+    for (const t of this.certTipos) {
+      const g = t.grupo || 'Otros';
+      let bucket = grupos.find(x => x.grupo === g);
+      if (!bucket) { bucket = { grupo: g, tipos: [] }; grupos.push(bucket); }
+      bucket.tipos.push(t);
+    }
+    this.certGrupos = grupos;
+  }
+
+  trackByGrupo(_i: number, g: { grupo: string }): string { return g.grupo; }
+  trackByTipoId(_i: number, t: { id: number }): number { return t.id; }
+
+  get certProgreso(): { hechos: number; total: number; pct: number } {
+    const total = this.certTipos.length;
+    const hechos = this.certTipos.filter(t => this.certMarcados.has(t.id)).length;
+    return { hechos, total, pct: total ? Math.round((hechos / total) * 100) : 0 };
+  }
+
+  toggleCert(id: number, marcado: boolean): void {
+    if (marcado) this.certMarcados.add(id);
+    else this.certMarcados.delete(id);
+  }
+
+  agregarCertificado(): void {
+    const nombre = (window.prompt('Nombre del nuevo certificado:') || '').trim();
+    if (!nombre) return;
+    this.personaService.crearTipoCertificado(nombre).subscribe({
+      next: (t) => {
+        if (t?.id && !this.certTipos.some(x => x.id === t.id)) {
+          this.certTipos = [...this.certTipos, { id: t.id, nombre: t.nombre, grupo: t.grupo, orden: t.orden }];
+          this.rebuildCertGrupos();
+        }
+      },
+      error: () => {}
+    });
+  }
+
   onFotoSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files && input.files.length ? input.files[0] : null;
@@ -352,6 +445,7 @@ export class PersonaFormComponent implements OnInit {
           niveles_estudio: this.nivelesEstudio,
           formaciones: this.formaciones,
         },
+        _certificados: [...this.certMarcados],
       });
     }
   }

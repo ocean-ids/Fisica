@@ -590,6 +590,36 @@ class EmpleadoFormacion(models.Model):
         return f"{self.curso} ({self.persona_id})"
 
 
+class TipoCertificado(models.Model):
+    """Catálogo de tipos de certificado/documento (editable, sin migrar para agregar)."""
+    nombre = models.CharField(max_length=80, unique=True)
+    grupo = models.CharField(max_length=40, blank=True, default='')
+    orden = models.PositiveIntegerField(default=0)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['orden', 'id']
+
+    def __str__(self):
+        return self.nombre
+
+
+class EmpleadoCertificado(models.Model):
+    """Certificados que tiene un empleado (marca del catálogo TipoCertificado)."""
+    persona = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='certificados')
+    tipo = models.ForeignKey(TipoCertificado, on_delete=models.CASCADE, related_name='empleados')
+    tiene = models.BooleanField(default=True)
+    archivo = models.FileField(upload_to='certificados/', null=True, blank=True)
+    fecha = models.DateField(null=True, blank=True)
+    observacion = models.CharField(max_length=255, blank=True, default='')
+
+    class Meta:
+        unique_together = ('persona', 'tipo')
+
+    def __str__(self):
+        return f"{self.persona_id} - {self.tipo_id}"
+
+
 class PatronAsignacion(models.Model):
     codigo = models.CharField(
         max_length=4,

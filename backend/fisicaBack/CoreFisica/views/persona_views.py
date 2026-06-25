@@ -911,6 +911,155 @@ def guardar_mas_referencias(request, id):
     return JsonResponse({'message': 'Más referencias guardadas'})
 
 
+# --- Certificados (catálogo flexible + marcas por empleado) ---
+_CERTIFICADOS_SEED = [
+    # (nombre, grupo)
+    ('Cédula de identidad', 'Identidad y Legales'),
+    ('Certificado de votación', 'Identidad y Legales'),
+    ('Récord policial', 'Identidad y Legales'),
+    ('Libreta militar', 'Identidad y Legales'),
+    ('Permiso de armas', 'Identidad y Legales'),
+    ('Aptitud laboral', 'Aptitud y Salud'),
+    ('Tipo de sangre', 'Aptitud y Salud'),
+    ('Examen psicológico', 'Aptitud y Salud'),
+    ('Examen ocupacional', 'Aptitud y Salud'),
+    ('Cert. primaria', 'Formación'),
+    ('Título bachiller', 'Formación'),
+    ('Curso M.P.', 'Formación'),
+    ('Manejo de armas', 'Formación'),
+    ('Reentrenamiento', 'Formación'),
+    ('Ref. laboral', 'Referencias'),
+    ('Ref. personal', 'Referencias'),
+    ('Visto domiciliario', 'Domicilio'),
+    ('Croquis domiciliario', 'Domicilio'),
+    ('Aviso de entrada', 'Domicilio'),
+    ('Procedimiento operativo', 'Otros'),
+    ('Servicio al cliente', 'Otros'),
+    ('Credencial Ocean', 'Otros'),
+    ('GYPASEG', 'Otros'),
+    ('AFFIS', 'Otros'),
+    ('Otros certificados', 'Otros'),
+]
+
+
+def _seed_certificados():
+    from ..models import TipoCertificado
+    if TipoCertificado.objects.exists():
+        return
+    TipoCertificado.objects.bulk_create([
+        TipoCertificado(nombre=n, grupo=g, orden=i)
+        for i, (n, g) in enumerate(_CERTIFICADOS_SEED)
+    ])
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def catalogo_certificados(request):
+    """Solo el catálogo de tipos (para empleados nuevos, aún sin id)."""
+    if not request.user.has_perm('CoreFisica.view_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    from ..models import TipoCertificado
+    _seed_certificados()
+    tipos = [{'id': t.id, 'nombre': t.nombre, 'grupo': t.grupo, 'orden': t.orden}
+             for t in TipoCertificado.objects.filter(activo=True)]
+    return JsonResponse({'tipos': tipos, 'marcados': [], 'archivos': {}})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_certificados(request, id):
+    """Catálogo de certificados + los marcados por el empleado."""
+    if not request.user.has_perm('CoreFisica.view_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    if not Persona.objects.filter(id=id).exists():
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+    from ..models import TipoCertificado, EmpleadoCertificado
+    _seed_certificados()
+    tipos = [{'id': t.id, 'nombre': t.nombre, 'grupo': t.grupo, 'orden': t.orden}
+             for t in TipoCertificado.objects.filter(activo=True)]
+    ecerts = EmpleadoCertificado.objects.filter(persona_id=id)
+    marcados = [e.tipo_id for e in ecerts if e.tiene]
+    archivos = {e.tipo_id: _foto_url(request, e.archivo) for e in ecerts if e.archivo}
+    return JsonResponse({'tipos': tipos, 'marcados': marcados, 'archivos': archivos})
+
+
+@api_view(['PUT', 'POST'])
+@permission_classes([IsAuthenticated])
+def guardar_certificados(request, id):
+    """Reemplaza el set de certificados marcados del empleado con la lista de ids enviada."""
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+
+    from ..models import TipoCertificado, EmpleadoCertificado
+    data = request.data if request.data else {}
+    ids = data.get('marcados') if isinstance(data, dict) else None
+    if not isinstance(ids, list):
+        ids = []
+    ids = set(int(x) for x in ids if str(x).isdigit())
+    validos = set(TipoCertificado.objects.filter(id__in=ids).values_list('id', flat=True))
+
+    with transaction.atomic():
+        # Upsert sin perder archivos: marca tiene=True a los seleccionados.
+        for tid in validos:
+            EmpleadoCertificado.objects.update_or_create(
+                persona=persona, tipo_id=tid, defaults={'tiene': True})
+        # No seleccionados: si tienen archivo se conservan (tiene=False); si no, se borran.
+        for cert in EmpleadoCertificado.objects.filter(persona=persona).exclude(tipo_id__in=validos):
+            if cert.archivo:
+                cert.tiene = False
+                cert.save(update_fields=['tiene'])
+            else:
+                cert.delete()
+    return JsonResponse({'message': 'Certificados guardados', 'marcados': list(validos)})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def crear_tipo_certificado(request):
+    """Agrega un tipo de certificado al catálogo (botón '+ Agregar certificado')."""
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    from ..models import TipoCertificado
+    data = request.data if request.data else {}
+    nombre = (data.get('nombre') or '').strip()
+    if not nombre:
+        return JsonResponse({'error': 'El nombre es obligatorio'}, status=400)
+    grupo = (data.get('grupo') or 'Otros').strip()
+    orden = (TipoCertificado.objects.order_by('-orden').values_list('orden', flat=True).first() or 0) + 1
+    tipo, creado = TipoCertificado.objects.get_or_create(
+        nombre=nombre, defaults={'grupo': grupo, 'orden': orden})
+    return JsonResponse({'id': tipo.id, 'nombre': tipo.nombre, 'grupo': tipo.grupo,
+                         'orden': tipo.orden, 'creado': creado})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def subir_archivo_certificado(request, id, tipo_id):
+    """Sube/reemplaza el archivo de un certificado del empleado (multipart, campo 'archivo')."""
+    if not request.user.has_perm('CoreFisica.change_persona'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        persona = Persona.objects.get(id=id)
+    except Persona.DoesNotExist:
+        return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+    from ..models import TipoCertificado, EmpleadoCertificado
+    if not TipoCertificado.objects.filter(id=tipo_id).exists():
+        return JsonResponse({'error': 'Tipo de certificado no encontrado'}, status=404)
+    archivo = request.FILES.get('archivo')
+    if not archivo:
+        return JsonResponse({'error': 'No se envió ningún archivo'}, status=400)
+    cert, _ = EmpleadoCertificado.objects.get_or_create(persona=persona, tipo_id=tipo_id)
+    cert.archivo = archivo
+    cert.tiene = True
+    cert.save()
+    return JsonResponse({'message': 'Archivo subido', 'tipo_id': int(tipo_id),
+                         'archivo': _foto_url(request, cert.archivo)})
+
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_persona(request, id):
