@@ -16,6 +16,7 @@ import { ProvinciasService } from '../../../services/provincias.service';
 import { ClienteService } from '../../../services/cliente.service';
 import { PersonaService } from '../../../services/persona.service';
 import { Province, City } from '../../../data/provincias';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-persona-form',
@@ -361,7 +362,7 @@ export class PersonaFormComponent implements OnInit {
     const file = input.files && input.files.length ? input.files[0] : null;
     if (!file) return;
     if (!this.personaId) {
-      window.alert('Primero guarda el empleado para poder adjuntar archivos.');
+      Swal.fire({ icon: 'info', title: 'Guarda primero el empleado', text: 'Debes guardar el empleado para poder adjuntar archivos.', confirmButtonColor: '#0c2f5a' });
       return;
     }
     this.certSubiendo = tipoId;
@@ -370,12 +371,12 @@ export class PersonaFormComponent implements OnInit {
         if (res?.archivo) this.certArchivos = { ...this.certArchivos, [tipoId]: res.archivo };
         this.certMarcados.add(tipoId);
         this.certSubiendo = null;
-        window.alert('Archivo subido correctamente ✓');
+        Swal.fire({ icon: 'success', title: 'Archivo subido', timer: 1000, showConfirmButton: false });
       },
       error: (err) => {
         this.certSubiendo = null;
-        const detalle = err?.status ? `(HTTP ${err.status})` : '';
-        window.alert('No se pudo subir el archivo ' + detalle + '. ' + (err?.error?.error || ''));
+        const detalle = err?.status ? ` (HTTP ${err.status})` : '';
+        Swal.fire({ icon: 'error', title: 'No se pudo subir', text: (err?.error?.error || '') + detalle, confirmButtonColor: '#0c2f5a' });
       }
     });
     input.value = '';
@@ -408,17 +409,55 @@ export class PersonaFormComponent implements OnInit {
     else this.certMarcados.delete(id);
   }
 
+  quitarArchivoCert(tipoId: number): void {
+    if (!this.personaId) return;
+    Swal.fire({
+      icon: 'warning',
+      title: '¿Quitar el archivo?',
+      text: 'Se eliminará el documento de este certificado.',
+      showCancelButton: true,
+      confirmButtonText: 'Quitar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#b91c1c',
+    }).then((res) => {
+      if (!res.isConfirmed) return;
+      this.personaService.eliminarArchivoCertificado(this.personaId as number, tipoId).subscribe({
+        next: () => {
+          const copia = { ...this.certArchivos };
+          delete copia[tipoId];
+          this.certArchivos = copia;
+          this.certMarcados.delete(tipoId);
+          Swal.fire({ icon: 'success', title: 'Archivo quitado', timer: 1000, showConfirmButton: false });
+        },
+        error: () => Swal.fire({ icon: 'error', title: 'No se pudo quitar', confirmButtonColor: '#0c2f5a' })
+      });
+    });
+  }
+
   agregarCertificado(): void {
-    const nombre = (window.prompt('Nombre del nuevo certificado:') || '').trim();
-    if (!nombre) return;
-    this.personaService.crearTipoCertificado(nombre).subscribe({
-      next: (t) => {
-        if (t?.id && !this.certTipos.some(x => x.id === t.id)) {
-          this.certTipos = [...this.certTipos, { id: t.id, nombre: t.nombre, grupo: t.grupo, orden: t.orden }];
-          this.rebuildCertGrupos();
-        }
-      },
-      error: () => {}
+    Swal.fire({
+      title: 'Nuevo certificado',
+      input: 'text',
+      inputLabel: 'Nombre del certificado',
+      inputPlaceholder: 'Ej. Carné COVID',
+      showCancelButton: true,
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#0c2f5a',
+      inputValidator: (v) => (!v || !v.trim() ? 'Escribe un nombre' : null),
+    }).then((res) => {
+      const nombre = (res.value || '').trim();
+      if (!res.isConfirmed || !nombre) return;
+      this.personaService.crearTipoCertificado(nombre).subscribe({
+        next: (t) => {
+          if (t?.id && !this.certTipos.some(x => x.id === t.id)) {
+            this.certTipos = [...this.certTipos, { id: t.id, nombre: t.nombre, grupo: t.grupo, orden: t.orden }];
+            this.rebuildCertGrupos();
+          }
+          Swal.fire({ icon: 'success', title: 'Certificado agregado', timer: 1200, showConfirmButton: false });
+        },
+        error: () => Swal.fire({ icon: 'error', title: 'No se pudo agregar', confirmButtonColor: '#0c2f5a' })
+      });
     });
   }
 
@@ -445,7 +484,7 @@ export class PersonaFormComponent implements OnInit {
           niveles_estudio: this.nivelesEstudio,
           formaciones: this.formaciones,
         },
-        _certificados: [...this.certMarcados],
+        _certificados: Object.keys(this.certArchivos).map(Number),
       });
     }
   }
