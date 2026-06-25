@@ -401,7 +401,42 @@
 
       <!-- ===================== CERTIFICADOS ===================== -->
       <mat-tab label="Certificados">
-        <div class="pf-tab-vacia">Certificados — próximamente.</div>
+        <div class="nom" *ngIf="certTipos.length; else certVacio">
+          <div class="cert-top">
+            <div class="cert-prog">
+              <span class="cert-prog-txt">{{ certProgreso.hechos }}/{{ certProgreso.total }} completados</span>
+              <div class="cert-bar"><div class="cert-bar-fill" [style.width.%]="certProgreso.pct"></div></div>
+            </div>
+            <button type="button" class="pf-add" (click)="agregarCertificado()">+ Agregar certificado</button>
+          </div>
+          <div class="cert-hint" *ngIf="persona.id">Activa el certificado y usa <b>📎 Subir</b> a la derecha para adjuntar su PDF/imagen.</div>
+          <div class="cert-hint" *ngIf="!persona.id">Guarda el empleado para poder adjuntar archivos a cada certificado.</div>
+
+          <ng-container *ngFor="let g of certGrupos; trackBy: trackByGrupo">
+            <div class="nom-sec">{{ g.grupo }}</div>
+            <div class="cert-grid">
+              <div class="cert-item" *ngFor="let t of g.tipos; trackBy: trackByTipoId">
+                <mat-slide-toggle [checked]="certMarcados.has(t.id)"
+                    (change)="toggleCert(t.id, $event.checked)">
+                  {{ t.nombre }}
+                </mat-slide-toggle>
+                <div class="cert-file" *ngIf="persona.id">
+                  <a *ngIf="certArchivos[t.id]" [href]="certArchivos[t.id]" target="_blank" class="cert-ver">📄 Ver</a>
+                  <span class="cert-subir-wrap">
+                    <span class="cert-subir" [class.cert-subir-ok]="certArchivos[t.id]">
+                      {{ certSubiendo === t.id ? 'Subiendo…' : (certArchivos[t.id] ? 'Cambiar' : '📎 Subir') }}
+                    </span>
+                    <input type="file" class="cert-file-overlay" accept="image/*,application/pdf"
+                           title="Subir archivo" (change)="onCertFileSelected(t.id, $event)">
+                  </span>
+                </div>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+        <ng-template #certVacio>
+          <div class="pf-tab-vacia">Guarda primero el empleado para gestionar sus certificados.</div>
+        </ng-template>
       </mat-tab>
 
       <!-- ===================== REFERENCIAS ===================== -->
