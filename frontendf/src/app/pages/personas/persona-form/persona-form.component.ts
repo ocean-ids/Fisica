@@ -63,7 +63,7 @@ export class PersonaFormComponent implements OnInit {
   estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }];
   tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero' }, { v: 'OPERADOR', l: 'Operador' }];
   regiones = ['SIERRA', 'COSTA'];
-  unidadesNegocio = ['SEGURIDAD FISICA'];
+  unidadesNegocio = ['SEGURIDAD FISICA', 'SEGURIDAD DE CARGA'];
   bancos = [
     'Banco Pichincha', 'Banco del Pacífico', 'Banco Guayaquil', 'Produbanco',
     'Banco Internacional', 'Banco Bolivariano', 'Banco del Austro', 'Banco de Machala',
@@ -228,11 +228,31 @@ export class PersonaFormComponent implements OnInit {
     // El catálogo de certificados siempre se muestra (también en empleado nuevo).
     this.cargarCertificados(p.id || null);
 
+    this.onUnidadNegocioChange();  // ajusta "Tipo" según la unidad (Física vs Carga)
     this.loadProvincias();
     this.clienteService.getClientes().subscribe({
       next: (list: any[]) => { this.clientes = (list || []).map(c => ({ id: c.id, nombre: c.razon_social || c.nombre_comercial })); },
       error: () => { this.clientes = []; }
     });
+  }
+
+  // Seguridad de Carga: registro de personal (sin "Tipo"/clasificación de turnos).
+  get esCarga(): boolean {
+    return (this.personaForm?.get('unidad_negocio')?.value || '')
+      .toString().toUpperCase().includes('CARGA');
+  }
+
+  onUnidadNegocioChange(): void {
+    const tipo = this.personaForm.get('tipo');
+    if (!tipo) return;
+    if (this.esCarga) {
+      tipo.clearValidators();
+      tipo.setValue(null);
+    } else {
+      tipo.setValidators([Validators.required]);
+      if (!tipo.value) tipo.setValue('FIJOS');
+    }
+    tipo.updateValueAndValidity();
   }
 
   onProvinciaChange(): void {

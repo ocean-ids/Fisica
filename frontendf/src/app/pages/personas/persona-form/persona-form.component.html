@@ -28,7 +28,7 @@
         <input matInput formControlName="centro_costo">
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" *ngIf="!esCarga">
         <mat-label>Tipo (clasificación)</mat-label>
         <mat-select formControlName="tipo" required>
           <mat-option *ngFor="let t of tipos" [value]="t">{{ t }}</mat-option>
@@ -140,7 +140,7 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Unidad de negocio</mat-label>
-        <mat-select formControlName="unidad_negocio">
+        <mat-select formControlName="unidad_negocio" (selectionChange)="onUnidadNegocioChange()">
           <mat-option *ngFor="let u of unidadesNegocio" [value]="u">{{ u }}</mat-option>
         </mat-select>
       </mat-form-field>

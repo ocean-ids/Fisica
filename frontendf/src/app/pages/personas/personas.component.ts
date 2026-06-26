@@ -33,6 +33,7 @@ export class PersonasComponent implements OnInit, OnDestroy {
   filtroTexto = '';
   private filterSub?: Subscription;
   filtroTipo = '';
+  filtroUnidad = '';   // '' = Todas | 'FISICA' | 'CARGA'
   tipos = [ 'FIJOS', 'RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAFRANCO', 'SACAVACACIONES', 'SUPERVISOR ZONAL', 'SUPERVISOR EVENTUAL', 'SUPERVISOR MOTORIZADO', 'SUPERVISOR DE ACOMPAÑAMIENTO', 'OPERADOR CENTRO CONTROL', 'SUPERVISOR CENTRO CONTROL' ];
 
   constructor(
@@ -59,6 +60,7 @@ export class PersonasComponent implements OnInit, OnDestroy {
     const params: any = {};
     if (this.filtroTexto) params.q = this.filtroTexto;
     if (this.filtroTipo) params.tipo = this.filtroTipo;
+    if (this.filtroUnidad) params.unidad = this.filtroUnidad;
     this.personaService.getPersonas(params).subscribe({
       next: data => this.personas = data,
       error: err => console.error('Error al cargar', err)
@@ -69,6 +71,7 @@ export class PersonasComponent implements OnInit, OnDestroy {
   limpiarFiltros(): void {
     this.filtroTexto = '';
     this.filtroTipo = '';
+    this.filtroUnidad = '';
     this.cargarPersonas();
   }
 

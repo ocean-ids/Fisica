@@ -43,10 +43,12 @@ def sincronizar_empleado(request):
 
     data = request.data if isinstance(request.data, dict) else {}
 
-    # 2) FILTRO: solo personal de Seguridad Fisica
+    # 2) FILTRO: solo unidades gestionadas en esta plataforma (Seguridad Fisica y
+    #    Seguridad de Carga). El resto se ignora.
+    UNIDADES_PERMITIDAS = ('SF', 'SEGURIDAD FISICA', 'SC', 'SEGURIDAD DE CARGA')
     unidad = _norm(data.get('unidad_negocio')).upper()
-    if unidad not in ('SF', 'SEGURIDAD FISICA'):
-        return Response({'detail': 'Ignorado: no es Seguridad Fisica'}, status=status.HTTP_200_OK)
+    if unidad not in UNIDADES_PERMITIDAS:
+        return Response({'detail': 'Ignorado: unidad de negocio no gestionada'}, status=status.HTTP_200_OK)
 
     cedula = _norm(data.get('cedula'))
     if not cedula:

@@ -24,6 +24,12 @@
               [(ngModel)]="filtroTexto" (ngModelChange)="cargarPersonas()">
         </div>-->
         <select class="form-select" style="max-width: 50%;"
+                [(ngModel)]="filtroUnidad" (ngModelChange)="cargarPersonas()">
+          <option value="">Todas las unidades</option>
+          <option value="FISICA">Seguridad Física</option>
+          <option value="CARGA">Seguridad de Carga</option>
+        </select>
+        <select class="form-select" style="max-width: 50%;"
                 [(ngModel)]="filtroTipo" (ngModelChange)="cargarPersonas()">
           <option value="">Todos los tipos</option>
           <option *ngFor="let t of tipos" [value]="t">{{ t }}</option>
