@@ -774,7 +774,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       error: err => console.error('Error al cargar clientes', err)
     });
 
-    this.personaService.getPersonas().subscribe({
+    // Solo Seguridad Física entra al scheduling (Carga no usa turnos/puestos).
+    this.personaService.getPersonas({ unidad: 'FISICA' }).subscribe({
       next: data => this.personas = data,
       error: err => console.error('Error al cargar personas', err)
     });

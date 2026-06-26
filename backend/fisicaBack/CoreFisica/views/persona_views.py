@@ -377,9 +377,21 @@ def obtener_personas(request):
     try:
         q = (request.GET.get('q') or '').strip()
         tipo = (request.GET.get('tipo') or '').strip()
+        unidad = (request.GET.get('unidad') or '').strip().upper()  # FISICA | CARGA | ''(todas)
 
         # la variable persona se asigna a la consulta de todas las personas, luego se filtra por q si existe, buscando coincidencias en nombres, apellidos o cedula, y por tipo si se especifica. Finalmente se ordena por apellidos
         personas = Persona.objects.all()
+
+        # Filtro por unidad de negocio (Seguridad Fisica vs Seguridad de Carga).
+        # Historicamente todo el personal es de Fisica y muchos registros no tienen
+        # la unidad seteada -> el vacio/null cuenta como FISICA. Carga es explicito.
+        if unidad == 'FISICA':
+            personas = personas.filter(
+                Q(unidad_negocio__icontains='FISICA') | Q(unidad_negocio__iexact='SF')
+                | Q(unidad_negocio__isnull=True) | Q(unidad_negocio='')
+            )
+        elif unidad == 'CARGA':
+            personas = personas.filter(Q(unidad_negocio__icontains='CARGA') | Q(unidad_negocio__iexact='SC'))
         if q:
             qn = _strip_accents(q)
             personas = personas.filter(

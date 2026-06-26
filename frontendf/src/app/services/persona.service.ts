@@ -10,7 +10,7 @@ export class PersonaService {
 
   constructor(private apiService: ApiService) { }
 
-  getPersonas(params?: { q?: string; tipo?: string }): Observable<Persona[]>{
+  getPersonas(params?: { q?: string; tipo?: string; unidad?: string }): Observable<Persona[]>{
     return this.apiService.get<Persona[]>('/personas/', params);
   }
 
@@ -117,7 +117,7 @@ export class PersonaService {
     return this.apiService.post<any>(endpoint, formData);
   }
 
-  exportPersonasExcel(params?: { q?: string; tipo?: string }) {
+  exportPersonasExcel(params?: { q?: string; tipo?: string; unidad?: string }) {
     return this.apiService.getBlob('/exportar-personas-excel/', params);
   }
 
