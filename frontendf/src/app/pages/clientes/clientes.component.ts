@@ -86,7 +86,8 @@ export class ClientesComponent implements OnInit, OnDestroy {
 
   openDialog(cliente?: Cliente): void {
     const dialogRef = this.dialog.open(ClienteFormComponent, {
-      width: '500px',
+      width: '1000px',
+      maxWidth: '96vw',
       data: cliente || {}
     });
 
