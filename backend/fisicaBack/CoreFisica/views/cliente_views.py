@@ -6,11 +6,101 @@ from django.utils.dateparse import parse_date
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import json
-from ..models import Cliente
+import datetime
+from decimal import Decimal, InvalidOperation
+from ..models import Cliente, Provincia, Canton
 from ..utils import _strip_accents
 
 
 ALLOWED_SIZES = {choice[0] for choice in Cliente.SIZE_CHOICES}
+
+
+# ===== Campos del ERP (Mantenimiento de Clientes) =====
+_CLI_CHAR = [
+    'codigo_erp', 'estado', 'tipo_id', 'tipo_cliente', 'sexo', 'estado_civil',
+    'parroquia', 'ciudad', 'direccion_comercial', 'sector',
+    'telefono', 'telefono2', 'fax', 'email', 'email_adicional',
+    'copia_correo_1', 'copia_correo_2', 'copia_correo_3', 'copia_correo_4', 'copia_correo_5',
+    'vendedor', 'rep_legal', 'cod_agrupacion', 'valoracion_custodias', 'tipo_precio',
+    'forma_pago', 'origen_ingreso', 'zona', 'cuenta_contable', 'cod_area', 'cod_rol',
+    'observaciones',
+]
+_CLI_DEC = ['desc_vta', 'cupo', 'valor_puesto']
+_CLI_INT = ['plazo_max']
+_CLI_BOOL = ['control_cupo', 'requiere_correo', 'controla_factura_reverso', 'paga_iva']
+_CLI_DATE = ['ultima_venta']
+
+
+def _cli_dec(v):
+    try:
+        return Decimal(str(v if v not in (None, '') else 0))
+    except (InvalidOperation, ValueError):
+        return Decimal('0')
+
+
+def _cli_date(v):
+    if not v:
+        return None
+    try:
+        return datetime.date.fromisoformat(str(v)[:10])
+    except (TypeError, ValueError):
+        return None
+
+
+def _aplicar_campos_cliente(cliente, data):
+    """Aplica los campos del ERP al cliente (solo los que vengan en el payload)."""
+    for f in _CLI_CHAR:
+        if f in data:
+            setattr(cliente, f, str(data.get(f) or '').strip())
+    for f in _CLI_DEC:
+        if f in data:
+            setattr(cliente, f, _cli_dec(data.get(f)))
+    for f in _CLI_INT:
+        if f in data:
+            try:
+                setattr(cliente, f, int(data.get(f) or 0))
+            except (ValueError, TypeError):
+                setattr(cliente, f, 0)
+    for f in _CLI_BOOL:
+        if f in data:
+            setattr(cliente, f, bool(data.get(f)))
+    for f in _CLI_DATE:
+        if f in data:
+            setattr(cliente, f, _cli_date(data.get(f)))
+    if 'provincia' in data:
+        pid = data.get('provincia')
+        cliente.provincia = Provincia.objects.filter(id=pid).first() if pid else None
+    if 'canton' in data:
+        cid = data.get('canton')
+        cliente.canton = Canton.objects.filter(id=cid).first() if cid else None
+
+
+def _serialize_cliente_full(c):
+    data = {
+        'id': c.id,
+        'ruc': c.ruc,
+        'razon_social': c.razon_social,
+        'nombre_comercial': c.nombre_comercial,
+        'size': c.size,
+        'fecha_ingreso': c.fecha_ingreso.isoformat() if c.fecha_ingreso else None,
+        'fecha_retiro': c.fecha_retiro.isoformat() if c.fecha_retiro else None,
+        'ultima_venta': c.ultima_venta.isoformat() if c.ultima_venta else None,
+        'provincia': c.provincia_id,
+        'provincia_nombre': getattr(c.provincia, 'nombre', None),
+        'canton': c.canton_id,
+        'canton_nombre': getattr(c.canton, 'nombre', None),
+        'plazo_max': c.plazo_max,
+        'desc_vta': str(c.desc_vta),
+        'cupo': str(c.cupo),
+        'valor_puesto': str(c.valor_puesto),
+        'control_cupo': c.control_cupo,
+        'requiere_correo': c.requiere_correo,
+        'controla_factura_reverso': c.controla_factura_reverso,
+        'paga_iva': c.paga_iva,
+    }
+    for f in _CLI_CHAR:
+        data[f] = getattr(c, f, '') or ''
+    return data
 
 
 @api_view(['GET'])
@@ -61,17 +151,8 @@ def obtener_cliente_id(request, id):
     if not request.user.has_perm('CoreFisica.view_cliente'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     try:
-        cliente = Cliente.objects.get(pk=id)
-        data = {
-            "id": cliente.id,
-            "ruc": cliente.ruc,
-            "razon_social": cliente.razon_social,
-            "nombre_comercial": cliente.nombre_comercial,
-            "size": cliente.size,
-            "fecha_ingreso": cliente.fecha_ingreso.isoformat() if cliente.fecha_ingreso else None,
-            "fecha_retiro": cliente.fecha_retiro.isoformat() if cliente.fecha_retiro else None,
-        }
-        return JsonResponse(data)
+        cliente = Cliente.objects.select_related('provincia', 'canton').get(pk=id)
+        return JsonResponse(_serialize_cliente_full(cliente))
     except Cliente.DoesNotExist:
         return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
 
@@ -105,7 +186,7 @@ def crear_cliente(request):
                 return JsonResponse({'error': 'Tamaño no válido. Use PEQUENO, MEDIANO o GRANDE.'}, status=400)
 
             try:
-                cliente = Cliente.objects.create(
+                cliente = Cliente(
                     razon_social=razon_social,
                     nombre_comercial=nombre_comercial,
                     ruc=ruc,
@@ -113,6 +194,8 @@ def crear_cliente(request):
                     fecha_ingreso=fecha_ingreso,
                     fecha_retiro=fecha_retiro
                 )
+                _aplicar_campos_cliente(cliente, data)   # campos del ERP
+                cliente.save()
             except IntegrityError:
                 return JsonResponse({'error': f'Ya existe un cliente con el RUC {ruc}'}, status=400)
 
@@ -159,6 +242,8 @@ def actualizar_cliente(request, id):
             cliente.fecha_retiro = parse_date(data.get('fecha_retiro')) if data.get('fecha_retiro') else None
 
         cliente.size = size
+
+        _aplicar_campos_cliente(cliente, data)   # campos del ERP
 
         try:
             cliente.save()

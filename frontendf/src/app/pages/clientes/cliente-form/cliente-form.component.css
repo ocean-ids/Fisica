@@ -2,3 +2,38 @@
   width: 100%;
   margin-bottom: 15px;
 }
+
+mat-dialog-content {
+  min-width: 820px;
+  max-width: 1000px;
+  max-height: 72vh;
+  overflow: auto;
+  padding: 12px 20px;
+}
+
+.cf-tabs { margin-bottom: 4px; }
+.cf-tabs ::ng-deep .mat-mdc-tab-body-content { padding: 14px 2px 4px; }
+
+.cf-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: 16px;
+  row-gap: 4px;
+  align-items: start;
+}
+.cf-grid mat-form-field { width: 100%; font-size: 13px; }
+.cf-col2 { grid-column: span 2; }
+.cf-full { grid-column: 1 / -1; }
+.cf-grid ::ng-deep .mat-mdc-form-field-subscript-wrapper { height: 0; min-height: 0; }
+.cf-checks {
+  grid-column: 1 / -1;
+  display: flex; flex-wrap: wrap; gap: 18px; padding: 6px 0 4px;
+}
+
+@media (max-width: 900px) {
+  mat-dialog-content { min-width: 0; }
+  .cf-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .cf-grid { grid-template-columns: 1fr; }
+}
