@@ -38,6 +38,85 @@ class Cliente(models.Model):
     fecha_retiro = models.DateField(null=True, blank=True, db_index=True)
     
 
+
+    TIPO_CLIENTE_CHOICES = [('JURIDICA', 'juridica'), ('NATURAL', 'Natural')]
+    TIPO_ID_CHOICES = [
+        ('RUC', 'Registro Único de Contribuyente'),
+        ('CEDULA', 'Cédula'),
+        ('PASAPORTE', 'Pasaporte'),
+    ]
+    ESTADO_CHOCES = [('ACTIVO', 'Activo'), ('INACTIVO', 'inactivo')]
+
+    codigo_erp = models.CharField(max_length=20, blank=True, default='ACTIVO')
+    fecha_registro = models.DateField(null=True, blank=True)
+    ultima_venta = models.DateField(null=True, blank=True)
+    estado = models.CharField(max_length=10, choices=ESTADO_CHOCES, default='')
+
+    TIPO_CLIENTE_CHOICES = [('JURIDICA', 'Jurídica'), ('NATURAL', 'Natural')]
+    TIPO_ID_CHOICES = [
+        ('RUC', 'Registro Único de Contribuyente'),
+        ('CEDULA', 'Cédula'),
+        ('PASAPORTE', 'Pasaporte'),
+    ]
+    ESTADO_CHOICES = [('ACTIVO', 'Activo'), ('INACTIVO', 'Inactivo')]
+    SEXO_CHOICES = [('MASCULINO', 'Masculino'), ('FEMENINO', 'Femenino')]
+    ESTADO_CIVIL_CHOICES = [('SOLTERO', 'Soltero'), ('CASADO', 'Casado')]
+
+    codigo_erp = models.CharField(max_length=20, blank=True, default='')        # Código
+    ultima_venta = models.DateField(null=True, blank=True)                      # Ult. Venta
+    estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='ACTIVO')   # STATUS (select)
+    control_cupo = models.BooleanField(default=False)                          # Control Cupo (S/N)
+
+    # Identificación / ubicación
+    tipo_id = models.CharField(max_length=12, choices=TIPO_ID_CHOICES, blank=True, default='')          # Tipo ID (select)
+    tipo_cliente = models.CharField(max_length=10, choices=TIPO_CLIENTE_CHOICES, blank=True, default='') # Tipo Cliente (select)
+    provincia = models.ForeignKey('Provincia', null=True, blank=True, on_delete=models.SET_NULL, related_name='clientes')  # Provincia (select)
+    canton = models.ForeignKey('Canton', null=True, blank=True, on_delete=models.SET_NULL, related_name='clientes')        # Cantón (select)
+    parroquia = models.CharField(max_length=80, blank=True, default='')         # Parroquia
+    ciudad = models.CharField(max_length=80, blank=True, default='')            # Ciudad
+    direccion_comercial = models.CharField(max_length=255, blank=True, default='')  # Dir. Comercial
+    sector = models.CharField(max_length=120, blank=True, default='')           # Sector (select pendiente)
+    sexo = models.CharField(max_length=10, choices=SEXO_CHOICES, blank=True, default='')                 # Sexo (select)
+    estado_civil = models.CharField(max_length=10, choices=ESTADO_CIVIL_CHOICES, blank=True, default='') # Estado Civil (select)
+
+    # Contacto
+    telefono = models.CharField(max_length=30, blank=True, default='')          # Tel Com.
+    telefono2 = models.CharField(max_length=30, blank=True, default='')         # Tel Com. (2)
+    fax = models.CharField(max_length=30, blank=True, default='')               # FAX
+    email = models.CharField(max_length=255, blank=True, default='')            # Correo
+    email_adicional = models.CharField(max_length=255, blank=True, default='')  # Correos Adicional
+    copia_correo_1 = models.CharField(max_length=120, blank=True, default='')   # Copias Correo Nuevo
+    copia_correo_2 = models.CharField(max_length=120, blank=True, default='')
+    copia_correo_3 = models.CharField(max_length=120, blank=True, default='')
+    copia_correo_4 = models.CharField(max_length=120, blank=True, default='')
+    copia_correo_5 = models.CharField(max_length=120, blank=True, default='')
+
+    # Comercial / crédito
+    vendedor = models.CharField(max_length=80, blank=True, default='')          # Vendedor
+    rep_legal = models.CharField(max_length=120, blank=True, default='')        # Rep. Legal
+    plazo_max = models.IntegerField(default=0)                                  # Plazo Max
+    desc_vta = models.DecimalField(max_digits=6, decimal_places=2, default=0)   # Desc Vta
+    cupo = models.DecimalField(max_digits=16, decimal_places=2, default=0)      # Cupo
+    cod_agrupacion = models.CharField(max_length=40, blank=True, default='')    # Cod de agrupacion
+    valoracion_custodias = models.CharField(max_length=40, blank=True, default='')  # Valorizacion Custodias (select pendiente)
+    tipo_precio = models.CharField(max_length=40, blank=True, default='')       # Tipo Precio (select pendiente)
+    valor_puesto = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # Valor Puesto
+    forma_pago = models.CharField(max_length=40, blank=True, default='')        # Forma de Pago (select pendiente)
+    origen_ingreso = models.CharField(max_length=60, blank=True, default='')    # Origen Ingresos (select pendiente)
+    zona = models.CharField(max_length=80, blank=True, default='')              # Zona (select pendiente)
+    requiere_correo = models.BooleanField(default=False)                        # Require correo (S/N)
+    controla_factura_reverso = models.BooleanField(default=False)              # Controla Factura Reverso
+
+    # Contable
+    cuenta_contable = models.CharField(max_length=60, blank=True, default='')   # Cuenta
+    cod_area = models.CharField(max_length=20, blank=True, default='')          # Cod Area
+    cod_rol = models.CharField(max_length=20, blank=True, default='')           # Cod Rol
+
+    # Banderas
+    paga_iva = models.BooleanField(default=True)                               # Paga IVA (check)
+
+    observaciones = models.TextField(blank=True, default='')
+
     class Meta:
         indexes = [
             models.Index(fields=['nombre_comercial']),
