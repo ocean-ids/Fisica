@@ -282,6 +282,35 @@ def _fit_text_to_width(text, max_width, font_name='Helvetica', font_size=7):
     return s + ellipsis
 
 
+def _wrap_text_to_width(text, max_width, font_name='Helvetica', font_size=6):
+    """Parte el texto en varias líneas que caben en max_width (sin cortar/elipsis).
+    Quiebra por palabras; si una palabra sola excede el ancho, la corta por caracteres."""
+    s = str(text) if text is not None else ''
+    if not s.strip():
+        return ['']
+    lines = []
+    current = ''
+    for word in s.split():
+        trial = (current + ' ' + word).strip()
+        if pdfmetrics.stringWidth(trial, font_name, font_size) <= max_width:
+            current = trial
+            continue
+        if current:
+            lines.append(current)
+            current = ''
+        # palabra más larga que la columna: cortarla por caracteres
+        while pdfmetrics.stringWidth(word, font_name, font_size) > max_width and len(word) > 1:
+            cut = len(word)
+            while cut > 1 and pdfmetrics.stringWidth(word[:cut], font_name, font_size) > max_width:
+                cut -= 1
+            lines.append(word[:cut])
+            word = word[cut:]
+        current = word
+    if current:
+        lines.append(current)
+    return lines or ['']
+
+
 def _normalize_hex_color(color_value):
     c = str(color_value or '').strip()
     if not c:
@@ -1332,18 +1361,6 @@ def exportar_reporte_asistencia_pdf(request):
             y = draw_group_row(y, str(prov_group['provincia']).upper(), 7)
             for item in prov_group['rows']:
                 zona_items.append(item)
-                y = ensure_space(y, 0.3 * inch)
-
-                row_hex = _normalize_hex_color(item.get('row_color'))
-                if row_hex:
-                    x_bg = x_margin
-                    p.saveState()
-                    p.setFillColor(colors.HexColor(f"#{row_hex}"))
-                    for w in col_widths:
-                        p.rect(x_bg, y - 0.06 * inch, w, 0.18 * inch, stroke=0, fill=1)
-                        x_bg += w
-                    p.restoreState()
-
                 row_vals = [
                     item.get('codigo', ''),
                     item.get('cliente', ''),
@@ -1353,18 +1370,41 @@ def exportar_reporte_asistencia_pdf(request):
                     'ASISTE' if item.get('estado_asistencia') == 'ASISTIO' else ('FALTO' if item.get('estado_asistencia') == 'FALTO' else ''),
                     item.get('reemplazo', ''),
                     item.get('estado', ''),
-                    (item.get('descripcion', '') or '')[:120],
+                    (item.get('descripcion', '') or '')[:240],
                 ]
 
+                # Envolver cada celda en varias líneas (no se corta el texto).
+                line_h = 0.12 * inch
+                cells_lines = [
+                    _wrap_text_to_width(str(v) if v is not None else '', col_widths[i] - 6, 'Helvetica', 6)
+                    for i, v in enumerate(row_vals)
+                ]
+                n_lines = max(len(cl) for cl in cells_lines)
+                row_h = n_lines * line_h
+                y = ensure_space(y, row_h + 0.10 * inch)
+
+                row_hex = _normalize_hex_color(item.get('row_color'))
+                if row_hex:
+                    x_bg = x_margin
+                    bg_bottom = y - (n_lines - 1) * line_h - 0.05 * inch
+                    bg_h = row_h + 0.06 * inch
+                    p.saveState()
+                    p.setFillColor(colors.HexColor(f"#{row_hex}"))
+                    for w in col_widths:
+                        p.rect(x_bg, bg_bottom, w, bg_h, stroke=0, fill=1)
+                        x_bg += w
+                    p.restoreState()
+
                 x = x_margin
-                for i, value in enumerate(row_vals):
-                    text = str(value) if value is not None else ''
-                    text = _fit_text_to_width(text, col_widths[i] - 4, 'Helvetica', 6)
-                    txt_w = pdfmetrics.stringWidth(text, 'Helvetica', 6)
-                    p.drawString(x + max((col_widths[i] - txt_w) / 2, 0), y, text)
+                for i, lines in enumerate(cells_lines):
+                    ly = y
+                    for ln in lines:
+                        txt_w = pdfmetrics.stringWidth(ln, 'Helvetica', 6)
+                        p.drawString(x + max((col_widths[i] - txt_w) / 2, 0), ly, ln)
+                        ly -= line_h
                     x += col_widths[i]
 
-                y -= 0.2 * inch
+                y -= row_h + 0.06 * inch
 
         zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
         zona_resumen.append((zona_group['zona'], zona_asistencias, zona_faltos))
