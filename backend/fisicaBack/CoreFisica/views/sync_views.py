@@ -64,7 +64,7 @@ def sincronizar_empleado(request):
         sx = _norm(data.get('sexo')).upper()
         sexo = 'MASCULINO' if sx.startswith('M') else ('FEMENINO' if sx.startswith('F') else '')
         ec = _norm(data.get('estado_civil')).upper()
-        estado_civil = {'SOLTERO': 'SOLTERO', 'CASADO': 'CASADO'}.get(ec, '')
+        estado_civil = ec if ec in ('SOLTERO', 'CASADO', 'DIVORCIADO', 'UNION LIBRE', 'VIUDO') else ''
 
         # 5) provincia / canton (texto -> FK)
         prov = None

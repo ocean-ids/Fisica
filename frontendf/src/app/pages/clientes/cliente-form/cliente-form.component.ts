@@ -37,7 +37,13 @@ export class ClienteFormComponent implements OnInit {
   ];
   tiposCliente = [{ v: 'JURIDICA', l: 'Jurídica' }, { v: 'NATURAL', l: 'Natural' }];
   sexos = [{ v: 'MASCULINO', l: 'Masculino' }, { v: 'FEMENINO', l: 'Femenino' }];
-  estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }];
+  estadosCiviles = [
+    { v: 'SOLTERO', l: 'Soltero' },
+    { v: 'CASADO', l: 'Casado' },
+    { v: 'DIVORCIADO', l: 'Divorciado' },
+    { v: 'UNION LIBRE', l: 'Unión Libre' },
+    { v: 'VIUDO', l: 'Viudo' },
+  ];
 
   constructor(
     private fb: FormBuilder,

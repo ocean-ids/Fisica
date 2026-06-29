@@ -93,7 +93,10 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Nacionalidad</mat-label>
-        <input matInput formControlName="nacionalidad">
+        <mat-select formControlName="nacionalidad">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let n of nacionalidades" [value]="n">{{ n }}</mat-option>
+        </mat-select>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
