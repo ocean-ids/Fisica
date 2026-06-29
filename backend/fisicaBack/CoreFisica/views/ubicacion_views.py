@@ -2,7 +2,7 @@
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from ..models import Provincia, Canton, Zona
+from ..models import Provincia, Canton, Zona, Parroquia
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -23,6 +23,20 @@ def obtener_cantones(request):
         qs = qs.filter(provincia_id=provincia_id)
     cantones = qs.order_by('provincia__nombre', 'nombre').values('id', 'nombre', 'provincia_id', 'provincia__nombre')
     return JsonResponse(list(cantones), safe=False)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def obtener_parroquias(request):
+    # Mismo permiso que cantones (catálogo de ubicación en cascada).
+    if not request.user.has_perm('CoreFisica.view_canton'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    canton_id = request.GET.get('canton_id')
+    qs = Parroquia.objects.all()
+    if canton_id:
+        qs = qs.filter(canton_id=canton_id)
+    parroquias = qs.order_by('nombre').values('id', 'nombre', 'canton_id')
+    return JsonResponse(list(parroquias), safe=False)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

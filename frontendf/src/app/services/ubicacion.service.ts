@@ -20,6 +20,12 @@ export class UbicacionService {
     return this.apiService.get<any[]>('/cantones/', params);
   }
 
+  getParroquias(cantonId?: number): Observable<any[]>{
+    let params = new HttpParams();
+    if (cantonId) params = params.set('canton_id', cantonId);
+    return this.apiService.get<any[]>('/parroquias/', params);
+  }
+
   getInstalaciones(clienteId?: number, q?:string): Observable<any[]>{
     let params = new HttpParams();
     if (clienteId) params = params.set('cliente_id', clienteId);

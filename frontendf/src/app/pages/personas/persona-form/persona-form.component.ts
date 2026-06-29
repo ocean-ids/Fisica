@@ -42,6 +42,7 @@ export class PersonaFormComponent implements OnInit {
   personaForm!: FormGroup;
   provincias: (any | Province)[] = [];
   cantones: (any | City)[] = [];
+  parroquias: { id: number; nombre: string }[] = [];
   clientes: { id: number; nombre: string }[] = [];
   fotoFile: File | null = null;
   fotoPreview: string | null = null;
@@ -83,6 +84,7 @@ export class PersonaFormComponent implements OnInit {
   private initialCanton: string | null = null;
   private initialCantonName: string | null = null;
   private initialProvinciaName: string | null = null;
+  private initialParroquia: string | null = null;
   tipos: Persona['tipo'][] = [
     'FIJOS',
     'RETEN',
@@ -285,6 +287,7 @@ export class PersonaFormComponent implements OnInit {
     this.initialCanton = (this.persona?.canton as any) ?? null;
     this.initialCantonName = (this.persona?.canton_nombre || '').trim().toUpperCase() || null;
     this.initialProvinciaName = (this.persona?.provincia_nombre || '').trim().toUpperCase() || null;
+    this.initialParroquia = ((this.persona as any)?.parroquia || '').trim().toUpperCase() || null;
 
     const applyInitialProvincia = () => {
       const storedProvId = this.persona?.provincia ?? null;
@@ -326,6 +329,7 @@ export class PersonaFormComponent implements OnInit {
       const found = foundById || foundByName;
       if (found) {
         this.personaForm.get('canton')?.setValue(found.id);
+        this.loadParroquias(found.id, true);
         this.initialCanton = null;
         this.initialCantonName = null;
         return;
@@ -338,6 +342,36 @@ export class PersonaFormComponent implements OnInit {
       return;
     }
     this.personaForm.get('canton')?.setValue(null);
+    this.parroquias = [];
+  }
+
+  // Cargar parroquias del cantón (cascada Cantón -> Parroquia).
+  loadParroquias(cantonId: number | null, keepInitial = false): void {
+    if (!cantonId) {
+      this.parroquias = [];
+      if (!keepInitial) this.personaForm.get('parroquia')?.setValue('');
+      return;
+    }
+    this.ubicacionService.getParroquias(cantonId).subscribe({
+      next: (list) => {
+        this.parroquias = list || [];
+        // Conservar el valor guardado aunque no esté exacto en la lista.
+        const stored = keepInitial ? this.initialParroquia : this.personaForm.get('parroquia')?.value;
+        if (stored && !this.parroquias.some(p => (p.nombre || '').toUpperCase() === String(stored).toUpperCase())) {
+          this.parroquias = [{ id: -1, nombre: String(stored).toUpperCase() }, ...this.parroquias];
+        }
+        if (keepInitial && this.initialParroquia) {
+          this.personaForm.get('parroquia')?.setValue(this.initialParroquia);
+          this.initialParroquia = null;
+        }
+      },
+      error: () => { this.parroquias = []; }
+    });
+  }
+
+  onCantonChange(): void {
+    this.personaForm.get('parroquia')?.setValue('');
+    this.loadParroquias(this.personaForm.get('canton')?.value ?? null, false);
   }
 
   soloNumeros(event: KeyboardEvent): void {
