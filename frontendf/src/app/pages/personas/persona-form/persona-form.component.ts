@@ -64,6 +64,12 @@ export class PersonaFormComponent implements OnInit {
   tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero' }, { v: 'OPERADOR', l: 'Operador' }];
   regiones = ['SIERRA', 'COSTA'];
   unidadesNegocio = ['SEGURIDAD FISICA', 'SEGURIDAD DE CARGA'];
+  perfiles = ['SENSIBLE', 'RIGIDO', 'INDUSTRIAL', 'CUSTODIA', 'OTROS'];
+  formasPago = ['Mensual', 'Quincenal', 'Semanal'];
+  motivosSalida = [
+    'Renuncia Voluntaria', 'Despido', 'Visto Bueno',
+    'Terminación de Contrato', 'Problemas Familiares', 'Mejor Propuesta de Trabajo',
+  ];
   bancos = [
     'Banco Pichincha', 'Banco del Pacífico', 'Banco Guayaquil', 'Produbanco',
     'Banco Internacional', 'Banco Bolivariano', 'Banco del Austro', 'Banco de Machala',

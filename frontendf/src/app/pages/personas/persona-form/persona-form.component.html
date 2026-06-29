@@ -175,7 +175,10 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Forma de pago</mat-label>
-        <input matInput formControlName="forma_pago">
+        <mat-select formControlName="forma_pago">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let f of formasPago" [value]="f">{{ f }}</mat-option>
+        </mat-select>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -200,7 +203,10 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Perfil</mat-label>
-        <input matInput formControlName="perfil">
+        <mat-select formControlName="perfil">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let p of perfiles" [value]="p">{{ p }}</mat-option>
+        </mat-select>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -215,7 +221,10 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Motivo de salida</mat-label>
-        <input matInput formControlName="motivo_salida">
+        <mat-select formControlName="motivo_salida">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let m of motivosSalida" [value]="m">{{ m }}</mat-option>
+        </mat-select>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
