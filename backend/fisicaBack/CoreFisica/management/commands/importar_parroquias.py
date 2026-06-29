@@ -7,6 +7,7 @@ Uso:  python manage.py importar_parroquias
 """
 import json
 import os
+import re
 import unicodedata
 
 from django.core.management.base import BaseCommand
@@ -14,15 +15,17 @@ from CoreFisica.models import Canton, Parroquia
 
 
 def _norm(s):
+    """Normaliza: mayúsculas, sin acentos/ñ, y separadores (guiones, puntos) -> espacio."""
     s = str(s or '').strip().upper()
     s = ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+    s = re.sub(r'[^A-Z0-9]+', ' ', s)
     return ' '.join(s.split())
 
 
-# Alias para variantes de nombre de cantón (INEC -> como puede estar en nuestra BD).
+# Alias para variantes de abreviatura (clave y valor se comparan ya normalizados).
 _ALIAS = {
-    'CRNEL. MARCELINO MARIDUENA': 'CORONEL MARCELINO MARIDUENA',
-    'GNRAL. ANTONIO ELIZALDE': 'GENERAL ANTONIO ELIZALDE',
+    'CRNEL MARCELINO MARIDUENA': 'CORONEL MARCELINO MARIDUENA',
+    'GNRAL ANTONIO ELIZALDE': 'GENERAL ANTONIO ELIZALDE',
     'EMPALME': 'EL EMPALME',
     '24 DE MAYO': 'VEINTICUATRO DE MAYO',
 }
@@ -31,7 +34,15 @@ _ALIAS = {
 class Command(BaseCommand):
     help = 'Importa parroquias (DPA INEC) y las enlaza a los cantones existentes.'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--reset', action='store_true',
+                            help='Borra todas las parroquias antes de importar (re-siembra limpia).')
+
     def handle(self, *args, **options):
+        if options.get('reset'):
+            borradas = Parroquia.objects.count()
+            Parroquia.objects.all().delete()
+            self.stdout.write(self.style.WARNING(f'Reset: {borradas} parroquias borradas.'))
         ruta = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'parroquias_ec.json')
         ruta = os.path.abspath(ruta)
         with open(ruta, encoding='utf-8') as f:
