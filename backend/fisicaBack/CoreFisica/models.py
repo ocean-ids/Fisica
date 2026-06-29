@@ -140,6 +140,26 @@ class Canton(models.Model):
         unique_together = (('provincia', 'nombre'),)
         ordering = ['provincia', 'nombre']
 
+
+class Parroquia(models.Model):
+    """Parroquia (DPA Ecuador) ligada a un cantón. Catálogo sembrado desde el INEC."""
+    nombre = models.CharField(max_length=120, db_index=True)
+    canton = models.ForeignKey(Canton, on_delete=models.CASCADE, related_name='parroquias')
+    codigo = models.CharField(max_length=10, blank=True, default='', db_index=True)
+
+    def save(self, *args, **kwargs):
+        if self.nombre is not None:
+            self.nombre = str(self.nombre).strip().upper()
+        super().save(*args, **kwargs)
+
+    class Meta:
+        unique_together = (('canton', 'nombre'),)
+        ordering = ['canton', 'nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
 class Zona(models.Model):
     instalacion = models.ForeignKey('Instalacion', on_delete=models.CASCADE, related_name='zonas')
     opcionesZona = [

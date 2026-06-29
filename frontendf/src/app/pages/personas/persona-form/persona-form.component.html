@@ -109,7 +109,7 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Cantón</mat-label>
-        <mat-select formControlName="canton">
+        <mat-select formControlName="canton" (selectionChange)="onCantonChange()">
           <mat-option [value]="null">-</mat-option>
           <mat-option *ngFor="let c of cantones" [value]="c.id">{{ c.nombre }}</mat-option>
         </mat-select>
@@ -117,7 +117,10 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Parroquia</mat-label>
-        <input matInput formControlName="parroquia">
+        <mat-select formControlName="parroquia">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let pa of parroquias" [value]="pa.nombre">{{ pa.nombre }}</mat-option>
+        </mat-select>
       </mat-form-field>
 
       <mat-form-field appearance="outline">

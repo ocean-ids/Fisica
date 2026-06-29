@@ -26,6 +26,8 @@ export class ClienteFormComponent implements OnInit {
   clienteForm!: FormGroup;
   provincias: any[] = [];
   cantones: any[] = [];
+  parroquias: { id: number; nombre: string }[] = [];
+  private initialParroquia: string | null = null;
 
   sizes = [
     { v: 'PEQUENO', l: 'Pequeño' }, { v: 'MEDIANO', l: 'Mediano' },
@@ -119,7 +121,9 @@ export class ClienteFormComponent implements OnInit {
       this.clienteService.getCliente(c.id).subscribe({
         next: (full: any) => {
           this.clienteForm.patchValue(full);
+          this.initialParroquia = (full?.parroquia || '').toString().toUpperCase() || null;
           if (full?.provincia) this.onProvinciaChange(full.canton ?? null);
+          if (full?.canton) this.loadParroquias(full.canton, true);
         },
         error: () => {}
       });
@@ -156,6 +160,33 @@ export class ClienteFormComponent implements OnInit {
       },
       error: () => { this.cantones = []; }
     });
+  }
+
+  loadParroquias(cantonId: number | null, keepInitial = false): void {
+    if (!cantonId) {
+      this.parroquias = [];
+      if (!keepInitial) this.clienteForm.get('parroquia')?.setValue('');
+      return;
+    }
+    this.ubicacionService.getParroquias(cantonId).subscribe({
+      next: (list: any[]) => {
+        this.parroquias = list || [];
+        const stored = keepInitial ? this.initialParroquia : this.clienteForm.get('parroquia')?.value;
+        if (stored && !this.parroquias.some(p => (p.nombre || '').toUpperCase() === String(stored).toUpperCase())) {
+          this.parroquias = [{ id: -1, nombre: String(stored).toUpperCase() }, ...this.parroquias];
+        }
+        if (keepInitial && this.initialParroquia) {
+          this.clienteForm.get('parroquia')?.setValue(this.initialParroquia);
+          this.initialParroquia = null;
+        }
+      },
+      error: () => { this.parroquias = []; }
+    });
+  }
+
+  onCantonChange(): void {
+    this.clienteForm.get('parroquia')?.setValue('');
+    this.loadParroquias(this.clienteForm.get('canton')?.value ?? null, false);
   }
 
   onSubmit(): void {

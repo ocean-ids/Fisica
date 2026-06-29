@@ -8,7 +8,7 @@ from .views.auth_views import login_view, logout_view, user_view, user_profile_v
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
 from .views.importar_clientes import importar_clientes
 from .views.importar_puestos_asignaciones import importar_puestos_asignaciones
-from .views.ubicacion_views import obtener_provincias, obtener_cantones, obtener_zonas
+from .views.ubicacion_views import obtener_provincias, obtener_cantones, obtener_zonas, obtener_parroquias
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
 from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona, disable_persona, enable_persona, importar_personas, exportar_personas_excel, SacafrancoListView, asignar_sacafranco, desasignar_sacafranco, subir_foto_persona, obtener_nomina, guardar_nomina, obtener_otros_datos, guardar_otros_datos, obtener_referencias, guardar_referencias, obtener_documentos, guardar_documentos, obtener_mas_referencias, guardar_mas_referencias, obtener_certificados, guardar_certificados, crear_tipo_certificado, subir_archivo_certificado, catalogo_certificados, eliminar_archivo_certificado
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto, secuencia_horario_puesto
@@ -72,6 +72,7 @@ urlpatterns = [
     path('enable-persona/<int:id>/', enable_persona),
     path('provincias/', obtener_provincias),
     path('cantones/', obtener_cantones),
+    path('parroquias/', obtener_parroquias),
     path('zonas/', obtener_zonas),
     path('instalaciones/', obtener_instalaciones),
     path('crear-instalacion/', crear_instalacion),
