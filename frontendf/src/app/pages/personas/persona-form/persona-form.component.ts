@@ -36,7 +36,7 @@ import Swal from 'sweetalert2';
     MatTabsModule
   ],
   templateUrl: './persona-form.component.html',
-  styleUrl: './persona-form.component.css'
+  styleUrl: './persona-form.component.scss'
 })
 export class PersonaFormComponent implements OnInit {
   personaForm!: FormGroup;
