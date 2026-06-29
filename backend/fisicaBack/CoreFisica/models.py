@@ -36,21 +36,6 @@ class Cliente(models.Model):
     )
     fecha_ingreso = models.DateField(null=True, blank=True, db_index=True)
     fecha_retiro = models.DateField(null=True, blank=True, db_index=True)
-    
-
-
-    TIPO_CLIENTE_CHOICES = [('JURIDICA', 'juridica'), ('NATURAL', 'Natural')]
-    TIPO_ID_CHOICES = [
-        ('RUC', 'Registro Único de Contribuyente'),
-        ('CEDULA', 'Cédula'),
-        ('PASAPORTE', 'Pasaporte'),
-    ]
-    ESTADO_CHOCES = [('ACTIVO', 'Activo'), ('INACTIVO', 'inactivo')]
-
-    codigo_erp = models.CharField(max_length=20, blank=True, default='ACTIVO')
-    fecha_registro = models.DateField(null=True, blank=True)
-    ultima_venta = models.DateField(null=True, blank=True)
-    estado = models.CharField(max_length=10, choices=ESTADO_CHOCES, default='')
 
     TIPO_CLIENTE_CHOICES = [('JURIDICA', 'Jurídica'), ('NATURAL', 'Natural')]
     TIPO_ID_CHOICES = [
@@ -60,7 +45,10 @@ class Cliente(models.Model):
     ]
     ESTADO_CHOICES = [('ACTIVO', 'Activo'), ('INACTIVO', 'Inactivo')]
     SEXO_CHOICES = [('MASCULINO', 'Masculino'), ('FEMENINO', 'Femenino')]
-    ESTADO_CIVIL_CHOICES = [('SOLTERO', 'Soltero'), ('CASADO', 'Casado')]
+    ESTADO_CIVIL_CHOICES = [
+        ('SOLTERO', 'Soltero'), ('CASADO', 'Casado'),
+        ('DIVORCIADO', 'Divorciado'), ('UNION LIBRE', 'Unión Libre'), ('VIUDO', 'Viudo'),
+    ]
 
     codigo_erp = models.CharField(max_length=20, blank=True, default='')        # Código
     ultima_venta = models.DateField(null=True, blank=True)                      # Ult. Venta
@@ -77,7 +65,7 @@ class Cliente(models.Model):
     direccion_comercial = models.CharField(max_length=255, blank=True, default='')  # Dir. Comercial
     sector = models.CharField(max_length=120, blank=True, default='')           # Sector (select pendiente)
     sexo = models.CharField(max_length=10, choices=SEXO_CHOICES, blank=True, default='')                 # Sexo (select)
-    estado_civil = models.CharField(max_length=10, choices=ESTADO_CIVIL_CHOICES, blank=True, default='') # Estado Civil (select)
+    estado_civil = models.CharField(max_length=15, choices=ESTADO_CIVIL_CHOICES, blank=True, default='') # Estado Civil (select)
 
     # Contacto
     telefono = models.CharField(max_length=30, blank=True, default='')          # Tel Com.
@@ -393,12 +381,15 @@ class Persona(models.Model):
     ESTADO_CIVIL_CHOICES = [
         ('SOLTERO', 'Soltero'),
         ('CASADO', 'Casado'),
+        ('DIVORCIADO', 'Divorciado'),
+        ('UNION LIBRE', 'Unión Libre'),
+        ('VIUDO', 'Viudo'),   
     ]
 
     TIPO_EMPLEADO_CHOICES = [
         ('EMPLEADO', 'Empleado'),
         ('OPERADOR', 'Operador'),
-        ('OBRERO', 'Obrero'),
+        ('OBRERO', 'Obrero o Eventual'),
     ]
 
     PERFIL_CHOICES = [
@@ -410,18 +401,24 @@ class Persona(models.Model):
     ]
 
     FORMA_PAGO_CHOICES = [
-        ('Mensual', 'Mensual'),
-        ('Quincenal', 'Quincenal'),
-        ('Semanal', 'Semanal'),
+        ('MENSUAL', 'Mensual'),
+        ('QUINCENAL', 'Quincenal'),
+        ('SEMANAL', 'Semanal'),
     ]
 
     MOTIVO_SALIDA_CHOICES = [
-        ('Renuncia Voluntaria', 'Renuncia Voluntaria'),
-        ('Despido', 'Despido'),
-        ('Visto Bueno', 'Visto Bueno'),
-        ('Terminación de Contrato', 'Terminación de Contrato'),
-        ('Problemas Familiares', 'Problemas Familiares'),
-        ('Mejor Propuesta de Trabajo', 'Mejor Propuesta de Trabajo'),
+        ('RENUNCIA VOLUNTARIA', 'Renuncia Voluntaria'),
+        ('DESPIDO', 'Despido'),
+        ('VISTO BUENO', 'Visto Bueno'),
+        ('TERMINACIÓN DE CONTRATO', 'Terminación de Contrato'),
+        ('PROBLEMAS FAMILIARES', 'Problemas Familiares'),
+        ('MEJOR PROPUESTA DE TRABAJO', 'Mejor Propuesta de Trabajo'),
+    ]
+
+    NACIONALIDAD_CHOICES = [
+        ('Ecuatoriana', 'Ecuatoriana'),
+        ('Extranjero', 'Extranjero'),
+        ('Otros', 'Otros'),
     ]
 
     tipo = models.CharField(null=True, max_length=28, choices=TIPO_CHOICES)
@@ -452,7 +449,7 @@ class Persona(models.Model):
     estado_civil = models.CharField(max_length=20, blank=True, default='', choices=ESTADO_CIVIL_CHOICES)
     telefono = models.CharField(max_length=20, blank=True, default='')
     conyuge = models.CharField(max_length=150, blank=True, default='')
-    nacionalidad = models.CharField(max_length=40, blank=True, default='')
+    nacionalidad = models.CharField(max_length=40, blank=True, default='', choices=NACIONALIDAD_CHOICES)
     cliente = models.ForeignKey(Cliente, null=True, blank=True, on_delete=models.SET_NULL, related_name='empleados')
     unidad_negocio = models.CharField(max_length=60, blank=True, default='')
     tipo_empleado = models.CharField(max_length=20, blank=True, default='', choices=TIPO_EMPLEADO_CHOICES)

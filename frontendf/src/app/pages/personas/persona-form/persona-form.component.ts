@@ -60,15 +60,16 @@ export class PersonaFormComponent implements OnInit {
   certSubiendo: number | null = null;
   private personaId: number | null = null;
   sexos = [{ v: 'MASCULINO', l: 'Masculino' }, { v: 'FEMENINO', l: 'Femenino' }];
-  estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }];
-  tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero' }, { v: 'OPERADOR', l: 'Operador' }];
+  estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }, {v: 'DIVORCIADO', l: 'Divorciado'}, {v: 'UNION LIBRE', l:'Unión Libre'},{ v: 'VIUDO', l: 'Viudo' },];
+  tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero o Eventual' }, { v: 'OPERADOR', l: 'Operador' }];
   regiones = ['SIERRA', 'COSTA'];
   unidadesNegocio = ['SEGURIDAD FISICA', 'SEGURIDAD DE CARGA'];
   perfiles = ['SENSIBLE', 'RIGIDO', 'INDUSTRIAL', 'CUSTODIA', 'OTROS'];
-  formasPago = ['Mensual', 'Quincenal', 'Semanal'];
+  nacionalidades = ['Ecuatoriana', 'Extranjero', 'Otros'];
+  formasPago = ['MENSUAL', 'QUINCENAL', 'SEMANAL'];
   motivosSalida = [
-    'Renuncia Voluntaria', 'Despido', 'Visto Bueno',
-    'Terminación de Contrato', 'Problemas Familiares', 'Mejor Propuesta de Trabajo',
+    'RENUNCIA VOLUNTARIA', 'DESPIDO', 'VISTO BUENO',
+    'TERMINACIÓN DE CONTRATO', 'PROBLEMAS FAMILIARES', 'MEJOR PROPUESTA DE TRABAJO',
   ];
   bancos = [
     'Banco Pichincha', 'Banco del Pacífico', 'Banco Guayaquil', 'Produbanco',
