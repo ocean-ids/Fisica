@@ -401,6 +401,29 @@ class Persona(models.Model):
         ('OBRERO', 'Obrero'),
     ]
 
+    PERFIL_CHOICES = [
+        ('SENSIBLE', 'Sensible'),
+        ('RIGIDO', 'Rígido'),
+        ('INDUSTRIAL', 'Industrial'),
+        ('CUSTODIA', 'Custodia'),
+        ('OTROS', 'Otros'),
+    ]
+
+    FORMA_PAGO_CHOICES = [
+        ('Mensual', 'Mensual'),
+        ('Quincenal', 'Quincenal'),
+        ('Semanal', 'Semanal'),
+    ]
+
+    MOTIVO_SALIDA_CHOICES = [
+        ('Renuncia Voluntaria', 'Renuncia Voluntaria'),
+        ('Despido', 'Despido'),
+        ('Visto Bueno', 'Visto Bueno'),
+        ('Terminación de Contrato', 'Terminación de Contrato'),
+        ('Problemas Familiares', 'Problemas Familiares'),
+        ('Mejor Propuesta de Trabajo', 'Mejor Propuesta de Trabajo'),
+    ]
+
     tipo = models.CharField(null=True, max_length=28, choices=TIPO_CHOICES)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
@@ -433,13 +456,13 @@ class Persona(models.Model):
     cliente = models.ForeignKey(Cliente, null=True, blank=True, on_delete=models.SET_NULL, related_name='empleados')
     unidad_negocio = models.CharField(max_length=60, blank=True, default='')
     tipo_empleado = models.CharField(max_length=20, blank=True, default='', choices=TIPO_EMPLEADO_CHOICES)
-    forma_pago = models.CharField(max_length=20, blank=True, default='')
+    forma_pago = models.CharField(max_length=20, blank=True, default='', choices=FORMA_PAGO_CHOICES)
     numero_afiliacion = models.CharField(max_length=30, blank=True, default='')
     numero_contrato = models.CharField(max_length=30, blank=30, default='')
     actividad = models.CharField(max_length=120, blank=True, default='')
-    perfil = models.CharField(max_length=60, blank=True, default='')
+    perfil = models.CharField(max_length=60, blank=True, default='', choices=PERFIL_CHOICES)
     fecha_pago_liquidacion = models.DateField(null=True, blank=True)
-    motivo_salida = models.CharField(max_length=120, blank=True, default='')
+    motivo_salida = models.CharField(max_length=120, blank=True, default='', choices=MOTIVO_SALIDA_CHOICES)
     region = models.CharField(max_length=60, blank=True, default='')
     gypaseg = models.BooleanField(default=False)
     affis = models.BooleanField(default=False)
