@@ -44,6 +44,8 @@ export class PersonaFormComponent implements OnInit {
   cantones: (any | City)[] = [];
   parroquias: { id: number; nombre: string }[] = [];
   clientes: { id: number; nombre: string }[] = [];
+  instalaciones: { id: number; nombre: string }[] = [];
+  private initialSeccion: string | null = null;
   fotoFile: File | null = null;
   fotoPreview: string | null = null;
   // Documentos (rutas compartidas) — pestaña Referencias
@@ -239,10 +241,12 @@ export class PersonaFormComponent implements OnInit {
 
     this.onUnidadNegocioChange();  // ajusta "Tipo" según la unidad (Física vs Carga)
     this.loadProvincias();
+    this.initialSeccion = ((this.persona as any)?.seccion || '').trim() || null;
     this.clienteService.getClientes().subscribe({
       next: (list: any[]) => { this.clientes = (list || []).map(c => ({ id: c.id, nombre: c.razon_social || c.nombre_comercial })); },
       error: () => { this.clientes = []; }
     });
+    if (p.cliente) this.loadInstalaciones(p.cliente, true);
   }
 
   // Seguridad de Carga: registro de personal (sin "Tipo"/clasificación de turnos).
@@ -372,6 +376,34 @@ export class PersonaFormComponent implements OnInit {
   onCantonChange(): void {
     this.personaForm.get('parroquia')?.setValue('');
     this.loadParroquias(this.personaForm.get('canton')?.value ?? null, false);
+  }
+
+  // Cliente -> Sección: la sección lista las instalaciones del cliente seleccionado.
+  loadInstalaciones(clienteId: number | null, keepInitial = false): void {
+    if (!clienteId) {
+      this.instalaciones = [];
+      if (!keepInitial) this.personaForm.get('seccion')?.setValue('');
+      return;
+    }
+    this.ubicacionService.getInstalaciones(clienteId).subscribe({
+      next: (list: any[]) => {
+        this.instalaciones = (list || []).map(i => ({ id: i.id, nombre: i.nombre }));
+        const stored = keepInitial ? this.initialSeccion : this.personaForm.get('seccion')?.value;
+        if (stored && !this.instalaciones.some(i => (i.nombre || '').toUpperCase() === String(stored).toUpperCase())) {
+          this.instalaciones = [{ id: -1, nombre: String(stored) }, ...this.instalaciones];
+        }
+        if (keepInitial && this.initialSeccion) {
+          this.personaForm.get('seccion')?.setValue(this.initialSeccion);
+          this.initialSeccion = null;
+        }
+      },
+      error: () => { this.instalaciones = []; }
+    });
+  }
+
+  onClienteChange(): void {
+    this.personaForm.get('seccion')?.setValue('');
+    this.loadInstalaciones(this.personaForm.get('cliente')?.value ?? null, false);
   }
 
   soloNumeros(event: KeyboardEvent): void {

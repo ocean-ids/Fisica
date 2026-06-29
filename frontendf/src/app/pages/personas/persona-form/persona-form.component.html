@@ -138,7 +138,7 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Cliente</mat-label>
-        <mat-select formControlName="cliente">
+        <mat-select formControlName="cliente" (selectionChange)="onClienteChange()">
           <mat-option [value]="null">-</mat-option>
           <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre }}</mat-option>
         </mat-select>
@@ -152,8 +152,11 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Sección</mat-label>
-        <input matInput formControlName="seccion">
+        <mat-label>Sección (instalación)</mat-label>
+        <mat-select formControlName="seccion">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let i of instalaciones" [value]="i.nombre">{{ i.nombre }}</mat-option>
+        </mat-select>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
