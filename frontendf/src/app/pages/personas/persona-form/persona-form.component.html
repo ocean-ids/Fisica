@@ -420,7 +420,7 @@
                     title="Se activa al subir el documento">
                   {{ t.nombre }}
                 </mat-slide-toggle>
-                <div class="cert-file" *ngIf="persona.id">
+                <div class="cert-file">
                   <a *ngIf="certArchivos[t.id]" [href]="certArchivos[t.id]" target="_blank" class="cert-ver">📄 Ver</a>
                   <button *ngIf="certArchivos[t.id]" type="button" class="cert-quitar"
                           (click)="quitarArchivoCert(t.id)" title="Quitar archivo">
