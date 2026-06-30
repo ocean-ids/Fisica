@@ -384,18 +384,18 @@ class ActiveManager(models.Manager):
 
 class Persona(models.Model):
     TIPO_CHOICES = [
-        ('FIJOS', 'Fijos'),
-        ('RETEN', 'Retén'),
-        ('CUSTODIO', 'Custodio'),
-        ('EVENTUAL', 'Eventual'),
-        ('SACAFRANCO', 'Sacafranco'),
-        ('SACAVACACIONES', 'Sacavacaciones'),
-        ('SUPERVISOR ZONAL', 'Supervisor Zonal'),
-        ('SUPERVISOR EVENTUAL', 'Supervisor Eventual'),
-        ('SUPERVISOR MOTORIZADO', 'Supervisor Motorizado'),
-        ('SUPERVISOR DE ACOMPAÑAMIENTO', 'Supervisor de Acompañamiento'),
-        ('OPERADOR CENTRO CONTROL', 'Operador Centro Control'),
-        ('SUPERVISOR CENTRO CONTROL', 'Supervisor Centro Control'),
+        ('FIJOS', 'FIJOS'),
+        ('RETEN', 'RETEN'),
+        ('CUSTODIO', 'CUSTODIO'),
+        ('EVENTUAL', 'EVENTUAL'),
+        ('SACAFRANCO', 'SACAFRANCO'),
+        ('SACAVACACIONES', 'SACAVACACIONES'),
+        ('SUPERVISOR ZONAL', 'SUPERVISOR ZONAL'),
+        ('SUPERVISOR EVENTUAL', 'SUPERVISOR EVENTUAL'),
+        ('SUPERVISOR MOTORIZADO', 'SUPERVISOR MOTORIZADO'),
+        ('SUPERVISOR DE ACOMPAÑAMIENTO', 'SUPERVISOR DE ACOMPAÑAMIENTO'),
+        ('OPERADOR CENTRO CONTROL', 'OPERADOR CENTRO CONTROL'),
+        ('SUPERVISOR CENTRO CONTROL', 'SUPERVISOR CENTRO CONTROL'),
     ]
 
     SEXO_CHOICES = [
