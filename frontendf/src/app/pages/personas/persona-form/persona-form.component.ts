@@ -65,6 +65,11 @@ export class PersonaFormComponent implements OnInit {
   sexos = [{ v: 'MASCULINO', l: 'Masculino' }, { v: 'FEMENINO', l: 'Femenino' }];
   estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }, {v: 'DIVORCIADO', l: 'Divorciado'}, {v: 'UNION LIBRE', l:'Unión Libre'},{ v: 'VIUDO', l: 'Viudo' },];
   tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero o Eventual' }, { v: 'OPERADOR', l: 'Operador' }];
+  estadosEmpleado = [
+    { v: 'ACTIVO', l: 'Activo' },
+    { v: 'LIQUIDADO', l: 'Liquidado' },
+    { v: 'SUSPENDIDO', l: 'Suspendido' },
+  ];
   regiones = [{ v: 'SIERRA', l: 'Sierra' }, { v: 'COSTA', l: 'Costa' }];
   unidadesNegocio = [
     { v: 'SEGURIDAD FISICA', l: 'Seguridad Física' },
@@ -131,7 +136,7 @@ export class PersonaFormComponent implements OnInit {
       tipo: [p.tipo ?? 'FIJOS', Validators.required],
       provincia: [p.provincia ?? null],
       canton: [p.canton ?? null],
-      is_active: [p.is_active ?? true],
+      estado_empleado: [p.estado_empleado || 'ACTIVO'],
       // Datos del ERP
       codigo_erp: [p.codigo_erp || ''],
       centro_costo: [p.centro_costo || ''],

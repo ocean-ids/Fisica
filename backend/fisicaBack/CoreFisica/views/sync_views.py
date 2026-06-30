@@ -89,7 +89,8 @@ def sincronizar_empleado(request):
         defaults = {
             'nombres': _norm(data.get('nombres')),
             'apellidos': _norm(data.get('apellidos')),
-            'is_active': is_active,
+            # is_active se deriva en save() desde estado_empleado.
+            'estado_empleado': 'ACTIVO' if is_active else 'LIQUIDADO',
             'sexo': sexo,
             'estado_civil': estado_civil,
             'fecha_nacimiento': _fecha(data.get('fecha_nacimiento')),

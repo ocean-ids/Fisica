@@ -75,12 +75,12 @@ class PuestoAdmin(admin.ModelAdmin):
 
 @admin.action(description='Deshabilitar seleccionadas')
 def make_disabled(modeladmin, request, queryset):
-	queryset.update(is_active=False)
+	queryset.update(is_active=False, estado_empleado='LIQUIDADO')
 
 
 @admin.action(description='Habilitar seleccionadas')
 def make_enabled(modeladmin, request, queryset):
-	queryset.update(is_active=True)
+	queryset.update(is_active=True, estado_empleado='ACTIVO')
 
 
 @admin.register(Persona)
