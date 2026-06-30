@@ -31,7 +31,7 @@
       <mat-form-field appearance="outline" *ngIf="!esCarga">
         <mat-label>Tipo (clasificación)</mat-label>
         <mat-select formControlName="tipo" required>
-          <mat-option *ngFor="let t of tipos" [value]="t">{{ t }}</mat-option>
+          <mat-option *ngFor="let t of tipos" [value]="t.v">{{ t.l }}</mat-option>
         </mat-select>
         <mat-error *ngIf="personaForm.get('tipo')?.hasError('required')">El tipo es requerido</mat-error>
       </mat-form-field>
@@ -147,7 +147,7 @@
       <mat-form-field appearance="outline">
         <mat-label>Unidad de negocio</mat-label>
         <mat-select formControlName="unidad_negocio" (selectionChange)="onUnidadNegocioChange()">
-          <mat-option *ngFor="let u of unidadesNegocio" [value]="u">{{ u }}</mat-option>
+          <mat-option *ngFor="let u of unidadesNegocio" [value]="u.v">{{ u.l }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -186,7 +186,7 @@
         <mat-label>Forma de pago</mat-label>
         <mat-select formControlName="forma_pago">
           <mat-option value="">-</mat-option>
-          <mat-option *ngFor="let f of formasPago" [value]="f">{{ f }}</mat-option>
+          <mat-option *ngFor="let f of formasPago" [value]="f.v">{{ f.l }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -214,7 +214,7 @@
         <mat-label>Perfil</mat-label>
         <mat-select formControlName="perfil">
           <mat-option value="">-</mat-option>
-          <mat-option *ngFor="let p of perfiles" [value]="p">{{ p }}</mat-option>
+          <mat-option *ngFor="let p of perfiles" [value]="p.v">{{ p.l }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -232,7 +232,7 @@
         <mat-label>Motivo de salida</mat-label>
         <mat-select formControlName="motivo_salida">
           <mat-option value="">-</mat-option>
-          <mat-option *ngFor="let m of motivosSalida" [value]="m">{{ m }}</mat-option>
+          <mat-option *ngFor="let m of motivosSalida" [value]="m.v">{{ m.l }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -240,7 +240,7 @@
         <mat-label>Región</mat-label>
         <mat-select formControlName="region">
           <mat-option value="">-</mat-option>
-          <mat-option *ngFor="let r of regiones" [value]="r">{{ r }}</mat-option>
+          <mat-option *ngFor="let r of regiones" [value]="r.v">{{ r.l }}</mat-option>
         </mat-select>
       </mat-form-field>
 
