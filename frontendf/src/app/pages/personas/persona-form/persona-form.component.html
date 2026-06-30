@@ -246,9 +246,8 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Estado</mat-label>
-        <mat-select formControlName="is_active">
-          <mat-option [value]="true">Activo</mat-option>
-          <mat-option [value]="false">Inactivo</mat-option>
+        <mat-select formControlName="estado_empleado">
+          <mat-option *ngFor="let e of estadosEmpleado" [value]="e.v">{{ e.l }}</mat-option>
         </mat-select>
       </mat-form-field>
 

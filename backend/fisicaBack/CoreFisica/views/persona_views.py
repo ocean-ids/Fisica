@@ -312,9 +312,13 @@ def _aplicar_campos_persona(persona, data):
         if f in data:
             setattr(persona, f, bool(data.get(f)))
 
-    # Activo/inactivo desde el checkbox del formulario (refleja el toggle de la lista).
-    if 'is_active' in data:
-        persona.is_active = bool(data.get('is_active'))
+    # Estado del empleado (ACTIVO/LIQUIDADO/SUSPENDIDO). is_active se sincroniza en save().
+    if 'estado_empleado' in data:
+        val = str(data.get('estado_empleado') or 'ACTIVO').upper()
+        persona.estado_empleado = val if val in ('ACTIVO', 'LIQUIDADO', 'SUSPENDIDO') else 'ACTIVO'
+    elif 'is_active' in data:
+        # Compatibilidad con el toggle Activo/Inactivo de la lista.
+        persona.estado_empleado = 'ACTIVO' if bool(data.get('is_active')) else 'LIQUIDADO'
 
     if 'cliente' in data or 'cliente_id' in data:
         cid = data.get('cliente') if 'cliente' in data else data.get('cliente_id')
@@ -416,6 +420,7 @@ def obtener_personas(request):
                 'cedula': p.cedula,
                 'tipo': p.tipo,
                 'is_active': p.is_active,
+                'estado_empleado': p.estado_empleado,
                 'provincia': p.provincia_id,
                 'canton': p.canton_id,
                 'provincia_nombre': getattr(p.provincia, 'nombre', None),
@@ -1429,7 +1434,7 @@ def importar_personas(request):
                         apellidos=str(fila.get('apellidos') or '').strip().upper(),
                         cedula=cedula,
                         tipo=fila.get('tipo') or None,
-                        is_active=bool(fila.get('is_active')),
+                        estado_empleado='ACTIVO' if bool(fila.get('is_active')) else 'LIQUIDADO',
                         provincia_id=provincia_id,
                         canton_id=canton_id,
                     )

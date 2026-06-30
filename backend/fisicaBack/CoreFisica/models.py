@@ -456,6 +456,12 @@ class Persona(models.Model):
         ('COSTA', 'Costa'),
     ]
 
+    ESTADO_EMPLEADO_CHOICES = [
+        ('ACTIVO', 'Activo'),
+        ('LIQUIDADO', 'Liquidado'),
+        ('SUSPENDIDO', 'Suspendido'),
+    ]
+
     tipo = models.CharField(null=True, max_length=28, choices=TIPO_CHOICES)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
@@ -464,6 +470,9 @@ class Persona(models.Model):
     canton = models.ForeignKey(Canton, null=True, blank=True, on_delete=models.PROTECT)
     
     is_active = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
+    # Estado del empleado (lo que se elige en el formulario). LIQUIDADO/SUSPENDIDO = deshabilitado.
+    # is_active se sincroniza desde aquí en save(); todos los filtros del sistema siguen usando is_active.
+    estado_empleado = models.CharField(max_length=12, choices=ESTADO_EMPLEADO_CHOICES, default='ACTIVO', db_index=True)
     
     fecha_nacimiento = models.DateField(null=True, blank=True)
     departamento = models.CharField(max_length=120, blank=True, default='')
@@ -503,17 +512,25 @@ class Persona(models.Model):
     objects = models.Manager()
     active = ActiveManager()
 
+    def save(self, *args, **kwargs):
+        # estado_empleado es la fuente de verdad: ACTIVO -> habilitado; LIQUIDADO/SUSPENDIDO -> deshabilitado.
+        self.is_active = (self.estado_empleado == 'ACTIVO')
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None and 'is_active' not in update_fields:
+            kwargs['update_fields'] = list(update_fields) + ['is_active']
+        super().save(*args, **kwargs)
+
     def disable(self, by_user=None):
         if not self.is_active:
             return
-        self.is_active = False
-        self.save(update_fields=['is_active'])
+        self.estado_empleado = 'LIQUIDADO'
+        self.save(update_fields=['estado_empleado'])
 
     def enable(self, by_user=None):
         if self.is_active:
             return
-        self.is_active = True
-        self.save(update_fields=['is_active'])
+        self.estado_empleado = 'ACTIVO'
+        self.save(update_fields=['estado_empleado'])
 
     def __str__(self):
         return f"{self.nombres} {self.apellidos}"
