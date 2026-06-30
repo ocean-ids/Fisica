@@ -31,7 +31,7 @@
       <mat-form-field appearance="outline" *ngIf="!esCarga">
         <mat-label>Tipo (clasificación)</mat-label>
         <mat-select formControlName="tipo" required>
-          <mat-option *ngFor="let t of tipos" [value]="t.v">{{ t.l }}</mat-option>
+          <mat-option *ngFor="let t of tipos" [value]="t">{{ t }}</mat-option>
         </mat-select>
         <mat-error *ngIf="personaForm.get('tipo')?.hasError('required')">El tipo es requerido</mat-error>
       </mat-form-field>

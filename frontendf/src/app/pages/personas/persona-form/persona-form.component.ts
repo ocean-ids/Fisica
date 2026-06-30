@@ -96,19 +96,19 @@ export class PersonaFormComponent implements OnInit {
   private initialCantonName: string | null = null;
   private initialProvinciaName: string | null = null;
   private initialParroquia: string | null = null;
-  tipos: { v: Persona['tipo']; l: string }[] = [
-    { v: 'FIJOS', l: 'Fijos' },
-    { v: 'RETEN', l: 'Retén' },
-    { v: 'CUSTODIO', l: 'Custodio' },
-    { v: 'EVENTUAL', l: 'Eventual' },
-    { v: 'SACAFRANCO', l: 'Sacafranco' },
-    { v: 'SACAVACACIONES', l: 'Sacavacaciones' },
-    { v: 'SUPERVISOR ZONAL', l: 'Supervisor Zonal' },
-    { v: 'SUPERVISOR EVENTUAL', l: 'Supervisor Eventual' },
-    { v: 'SUPERVISOR MOTORIZADO', l: 'Supervisor Motorizado' },
-    { v: 'SUPERVISOR DE ACOMPAÑAMIENTO', l: 'Supervisor de Acompañamiento' },
-    { v: 'OPERADOR CENTRO CONTROL', l: 'Operador Centro Control' },
-    { v: 'SUPERVISOR CENTRO CONTROL', l: 'Supervisor Centro Control' },
+  tipos: Persona['tipo'][] = [
+    'FIJOS',
+    'RETEN',
+    'CUSTODIO',
+    'EVENTUAL',
+    'SACAFRANCO',
+    'SACAVACACIONES',
+    'SUPERVISOR ZONAL',
+    'SUPERVISOR EVENTUAL',
+    'SUPERVISOR MOTORIZADO',
+    'SUPERVISOR DE ACOMPAÑAMIENTO',
+    'OPERADOR CENTRO CONTROL',
+    'SUPERVISOR CENTRO CONTROL',
   ];
 
   constructor(
