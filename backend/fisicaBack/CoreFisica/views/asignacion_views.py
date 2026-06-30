@@ -313,7 +313,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
     # si se proporcionan mes y año, filtrar asignaciones activas que correspondan al mes/año o que sean recurrentes y tengan rango de fechas que incluya el mes/año. Si no se proporcionan mes/año, devolver todas las asignaciones activas. En ambos casos, excluir personas de tipo SACAFRANCO y ordenar por orden y id para mantener un orden consistente.   
     base_qs = Asignacion.objects.filter(
         estado='ACTIVO'
-    ).exclude(persona__tipo='SACAFRANCO')
+    ).exclude(persona__tipo='SACAFRANCO').exclude(puesto__activo=False)  # ocultar puestos CERRADOS
 
     if mes and anio:
         month_start = datetime.date(int(anio), int(mes), 1)
