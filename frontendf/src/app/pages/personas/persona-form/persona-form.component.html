@@ -244,8 +244,15 @@
         </mat-select>
       </mat-form-field>
 
+      <mat-form-field appearance="outline">
+        <mat-label>Estado</mat-label>
+        <mat-select formControlName="is_active">
+          <mat-option [value]="true">Activo</mat-option>
+          <mat-option [value]="false">Inactivo</mat-option>
+        </mat-select>
+      </mat-form-field>
+
       <div class="pf-checks">
-        <mat-checkbox formControlName="is_active">Estado</mat-checkbox>
         <mat-checkbox formControlName="gypaseg">GYPASEG</mat-checkbox>
         <mat-checkbox formControlName="affis">AFFIS</mat-checkbox>
         <mat-checkbox formControlName="pbip">PBIP</mat-checkbox>
