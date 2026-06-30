@@ -1,0 +1,51 @@
+@use '@angular/material' as mat;
+
+/* Densidad ERP: campos compactos y etiqueta centrada (igual que el form de Empleado). */
+:host {
+  @include mat.form-field-density(-5);
+  @include mat.select-density(-5);
+}
+:host ::ng-deep .mat-mdc-form-field-subscript-wrapper { display: none; }
+
+.full-width { width: 100%; margin-bottom: 15px; }
+
+h2[mat-dialog-title] { margin: 0 0 4px; padding: 8px 16px 0; font-size: 18px; }
+
+mat-dialog-content {
+  min-width: 900px;
+  max-width: 1140px;
+  max-height: 78vh;
+  overflow: auto;
+  padding: 8px 16px;
+}
+
+/* Sub-título de sección (ocupa toda la fila del grid) */
+.cf-sec {
+  grid-column: 1 / -1;
+  font-weight: 600; color: #4338ca; font-size: 13px;
+  border-bottom: 1px solid #e5e7eb; margin: 10px 0 6px; padding-bottom: 3px;
+}
+.cf-sec:first-child { margin-top: 0; }
+
+.cf-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  column-gap: 16px;
+  row-gap: 2px;
+  align-items: start;
+}
+.cf-grid mat-form-field { width: 100%; font-size: 12px; }
+.cf-col2 { grid-column: span 2; }
+.cf-full { grid-column: 1 / -1; }
+.cf-checks {
+  grid-column: 1 / -1;
+  display: flex; flex-wrap: wrap; gap: 16px; padding: 2px 0 4px;
+}
+
+@media (max-width: 900px) {
+  mat-dialog-content { min-width: 0; }
+  .cf-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .cf-grid { grid-template-columns: 1fr; }
+}
