@@ -2,235 +2,231 @@
 
 <mat-dialog-content>
   <form [formGroup]="clienteForm">
-    <mat-tab-group class="cf-tabs" animationDuration="0ms" mat-stretch-tabs="false">
+    <div class="cf-grid">
 
-      <!-- ============ GENERAL ============ -->
-      <mat-tab label="General">
-        <div class="cf-grid">
-          <mat-form-field appearance="outline">
-            <mat-label>Código</mat-label>
-            <input matInput formControlName="codigo_erp">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Estado</mat-label>
-            <mat-select formControlName="estado">
-              <mat-option *ngFor="let e of estados" [value]="e.v">{{ e.l }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Tipo de Cliente</mat-label>
-            <mat-select formControlName="tipo_cliente">
-              <mat-option value="">-</mat-option>
-              <mat-option *ngFor="let t of tiposCliente" [value]="t.v">{{ t.l }}</mat-option>
-            </mat-select>
-          </mat-form-field>
+      <!-- ============ IDENTIFICACIÓN ============ -->
+      <div class="cf-sec">Identificación</div>
 
-          <mat-form-field appearance="outline" class="cf-col2">
-            <mat-label>Razón Social</mat-label>
-            <input matInput formControlName="razon_social" required>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Tamaño del Cliente</mat-label>
-            <mat-select formControlName="size">
-              <mat-option *ngFor="let s of sizes" [value]="s.v">{{ s.l }}</mat-option>
-            </mat-select>
-          </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Código</mat-label>
+        <input matInput formControlName="codigo_erp">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Fecha Ingreso</mat-label>
+        <input matInput type="date" formControlName="fecha_ingreso">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Última Venta</mat-label>
+        <input matInput type="date" formControlName="ultima_venta">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Fecha Salida</mat-label>
+        <input matInput type="date" formControlName="fecha_retiro">
+      </mat-form-field>
 
-          <mat-form-field appearance="outline" class="cf-col2">
-            <mat-label>Nombre Comercial</mat-label>
-            <input matInput formControlName="nombre_comercial" required>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Tipo ID</mat-label>
-            <mat-select formControlName="tipo_id">
-              <mat-option value="">-</mat-option>
-              <mat-option *ngFor="let t of tiposId" [value]="t.v">{{ t.l }}</mat-option>
-            </mat-select>
-          </mat-form-field>
+      <mat-form-field appearance="outline" class="cf-col2">
+        <mat-label>Razón Social</mat-label>
+        <input matInput formControlName="razon_social" required>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="cf-col2">
+        <mat-label>Nombre Comercial</mat-label>
+        <input matInput formControlName="nombre_comercial" required>
+      </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>RUC / Identificación</mat-label>
-            <input matInput formControlName="ruc" placeholder="10 o 13 dígitos">
-            <mat-error *ngIf="clienteForm.get('ruc')?.hasError('minlength')">Mínimo 10 dígitos</mat-error>
-            <mat-error *ngIf="clienteForm.get('ruc')?.hasError('maxlength')">Máximo 13 dígitos</mat-error>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Fecha Ingreso</mat-label>
-            <input matInput type="date" formControlName="fecha_ingreso">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Última Venta</mat-label>
-            <input matInput type="date" formControlName="ultima_venta">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Fecha Salida</mat-label>
-            <input matInput type="date" formControlName="fecha_retiro">
-          </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo ID</mat-label>
+        <mat-select formControlName="tipo_id">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let t of tiposId" [value]="t.v">{{ t.l }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>RUC / Identificación</mat-label>
+        <input matInput formControlName="ruc" placeholder="10 o 13 dígitos">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo de Cliente</mat-label>
+        <mat-select formControlName="tipo_cliente">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let t of tiposCliente" [value]="t.v">{{ t.l }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Estado</mat-label>
+        <mat-select formControlName="estado">
+          <mat-option *ngFor="let e of estados" [value]="e.v">{{ e.l }}</mat-option>
+        </mat-select>
+      </mat-form-field>
 
-          <div class="cf-checks">
-            <mat-checkbox formControlName="control_cupo">Control Cupo</mat-checkbox>
-            <mat-checkbox formControlName="paga_iva">Paga IVA</mat-checkbox>
-            <mat-checkbox formControlName="requiere_correo">Requiere correo</mat-checkbox>
-            <mat-checkbox formControlName="controla_factura_reverso">Controla Factura Reverso</mat-checkbox>
-          </div>
-        </div>
-      </mat-tab>
+      <mat-form-field appearance="outline">
+        <mat-label>Tamaño del Cliente</mat-label>
+        <mat-select formControlName="size">
+          <mat-option *ngFor="let s of sizes" [value]="s.v">{{ s.l }}</mat-option>
+        </mat-select>
+      </mat-form-field>
 
-      <!-- ============ UBICACIÓN / CONTACTO ============ -->
-      <mat-tab label="Ubicación y Contacto">
-        <div class="cf-grid">
-          <mat-form-field appearance="outline">
-            <mat-label>Provincia</mat-label>
-            <mat-select formControlName="provincia" (selectionChange)="onProvinciaChange()">
-              <mat-option [value]="null">-</mat-option>
-              <mat-option *ngFor="let p of provincias" [value]="p.id">{{ p.nombre }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Cantón</mat-label>
-            <mat-select formControlName="canton" (selectionChange)="onCantonChange()">
-              <mat-option [value]="null">-</mat-option>
-              <mat-option *ngFor="let c of cantones" [value]="c.id">{{ c.nombre }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Parroquia</mat-label>
-            <mat-select formControlName="parroquia">
-              <mat-option value="">-</mat-option>
-              <mat-option *ngFor="let pa of parroquias" [value]="pa.nombre">{{ pa.nombre }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Ciudad</mat-label>
-            <input matInput formControlName="ciudad">
-          </mat-form-field>
+      <div class="cf-checks">
+        <mat-checkbox formControlName="control_cupo">Control Cupo</mat-checkbox>
+        <mat-checkbox formControlName="paga_iva">Paga IVA</mat-checkbox>
+        <mat-checkbox formControlName="requiere_correo">Requiere correo</mat-checkbox>
+        <mat-checkbox formControlName="controla_factura_reverso">Controla Factura Reverso</mat-checkbox>
+      </div>
 
-          <mat-form-field appearance="outline" class="cf-col2">
-            <mat-label>Dirección Comercial</mat-label>
-            <input matInput formControlName="direccion_comercial">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Sector</mat-label>
-            <input matInput formControlName="sector">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Sexo</mat-label>
-            <mat-select formControlName="sexo">
-              <mat-option value="">-</mat-option>
-              <mat-option *ngFor="let s of sexos" [value]="s.v">{{ s.l }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Estado Civil</mat-label>
-            <mat-select formControlName="estado_civil">
-              <mat-option value="">-</mat-option>
-              <mat-option *ngFor="let e of estadosCiviles" [value]="e.v">{{ e.l }}</mat-option>
-            </mat-select>
-          </mat-form-field>
+      <!-- ============ UBICACIÓN Y CONTACTO ============ -->
+      <div class="cf-sec">Ubicación y Contacto</div>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Tel. Comercial</mat-label>
-            <input matInput formControlName="telefono">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Tel. Comercial 2</mat-label>
-            <input matInput formControlName="telefono2">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Fax</mat-label>
-            <input matInput formControlName="fax">
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="cf-col2">
-            <mat-label>Correo</mat-label>
-            <input matInput formControlName="email">
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="cf-col2">
-            <mat-label>Correos Adicional</mat-label>
-            <input matInput formControlName="email_adicional">
-          </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Provincia</mat-label>
+        <mat-select formControlName="provincia" (selectionChange)="onProvinciaChange()">
+          <mat-option [value]="null">-</mat-option>
+          <mat-option *ngFor="let p of provincias" [value]="p.id">{{ p.nombre }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Cantón</mat-label>
+        <mat-select formControlName="canton" (selectionChange)="onCantonChange()">
+          <mat-option [value]="null">-</mat-option>
+          <mat-option *ngFor="let c of cantones" [value]="c.id">{{ c.nombre }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Parroquia</mat-label>
+        <mat-select formControlName="parroquia">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let pa of parroquias" [value]="pa.nombre">{{ pa.nombre }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Ciudad</mat-label>
+        <input matInput formControlName="ciudad">
+      </mat-form-field>
 
-          <mat-form-field appearance="outline" *ngFor="let n of [1,2,3,4,5]">
-            <mat-label>Copia Correo {{ n }}</mat-label>
-            <input matInput [formControlName]="'copia_correo_' + n">
-          </mat-form-field>
-        </div>
-      </mat-tab>
+      <mat-form-field appearance="outline" class="cf-col2">
+        <mat-label>Dirección Comercial</mat-label>
+        <input matInput formControlName="direccion_comercial">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Sector</mat-label>
+        <input matInput formControlName="sector">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Zona</mat-label>
+        <input matInput formControlName="zona">
+      </mat-form-field>
 
-      <!-- ============ COMERCIAL / CONTABLE ============ -->
-      <mat-tab label="Comercial y Contable">
-        <div class="cf-grid">
-          <mat-form-field appearance="outline">
-            <mat-label>Vendedor</mat-label>
-            <input matInput formControlName="vendedor">
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="cf-col2">
-            <mat-label>Representante Legal</mat-label>
-            <input matInput formControlName="rep_legal">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Plazo Máx (días)</mat-label>
-            <input matInput type="number" formControlName="plazo_max">
-          </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Sexo</mat-label>
+        <mat-select formControlName="sexo">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let s of sexos" [value]="s.v">{{ s.l }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Estado Civil</mat-label>
+        <mat-select formControlName="estado_civil">
+          <mat-option value="">-</mat-option>
+          <mat-option *ngFor="let e of estadosCiviles" [value]="e.v">{{ e.l }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Tel. Comercial</mat-label>
+        <input matInput formControlName="telefono">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Tel. Comercial 2</mat-label>
+        <input matInput formControlName="telefono2">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Fax</mat-label>
+        <input matInput formControlName="fax">
+      </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Desc. Venta</mat-label>
-            <input matInput type="number" step="0.01" formControlName="desc_vta">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Cupo</mat-label>
-            <input matInput type="number" step="0.01" formControlName="cupo">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Cod. Agrupación</mat-label>
-            <input matInput formControlName="cod_agrupacion">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Valorización Custodias</mat-label>
-            <input matInput formControlName="valoracion_custodias">
-          </mat-form-field>
+      <mat-form-field appearance="outline" class="cf-col2">
+        <mat-label>Correo</mat-label>
+        <input matInput formControlName="email">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="cf-col2">
+        <mat-label>Correos Adicional</mat-label>
+        <input matInput formControlName="email_adicional">
+      </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Tipo Precio</mat-label>
-            <input matInput formControlName="tipo_precio">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Valor Puesto</mat-label>
-            <input matInput type="number" step="0.01" formControlName="valor_puesto">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Forma de Pago</mat-label>
-            <input matInput formControlName="forma_pago">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Origen Ingresos</mat-label>
-            <input matInput formControlName="origen_ingreso">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Zona</mat-label>
-            <input matInput formControlName="zona">
-          </mat-form-field>
+      <mat-form-field appearance="outline" *ngFor="let n of [1,2,3,4,5]">
+        <mat-label>Copia Correo {{ n }}</mat-label>
+        <input matInput [formControlName]="'copia_correo_' + n">
+      </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Cuenta Contable</mat-label>
-            <input matInput formControlName="cuenta_contable">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Cod. Área</mat-label>
-            <input matInput formControlName="cod_area">
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Cod. Rol</mat-label>
-            <input matInput formControlName="cod_rol">
-          </mat-form-field>
+      <!-- ============ COMERCIAL / CRÉDITO ============ -->
+      <div class="cf-sec">Comercial / Crédito</div>
 
-          <mat-form-field appearance="outline" class="cf-full">
-            <mat-label>Observaciones</mat-label>
-            <textarea matInput rows="2" formControlName="observaciones"></textarea>
-          </mat-form-field>
-        </div>
-      </mat-tab>
+      <mat-form-field appearance="outline">
+        <mat-label>Vendedor</mat-label>
+        <input matInput formControlName="vendedor">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="cf-col2">
+        <mat-label>Representante Legal</mat-label>
+        <input matInput formControlName="rep_legal">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Plazo Máx (días)</mat-label>
+        <input matInput type="number" formControlName="plazo_max">
+      </mat-form-field>
 
-    </mat-tab-group>
+      <mat-form-field appearance="outline">
+        <mat-label>Desc. Venta</mat-label>
+        <input matInput type="number" step="0.01" formControlName="desc_vta">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Cupo</mat-label>
+        <input matInput type="number" step="0.01" formControlName="cupo">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Cod. Agrupación</mat-label>
+        <input matInput formControlName="cod_agrupacion">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Valorización Custodias</mat-label>
+        <input matInput formControlName="valoracion_custodias">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo Precio</mat-label>
+        <input matInput formControlName="tipo_precio">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Valor Puesto</mat-label>
+        <input matInput type="number" step="0.01" formControlName="valor_puesto">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Forma de Pago</mat-label>
+        <input matInput formControlName="forma_pago">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Origen Ingresos</mat-label>
+        <input matInput formControlName="origen_ingreso">
+      </mat-form-field>
+
+      <!-- ============ CONTABLE ============ -->
+      <div class="cf-sec">Contable</div>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Cuenta Contable</mat-label>
+        <input matInput formControlName="cuenta_contable">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Cod. Área</mat-label>
+        <input matInput formControlName="cod_area">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Cod. Rol</mat-label>
+        <input matInput formControlName="cod_rol">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="cf-full">
+        <mat-label>Observaciones</mat-label>
+        <textarea matInput rows="2" formControlName="observaciones"></textarea>
+      </mat-form-field>
+
+    </div>
   </form>
 </mat-dialog-content>
 

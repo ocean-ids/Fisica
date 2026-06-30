@@ -20,7 +20,7 @@ import { UbicacionService } from '../../../services/ubicacion.service';
     MatInputModule, MatButtonModule, MatSelectModule, MatCheckboxModule, MatTabsModule
   ],
   templateUrl: './cliente-form.component.html',
-  styleUrl: './cliente-form.component.css'
+  styleUrl: './cliente-form.component.scss'
 })
 export class ClienteFormComponent implements OnInit {
   clienteForm!: FormGroup;
