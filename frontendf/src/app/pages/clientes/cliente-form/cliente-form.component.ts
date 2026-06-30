@@ -46,6 +46,11 @@ export class ClienteFormComponent implements OnInit {
     { v: 'UNION LIBRE', l: 'Unión Libre' },
     { v: 'VIUDO', l: 'Viudo' },
   ];
+  zonas = [
+    { v: 'Seguridad Física', l: 'Seguridad Física' },
+    { v: 'Seguridad Electrónica', l: 'Seguridad Electrónica' },
+    { v: 'Seguridad de Carga', l: 'Seguridad de Carga' },
+  ];
 
   constructor(
     private fb: FormBuilder,
