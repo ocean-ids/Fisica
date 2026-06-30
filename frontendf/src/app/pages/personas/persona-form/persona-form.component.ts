@@ -65,14 +65,23 @@ export class PersonaFormComponent implements OnInit {
   sexos = [{ v: 'MASCULINO', l: 'Masculino' }, { v: 'FEMENINO', l: 'Femenino' }];
   estadosCiviles = [{ v: 'SOLTERO', l: 'Soltero' }, { v: 'CASADO', l: 'Casado' }, {v: 'DIVORCIADO', l: 'Divorciado'}, {v: 'UNION LIBRE', l:'Unión Libre'},{ v: 'VIUDO', l: 'Viudo' },];
   tiposEmpleado = [{ v: 'EMPLEADO', l: 'Empleado' }, { v: 'OBRERO', l: 'Obrero o Eventual' }, { v: 'OPERADOR', l: 'Operador' }];
-  regiones = ['SIERRA', 'COSTA'];
-  unidadesNegocio = ['SEGURIDAD FISICA', 'SEGURIDAD DE CARGA'];
-  perfiles = ['SENSIBLE', 'RIGIDO', 'INDUSTRIAL', 'CUSTODIA', 'OTROS'];
+  regiones = [{ v: 'SIERRA', l: 'Sierra' }, { v: 'COSTA', l: 'Costa' }];
+  unidadesNegocio = [
+    { v: 'SEGURIDAD FISICA', l: 'Seguridad Física' },
+    { v: 'SEGURIDAD DE CARGA', l: 'Seguridad de Carga' },
+  ];
+  perfiles = [
+    { v: 'SENSIBLE', l: 'Sensible' }, { v: 'RIGIDO', l: 'Rígido' }, { v: 'INDUSTRIAL', l: 'Industrial' },
+    { v: 'CUSTODIA', l: 'Custodia' }, { v: 'OTROS', l: 'Otros' },
+  ];
   nacionalidades = ['Ecuatoriana', 'Extranjero', 'Otros'];
-  formasPago = ['MENSUAL', 'QUINCENAL', 'SEMANAL'];
+  formasPago = [
+    { v: 'MENSUAL', l: 'Mensual' }, { v: 'QUINCENAL', l: 'Quincenal' }, { v: 'SEMANAL', l: 'Semanal' },
+  ];
   motivosSalida = [
-    'RENUNCIA VOLUNTARIA', 'DESPIDO', 'VISTO BUENO',
-    'TERMINACIÓN DE CONTRATO', 'PROBLEMAS FAMILIARES', 'MEJOR PROPUESTA DE TRABAJO',
+    { v: 'RENUNCIA VOLUNTARIA', l: 'Renuncia Voluntaria' }, { v: 'DESPIDO', l: 'Despido' },
+    { v: 'VISTO BUENO', l: 'Visto Bueno' }, { v: 'TERMINACIÓN DE CONTRATO', l: 'Terminación de Contrato' },
+    { v: 'PROBLEMAS FAMILIARES', l: 'Problemas Familiares' }, { v: 'MEJOR PROPUESTA DE TRABAJO', l: 'Mejor Propuesta de Trabajo' },
   ];
   bancos = [
     'Banco Pichincha', 'Banco del Pacífico', 'Banco Guayaquil', 'Produbanco',
@@ -87,19 +96,19 @@ export class PersonaFormComponent implements OnInit {
   private initialCantonName: string | null = null;
   private initialProvinciaName: string | null = null;
   private initialParroquia: string | null = null;
-  tipos: Persona['tipo'][] = [
-    'FIJOS',
-    'RETEN',
-    'CUSTODIO',
-    'EVENTUAL',
-    'SACAFRANCO',
-    'SACAVACACIONES',
-    'SUPERVISOR ZONAL',
-    'SUPERVISOR EVENTUAL',
-    'SUPERVISOR MOTORIZADO',
-    'SUPERVISOR DE ACOMPAÑAMIENTO',
-    'OPERADOR CENTRO CONTROL',
-    'SUPERVISOR CENTRO CONTROL',
+  tipos: { v: Persona['tipo']; l: string }[] = [
+    { v: 'FIJOS', l: 'Fijos' },
+    { v: 'RETEN', l: 'Retén' },
+    { v: 'CUSTODIO', l: 'Custodio' },
+    { v: 'EVENTUAL', l: 'Eventual' },
+    { v: 'SACAFRANCO', l: 'Sacafranco' },
+    { v: 'SACAVACACIONES', l: 'Sacavacaciones' },
+    { v: 'SUPERVISOR ZONAL', l: 'Supervisor Zonal' },
+    { v: 'SUPERVISOR EVENTUAL', l: 'Supervisor Eventual' },
+    { v: 'SUPERVISOR MOTORIZADO', l: 'Supervisor Motorizado' },
+    { v: 'SUPERVISOR DE ACOMPAÑAMIENTO', l: 'Supervisor de Acompañamiento' },
+    { v: 'OPERADOR CENTRO CONTROL', l: 'Operador Centro Control' },
+    { v: 'SUPERVISOR CENTRO CONTROL', l: 'Supervisor Centro Control' },
   ];
 
   constructor(
