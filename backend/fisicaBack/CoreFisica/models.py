@@ -91,7 +91,12 @@ class Cliente(models.Model):
     valor_puesto = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # Valor Puesto
     forma_pago = models.CharField(max_length=40, blank=True, default='')        # Forma de Pago (select pendiente)
     origen_ingreso = models.CharField(max_length=60, blank=True, default='')    # Origen Ingresos (select pendiente)
-    zona = models.CharField(max_length=80, blank=True, default='')              # Zona (select pendiente)
+    ZONA_CHOICES = [
+        ('Seguridad Física', 'Seguridad Física'),
+        ('Seguridad Electrónica', 'Seguridad Electrónica'),
+        ('Seguridad de Carga', 'Seguridad de Carga'),
+    ]
+    zona = models.CharField(max_length=80, choices=ZONA_CHOICES, blank=True, default='')   # Zona
     requiere_correo = models.BooleanField(default=False)                        # Require correo (S/N)
     controla_factura_reverso = models.BooleanField(default=False)              # Controla Factura Reverso
 
