@@ -384,18 +384,18 @@ class ActiveManager(models.Manager):
 
 class Persona(models.Model):
     TIPO_CHOICES = [
-        ('FIJOS', 'FIJOS'),
-        ('RETEN', 'RETEN'),
-        ('CUSTODIO', 'CUSTODIO'),
-        ('EVENTUAL', 'EVENTUAL'),
-        ('SACAFRANCO', 'SACAFRANCO'),
-        ('SACAVACACIONES', 'SACAVACACIONES'),
-        ('SUPERVISOR ZONAL', 'SUPERVISOR ZONAL'),
-        ('SUPERVISOR EVENTUAL', 'SUPERVISOR EVENTUAL'),
-        ('SUPERVISOR MOTORIZADO', 'SUPERVISOR MOTORIZADO'),
-        ('SUPERVISOR DE ACOMPAÑAMIENTO', 'SUPERVISOR DE ACOMPAÑAMIENTO'),
-        ('OPERADOR CENTRO CONTROL', 'OPERADOR CENTRO CONTROL'),
-        ('SUPERVISOR CENTRO CONTROL', 'SUPERVISOR CENTRO CONTROL'),
+        ('FIJOS', 'Fijos'),
+        ('RETEN', 'Retén'),
+        ('CUSTODIO', 'Custodio'),
+        ('EVENTUAL', 'Eventual'),
+        ('SACAFRANCO', 'Sacafranco'),
+        ('SACAVACACIONES', 'Sacavacaciones'),
+        ('SUPERVISOR ZONAL', 'Supervisor Zonal'),
+        ('SUPERVISOR EVENTUAL', 'Supervisor Eventual'),
+        ('SUPERVISOR MOTORIZADO', 'Supervisor Motorizado'),
+        ('SUPERVISOR DE ACOMPAÑAMIENTO', 'Supervisor de Acompañamiento'),
+        ('OPERADOR CENTRO CONTROL', 'Operador Centro Control'),
+        ('SUPERVISOR CENTRO CONTROL', 'Supervisor Centro Control'),
     ]
 
     SEXO_CHOICES = [
@@ -446,6 +446,16 @@ class Persona(models.Model):
         ('Otros', 'Otros'),
     ]
 
+    UNIDAD_NEGOCIO_CHOICES = [
+        ('SEGURIDAD FISICA', 'Seguridad Física'),
+        ('SEGURIDAD DE CARGA', 'Seguridad de Carga'),
+    ]
+
+    REGION_CHOICES = [
+        ('SIERRA', 'Sierra'),
+        ('COSTA', 'Costa'),
+    ]
+
     tipo = models.CharField(null=True, max_length=28, choices=TIPO_CHOICES)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
@@ -476,7 +486,7 @@ class Persona(models.Model):
     conyuge = models.CharField(max_length=150, blank=True, default='')
     nacionalidad = models.CharField(max_length=40, blank=True, default='', choices=NACIONALIDAD_CHOICES)
     cliente = models.ForeignKey(Cliente, null=True, blank=True, on_delete=models.SET_NULL, related_name='empleados')
-    unidad_negocio = models.CharField(max_length=60, blank=True, default='')
+    unidad_negocio = models.CharField(max_length=60, blank=True, default='', choices=UNIDAD_NEGOCIO_CHOICES)
     tipo_empleado = models.CharField(max_length=20, blank=True, default='', choices=TIPO_EMPLEADO_CHOICES)
     forma_pago = models.CharField(max_length=20, blank=True, default='', choices=FORMA_PAGO_CHOICES)
     numero_afiliacion = models.CharField(max_length=30, blank=True, default='')
@@ -485,7 +495,7 @@ class Persona(models.Model):
     perfil = models.CharField(max_length=60, blank=True, default='', choices=PERFIL_CHOICES)
     fecha_pago_liquidacion = models.DateField(null=True, blank=True)
     motivo_salida = models.CharField(max_length=120, blank=True, default='', choices=MOTIVO_SALIDA_CHOICES)
-    region = models.CharField(max_length=60, blank=True, default='')
+    region = models.CharField(max_length=60, blank=True, default='', choices=REGION_CHOICES)
     gypaseg = models.BooleanField(default=False)
     affis = models.BooleanField(default=False)
     pbip = models.BooleanField(default=False)
