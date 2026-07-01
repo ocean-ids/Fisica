@@ -16,8 +16,8 @@
   </div>
 
   <div *ngFor="let s of secciones" class="mb-4">
-    <h5 class="text-primary border-bottom pb-1">{{ s.label }}</h5>
-    <table class="table table-bordered table-sm align-middle">
+    <h5 class="text-primary border-bottom pb-1 text-center">{{ s.label }}</h5>
+    <table class="table table-bordered table-sm align-middle text-center">
       <thead class="table-light">
         <tr>
           <th style="width:40px">Nº</th>
@@ -33,7 +33,7 @@
           <td [attr.colspan]="s.cols.length + 1" class="text-center text-muted">Sin registros.</td>
         </tr>
         <tr *ngIf="s.total && filasDe(s.key).length" class="fw-bold table-light">
-          <td [attr.colspan]="s.cols.length" class="text-end">Total</td>
+          <td [attr.colspan]="s.cols.length">Total</td>
           <td>{{ totalValor(s.key).toFixed(2) }}</td>
         </tr>
       </tbody>

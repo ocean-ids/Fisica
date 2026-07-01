@@ -20,7 +20,7 @@ export class ReporteGuardiaComponent implements OnInit {
   readonly etiquetas: Record<string, string> = {
     cliente: 'Cliente',
     puesto: 'Puesto',
-    persona_nombre: '1 Nombre y 2 Apellidos',
+    persona_nombre: ' Nombre y Apellidos',
     proviene: 'Proviene',
     valor: 'Valor',
     tipo: 'Tipo',
