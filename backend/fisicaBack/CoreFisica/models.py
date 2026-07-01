@@ -1163,6 +1163,58 @@ class ConsolidadoResumen(models.Model):
         indexes = [models.Index(fields=['fecha', 'turno'])]
 
 
+
+class ReporteGuardia(models.Model):
+    """Una fila capturada del FR REPORTE DE GUARDIA (por fecha + turno + sección)."""
+    SECCIONES = [
+        ('DOBLADAS', 'Dobladas'),
+        ('ADICIONALES', 'Adicionales'),
+        ('ADELANTOS', 'Adelantos'),
+        ('NO_CUBIERTOS', 'No cubiertos'),
+        ('FALTOS', 'Faltos'),
+        ('HUECA', 'Hueca'),
+        ('APOYO', 'Apoyo'),
+    ]
+    TURNOS = [('Diurno', 'Diurno'), ('Nocturno', 'Nocturno')]
+
+    fecha = models.DateField(db_index=True)
+    turno = models.CharField(max_length=10, choices=TURNOS, db_index=True)
+    seccion = models.CharField(max_length=15, choices=SECCIONES, db_index=True)
+
+    # Columnas comunes
+    cliente = models.CharField(max_length=120, blank=True, default='')
+    puesto = models.CharField(max_length=160, blank=True, default='')
+    persona_nombre = models.CharField(max_length=160, blank=True, default='')   # "1 NOMBRE Y 2 APELLIDOS"
+    persona_ref = models.ForeignKey('Persona', on_delete=models.SET_NULL, null=True, blank=True, related_name='reporte_guardia')
+    reporte_asistencia = models.ForeignKey('ReporteAsistencia', on_delete=models.SET_NULL, null=True, blank=True, related_name='reporte_guardia')
+    auto = models.BooleanField(default=False)
+
+    # PROVIENE = tipo de la persona (se autocompleta al elegir la persona)
+    proviene = models.CharField(max_length=40, blank=True, default='')
+
+    # Columnas que aparecen según la sección
+    valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)   # Dobladas
+    tipo = models.CharField(max_length=40, blank=True, default='')            # Adelantos
+    autorizacion = models.CharField(max_length=120, blank=True, default='')   # No cubiertos
+    motivo = models.CharField(max_length=200, blank=True, default='')         # Faltos/Hueca/No cubiertos/Apoyo
+    fecha_evento = models.DateField(null=True, blank=True)                    # columna FECHA de Hueca
+
+    orden = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        # Autocompletar PROVIENE con el tipo de la persona si está enlazada y no se especificó.
+        if self.persona_ref_id and not self.proviene:
+            self.proviene = str(getattr(self.persona_ref, 'tipo', '') or '')
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ['fecha', 'turno', 'seccion', 'orden', 'id']
+        indexes = [models.Index(fields=['fecha', 'turno', 'seccion'])]
+
+    
+
 class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     photo = models.ImageField(upload_to='user_photos/', null=True, blank=True)

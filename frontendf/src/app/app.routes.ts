@@ -13,7 +13,7 @@ import { AsignacionesComponent } from './pages/asignaciones/asignaciones.compone
 import { AsignacionCalendarioComponent } from './pages/asignacion-calendario/asignacion-calendario.component';
 import { ReporteAsistenciaComponent } from './pages/reporte-asistencia/reporte-asistencia.component';
 import { ConsolidadoComponent } from './pages/consolidado/consolidado.component';
-
+import { ReporteGuardiaComponent } from './pages/reporte-guardia/reporte-guardia.component';
 
 export const routes: Routes = [
   {path: '', component: LoginComponent},
@@ -34,7 +34,7 @@ export const routes: Routes = [
       { path: 'asignaciones', component: AsignacionesComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_asignacion' }},
       { path: 'reporte-asistencia', component: ReporteAsistenciaComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteasistencia' }},
       { path: 'consolidado', component: ConsolidadoComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_consolidado' }},
-    
+      { path: 'reporte-guardia', component: ReporteGuardiaComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia' }},
     ]
   },
   { path: '**', redirectTo: ''}
