@@ -994,8 +994,10 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
     Puede generar 2 filas (titular faltó + reemplazo cubrió). Idempotente por reporte+fecha."""
     from ..models import ReporteGuardia
 
-    # Quitar filas auto previas de este reporte en esta fecha (reflejar cambios / evitar duplicados).
-    ReporteGuardia.objects.filter(reporte_asistencia=override, fecha=fecha_reporte, auto=True).delete()
+    # Quitar TODAS las filas auto previas de este reporte (cualquier fecha) para reflejar
+    # cambios y no dejar huérfanos si cambió la fecha del reporte. El ReporteAsistencia
+    # tiene una sola fecha_reporte vigente, así que solo debe existir la de la fecha actual.
+    ReporteGuardia.objects.filter(reporte_asistencia=override, auto=True).delete()
     if not fecha_reporte:
         return
 
