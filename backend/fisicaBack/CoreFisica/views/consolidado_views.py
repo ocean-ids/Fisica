@@ -153,6 +153,7 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
             'nombres': '',
             'cedula': row.get('cedula') or '',
             'estado': row.get('estado') or '',
+            'reemplazo': row.get('reemplazo') or '',
             'observacion': cons.observacion if cons else '',
             'zona': (row.get('zona_titulo') or 'SIN ZONA').strip(),
             'provincia': (row.get('provincia') or 'SIN PROVINCIA').strip()

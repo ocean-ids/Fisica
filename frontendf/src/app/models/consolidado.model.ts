@@ -12,6 +12,7 @@ export interface ConsolidadoRow {
   apellidos?: string;
   nombres?: string;
   estado?: string;
+  reemplazo?: string;
   observacion?: string;
   zona?: string;
 }
