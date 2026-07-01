@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.db import transaction
 from django.core.validators import RegexValidator
 from .utils import parse_input
-from .models import Asignacion, AsignacionSemanal, Instalacion, Persona, Provincia, Puesto, PuestoHorario, PatronAsignacion, SacafrancoFila, SacafrancoFilaSemanal
+from .models import Asignacion, AsignacionSemanal, Instalacion, Persona, Provincia, Puesto, PuestoHorario, PatronAsignacion, SacafrancoFila, SacafrancoFilaSemanal, ReporteGuardia
 
 
 class PatronAsignacionSerializer(serializers.ModelSerializer):
@@ -374,10 +374,17 @@ class PuestoSerializer(serializers.ModelSerializer):
                         horas=h.get('horas') if h.get('horas') is not None else 12,
                         turno=h.get('turno', 'Diurno')
                     )
-            
+ 
             try:
                 instance.sync_from_horarios()
                 instance.save()
             except Exception:
                 pass
         return instance
+
+class ReporteGuardiaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReporteGuardia
+        fields = '__all__'
+        read_only_fields = ('created_at', 'updated_at', 'proviene')
+        # proviene se autocompleta en el save() del modelo desde persona_ref.tipo

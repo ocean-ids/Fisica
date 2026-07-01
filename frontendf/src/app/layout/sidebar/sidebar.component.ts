@@ -19,6 +19,7 @@ export class SidebarComponent implements OnInit {
     { path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'assignment_ind', permission: 'CoreFisica.view_asignacion' },
     { path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'how_to_reg', permission: 'CoreFisica.view_reporteasistencia' },
     { path: '/dashboard/consolidado', label: 'Consolidado', icon: 'assignment', permission: 'CoreFisica.view_consolidado' },
+    { path: '/dashboard/reporte-guardia', label: 'Reporte Guardia', icon: 'summarize', permission: 'CoreFisica.view_reporteguardia' }
   ];
 
   fullName = '';

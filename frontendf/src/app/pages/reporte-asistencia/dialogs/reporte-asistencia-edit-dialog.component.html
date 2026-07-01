@@ -56,8 +56,9 @@
       >
         <mat-option [value]="null">Sin reemplazo</mat-option>
         <mat-option *ngFor="let p of getReemplazosFiltrados()" [value]="p" [disabled]="esReemplazoOcupado(p)">
-          {{ getNombrePersona(p) }} - {{ p.tipo }}
-          <span [style.color]="esReemplazoOcupado(p) ? '#dc3545' : '#198754'" style="font-size:11px; font-weight:600;">· {{ estadoReemplazo(p) }}</span>
+          {{ getNombrePersona(p) }}
+          <span style="display:inline-block; font-size:10px; font-weight:700; padding:1px 7px; border-radius:10px; background:#eef2ff; color:#4338ca; margin-left:4px;">{{ p.tipo }}</span>
+          <span [style.color]="esReemplazoOcupado(p) ? '#dc3545' : '#198754'" style="font-size:11px; font-weight:600; margin-left:4px;">· {{ estadoReemplazo(p) }}</span>
         </mat-option>
         <mat-option disabled *ngIf="!getReemplazosFiltrados().length">Sin coincidencias</mat-option>
       </mat-autocomplete>

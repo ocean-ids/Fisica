@@ -21,6 +21,11 @@ from .views.consolidado_views import obtener_consolidado, crear_consolidado, act
 from .views.vista_canton_views import vistas_cantones
 from .views.novedad_puesto_views import obtener_novedades, crear_novedad, actualizar_novedad, eliminar_novedad, exportar_novedades_excel
 from .views.sync_views import sincronizar_empleado
+from .views.reporte_guardia_views import (
+    listar_reporte_guardia, crear_reporte_guardia,
+    actualizar_reporte_guardia, eliminar_reporte_guardia,
+)
+
 
 
 urlpatterns = [
@@ -119,6 +124,10 @@ urlpatterns = [
     path('reporte-asistencia/<int:asignacion_id>/historial/', historial_reporte_asistencia, name='reporte-asistencia-historial'),
     path('reporte-asistencia/exportar-excel/', exportar_reporte_asistencia_excel, name='reporte-asistencia-excel'),
     path('reporte-asistencia/exportar-pdf/', exportar_reporte_asistencia_pdf, name='reporte-asistencia-pdf'),
+    path('reporte-guardia/', listar_reporte_guardia, name='reporte-guardia'),
+    path('reporte-guardia/crear/', crear_reporte_guardia, name='reporte-guardia-crear'),
+    path('reporte-guardia/<int:id>/', actualizar_reporte_guardia, name='reporte-guardia-actualizar'),
+    path('reporte-guardia/<int:id>/eliminar/', eliminar_reporte_guardia, name='reporte-guardia-eliminar'),
     path('consolidado/', obtener_consolidado),
     path('consolidado/armado/', obtener_consolidado_armado),
     path('consolidado/resumen/', obtener_consolidado_resumen),
@@ -133,7 +142,6 @@ urlpatterns = [
     path('novedades-puesto/<int:id>/', actualizar_novedad),
     path('novedades-puesto/<int:id>/eliminar/', eliminar_novedad),
     path('novedades-puesto/exportar-excel/', exportar_novedades_excel),
-    
 
 ]
 

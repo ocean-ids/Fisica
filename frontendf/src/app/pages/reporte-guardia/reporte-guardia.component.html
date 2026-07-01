@@ -1,0 +1,42 @@
+<div class="container-fluid px-0">
+  <h3 class="mb-3 text-center">Reporte de Guardia</h3>
+
+  <div class="d-flex align-items-center mb-3">
+    <div class="flex-grow-1" style="flex-basis:0;">
+      <input type="date" lang="es" class="form-control form-control-sm w-auto"
+             [value]="filtroFecha" (change)="onFechaChange($event)">
+    </div>
+    <div class="flex-grow-1 d-flex justify-content-center" style="flex-basis:0;">
+      <mat-button-toggle-group [(ngModel)]="filtroTurno" (change)="cargar()" aria-label="Turno">
+        <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
+        <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+    <div class="flex-grow-1" style="flex-basis:0;"></div>
+  </div>
+
+  <div *ngFor="let s of secciones" class="mb-4">
+    <h5 class="text-primary border-bottom pb-1">{{ s.label }}</h5>
+    <table class="table table-bordered table-sm align-middle">
+      <thead class="table-light">
+        <tr>
+          <th style="width:40px">Nº</th>
+          <th *ngFor="let c of s.cols">{{ etiquetas[c] }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let f of filasDe(s.key); let i = index">
+          <td>{{ i + 1 }}</td>
+          <td *ngFor="let c of s.cols">{{ celda(f, c) }}</td>
+        </tr>
+        <tr *ngIf="!filasDe(s.key).length">
+          <td [attr.colspan]="s.cols.length + 1" class="text-center text-muted">Sin registros.</td>
+        </tr>
+        <tr *ngIf="s.total && filasDe(s.key).length" class="fw-bold table-light">
+          <td [attr.colspan]="s.cols.length" class="text-end">Total</td>
+          <td>{{ totalValor(s.key).toFixed(2) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

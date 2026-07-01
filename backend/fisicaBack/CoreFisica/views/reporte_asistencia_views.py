@@ -987,6 +987,63 @@ def listar_descripciones_reporte(request):
     return JsonResponse(list(descripciones), safe=False, status=status.HTTP_200_OK)
 
 
+def _sync_reporte_guardia(override, asignacion, fecha_reporte):
+    """Refleja el registro de asistencia en el REPORTE DE GUARDIA.
+    - Titular que FALTÓ -> Faltos.
+    - Reemplazo según su estado -> Dobladas/Adicionales/Adelantos (con SU tipo en 'proviene').
+    Puede generar 2 filas (titular faltó + reemplazo cubrió). Idempotente por reporte+fecha."""
+    from ..models import ReporteGuardia
+
+    # Quitar filas auto previas de este reporte en esta fecha (reflejar cambios / evitar duplicados).
+    ReporteGuardia.objects.filter(reporte_asistencia=override, fecha=fecha_reporte, auto=True).delete()
+    if not fecha_reporte:
+        return
+
+    # Turno desde el calendario D/N de esa fecha.
+    letra = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id)
+    turno = 'Diurno' if letra == 'D' else ('Nocturno' if letra == 'N' else '')
+    if turno not in ('Diurno', 'Nocturno'):
+        return
+
+    cliente = getattr(asignacion.cliente, 'nombre_comercial', '') or ''
+    puesto = getattr(asignacion.puesto, 'nombre', '') or ''
+
+    def _nombre(p):
+        return f"{p.nombres} {p.apellidos}".strip() if p else ''
+
+    # (seccion, persona, motivo) — se crean todas las que apliquen.
+    filas = []
+
+    # 1) Titular que faltó -> Faltos.
+    if (override.estado_asistencia or '').upper() == 'FALTO':
+        filas.append(('FALTOS', asignacion.persona, 'FALTO'))
+
+    # 2) Reemplazo según su estado -> sección correspondiente (acepta DOBLA y DOBLADO).
+    estado = (override.estado or '').upper()
+    mapa = {
+        'DOBLA': 'DOBLADAS', 'DOBLADO': 'DOBLADAS',
+        'ADICIONAL': 'ADICIONALES',
+        'ADEL/TURNO': 'ADELANTOS',
+    }
+    seccion_reemplazo = mapa.get(estado)
+    if seccion_reemplazo and override.reemplazo:
+        filas.append((seccion_reemplazo, override.reemplazo, ''))
+
+    for seccion, persona, motivo in filas:
+        ReporteGuardia.objects.create(
+            fecha=fecha_reporte,
+            turno=turno,
+            seccion=seccion,
+            cliente=cliente,
+            puesto=puesto,
+            persona_nombre=_nombre(persona),
+            persona_ref=persona,          # 'proviene' se autocompleta con persona.tipo en el save()
+            reporte_asistencia=override,
+            auto=True,
+            motivo=motivo,
+        )
+
+
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def insertar_reporte_asistencia(request, asignacion_id):
@@ -1055,6 +1112,12 @@ def insertar_reporte_asistencia(request, asignacion_id):
             descripcion=override.descripcion,
             row_color=override.row_color
         )
+    except Exception:
+        pass
+
+    # Reflejar en el reporte de guardia según el estado/asistencia.
+    try:
+        _sync_reporte_guardia(override, asignacion, override.fecha_reporte)
     except Exception:
         pass
 
