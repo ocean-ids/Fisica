@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggle, MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -6,6 +6,10 @@ import { ReporteGuardiaService } from '../../services/reporte-guardia.service';
 import { ReporteGuardia } from '../../models/reporte-guardia.model';
 import { MatDialog } from '@angular/material/dialog';
 import { ReporteGuardiaEditDialogComponent } from './reporte-guardia-edit-dialog/reporte-guardia-edit-dialog.component';
+import { GlobalFilterStateService } from '../../services/global-filter-state.service';
+import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { map, distinctUntilChanged, debounceTime } from 'rxjs/operators';
 
 @Component({
   selector: 'app-reporte-guardia',
@@ -13,11 +17,12 @@ import { ReporteGuardiaEditDialogComponent } from './reporte-guardia-edit-dialog
   templateUrl: './reporte-guardia.component.html',
   styleUrl: './reporte-guardia.component.css',
 })
-export class ReporteGuardiaComponent implements OnInit {
-  filtroFecha = new Date().toISOString().slice(0, 10);   // día/mes/año
-  filtroTurno: 'Diurno' | 'Nocturno' = 'Diurno';
+export class ReporteGuardiaComponent implements OnInit, OnDestroy {
+  filtroFecha = localStorage.getItem('rg_fecha') || new Date().toISOString().slice(0, 10);
+  filtroTurno: 'Diurno' | 'Nocturno' = localStorage.getItem('rg_turno') === 'Nocturno' ? 'Nocturno' : 'Diurno';
   loading = false;
   filas: ReporteGuardia[] = [];
+  busqueda = '';
 
   readonly etiquetas: Record<string, string> = {
     cliente: 'Cliente',
@@ -68,13 +73,41 @@ export class ReporteGuardiaComponent implements OnInit {
   }
 
 
-  constructor(private srv: ReporteGuardiaService, private dialog: MatDialog){}
+  private filterSub?: Subscription;
+
+  constructor(
+    private srv: ReporteGuardiaService,
+    private dialog: MatDialog,
+    private globalFilter: GlobalFilterStateService,
+    private router: Router,
+  ){}
 
   ngOnInit(): void {
     this.cargar();
+
+    // Buscador global del navbar: filtra en vivo las filas ya cargadas.
+    this.filterSub = this.globalFilter.state$.pipe(
+      map(state => {
+        if (!this.router.url.startsWith('/dashboard/reporte-guardia')) return null;
+        const route = (state?.route || '').toString();
+        if (route && !route.startsWith('/dashboard/reporte-guardia')) return null;
+        return (state?.query || '').trim();
+      }),
+      distinctUntilChanged(),
+      debounceTime(300),
+    ).subscribe(query => {
+      if (query === null) return;
+      this.busqueda = query;
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.filterSub?.unsubscribe();
   }
 
   cargar(): void {
+    localStorage.setItem('rg_turno', this.filtroTurno);
+    localStorage.setItem('rg_fecha', this.filtroFecha);
     this.loading = true;
     this.srv.listar(this.filtroFecha, this.filtroTurno).subscribe({
       next: (rows) => { this.filas = rows || []; this.loading = false; },
@@ -82,10 +115,20 @@ export class ReporteGuardiaComponent implements OnInit {
     });
   }
 
+
   onFechaChange(e: Event): void{
     this.filtroFecha = (e.target as HTMLInputElement).value;
     this.cargar()
   }
 
-  filasDe(seccion: string): ReporteGuardia[] { return this.filas.filter(f => f.seccion === seccion); }
+  filasDe(seccion: string): ReporteGuardia[] {
+    const q = this.busqueda.trim().toLowerCase();
+    return this.filas.filter(f => {
+      if (f.seccion !== seccion) { return false; }
+      if (!q) { return true; }
+      return [f.cliente, f.puesto, f.persona_nombre, f.proviene, f.motivo, f.tipo, f.autorizacion]
+        .some(v => (v || '').toString().toLowerCase().includes(q));
+    });
+  }
+
 }
