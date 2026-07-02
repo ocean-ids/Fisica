@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonToggle, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ReporteGuardiaService } from '../../services/reporte-guardia.service';
 import { ReporteGuardia } from '../../models/reporte-guardia.model';
+import { MatDialog } from '@angular/material/dialog';
+import { ReporteGuardiaEditDialogComponent } from './reporte-guardia-edit-dialog/reporte-guardia-edit-dialog.component';
 
 @Component({
   selector: 'app-reporte-guardia',
@@ -49,7 +51,24 @@ export class ReporteGuardiaComponent implements OnInit {
     return this.filasDe(key).reduce((s, f) => s + Number(f.valor || 0), 0);
   }
 
-  constructor(private srv: ReporteGuardiaService){}
+  editarMotivo(f: ReporteGuardia): void {
+    if (!f.id) { return; }
+    const ref = this.dialog.open(ReporteGuardiaEditDialogComponent, {
+      width: '640px',
+      maxWidth: '95vw',
+      data: { ...f },
+    });
+    ref.afterClosed().subscribe((res) => {
+      if (!res) { return; }
+      this.srv.actualizar(f.id!, { motivo: res.motivo }).subscribe({
+        next: () => { f.motivo = res.motivo; },
+        error: () => { this.cargar(); },
+      });
+    });
+  }
+
+
+  constructor(private srv: ReporteGuardiaService, private dialog: MatDialog){}
 
   ngOnInit(): void {
     this.cargar();

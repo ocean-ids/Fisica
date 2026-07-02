@@ -16,7 +16,7 @@
   </div>
 
   <div *ngFor="let s of secciones" class="mb-4">
-    <h5 class="text-primary border-bottom pb-1 text-center">{{ s.label }}</h5>
+    <h5 class="border-bottom pb-1 text-center fw-bold">{{ s.label }}</h5>
     <table class="table table-bordered table-sm align-middle text-center">
       <thead class="table-light">
         <tr>
@@ -27,7 +27,16 @@
       <tbody>
         <tr *ngFor="let f of filasDe(s.key); let i = index">
           <td>{{ i + 1 }}</td>
-          <td *ngFor="let c of s.cols">{{ celda(f, c) }}</td>
+          <td *ngFor="let c of s.cols">
+            <ng-container *ngIf="c === 'motivo'; else texto">
+              {{ f.motivo || '-' }}
+              <button type="button" class="btn btn-sm btn-link p-0 ms-1"
+                      (click)="editarMotivo(f)" title="Editar motivo">
+                <i class="bi bi-pencil"></i>
+              </button>
+            </ng-container>
+            <ng-template #texto>{{ celda(f, c) }}</ng-template>
+          </td>
         </tr>
         <tr *ngIf="!filasDe(s.key).length">
           <td [attr.colspan]="s.cols.length + 1" class="text-center text-muted">Sin registros.</td>

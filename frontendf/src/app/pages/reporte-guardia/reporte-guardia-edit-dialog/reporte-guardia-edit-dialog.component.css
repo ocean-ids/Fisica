@@ -1,0 +1,20 @@
+mat-dialog-content { min-width: 520px; max-width: 640px; }
+
+.rg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 18px;
+  margin-bottom: 10px;
+}
+.rg-f { display: flex; flex-direction: column; }
+.rg-f > label { color: #15438c; font-weight: 600; font-size: 11px; }
+.rg-f > span { font-size: 13px; color: #0f172a; border-bottom: 1px solid #eef1f5; padding: 2px 0; min-height: 20px; }
+.rg-col2 { grid-column: span 2; }
+
+.rg-motivo { width: 100%; }
+
+@media (max-width: 600px) {
+  mat-dialog-content { min-width: 0; }
+  .rg-grid { grid-template-columns: 1fr; }
+  .rg-col2 { grid-column: auto; }
+}
