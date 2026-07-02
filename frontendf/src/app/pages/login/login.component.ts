@@ -14,6 +14,7 @@ import Swal from 'sweetalert2';
 export class LoginComponent implements OnInit, OnDestroy {
   username: string = '';
   password: string = '';
+  showPassword = false;
   isLoading: boolean = false;
   activeImageIndex = 0;
   isFading = false;
