@@ -49,7 +49,14 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
   celda(f: any, campo: string): string {
     const v = f?.[campo];
     if (campo === 'valor') return v ? Number(v).toFixed(2) : '';
+    if (campo === 'fecha_evento' || campo === 'fecha') return this.fechaDMA(v);
     return v ?? '';
+  }
+
+  private fechaDMA(v: any): string {
+    if (!v) return '';
+    const [y, m, d] = String(v).slice(0, 10).split('-');
+    return (y && m && d) ? `${d}/${m}/${y}` : String(v);
   }
 
   totalValor(key: string): number {
