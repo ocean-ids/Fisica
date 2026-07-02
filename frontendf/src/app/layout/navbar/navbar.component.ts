@@ -22,6 +22,7 @@ import { VacantesModalComponent } from './vacantes-modal.component';
 })
 export class NavbarComponent implements OnInit {
   @Input() username?: string;
+  @Input() sidebarVisible = true;
   @Output() toggleSidebar = new EventEmitter<void>();
   fullName: string = '';
   photoUrl: string | null = null;
