@@ -65,10 +65,12 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
 
   editarMotivo(f: ReporteGuardia): void {
     if (!f.id) { return; }
+    const sec = this.secciones.find(s => s.key === f.seccion);
+    const campos = (sec?.cols || []).filter(c => c !== 'motivo');
     const ref = this.dialog.open(ReporteGuardiaEditDialogComponent, {
       width: '640px',
       maxWidth: '95vw',
-      data: { ...f },
+      data: { row: { ...f }, campos, etiquetas: this.etiquetas },
     });
     ref.afterClosed().subscribe((res) => {
       if (!res) { return; }

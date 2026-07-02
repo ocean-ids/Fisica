@@ -1,18 +1,12 @@
 <h2 mat-dialog-title>Editar registro — {{ row.seccion }}</h2>
 
 <mat-dialog-content>
-  <!-- Todos los campos en SOLO LECTURA -->
+  <!-- Solo los campos que usa esta sección, en SOLO LECTURA -->
   <div class="rg-grid">
-    <div class="rg-f"><label>Fecha</label><span>{{ row.fecha || '-' }}</span></div>
-    <div class="rg-f"><label>Turno</label><span>{{ row.turno || '-' }}</span></div>
-    <div class="rg-f rg-col2"><label>Cliente</label><span>{{ row.cliente || '-' }}</span></div>
-    <div class="rg-f rg-col2"><label>Puesto</label><span>{{ row.puesto || '-' }}</span></div>
-    <div class="rg-f rg-col2"><label>Nombre y Apellidos</label><span>{{ row.persona_nombre || '-' }}</span></div>
-    <div class="rg-f"><label>Proviene</label><span>{{ row.proviene || '-' }}</span></div>
-    <div class="rg-f"><label>Valor</label><span>{{ row.valor || '-' }}</span></div>
-    <div class="rg-f"><label>Tipo</label><span>{{ row.tipo || '-' }}</span></div>
-    <div class="rg-f"><label>Autorización</label><span>{{ row.autorizacion || '-' }}</span></div>
-    <div class="rg-f"><label>Fecha evento</label><span>{{ row.fecha_evento || '-' }}</span></div>
+    <div class="rg-f rg-col2" *ngFor="let c of campos">
+      <label>{{ etiquetas[c] || c }}</label>
+      <span>{{ mostrar(c) }}</span>
+    </div>
   </div>
 
   <!-- Único campo editable: Motivo -->
