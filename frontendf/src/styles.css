@@ -59,6 +59,12 @@ mat-toolbar,
   padding-right: 0 !important;
 }
 
+/* Título (header) de cada módulo en el azul oscuro corporativo (igual que el botón de login). */
+.main-content h2.text-center,
+.main-content h3.text-center {
+  color: #0c2f5a;
+}
+
 /* Superficies globales */
 body.theme-dark .card,
 body.theme-dark .card-body,
