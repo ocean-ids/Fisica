@@ -7,6 +7,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { ReporteGuardia } from '../../../models/reporte-guardia.model';
 
+interface DialogData {
+  row: ReporteGuardia;
+  campos: string[];                    // solo las columnas de esa sección (sin 'motivo')
+  etiquetas: Record<string, string>;
+}
+
 @Component({
   selector: 'app-reporte-guardia-edit-dialog',
   standalone: true,
@@ -18,13 +24,30 @@ import { ReporteGuardia } from '../../../models/reporte-guardia.model';
   styleUrl: './reporte-guardia-edit-dialog.component.css',
 })
 export class ReporteGuardiaEditDialogComponent {
+  row: ReporteGuardia;
+  campos: string[];
+  etiquetas: Record<string, string>;
   motivo: string;
 
   constructor(
     private dialogRef: MatDialogRef<ReporteGuardiaEditDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public row: ReporteGuardia,
+    @Inject(MAT_DIALOG_DATA) public data: DialogData,
   ) {
-    this.motivo = row.motivo || '';
+    this.row = data.row;
+    this.campos = data.campos || [];
+    this.etiquetas = data.etiquetas || {};
+    this.motivo = data.row.motivo || '';
+  }
+
+  mostrar(campo: string): string {
+    const v = (this.row as any)?.[campo];
+    if (campo === 'fecha_evento' || campo === 'fecha') {
+      if (!v) { return '-'; }
+      const [y, m, d] = String(v).slice(0, 10).split('-');
+      return (y && m && d) ? `${d}/${m}/${y}` : String(v);
+    }
+    if (campo === 'valor') { return v ? Number(v).toFixed(2) : '-'; }
+    return (v ?? '') === '' ? '-' : String(v);
   }
 
   guardar(): void {
