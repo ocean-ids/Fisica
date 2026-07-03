@@ -1018,7 +1018,6 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
 
     cliente = getattr(asignacion.cliente, 'nombre_comercial', '') or ''
     puesto = getattr(asignacion.puesto, 'nombre', '') or ''
-    instalacion = getattr(asignacion.instalacion, 'nombre', '') or ''
 
     def _nombre(p):
         return f"{p.nombres} {p.apellidos}".strip() if p else ''
@@ -1049,8 +1048,7 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
             cliente=cliente,
             puesto=puesto,
             persona_nombre=_nombre(persona),
-            persona_ref=persona,
-            proviene=instalacion,         # PROVIENE = nombre de la instalación
+            persona_ref=persona,          # 'proviene' se autocompleta con persona.tipo en el save()
             reporte_asistencia=override,
             auto=True,
             motivo=motivo,
