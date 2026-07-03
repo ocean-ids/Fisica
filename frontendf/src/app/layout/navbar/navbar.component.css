@@ -88,3 +88,34 @@ mat-toolbar {
   padding: 3px 4px;
   min-width: 14px;
 }
+
+/* Campana con notificación: anillo que palpita y se expande + latido del ícono */
+@keyframes notifRing {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0.55; }
+  70%  { opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+}
+@keyframes notifBeat {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.18); }
+}
+.notif-pulse { overflow: visible; }
+.notif-pulse::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.45);   /* indigo suave, como el efecto de la imagen */
+  transform: translate(-50%, -50%);
+  animation: notifRing 1.6s ease-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+.notif-pulse .notif-icon {
+  position: relative;
+  z-index: 1;
+  animation: notifBeat 1.6s ease-in-out infinite;
+}

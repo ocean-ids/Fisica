@@ -48,9 +48,10 @@
           type="button"
           mat-icon-button
           class="position-relative"
+          [class.notif-pulse]="vacantesCount > 0"
           (click)="abrirVacantes()"
           aria-label="Puestos sin persona">
-          <mat-icon>notifications_active</mat-icon>
+          <mat-icon class="notif-icon">notifications_active</mat-icon>
           @if (vacantesCount > 0) {
             <span class="position-absolute translate-middle badge rounded-pill bg-danger notif-badge">
               {{ vacantesCount }}
