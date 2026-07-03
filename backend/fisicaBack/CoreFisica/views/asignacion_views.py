@@ -2401,6 +2401,30 @@ def personas_asignadas(request, mes, anio):
     except (TypeError, ValueError):
         return Response({'error': 'mes o anio invalidos'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Si viene ?fecha=YYYY-MM-DD, se usa el calendario del día: quien está en FRANCO (F)
+    # ese día cuenta como DISPONIBLE (no ocupado), aunque tenga asignación en el mes.
+    fecha_str = request.GET.get('fecha')
+    fecha_obj = None
+    if fecha_str:
+        try:
+            fecha_obj = datetime.date.fromisoformat(str(fecha_str))
+        except ValueError:
+            fecha_obj = None
+
+    if fecha_obj:
+        from .reporte_asistencia_views import _calendar_dnf_for_date
+        asigs = Asignacion.objects.filter(
+            estado='ACTIVO', persona__isnull=False
+        ).filter(
+            Q(mes=fecha_obj.month, anio=fecha_obj.year) |
+            Q(fecha=fecha_obj) |
+            (Q(recurring=True) & Q(start_date__lte=fecha_obj) & (Q(end_date__isnull=True) | Q(end_date__gte=fecha_obj)))
+        ).exclude(end_date__isnull=False, end_date__lt=fecha_obj)
+        dnf = _calendar_dnf_for_date(fecha_obj)  # {asignacion_id: 'D'|'N'|'F'}
+        # Ocupada = tiene alguna asignación ese día que NO sea franco (D/N o sin letra).
+        ids = {a['persona_id'] for a in asigs.values('id', 'persona_id') if dnf.get(a['id']) != 'F'}
+        return JsonResponse({'persona_ids': list(ids)}, status=status.HTTP_200_OK)
+
     month_start = datetime.date(anio, mes, 1)
     if mes == 12:
         month_end = datetime.date(anio + 1, 1, 1) - datetime.timedelta(days=1)

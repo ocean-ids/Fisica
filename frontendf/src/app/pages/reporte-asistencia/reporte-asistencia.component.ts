@@ -399,7 +399,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     };
 
     if (Number.isFinite(mes) && Number.isFinite(anio)) {
-      this.asignacionService.obtenerPersonasAsignadas(mes, anio).subscribe({
+      // Pasar la fecha: quien está en FRANCO (F) ese día cuenta como disponible.
+      this.asignacionService.obtenerPersonasAsignadas(mes, anio, this.filtroFecha || undefined).subscribe({
         next: (ids) => abrir(ids || []),
         error: () => abrir([]),
       });
