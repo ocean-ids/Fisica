@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import { HttpParams } from '@angular/common/http';
 import { ApiService } from './api.service';
 import { Asignacion, SacafrancoFila } from '../models/asignacion.model';
 import { map } from 'rxjs/operators';
@@ -108,8 +109,10 @@ export class AsignacionService {
     return this.apiService.patch<SacafrancoFila>(`/sacafranco-filas/${id}/`, payload);
   }
 
-  obtenerPersonasAsignadas(mes: number, anio: number): Observable<number[]> {
-    return this.apiService.get<any>(`/personas-asignadas/${mes}/${anio}/`).pipe(
+  obtenerPersonasAsignadas(mes: number, anio: number, fecha?: string): Observable<number[]> {
+    let params = new HttpParams();
+    if (fecha) params = params.set('fecha', fecha);
+    return this.apiService.get<any>(`/personas-asignadas/${mes}/${anio}/`, params).pipe(
       map(response => (response?.persona_ids ?? []) as number[])
     );
   }
