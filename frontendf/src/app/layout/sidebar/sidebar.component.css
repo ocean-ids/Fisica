@@ -23,3 +23,11 @@
 .bg-color {
   background-color: #be9a57;
 }
+
+/* Iconos del menú: crecen suavemente al pasar el mouse */
+:host ::ng-deep mat-nav-list a[mat-list-item] mat-icon {
+  transition: transform 0.18s ease;
+}
+:host ::ng-deep mat-nav-list a[mat-list-item]:hover mat-icon {
+  transform: scale(1.28);
+}
