@@ -18,7 +18,7 @@ import { map, distinctUntilChanged, debounceTime } from 'rxjs/operators';
   styleUrl: './reporte-guardia.component.css',
 })
 export class ReporteGuardiaComponent implements OnInit, OnDestroy {
-  filtroFecha = localStorage.getItem('rg_fecha') || new Date().toISOString().slice(0, 10);
+  filtroFecha = new Date().toISOString().slice(0, 10);
   filtroTurno: 'Diurno' | 'Nocturno' = localStorage.getItem('rg_turno') === 'Nocturno' ? 'Nocturno' : 'Diurno';
   loading = false;
   filas: ReporteGuardia[] = [];
@@ -116,7 +116,6 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
 
   cargar(): void {
     localStorage.setItem('rg_turno', this.filtroTurno);
-    localStorage.setItem('rg_fecha', this.filtroFecha);
     this.loading = true;
     this.srv.listar(this.filtroFecha, this.filtroTurno).subscribe({
       next: (rows) => { this.filas = rows || []; this.loading = false; },
