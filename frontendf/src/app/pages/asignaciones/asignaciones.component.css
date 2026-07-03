@@ -451,8 +451,19 @@ table.table {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
 }
 
-.cdk-drag-preview {
-  display: none;
+/* Preview flotante al arrastrar: tarjeta "levantada" que sigue al cursor */
+.drag-lift-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 10px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 /* Botón "Fila" con menú desplegable (Asignación / Sacafranco) */

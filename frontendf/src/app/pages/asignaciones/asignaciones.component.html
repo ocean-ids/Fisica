@@ -143,6 +143,10 @@
                   [class.fila-puesto-cerrado]="row.asig.puesto_detalle?.activo === false"
                   class="text-center align-middle shared-row"
                   style="height: 70px;">
+                  <div *cdkDragPreview class="drag-lift-card">
+                    <i class="bi bi-arrows-move"></i>
+                    {{ row.asig.persona_detalle?.apellidos }} {{ row.asig.persona_detalle?.nombres }}
+                  </div>
                   <td *ngIf="!columnaOculta('horario')" class="align-middle overflow-hidden" style="height: 70px;">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                   <td *ngIf="!columnaOculta('codigo')" class="align-middle overflow-hidden" style="height: 70px;">{{ getCodigoInstalacionAsignacion(row.asig) }}</td>
                   <td *ngIf="!columnaOculta('cliente')" class="align-middle text-start text-wrap overflow-hidden" style="max-width: 150px; height: 70px; padding-left: 6px !important;">{{ row.asig.cliente_detalle?.nombre_comercial }}</td>
@@ -240,6 +244,10 @@
                   cdkDragPreviewContainer="parent"
                   style="height: 45px;"
                   class="align-middle sacafranco-row">
+                  <div *cdkDragPreview class="drag-lift-card">
+                    <i class="bi bi-arrows-move"></i>
+                    {{ row.fila.persona_detalle?.apellidos }} {{ row.fila.persona_detalle?.nombres }}
+                  </div>
                   <td *ngIf="!columnaOculta('horario')" class="bg-warning-subtle align-middle text-center">{{ row.fila.hora_ingreso | slice:0:5 }}  {{ row.fila.hora_salida | slice:0:5 }}</td>
                   <td *ngIf="!columnaOculta('codigo')" class="bg-warning-subtle"></td>
                   <td *ngIf="!columnaOculta('cliente')" class="bg-warning-subtle"></td>
