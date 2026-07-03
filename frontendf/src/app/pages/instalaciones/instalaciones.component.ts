@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
+import { map, distinctUntilChanged, debounceTime, switchMap } from 'rxjs/operators';
 import { Cliente } from '../../models';
 import { InstalacionService } from '../../services/instalacion.service';
 import { ClienteService } from '../../services/cliente.service';
@@ -40,13 +41,22 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.cargarInstalaciones();
     this.cargarClientes();
-    this.filterSub = this.globalFilter.state$.subscribe(state => {
-      if (!this.router.url.startsWith('/dashboard/instalaciones')) return;
-      this.filtroTexto = state.query || '';
-      this.cargarInstalaciones();
-    })
+    // Buscador global: debounce + switchMap para no pisar respuestas viejas (evita el fallo intermitente).
+    this.filterSub = this.globalFilter.state$.pipe(
+      map(state => this.router.url.startsWith('/dashboard/instalaciones') ? (state?.query || '') : ''),
+      distinctUntilChanged(),
+      debounceTime(250),
+      switchMap(q => {
+        this.filtroTexto = q;
+        const params: any = {};
+        if (q.trim()) params.q = q.trim();
+        return this.instalacionService.getInstalaciones(params);
+      })
+    ).subscribe({
+      next: (data) => { this.instalaciones = data || []; },
+      error: (err) => console.error('Error al cargar instalaciones:', err),
+    });
   }
 
   ngOnDestroy(): void {
