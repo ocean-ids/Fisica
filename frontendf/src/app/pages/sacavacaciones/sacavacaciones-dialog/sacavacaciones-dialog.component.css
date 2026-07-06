@@ -1,0 +1,25 @@
+.vac-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 440px;
+  padding-top: 6px;
+}
+
+.vac-form mat-form-field {
+  width: 100%;
+}
+
+.vac-row {
+  display: flex;
+  gap: 8px;
+}
+
+.vac-row mat-form-field {
+  flex: 1;
+}
+
+.vac-row .vac-dias {
+  max-width: 100px;
+  flex: 0 0 100px;
+}

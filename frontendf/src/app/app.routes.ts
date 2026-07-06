@@ -14,6 +14,7 @@ import { AsignacionCalendarioComponent } from './pages/asignacion-calendario/asi
 import { ReporteAsistenciaComponent } from './pages/reporte-asistencia/reporte-asistencia.component';
 import { ConsolidadoComponent } from './pages/consolidado/consolidado.component';
 import { ReporteGuardiaComponent } from './pages/reporte-guardia/reporte-guardia.component';
+import { SacavacacionesComponent } from './pages/sacavacaciones/sacavacaciones.component';
 
 export const routes: Routes = [
   {path: '', component: LoginComponent},
@@ -35,6 +36,7 @@ export const routes: Routes = [
       { path: 'reporte-asistencia', component: ReporteAsistenciaComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteasistencia' }},
       { path: 'consolidado', component: ConsolidadoComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_consolidado' }},
       { path: 'reporte-guardia', component: ReporteGuardiaComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia' }},
+      { path: 'sacavacaciones', component: SacavacacionesComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_asignacion' }},
     ]
   },
   { path: '**', redirectTo: ''}
