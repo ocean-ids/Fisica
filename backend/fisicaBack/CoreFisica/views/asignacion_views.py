@@ -1942,19 +1942,80 @@ def exportar_asignaciones_excel(request):
         except Exception:
             pass
 
-    # Rellenar filas: una fila por Asignacion activa para el mes solicitado
-    # Aplicar la misma lógica que en obtener_asignaciones: incluir recurrentes que aplican al mes
+    # Rellenar filas: una fila por Asignacion activa para el mes solicitado.
+    # El Excel debe salir IGUAL que la vista en pantalla: mismos filtros de vista,
+    # misma deduplicacion/exclusiones y mismo orden que obtener_asignaciones.
     month_start = first_day
     if month == 12:
         month_end = datetime.date(year + 1, 1, 1) - datetime.timedelta(days=1)
     else:
         month_end = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
 
-    asignaciones = Asignacion.objects.filter(estado='ACTIVO').filter(
+    # Parametros de la VISTA activa (los envia el frontend al descargar).
+    def _parse_ids(name):
+        raw = (request.GET.get(name) or '').strip()
+        out = []
+        for x in raw.split(',') if raw else []:
+            x = str(x).strip()
+            if x:
+                try:
+                    out.append(int(x))
+                except (TypeError, ValueError):
+                    pass
+        return out
+
+    v_cliente_ids = _parse_ids('cliente_ids')
+    v_instalacion_ids = _parse_ids('instalacion_ids')
+    v_canton_ids = _parse_ids('canton_ids')
+    v_canton_id = request.GET.get('canton_id')
+    v_tipos_raw = (request.GET.get('tipos') or '').strip()
+    v_tipos = [t.strip().upper() for t in v_tipos_raw.split(',') if t.strip()] if v_tipos_raw else []
+    # Hay vista activa si el frontend mando algun filtro de vista.
+    view_active = bool(v_cliente_ids or v_instalacion_ids or v_canton_ids or v_canton_id or v_tipos)
+
+    # Mismo queryset base que obtener_asignaciones (incluye el fix del NULL en NOT IN).
+    base_qs = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').exclude(puesto__activo=False)
+    personas_con_mes = base_qs.filter(mes=month, anio=year, persona_id__isnull=False).values('persona_id')
+    base_qs = base_qs.filter(
         Q(mes=month, anio=year) |
-        (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
-    ).select_related('horario', 'cliente', 'puesto', 'persona', 'instalacion').prefetch_related('puesto__horarios')
-    asignaciones = list(asignaciones)
+        (
+            Q(recurring=True) &
+            Q(start_date__lte=month_end) &
+            (Q(end_date__isnull=True) | Q(end_date__gte=month_start)) &
+            ~Q(persona_id__in=personas_con_mes)
+        )
+    )
+    asignaciones_qs = base_qs.select_related(
+        'horario', 'cliente', 'puesto', 'persona', 'instalacion',
+        'instalacion__canton', 'instalacion__canton__provincia'
+    ).prefetch_related('puesto__horarios').order_by(
+        Coalesce('instalacion__canton__provincia_id', Value(999999)), 'orden', 'id'
+    )
+
+    if v_cliente_ids:
+        asignaciones_qs = asignaciones_qs.filter(cliente_id__in=v_cliente_ids)
+    if v_instalacion_ids:
+        asignaciones_qs = asignaciones_qs.filter(instalacion_id__in=v_instalacion_ids)
+    if v_tipos:
+        asignaciones_qs = asignaciones_qs.filter(persona__tipo__in=v_tipos)
+    if v_canton_ids:
+        asignaciones_qs = asignaciones_qs.filter(instalacion__canton_id__in=v_canton_ids)
+    elif v_canton_id:
+        try:
+            asignaciones_qs = asignaciones_qs.filter(instalacion__canton_id=int(v_canton_id))
+        except (TypeError, ValueError):
+            pass
+
+    # Vista por canton/general: excluir clientes con vista de empresa (igual que obtener_asignaciones).
+    if not v_cliente_ids and not v_tipos:
+        from ..models import VistaCanton
+        clientes_empresa = set()
+        for vc in VistaCanton.objects.filter(tipo='cliente'):
+            clientes_empresa.update(int(c) for c in (vc.clientes or []) if str(c).strip())
+        if clientes_empresa:
+            asignaciones_qs = asignaciones_qs.exclude(cliente_id__in=clientes_empresa)
+
+    asignaciones = list(asignaciones_qs)
 
     # Pre-cargar AsignacionSemanal del mes en una sola consulta para evitar N x dias queries.
     semanal_cache = {}
@@ -2033,9 +2094,41 @@ def exportar_asignaciones_excel(request):
             return body
         except Exception:
             return ''
-    sacafranco_rows = SacafrancoFila.objects.filter(
-        Q(anio__lt=year) | Q(anio=year, mes__lte=month)
-    ).select_related('persona').order_by(Coalesce('provincia_id', Value(999999)), 'orden', 'id')
+    # Sacafranco: mismo scope que sacafranco_filas para la vista actual.
+    # En vista por TIPO de persona no se muestran filas de sacafranco.
+    if v_tipos:
+        sacafranco_rows = SacafrancoFila.objects.none()
+    else:
+        sac_qs = SacafrancoFila.objects.filter(
+            Q(anio__lt=year) | Q(anio=year, mes__lte=month)
+        ).select_related('persona')
+        sin_scope = Q(cantones__len=0) & Q(clientes__len=0)
+        if v_cliente_ids and not v_canton_ids:
+            from ..models import Instalacion
+            derived_cantones = list(
+                Instalacion.objects.filter(cliente_id__in=v_cliente_ids)
+                .exclude(canton_id__isnull=True)
+                .values_list('canton_id', flat=True).distinct()
+            )
+            sac_qs = sac_qs.filter(
+                Q(clientes__overlap=v_cliente_ids)
+                | (sin_scope & Q(persona__canton_id__in=derived_cantones))
+            )
+        elif v_canton_ids:
+            sac_qs = sac_qs.filter(
+                Q(cantones__overlap=v_canton_ids)
+                | (sin_scope & Q(persona__canton_id__in=v_canton_ids))
+            )
+        elif v_canton_id:
+            try:
+                _cv = int(v_canton_id)
+                sac_qs = sac_qs.filter(
+                    Q(cantones__contains=[_cv])
+                    | (sin_scope & Q(persona__canton_id=_cv))
+                )
+            except (TypeError, ValueError):
+                pass
+        sacafranco_rows = sac_qs.order_by(Coalesce('provincia_id', Value(999999)), 'orden', 'id')
 
     sac_week_rows = SacafrancoFilaSemanal.objects.filter(
         sacafranco_fila_id__in=list(sacafranco_rows.values_list('id', flat=True)),
@@ -2317,21 +2410,24 @@ def exportar_asignaciones_excel(request):
 
     build_sheet(ws, 'Asignaciones y Calendario', combined_rows)
 
-    prov_ids = sorted({r['provincia'] for r in combined_rows})
-    prov_lookup = {}
-    prov_db_ids = [pid for pid in prov_ids if pid != 999999]
-    if prov_db_ids:
-        prov_lookup = {p.id: p.nombre for p in Provincia.objects.filter(id__in=prov_db_ids)}
+    # Con una VISTA activa se descarga SOLO esa vista, en una sola hoja y en el
+    # mismo orden que se ve en pantalla (sin las hojas por provincia).
+    if not view_active:
+        prov_ids = sorted({r['provincia'] for r in combined_rows})
+        prov_lookup = {}
+        prov_db_ids = [pid for pid in prov_ids if pid != 999999]
+        if prov_db_ids:
+            prov_lookup = {p.id: p.nombre for p in Provincia.objects.filter(id__in=prov_db_ids)}
 
-    for prov_id in prov_ids:
-        prov_name = prov_lookup.get(prov_id)
-        if not prov_name:
-            prov_name = 'SIN PROVINCIA' if prov_id == 999999 else f"PROVINCIA {prov_id}"
-        base_title = safe_sheet_title(prov_name)
-        sheet_title = unique_sheet_title(base_title)
-        prov_rows = [r for r in combined_rows if r['provincia'] == prov_id]
-        ws_prov = wb.create_sheet(title=sheet_title)
-        build_sheet(ws_prov, sheet_title, prov_rows)
+        for prov_id in prov_ids:
+            prov_name = prov_lookup.get(prov_id)
+            if not prov_name:
+                prov_name = 'SIN PROVINCIA' if prov_id == 999999 else f"PROVINCIA {prov_id}"
+            base_title = safe_sheet_title(prov_name)
+            sheet_title = unique_sheet_title(base_title)
+            prov_rows = [r for r in combined_rows if r['provincia'] == prov_id]
+            ws_prov = wb.create_sheet(title=sheet_title)
+            build_sheet(ws_prov, sheet_title, prov_rows)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="reporte_asignaciones_calendario_{year}_{month}.xlsx"'
