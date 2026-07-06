@@ -6,6 +6,7 @@ import { ReporteGuardiaService } from '../../services/reporte-guardia.service';
 import { ReporteGuardia } from '../../models/reporte-guardia.model';
 import { MatDialog } from '@angular/material/dialog';
 import { ReporteGuardiaEditDialogComponent } from './reporte-guardia-edit-dialog/reporte-guardia-edit-dialog.component';
+import { CrearApoyoDialogComponent } from './crear-apoyo-dialog/crear-apoyo-dialog.component';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -62,18 +63,26 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
 
   // APOYO: crear una fila manual (solo vive en el reporte de guardia).
   crearApoyo(): void {
-    const cols = this.secciones.find(s => s.key === 'APOYO')?.cols || [];
-    const ref = this.dialog.open(ReporteGuardiaEditDialogComponent, {
-      width: '640px',
+    this.abrirDialogApoyo(null);
+  }
+
+  // Crear/editar APOYO con selects (cliente, puesto) + persona filtrable.
+  private abrirDialogApoyo(row: ReporteGuardia | null): void {
+    const ref = this.dialog.open(CrearApoyoDialogComponent, {
+      width: '520px',
       maxWidth: '95vw',
-      data: { row: { seccion: 'APOYO' }, campos: [], editables: cols, etiquetas: this.etiquetas, titulo: 'Crear apoyo' },
+      data: { row: row || undefined },
     });
     ref.afterClosed().subscribe((res) => {
       if (!res) { return; }
-      this.srv.crear({ ...res, seccion: 'APOYO', fecha: this.filtroFecha, turno: this.filtroTurno } as any).subscribe({
-        next: () => this.cargar(),
-        error: () => this.cargar(),
-      });
+      if (row?.id) {
+        this.srv.actualizar(row.id, res).subscribe({ next: () => this.cargar(), error: () => this.cargar() });
+      } else {
+        this.srv.crear({ ...res, seccion: 'APOYO', fecha: this.filtroFecha, turno: this.filtroTurno } as any).subscribe({
+          next: () => this.cargar(),
+          error: () => this.cargar(),
+        });
+      }
     });
   }
 
@@ -113,6 +122,8 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
 
   editar(f: ReporteGuardia): void {
     if (!f.id) { return; }
+    // APOYO se edita con el mismo formulario de selects que al crear.
+    if (f.seccion === 'APOYO') { this.abrirDialogApoyo(f); return; }
     const editables = this.editablesDe(f.seccion);
     if (!editables.length) { return; }
     const sec = this.secciones.find(s => s.key === f.seccion);
