@@ -1,0 +1,59 @@
+<h2 mat-dialog-title>{{ esEdicion ? 'Editar vacaciones' : 'Nuevo registro de vacaciones' }}</h2>
+
+<mat-dialog-content class="vac-form">
+  <mat-form-field appearance="outline">
+    <mat-label>Cliente</mat-label>
+    <mat-select [(ngModel)]="clienteId">
+      <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Sale de vacaciones</mat-label>
+    <input type="text" matInput [formControl]="saleCtrl" [matAutocomplete]="autoSale"
+           placeholder="Selecciona o escribe para filtrar…">
+    <mat-autocomplete #autoSale="matAutocomplete" [displayWith]="displayPersona"
+                      (optionSelected)="onSaleSel($event.option.value)">
+      <mat-option *ngFor="let p of saleFiltradas$ | async" [value]="p">
+        {{ p.nombres }} {{ p.apellidos }} <small class="text-muted">— {{ p.cedula }}</small>
+      </mat-option>
+    </mat-autocomplete>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Período</mat-label>
+    <input matInput [(ngModel)]="periodo" placeholder="ej. 2024 - 2025">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Sacavacaciones (quién cubre)</mat-label>
+    <input type="text" matInput [formControl]="cubreCtrl" [matAutocomplete]="autoCubre"
+           placeholder="Selecciona, escribe, o deja en N/A">
+    <mat-autocomplete #autoCubre="matAutocomplete" [displayWith]="displayPersona"
+                      (optionSelected)="onCubreSel($event.option.value)">
+      <mat-option *ngFor="let p of cubreFiltradas$ | async" [value]="p">
+        {{ p.nombres }} {{ p.apellidos }} <small class="text-muted">— {{ p.cedula }}</small>
+      </mat-option>
+    </mat-autocomplete>
+  </mat-form-field>
+
+  <div class="vac-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Desde</mat-label>
+      <input matInput type="date" [(ngModel)]="fechaDesde">
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Hasta</mat-label>
+      <input matInput type="date" [(ngModel)]="fechaHasta">
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="vac-dias">
+      <mat-label>Días</mat-label>
+      <input matInput type="number" min="0" [(ngModel)]="dias">
+    </mat-form-field>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="guardar()" [disabled]="!valido">Guardar</button>
+</mat-dialog-actions>

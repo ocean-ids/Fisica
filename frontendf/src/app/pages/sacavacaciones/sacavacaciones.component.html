@@ -1,0 +1,52 @@
+<div class="container-fluid px-0">
+  <div class="d-flex align-items-center mb-3">
+    <h3 class="m-0 flex-grow-1">Reporte de Vacaciones del Personal</h3>
+    <button type="button" class="btn btn-outline-success me-2" (click)="exportar()">
+      <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+    </button>
+    <button type="button" class="btn btn-primary" (click)="crear()">
+      <i class="bi bi-plus-lg"></i> Nuevo registro
+    </button>
+  </div>
+
+  <table class="table table-bordered table-sm align-middle">
+    <thead class="table-light">
+      <tr>
+        <th style="width:40px">Nº</th>
+        <th>Cliente</th>
+        <th>Sale de vacaciones</th>
+        <th>Período</th>
+        <th>Sacavacaciones</th>
+        <th>Desde</th>
+        <th>Hasta</th>
+        <th>Días</th>
+        <th style="width:100px">Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let f of filas; let i = index">
+        <td>{{ i + 1 }}</td>
+        <td>{{ f.cliente }}</td>
+        <td>{{ f.persona_sale }}</td>
+        <td>{{ f.periodo }}</td>
+        <td>{{ f.sacavacaciones || 'N/A' }}</td>
+        <td>{{ fechaDMA(f.fecha_desde) }}</td>
+        <td>{{ fechaDMA(f.fecha_hasta) }}</td>
+        <td>{{ f.dias }}</td>
+        <td>
+          <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
+                  (click)="editar(f)" title="Editar">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1"
+                  (click)="eliminar(f)" title="Eliminar">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+      <tr *ngIf="!filas.length">
+        <td colspan="9" class="text-center text-muted">Sin registros de vacaciones.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

@@ -21,6 +21,10 @@ from .views.consolidado_views import obtener_consolidado, crear_consolidado, act
 from .views.vista_canton_views import vistas_cantones
 from .views.novedad_puesto_views import obtener_novedades, crear_novedad, actualizar_novedad, eliminar_novedad, exportar_novedades_excel
 from .views.sync_views import sincronizar_empleado
+from .views.reporte_vacaciones_views import (
+    listar_reporte_vacaciones, crear_reporte_vacaciones, exportar_reporte_vacaciones_excel,
+    actualizar_reporte_vacaciones, eliminar_reporte_vacaciones,
+)
 from .views.reporte_guardia_views import (
     listar_reporte_guardia, crear_reporte_guardia,
     actualizar_reporte_guardia, eliminar_reporte_guardia,
@@ -128,6 +132,11 @@ urlpatterns = [
     path('reporte-guardia/crear/', crear_reporte_guardia, name='reporte-guardia-crear'),
     path('reporte-guardia/<int:id>/', actualizar_reporte_guardia, name='reporte-guardia-actualizar'),
     path('reporte-guardia/<int:id>/eliminar/', eliminar_reporte_guardia, name='reporte-guardia-eliminar'),
+    path('reporte-vacaciones/', listar_reporte_vacaciones, name='reporte-vacaciones'),
+    path('reporte-vacaciones/crear/', crear_reporte_vacaciones, name='reporte-vacaciones-crear'),
+    path('reporte-vacaciones/exportar-excel/', exportar_reporte_vacaciones_excel, name='reporte-vacaciones-excel'),
+    path('reporte-vacaciones/<int:id>/', actualizar_reporte_vacaciones, name='reporte-vacaciones-actualizar'),
+    path('reporte-vacaciones/<int:id>/eliminar/', eliminar_reporte_vacaciones, name='reporte-vacaciones-eliminar'),
     path('consolidado/', obtener_consolidado),
     path('consolidado/armado/', obtener_consolidado_armado),
     path('consolidado/resumen/', obtener_consolidado_resumen),

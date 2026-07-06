@@ -1215,7 +1215,34 @@ class ReporteGuardia(models.Model):
         ordering = ['fecha', 'turno', 'seccion', 'orden', 'id']
         indexes = [models.Index(fields=['fecha', 'turno', 'seccion'])]
 
-    
+
+class ReporteVacaciones(models.Model):
+    """Una fila del REPORTE DE VACACIONES DEL PERSONAL (carga manual, CRUD)."""
+    cliente = models.CharField(max_length=120, blank=True, default='')
+    # SALE DE VACACIONES: persona que se va de vacaciones.
+    persona_sale = models.CharField(max_length=160, blank=True, default='')
+    persona_sale_ref = models.ForeignKey(
+        'Persona', on_delete=models.SET_NULL, null=True, blank=True, related_name='vacaciones_reporte'
+    )
+    periodo = models.CharField(max_length=40, blank=True, default='')     # ej. "2024 - 2025"
+    # SACAVACACIONES: persona que cubre (o 'N/A').
+    sacavacaciones = models.CharField(max_length=160, blank=True, default='')
+    sacavacaciones_ref = models.ForeignKey(
+        'Persona', on_delete=models.SET_NULL, null=True, blank=True, related_name='cubre_vacaciones'
+    )
+    fecha_desde = models.DateField(null=True, blank=True)
+    fecha_hasta = models.DateField(null=True, blank=True)
+    dias = models.PositiveIntegerField(default=0)
+
+    orden = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-fecha_desde', 'orden', 'id']
+
+    def __str__(self):
+        return f"{self.persona_sale} ({self.fecha_desde} - {self.fecha_hasta})"
 
 class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
