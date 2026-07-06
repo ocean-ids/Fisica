@@ -9,7 +9,8 @@ import { ReporteGuardia } from '../../../models/reporte-guardia.model';
 
 interface DialogData {
   row: ReporteGuardia;
-  campos: string[];                    // solo las columnas de esa sección (sin 'motivo')
+  campos: string[];                    // columnas de solo lectura de esa sección
+  editables: string[];                 // campos editables (p. ej. autorizacion, motivo)
   etiquetas: Record<string, string>;
 }
 
@@ -26,8 +27,9 @@ interface DialogData {
 export class ReporteGuardiaEditDialogComponent {
   row: ReporteGuardia;
   campos: string[];
+  editables: string[];
   etiquetas: Record<string, string>;
-  motivo: string;
+  valores: Record<string, string> = {};
 
   constructor(
     private dialogRef: MatDialogRef<ReporteGuardiaEditDialogComponent>,
@@ -35,8 +37,11 @@ export class ReporteGuardiaEditDialogComponent {
   ) {
     this.row = data.row;
     this.campos = data.campos || [];
+    this.editables = (data.editables && data.editables.length) ? data.editables : ['motivo'];
     this.etiquetas = data.etiquetas || {};
-    this.motivo = data.row.motivo || '';
+    for (const campo of this.editables) {
+      this.valores[campo] = ((this.row as any)?.[campo] ?? '').toString();
+    }
   }
 
   mostrar(campo: string): string {
@@ -51,7 +56,11 @@ export class ReporteGuardiaEditDialogComponent {
   }
 
   guardar(): void {
-    this.dialogRef.close({ motivo: (this.motivo || '').trim() });
+    const out: Record<string, string> = {};
+    for (const campo of this.editables) {
+      out[campo] = (this.valores[campo] || '').trim();
+    }
+    this.dialogRef.close(out);
   }
 
   cancelar(): void {

@@ -46,6 +46,17 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
     { key: 'APOYO',        label: 'APOYO',        cols: ['cliente','puesto','persona_nombre','proviene','motivo'], total: false },
   ];
 
+  // Campos que se pueden editar por sección (los demás salen de solo lectura).
+  readonly editablesPorSeccion: Record<string, string[]> = {
+    DOBLADAS: [], ADICIONALES: [], ADELANTOS: [],
+    NO_CUBIERTOS: ['autorizacion', 'motivo'],
+    FALTOS: ['motivo'], HUECA: ['motivo'], APOYO: ['motivo'],
+  };
+
+  editablesDe(seccion: string): string[] {
+    return this.editablesPorSeccion[seccion] || [];
+  }
+
   celda(f: any, campo: string): string {
     const v = f?.[campo];
     if (campo === 'valor') return v ? Number(v).toFixed(2) : '';
@@ -63,19 +74,21 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
     return this.filasDe(key).reduce((s, f) => s + Number(f.valor || 0), 0);
   }
 
-  editarMotivo(f: ReporteGuardia): void {
+  editar(f: ReporteGuardia): void {
     if (!f.id) { return; }
+    const editables = this.editablesDe(f.seccion);
+    if (!editables.length) { return; }
     const sec = this.secciones.find(s => s.key === f.seccion);
-    const campos = (sec?.cols || []).filter(c => c !== 'motivo');
+    const campos = (sec?.cols || []).filter(c => !editables.includes(c));
     const ref = this.dialog.open(ReporteGuardiaEditDialogComponent, {
       width: '640px',
       maxWidth: '95vw',
-      data: { row: { ...f }, campos, etiquetas: this.etiquetas },
+      data: { row: { ...f }, campos, editables, etiquetas: this.etiquetas },
     });
     ref.afterClosed().subscribe((res) => {
       if (!res) { return; }
-      this.srv.actualizar(f.id!, { motivo: res.motivo }).subscribe({
-        next: () => { f.motivo = res.motivo; },
+      this.srv.actualizar(f.id!, res).subscribe({
+        next: () => { Object.assign(f, res); },
         error: () => { this.cargar(); },
       });
     });
