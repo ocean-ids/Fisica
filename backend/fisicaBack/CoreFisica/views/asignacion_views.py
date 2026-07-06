@@ -2299,7 +2299,8 @@ def exportar_asignaciones_excel(request):
                 asignacion = entry['item']
                 horario_txt = ''
                 try:
-                    horario_txt = f"{asignacion.horario.hora_ingreso} - {asignacion.horario.hora_salida}"
+                    # Formato HH:MM (sin segundos): 06:00 - 18:00
+                    horario_txt = f"{asignacion.horario.hora_ingreso.strftime('%H:%M')} - {asignacion.horario.hora_salida.strftime('%H:%M')}"
                 except Exception:
                     horario_txt = ''
                 inst_codigo = getattr(getattr(asignacion, 'instalacion', None), 'codigo', '') or ''
