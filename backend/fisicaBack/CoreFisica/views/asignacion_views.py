@@ -24,6 +24,12 @@ from openpyxl.utils.units import pixels_to_EMU
 
 def _find_asignaciones_logo_path():
     this_file = Path(__file__).resolve()
+    # Logo empaquetado DENTRO del backend (existe tambien en la imagen Docker,
+    # que no tiene la carpeta frontendf/). Se prueba primero.
+    bundled_logo = this_file.parents[1] / 'assets' / 'logodescargable.jpg'  # CoreFisica/assets/...
+    if bundled_logo.exists():
+        return bundled_logo
+
     root_candidates = [
         this_file.parents[i] for i in [4, 3] if i < len(this_file.parents)
     ] + [Path.cwd()]
