@@ -9,11 +9,18 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Puesto</mat-label>
-    <mat-select [(ngModel)]="puestoId" [disabled]="!clienteId">
-      <mat-option *ngFor="let p of puestos" [value]="p.id">
-        {{ p.nombre }}<span *ngIf="p.instalacion_nombre"> — {{ p.instalacion_nombre }}</span>
+    <mat-label>Instalación</mat-label>
+    <mat-select [(ngModel)]="instalacionId" (selectionChange)="onInstalacion()" [disabled]="!clienteId">
+      <mat-option *ngFor="let i of instalaciones" [value]="i.id">
+        {{ i.nombre }}<span *ngIf="i.codigo"> ({{ i.codigo }})</span>
       </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Puesto</mat-label>
+    <mat-select [(ngModel)]="puestoId" [disabled]="!instalacionId">
+      <mat-option *ngFor="let p of puestos" [value]="p.id">{{ p.nombre }}</mat-option>
     </mat-select>
   </mat-form-field>
 
