@@ -27,7 +27,7 @@
   <mat-form-field appearance="outline">
     <mat-label>Nombre y apellidos</mat-label>
     <input type="text" matInput [formControl]="personaCtrl" [matAutocomplete]="auto"
-           placeholder="Escribe para buscar…">
+           placeholder="Selecciona o escribe para filtrar…">
     <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayPersona"
                       (optionSelected)="onPersonaSel($event.option.value)">
       <mat-option *ngFor="let p of personasFiltradas$ | async" [value]="p">
