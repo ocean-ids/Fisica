@@ -40,15 +40,15 @@
   <div class="vac-row">
     <mat-form-field appearance="outline">
       <mat-label>Desde</mat-label>
-      <input matInput type="date" [(ngModel)]="fechaDesde">
+      <input matInput type="date" [(ngModel)]="fechaDesde" (ngModelChange)="calcularDias()">
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Hasta</mat-label>
-      <input matInput type="date" [(ngModel)]="fechaHasta">
+      <input matInput type="date" [(ngModel)]="fechaHasta" (ngModelChange)="calcularDias()">
     </mat-form-field>
     <mat-form-field appearance="outline" class="vac-dias">
       <mat-label>Días</mat-label>
-      <input matInput type="number" min="0" [(ngModel)]="dias">
+      <input matInput type="number" [ngModel]="dias" readonly>
     </mat-form-field>
   </div>
 </mat-dialog-content>

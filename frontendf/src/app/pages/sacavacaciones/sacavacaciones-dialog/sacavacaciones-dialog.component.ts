@@ -109,6 +109,18 @@ export class SacavacacionesDialogComponent implements OnInit {
   onSaleSel(p: Persona): void { this.saleSel = p; }
   onCubreSel(p: Persona): void { this.cubreSel = p; }
 
+  // Días = contador de días calendario inclusive entre desde y hasta.
+  calcularDias(): void {
+    if (this.fechaDesde && this.fechaHasta) {
+      const d1 = new Date(this.fechaDesde + 'T00:00:00');
+      const d2 = new Date(this.fechaHasta + 'T00:00:00');
+      const diff = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1;
+      this.dias = diff > 0 ? diff : 0;
+    } else {
+      this.dias = 0;
+    }
+  }
+
   get valido(): boolean {
     return !!this.clienteId && (!!this.saleSel || (this.esEdicion && !!this.saleCtrl.value));
   }
