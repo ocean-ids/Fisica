@@ -20,6 +20,7 @@ export class SidebarComponent implements OnInit {
       path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'assignment_ind', permission: 'CoreFisica.view_asignacion',
       children: [
         { path: '/dashboard/asignaciones', label: 'Sacafranco', queryParams: { seccion: 'sacafranco' }, permission: 'CoreFisica.view_asignacion' },
+        { path: '/dashboard/asignaciones', label: 'Sacavacaciones', queryParams: { seccion: 'sacavacaciones' }, permission: 'CoreFisica.view_asignacion' },
       ],
     },
     { path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'how_to_reg', permission: 'CoreFisica.view_reporteasistencia' },
