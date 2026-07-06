@@ -10,9 +10,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { Observable, of } from 'rxjs';
 import { debounceTime, startWith, switchMap, catchError } from 'rxjs/operators';
 import { ClienteService } from '../../../services/cliente.service';
+import { InstalacionService } from '../../../services/instalacion.service';
 import { PuestoService } from '../../../services/puesto.service';
 import { PersonaService } from '../../../services/persona.service';
-import { Cliente } from '../../../models';
+import { Cliente, Instalacion } from '../../../models';
 import { Puesto } from '../../../models/puesto.model';
 import { Persona } from '../../../models/persona.model';
 import { ReporteGuardia } from '../../../models/reporte-guardia.model';
@@ -33,8 +34,10 @@ interface DialogData {
 })
 export class CrearApoyoDialogComponent implements OnInit {
   clientes: Cliente[] = [];
+  instalaciones: Instalacion[] = [];
   puestos: Puesto[] = [];
   clienteId: number | null = null;
+  instalacionId: number | null = null;
   puestoId: number | null = null;
   personaCtrl = new FormControl<any>('');
   personasFiltradas$!: Observable<Persona[]>;
@@ -48,6 +51,7 @@ export class CrearApoyoDialogComponent implements OnInit {
     private ref: MatDialogRef<CrearApoyoDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: DialogData,
     private clienteSrv: ClienteService,
+    private instalacionSrv: InstalacionService,
     private puestoSrv: PuestoService,
     private personaSrv: PersonaService,
   ) {}
@@ -82,11 +86,33 @@ export class CrearApoyoDialogComponent implements OnInit {
     );
   }
 
+  // Cliente -> carga sus instalaciones. En edición, ubica el puesto para preseleccionar.
   onCliente(preselectPuestoNombre?: string): void {
+    this.instalaciones = [];
+    this.puestos = [];
+    if (!preselectPuestoNombre) { this.instalacionId = null; this.puestoId = null; }
+    if (!this.clienteId) { return; }
+    this.instalacionSrv.getInstalaciones({ cliente_id: this.clienteId }).subscribe((is) => {
+      this.instalaciones = is || [];
+    });
+    if (preselectPuestoNombre) {
+      // Ubicar a qué instalación pertenece el puesto guardado para preseleccionar todo.
+      this.puestoSrv.getPuestosPorCliente(this.clienteId).subscribe((ps) => {
+        const p = (ps || []).find(x => x.nombre === preselectPuestoNombre);
+        if (p) {
+          this.instalacionId = p.instalacion_id ?? (p as any).instalacion ?? null;
+          this.onInstalacion(preselectPuestoNombre);
+        }
+      });
+    }
+  }
+
+  // Instalación -> carga sus puestos (se ve solo el nombre del puesto).
+  onInstalacion(preselectPuestoNombre?: string): void {
     this.puestos = [];
     if (!preselectPuestoNombre) { this.puestoId = null; }
-    if (!this.clienteId) { return; }
-    this.puestoSrv.getPuestosPorCliente(this.clienteId).subscribe((ps) => {
+    if (!this.instalacionId) { return; }
+    this.puestoSrv.getPuestosPorInstalacion(this.instalacionId).subscribe((ps) => {
       this.puestos = ps || [];
       if (preselectPuestoNombre) {
         const p = this.puestos.find(x => x.nombre === preselectPuestoNombre);
@@ -107,7 +133,7 @@ export class CrearApoyoDialogComponent implements OnInit {
   }
 
   get valido(): boolean {
-    return !!this.clienteId && !!this.puestoId;
+    return !!this.clienteId && !!this.instalacionId && !!this.puestoId;
   }
 
   guardar(): void {
@@ -116,7 +142,7 @@ export class CrearApoyoDialogComponent implements OnInit {
     const p = this.personaSel;
     const out: any = {
       cliente: cli?.nombre_comercial || '',
-      puesto: pto?.nombre || '',
+      puesto: pto?.nombre || '',            // solo el nombre del puesto
       motivo: (this.motivo || '').trim(),
     };
     if (p) {
