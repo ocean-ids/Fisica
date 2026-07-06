@@ -16,7 +16,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
 import { AsignacionCalendarioService } from '../../services/asignacion-calendario.service';
 import { AsignacionCalendarioRangeModalComponent, AsignacionRangeModalResult } from '../asignacion-calendario/asignacion-calendario-range-modal.component';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
 import { PatronAsignacionService } from '../../services/patron-asignacion.service';
@@ -2059,33 +2059,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   //descargarReporteExcel se encarga de descargar un reporte de asignaciones en formato Excel para el mes y año seleccionados, realizando una llamada al backend para obtener el archivo como un blob, y luego utilizando la biblioteca FileSaver para guardar el archivo en el dispositivo del usuario con un nombre que incluye el mes y año, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
   descargarReporteExcel() {
   const mm = String(this.mes).padStart(2, '0');
-  // El Excel debe salir IGUAL que la vista activa: mandamos los mismos filtros
-  // de vista que usa cargarAsignaciones (empresa / tipo / cantones / cantón actual).
-  const activeView = this.getActiveView();
-  const isClienteView = activeView?.tipo === 'cliente';
-  const isTipoView = activeView?.tipo === 'persona_tipo';
-  const clienteIdsCsv = (activeView?.clienteIds || []).join(',');
-  const instalacionIdsCsv = (activeView?.instalacionIds || []).join(',');
-  const tiposCsv = (activeView?.tipos || []).join(',');
-  const selectedViewCantons = this.getSelectedViewCantonIds();
-  const mixedView = !isClienteView && !isTipoView && selectedViewCantons.length >= 1;
-
-  let params = new HttpParams().set('mes', mm).set('anio', String(this.anio));
-  if (isClienteView) {
-    if (clienteIdsCsv) params = params.set('cliente_ids', clienteIdsCsv);
-    if (instalacionIdsCsv) params = params.set('instalacion_ids', instalacionIdsCsv);
-  } else if (isTipoView) {
-    if (tiposCsv) params = params.set('tipos', tiposCsv);
-  } else if (mixedView) {
-    params = params.set('canton_ids', selectedViewCantons.join(','));
-  } else {
-    // Vista general paginada: exportar el cantón que se está viendo.
-    const cantonId = this.getSingleSelectedCantonId() ?? this.activeProvinciaId;
-    if (cantonId != null) params = params.set('canton_id', String(cantonId));
-  }
-
-  const url = `${environment.apiUrl}/reporte-asignaciones/`;
-  this.http.get(url, { params, responseType: 'blob' })
+  // El Excel trae una hoja por cada vista creada (el backend las arma todas).
+  const url = `${environment.apiUrl}/reporte-asignaciones/?mes=${mm}&anio=${this.anio}`;
+  this.http.get(url, { responseType: 'blob' })
     .subscribe({
       next: (blob) => {
         saveAs(blob, `reporte_asignaciones_${this.anio}_${mm}.xlsx`);

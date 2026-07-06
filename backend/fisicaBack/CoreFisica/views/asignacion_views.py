@@ -1942,85 +1942,114 @@ def exportar_asignaciones_excel(request):
         except Exception:
             pass
 
-    # Rellenar filas: una fila por Asignacion activa para el mes solicitado.
-    # El Excel debe salir IGUAL que la vista en pantalla: mismos filtros de vista,
-    # misma deduplicacion/exclusiones y mismo orden que obtener_asignaciones.
+    # El Excel trae UNA HOJA POR VISTA CREADA (Nueva vista): empresa / cantones /
+    # tipo de persona. Cada hoja lleva el nombre de la vista y sus registros en el
+    # mismo orden que en pantalla (misma logica que obtener_asignaciones / sacafranco_filas).
     month_start = first_day
     if month == 12:
         month_end = datetime.date(year + 1, 1, 1) - datetime.timedelta(days=1)
     else:
         month_end = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
 
-    # Parametros de la VISTA activa (los envia el frontend al descargar).
-    def _parse_ids(name):
-        raw = (request.GET.get(name) or '').strip()
-        out = []
-        for x in raw.split(',') if raw else []:
-            x = str(x).strip()
-            if x:
-                try:
-                    out.append(int(x))
-                except (TypeError, ValueError):
-                    pass
-        return out
+    from ..models import VistaCanton, Instalacion
 
-    v_cliente_ids = _parse_ids('cliente_ids')
-    v_instalacion_ids = _parse_ids('instalacion_ids')
-    v_canton_ids = _parse_ids('canton_ids')
-    v_canton_id = request.GET.get('canton_id')
-    v_tipos_raw = (request.GET.get('tipos') or '').strip()
-    v_tipos = [t.strip().upper() for t in v_tipos_raw.split(',') if t.strip()] if v_tipos_raw else []
-    # Hay vista activa si el frontend mando algun filtro de vista.
-    view_active = bool(v_cliente_ids or v_instalacion_ids or v_canton_ids or v_canton_id or v_tipos)
-
-    # Mismo queryset base que obtener_asignaciones (incluye el fix del NULL en NOT IN).
-    base_qs = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').exclude(puesto__activo=False)
-    personas_con_mes = base_qs.filter(mes=month, anio=year, persona_id__isnull=False).values('persona_id')
-    base_qs = base_qs.filter(
+    # Base comun (igual que obtener_asignaciones, con el fix del NULL en NOT IN).
+    _base = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').exclude(puesto__activo=False)
+    _personas_con_mes = _base.filter(mes=month, anio=year, persona_id__isnull=False).values('persona_id')
+    _base = _base.filter(
         Q(mes=month, anio=year) |
         (
             Q(recurring=True) &
             Q(start_date__lte=month_end) &
             (Q(end_date__isnull=True) | Q(end_date__gte=month_start)) &
-            ~Q(persona_id__in=personas_con_mes)
+            ~Q(persona_id__in=_personas_con_mes)
         )
-    )
-    asignaciones_qs = base_qs.select_related(
+    ).select_related(
         'horario', 'cliente', 'puesto', 'persona', 'instalacion',
         'instalacion__canton', 'instalacion__canton__provincia'
     ).prefetch_related('puesto__horarios').order_by(
         Coalesce('instalacion__canton__provincia_id', Value(999999)), 'orden', 'id'
     )
 
-    if v_cliente_ids:
-        asignaciones_qs = asignaciones_qs.filter(cliente_id__in=v_cliente_ids)
-    if v_instalacion_ids:
-        asignaciones_qs = asignaciones_qs.filter(instalacion_id__in=v_instalacion_ids)
-    if v_tipos:
-        asignaciones_qs = asignaciones_qs.filter(persona__tipo__in=v_tipos)
-    if v_canton_ids:
-        asignaciones_qs = asignaciones_qs.filter(instalacion__canton_id__in=v_canton_ids)
-    elif v_canton_id:
-        try:
-            asignaciones_qs = asignaciones_qs.filter(instalacion__canton_id=int(v_canton_id))
-        except (TypeError, ValueError):
-            pass
+    # Clientes con vista de empresa (para excluirlos de las vistas por canton).
+    _clientes_empresa = set()
+    for _vc in VistaCanton.objects.filter(tipo='cliente'):
+        _clientes_empresa.update(int(c) for c in (_vc.clientes or []) if str(c).strip())
 
-    # Vista por canton/general: excluir clientes con vista de empresa (igual que obtener_asignaciones).
-    if not v_cliente_ids and not v_tipos:
-        from ..models import VistaCanton
-        clientes_empresa = set()
-        for vc in VistaCanton.objects.filter(tipo='cliente'):
-            clientes_empresa.update(int(c) for c in (vc.clientes or []) if str(c).strip())
-        if clientes_empresa:
-            asignaciones_qs = asignaciones_qs.exclude(cliente_id__in=clientes_empresa)
+    def build_asignaciones(cliente_ids=None, instalacion_ids=None, canton_ids=None, tipos=None, exclude_empresa=True):
+        qs = _base
+        if cliente_ids:
+            qs = qs.filter(cliente_id__in=cliente_ids)
+        if instalacion_ids:
+            qs = qs.filter(instalacion_id__in=instalacion_ids)
+        if tipos:
+            qs = qs.filter(persona__tipo__in=tipos)
+        if canton_ids:
+            qs = qs.filter(instalacion__canton_id__in=canton_ids)
+        if exclude_empresa and not cliente_ids and not tipos and _clientes_empresa:
+            qs = qs.exclude(cliente_id__in=_clientes_empresa)
+        return list(qs)
 
-    asignaciones = list(asignaciones_qs)
+    def build_sacafranco(cliente_ids=None, canton_ids=None, tipos=None):
+        # En vista por TIPO de persona no se muestran filas de sacafranco.
+        if tipos:
+            return []
+        sac_qs = SacafrancoFila.objects.filter(
+            Q(anio__lt=year) | Q(anio=year, mes__lte=month)
+        ).select_related('persona')
+        sin_scope = Q(cantones__len=0) & Q(clientes__len=0)
+        if cliente_ids and not canton_ids:
+            derived_cantones = list(
+                Instalacion.objects.filter(cliente_id__in=cliente_ids)
+                .exclude(canton_id__isnull=True)
+                .values_list('canton_id', flat=True).distinct()
+            )
+            sac_qs = sac_qs.filter(
+                Q(clientes__overlap=cliente_ids)
+                | (sin_scope & Q(persona__canton_id__in=derived_cantones))
+            )
+        elif canton_ids:
+            sac_qs = sac_qs.filter(
+                Q(cantones__overlap=canton_ids)
+                | (sin_scope & Q(persona__canton_id__in=canton_ids))
+            )
+        return list(sac_qs.order_by(Coalesce('provincia_id', Value(999999)), 'orden', 'id'))
+
+    # Una entrada por cada vista creada (ordenadas por nombre, igual que en la UI).
+    view_specs = []
+    for _v in VistaCanton.objects.all().order_by('nombre'):
+        _cids = [int(c) for c in (_v.clientes or []) if str(c).strip()] if _v.tipo == 'cliente' else []
+        _iids = [int(i) for i in (_v.instalaciones or []) if str(i).strip()] if _v.tipo == 'cliente' else []
+        _ktids = [int(c) for c in (_v.cantones or []) if str(c).strip()] if _v.tipo == 'canton' else []
+        _tps = [str(t).strip().upper() for t in (_v.tipos or []) if str(t).strip()] if _v.tipo == 'persona_tipo' else []
+        view_specs.append({
+            'nombre': _v.nombre,
+            'cliente_ids': _cids,
+            'instalacion_ids': _iids,
+            'canton_ids': _ktids,
+            'tipos': _tps,
+        })
+
+    # Materializar los registros de cada vista (para las hojas y para las caches).
+    view_data = []  # [(nombre, asignaciones_list, sacafranco_list)]
+    for _s in view_specs:
+        _al = build_asignaciones(
+            cliente_ids=_s['cliente_ids'], instalacion_ids=_s['instalacion_ids'],
+            canton_ids=_s['canton_ids'], tipos=_s['tipos']
+        )
+        _sl = build_sacafranco(
+            cliente_ids=_s['cliente_ids'], canton_ids=_s['canton_ids'], tipos=_s['tipos']
+        )
+        view_data.append((_s['nombre'], _al, _sl))
+
+    # Union de todos los registros (para armar las caches una sola vez).
+    all_asignaciones = [a for (_, _al, _) in view_data for a in _al]
+    all_sacafranco = [f for (_, _, _sl) in view_data for f in _sl]
 
     # Pre-cargar AsignacionSemanal del mes en una sola consulta para evitar N x dias queries.
     semanal_cache = {}
-    asignacion_ids = {getattr(a, 'id', None) for a in asignaciones if getattr(a, 'id', None)}
-    puesto_ids = {getattr(a, 'puesto_id', None) for a in asignaciones if getattr(a, 'puesto_id', None)}
+    asignacion_ids = {getattr(a, 'id', None) for a in all_asignaciones if getattr(a, 'id', None)}
+    puesto_ids = {getattr(a, 'puesto_id', None) for a in all_asignaciones if getattr(a, 'puesto_id', None)}
     week_starts = set()
     for d in dates:
         week_index = (d.day - 1) // 7
@@ -2094,48 +2123,16 @@ def exportar_asignaciones_excel(request):
             return body
         except Exception:
             return ''
-    # Sacafranco: mismo scope que sacafranco_filas para la vista actual.
-    # En vista por TIPO de persona no se muestran filas de sacafranco.
-    if v_tipos:
-        sacafranco_rows = SacafrancoFila.objects.none()
-    else:
-        sac_qs = SacafrancoFila.objects.filter(
-            Q(anio__lt=year) | Q(anio=year, mes__lte=month)
-        ).select_related('persona')
-        sin_scope = Q(cantones__len=0) & Q(clientes__len=0)
-        if v_cliente_ids and not v_canton_ids:
-            from ..models import Instalacion
-            derived_cantones = list(
-                Instalacion.objects.filter(cliente_id__in=v_cliente_ids)
-                .exclude(canton_id__isnull=True)
-                .values_list('canton_id', flat=True).distinct()
-            )
-            sac_qs = sac_qs.filter(
-                Q(clientes__overlap=v_cliente_ids)
-                | (sin_scope & Q(persona__canton_id__in=derived_cantones))
-            )
-        elif v_canton_ids:
-            sac_qs = sac_qs.filter(
-                Q(cantones__overlap=v_canton_ids)
-                | (sin_scope & Q(persona__canton_id__in=v_canton_ids))
-            )
-        elif v_canton_id:
-            try:
-                _cv = int(v_canton_id)
-                sac_qs = sac_qs.filter(
-                    Q(cantones__contains=[_cv])
-                    | (sin_scope & Q(persona__canton_id=_cv))
-                )
-            except (TypeError, ValueError):
-                pass
-        sacafranco_rows = sac_qs.order_by(Coalesce('provincia_id', Value(999999)), 'orden', 'id')
-
-    sac_week_rows = SacafrancoFilaSemanal.objects.filter(
-        sacafranco_fila_id__in=list(sacafranco_rows.values_list('id', flat=True)),
-        week_start__gte=month_start,
-        week_start__lte=month_end
-    )
-    sac_sem_cache = {(r.sacafranco_fila_id, r.week_start): r for r in sac_week_rows}
+    # Cache de semanales de sacafranco (una vez, desde la union de todas las vistas).
+    sac_sem_cache = {}
+    _sac_ids = [getattr(f, 'id', None) for f in all_sacafranco if getattr(f, 'id', None)]
+    if _sac_ids:
+        _sac_week_rows = SacafrancoFilaSemanal.objects.filter(
+            sacafranco_fila_id__in=_sac_ids,
+            week_start__gte=month_start,
+            week_start__lte=month_end
+        )
+        sac_sem_cache = {(r.sacafranco_fila_id, r.week_start): r for r in _sac_week_rows}
 
     def get_asignacion_provincia_id(item: Asignacion) -> int:
         return getattr(getattr(getattr(item, 'instalacion', None), 'canton', None), 'provincia_id', None) or 999999
@@ -2143,30 +2140,32 @@ def exportar_asignaciones_excel(request):
     def get_sacafranco_provincia_id(item: SacafrancoFila) -> int:
         return getattr(item, 'provincia_id', None) or 999999
 
-    combined_rows = []
-    for asignacion in asignaciones:
-        combined_rows.append({
-            'kind': 'asignacion',
-            'provincia': get_asignacion_provincia_id(asignacion),
-            'orden': getattr(asignacion, 'orden', 0) or 0,
-            'id': getattr(asignacion, 'id', 0) or 0,
-            'item': asignacion
-        })
-    for fila in sacafranco_rows:
-        combined_rows.append({
-            'kind': 'sacafranco',
-            'provincia': get_sacafranco_provincia_id(fila),
-            'orden': getattr(fila, 'orden', 0) or 0,
-            'id': getattr(fila, 'id', 0) or 0,
-            'item': fila
-        })
-
-    combined_rows.sort(key=lambda r: (
-        r['provincia'],
-        r['orden'],
-        0 if r['kind'] == 'asignacion' else 1,
-        r['id']
-    ))
+    def combined_from(a_list, s_list):
+        """Combina asignaciones + sacafranco en el mismo orden que la vista."""
+        rows = []
+        for a in a_list:
+            rows.append({
+                'kind': 'asignacion',
+                'provincia': get_asignacion_provincia_id(a),
+                'orden': getattr(a, 'orden', 0) or 0,
+                'id': getattr(a, 'id', 0) or 0,
+                'item': a
+            })
+        for f in s_list:
+            rows.append({
+                'kind': 'sacafranco',
+                'provincia': get_sacafranco_provincia_id(f),
+                'orden': getattr(f, 'orden', 0) or 0,
+                'id': getattr(f, 'id', 0) or 0,
+                'item': f
+            })
+        rows.sort(key=lambda r: (
+            r['provincia'],
+            r['orden'],
+            0 if r['kind'] == 'asignacion' else 1,
+            r['id']
+        ))
+        return rows
 
     def safe_sheet_title(name: str) -> str:
         title = (name or '').strip().upper() or 'SIN PROVINCIA'
@@ -2408,12 +2407,18 @@ def exportar_asignaciones_excel(request):
         for i in range(date_start_col, date_start_col + num_days):
             target_ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 5
 
-    build_sheet(ws, 'Asignaciones y Calendario', combined_rows)
-
-    # Con una VISTA activa se descarga SOLO esa vista, en una sola hoja y en el
-    # mismo orden que se ve en pantalla (sin las hojas por provincia).
-    if not view_active:
-        prov_ids = sorted({r['provincia'] for r in combined_rows})
+    # UNA HOJA POR VISTA CREADA (nombre de la vista + registros en su orden).
+    if view_data:
+        for _i, (_nombre, _al, _sl) in enumerate(view_data):
+            _rows = combined_from(_al, _sl)
+            _title = unique_sheet_title(safe_sheet_title(_nombre))
+            _target = ws if _i == 0 else wb.create_sheet(title=_title)
+            build_sheet(_target, _title, _rows)
+    else:
+        # Sin vistas creadas: reporte general (todo el mes) con hojas por provincia.
+        _general_rows = combined_from(build_asignaciones(exclude_empresa=False), build_sacafranco())
+        build_sheet(ws, 'Asignaciones y Calendario', _general_rows)
+        prov_ids = sorted({r['provincia'] for r in _general_rows})
         prov_lookup = {}
         prov_db_ids = [pid for pid in prov_ids if pid != 999999]
         if prov_db_ids:
@@ -2425,7 +2430,7 @@ def exportar_asignaciones_excel(request):
                 prov_name = 'SIN PROVINCIA' if prov_id == 999999 else f"PROVINCIA {prov_id}"
             base_title = safe_sheet_title(prov_name)
             sheet_title = unique_sheet_title(base_title)
-            prov_rows = [r for r in combined_rows if r['provincia'] == prov_id]
+            prov_rows = [r for r in _general_rows if r['provincia'] == prov_id]
             ws_prov = wb.create_sheet(title=sheet_title)
             build_sheet(ws_prov, sheet_title, prov_rows)
 
