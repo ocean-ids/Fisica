@@ -1,0 +1,11 @@
+.apoyo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 420px;
+  padding-top: 6px;
+}
+
+.apoyo-form mat-form-field {
+  width: 100%;
+}

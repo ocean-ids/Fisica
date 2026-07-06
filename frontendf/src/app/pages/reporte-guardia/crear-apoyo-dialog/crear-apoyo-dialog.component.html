@@ -1,0 +1,46 @@
+<h2 mat-dialog-title>{{ esEdicion ? 'Editar apoyo' : 'Crear apoyo' }}</h2>
+
+<mat-dialog-content class="apoyo-form">
+  <mat-form-field appearance="outline">
+    <mat-label>Cliente</mat-label>
+    <mat-select [(ngModel)]="clienteId" (selectionChange)="onCliente()">
+      <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Puesto</mat-label>
+    <mat-select [(ngModel)]="puestoId" [disabled]="!clienteId">
+      <mat-option *ngFor="let p of puestos" [value]="p.id">
+        {{ p.nombre }}<span *ngIf="p.instalacion_nombre"> — {{ p.instalacion_nombre }}</span>
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Nombre y apellidos</mat-label>
+    <input type="text" matInput [formControl]="personaCtrl" [matAutocomplete]="auto"
+           placeholder="Escribe para buscar…">
+    <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayPersona"
+                      (optionSelected)="onPersonaSel($event.option.value)">
+      <mat-option *ngFor="let p of personasFiltradas$ | async" [value]="p">
+        {{ p.nombres }} {{ p.apellidos }} <small class="text-muted">— {{ p.cedula }}</small>
+      </mat-option>
+    </mat-autocomplete>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Proviene (tipo)</mat-label>
+    <input matInput [value]="proviene" readonly placeholder="Se toma del tipo de la persona">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="apoyo-motivo">
+    <mat-label>Motivo</mat-label>
+    <textarea matInput rows="2" [(ngModel)]="motivo"></textarea>
+  </mat-form-field>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="guardar()" [disabled]="!valido">Guardar</button>
+</mat-dialog-actions>

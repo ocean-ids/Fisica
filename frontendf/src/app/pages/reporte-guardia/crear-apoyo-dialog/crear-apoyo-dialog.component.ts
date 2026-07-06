@@ -1,0 +1,138 @@
+import { Component, Inject, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
+import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatButtonModule } from '@angular/material/button';
+import { Observable, of } from 'rxjs';
+import { debounceTime, startWith, switchMap, catchError } from 'rxjs/operators';
+import { ClienteService } from '../../../services/cliente.service';
+import { PuestoService } from '../../../services/puesto.service';
+import { PersonaService } from '../../../services/persona.service';
+import { Cliente } from '../../../models';
+import { Puesto } from '../../../models/puesto.model';
+import { Persona } from '../../../models/persona.model';
+import { ReporteGuardia } from '../../../models/reporte-guardia.model';
+
+interface DialogData {
+  row?: ReporteGuardia;   // presente = edición
+}
+
+@Component({
+  selector: 'app-crear-apoyo-dialog',
+  standalone: true,
+  imports: [
+    CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule,
+    MatFormFieldModule, MatInputModule, MatSelectModule, MatAutocompleteModule, MatButtonModule,
+  ],
+  templateUrl: './crear-apoyo-dialog.component.html',
+  styleUrl: './crear-apoyo-dialog.component.css',
+})
+export class CrearApoyoDialogComponent implements OnInit {
+  clientes: Cliente[] = [];
+  puestos: Puesto[] = [];
+  clienteId: number | null = null;
+  puestoId: number | null = null;
+  personaCtrl = new FormControl<any>('');
+  personasFiltradas$!: Observable<Persona[]>;
+  personaSel: Persona | null = null;
+  proviene = '';
+  motivo = '';
+  esEdicion = false;
+  private editPersonaId: number | null = null;
+
+  constructor(
+    private ref: MatDialogRef<CrearApoyoDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: DialogData,
+    private clienteSrv: ClienteService,
+    private puestoSrv: PuestoService,
+    private personaSrv: PersonaService,
+  ) {}
+
+  ngOnInit(): void {
+    const row = this.data?.row;
+    this.esEdicion = !!row?.id;
+    if (row) {
+      this.motivo = row.motivo || '';
+      this.proviene = row.proviene || '';
+      this.editPersonaId = (row as any).persona_ref ?? null;
+      if (row.persona_nombre) { this.personaCtrl.setValue(row.persona_nombre); }
+    }
+
+    this.clienteSrv.getClientes().subscribe((cs) => {
+      this.clientes = cs || [];
+      if (row?.cliente) {
+        const c = this.clientes.find(x => x.nombre_comercial === row.cliente);
+        if (c) { this.clienteId = c.id!; this.onCliente(row.puesto); }
+      }
+    });
+
+    // Autocomplete de personas: búsqueda en el servidor por nombre/cédula.
+    this.personasFiltradas$ = this.personaCtrl.valueChanges.pipe(
+      startWith(''),
+      debounceTime(250),
+      switchMap((val: any) => {
+        const q = typeof val === 'string' ? val : `${val?.nombres || ''} ${val?.apellidos || ''}`;
+        if (!q || q.trim().length < 2) { return of([] as Persona[]); }
+        return this.personaSrv.getPersonas({ q: q.trim() }).pipe(catchError(() => of([] as Persona[])));
+      }),
+    );
+  }
+
+  onCliente(preselectPuestoNombre?: string): void {
+    this.puestos = [];
+    if (!preselectPuestoNombre) { this.puestoId = null; }
+    if (!this.clienteId) { return; }
+    this.puestoSrv.getPuestosPorCliente(this.clienteId).subscribe((ps) => {
+      this.puestos = ps || [];
+      if (preselectPuestoNombre) {
+        const p = this.puestos.find(x => x.nombre === preselectPuestoNombre);
+        if (p) { this.puestoId = p.id; }
+      }
+    });
+  }
+
+  displayPersona = (p: any): string => {
+    if (!p) { return ''; }
+    if (typeof p === 'string') { return p; }
+    return `${p.nombres || ''} ${p.apellidos || ''}`.trim();
+  };
+
+  onPersonaSel(p: Persona): void {
+    this.personaSel = p;
+    this.proviene = p?.tipo || '';
+  }
+
+  get valido(): boolean {
+    return !!this.clienteId && !!this.puestoId;
+  }
+
+  guardar(): void {
+    const cli = this.clientes.find(c => c.id === this.clienteId);
+    const pto = this.puestos.find(p => p.id === this.puestoId);
+    const p = this.personaSel;
+    const out: any = {
+      cliente: cli?.nombre_comercial || '',
+      puesto: pto?.nombre || '',
+      motivo: (this.motivo || '').trim(),
+    };
+    if (p) {
+      out.persona_nombre = `${p.nombres} ${p.apellidos}`.trim();
+      out.persona_ref = p.id;
+      out.proviene = p.tipo || '';
+    } else {
+      // Edición sin cambiar la persona: conservar la existente.
+      out.persona_ref = this.editPersonaId;
+      out.persona_nombre = typeof this.personaCtrl.value === 'string' ? this.personaCtrl.value : '';
+      out.proviene = this.proviene || '';
+    }
+    this.ref.close(out);
+  }
+
+  cancelar(): void {
+    this.ref.close();
+  }
+}
