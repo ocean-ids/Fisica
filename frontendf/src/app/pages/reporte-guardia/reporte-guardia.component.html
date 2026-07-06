@@ -12,16 +12,15 @@
         <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
       </mat-button-toggle-group>
     </div>
-    <div class="flex-grow-1" style="flex-basis:0;"></div>
+    <div class="flex-grow-1 d-flex justify-content-end" style="flex-basis:0;">
+      <button type="button" class="btn btn-primary" (click)="crearApoyo()">
+        <i class="bi bi-plus-lg"></i> Crear apoyo
+      </button>
+    </div>
   </div>
 
   <div *ngFor="let s of secciones" class="mb-4">
     <h5 class="border-bottom pb-1 text-center fw-bold">{{ s.label }}</h5>
-    <div *ngIf="s.key === 'APOYO'" class="d-flex justify-content-end mb-2">
-      <button type="button" class="btn btn-sm btn-primary" (click)="crearApoyo()">
-        <i class="bi bi-plus-lg"></i> Crear apoyo
-      </button>
-    </div>
     <table class="table table-bordered table-sm align-middle text-center">
       <thead class="table-light">
         <tr>
