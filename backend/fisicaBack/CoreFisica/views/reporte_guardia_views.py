@@ -116,12 +116,13 @@ def listar_reporte_guardia(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def crear_reporte_guardia(request, id):
-    fila = get_object_or_404(ReporteGuardia, id=id)
-    s = ReporteGuardiaSerializer(fila, data=request.data, partial=True)
+def crear_reporte_guardia(request):
+    """Crea una fila manual del reporte (p. ej. APOYO). No se sincroniza con nada;
+    solo existe en el reporte de guardia."""
+    s = ReporteGuardiaSerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    s.save()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    s.save(auto=False)   # manual: nunca lo toca la sincronizacion automatica
+    return Response(s.data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['PUT', 'PATCH'])

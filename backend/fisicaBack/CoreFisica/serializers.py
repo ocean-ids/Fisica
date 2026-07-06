@@ -386,5 +386,6 @@ class ReporteGuardiaSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReporteGuardia
         fields = '__all__'
-        read_only_fields = ('created_at', 'updated_at', 'proviene')
-        # proviene se autocompleta en el save() del modelo desde persona_ref.tipo
+        read_only_fields = ('created_at', 'updated_at')
+        # En filas auto, proviene se autocompleta en el save() del modelo desde
+        # persona_ref.tipo. En filas manuales (APOYO) se puede escribir a mano.
