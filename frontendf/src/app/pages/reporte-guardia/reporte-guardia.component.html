@@ -22,24 +22,22 @@
         <tr>
           <th style="width:40px">Nº</th>
           <th *ngFor="let c of s.cols">{{ etiquetas[c] }}</th>
+          <th *ngIf="editablesDe(s.key).length" style="width:80px">Acción</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let f of filasDe(s.key); let i = index">
           <td>{{ i + 1 }}</td>
-          <td *ngFor="let c of s.cols">
-            <ng-container *ngIf="c === 'motivo'; else texto">
-              {{ f.motivo || '-' }}
-              <button type="button" class="btn btn-sm btn-link p-0 ms-1"
-                      (click)="editarMotivo(f)" title="Editar motivo">
-                <i class="bi bi-pencil"></i>
-              </button>
-            </ng-container>
-            <ng-template #texto>{{ celda(f, c) }}</ng-template>
+          <td *ngFor="let c of s.cols">{{ celda(f, c) }}</td>
+          <td *ngIf="editablesDe(s.key).length">
+            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
+                    (click)="editar(f)" title="Editar">
+              <i class="bi bi-pencil"></i>
+            </button>
           </td>
         </tr>
         <tr *ngIf="!filasDe(s.key).length">
-          <td [attr.colspan]="s.cols.length + 1" class="text-center text-muted">Sin registros.</td>
+          <td [attr.colspan]="s.cols.length + 1 + (editablesDe(s.key).length ? 1 : 0)" class="text-center text-muted">Sin registros.</td>
         </tr>
         <tr *ngIf="s.total && filasDe(s.key).length" class="fw-bold table-light">
           <td [attr.colspan]="s.cols.length">Total</td>

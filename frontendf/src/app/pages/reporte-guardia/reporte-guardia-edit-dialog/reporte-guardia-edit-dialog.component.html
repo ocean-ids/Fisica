@@ -9,10 +9,10 @@
     </div>
   </div>
 
-  <!-- Único campo editable: Motivo -->
-  <mat-form-field appearance="outline" class="rg-motivo">
-    <mat-label>Motivo</mat-label>
-    <textarea matInput rows="2" [(ngModel)]="motivo"></textarea>
+  <!-- Campos editables de la sección (p. ej. Autorización, Motivo) -->
+  <mat-form-field appearance="outline" class="rg-motivo" *ngFor="let e of editables">
+    <mat-label>{{ etiquetas[e] || e }}</mat-label>
+    <textarea matInput rows="2" [(ngModel)]="valores[e]" [name]="e"></textarea>
   </mat-form-field>
 </mat-dialog-content>
 

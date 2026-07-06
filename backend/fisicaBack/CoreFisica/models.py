@@ -1187,6 +1187,8 @@ class ReporteGuardia(models.Model):
     persona_nombre = models.CharField(max_length=160, blank=True, default='')   # "1 NOMBRE Y 2 APELLIDOS"
     persona_ref = models.ForeignKey('Persona', on_delete=models.SET_NULL, null=True, blank=True, related_name='reporte_guardia')
     reporte_asistencia = models.ForeignKey('ReporteAsistencia', on_delete=models.SET_NULL, null=True, blank=True, related_name='reporte_guardia')
+    # Para NO_CUBIERTOS: la asignacion (puesto sin persona) que origina la fila.
+    asignacion_ref = models.ForeignKey('Asignacion', on_delete=models.SET_NULL, null=True, blank=True, related_name='reporte_guardia_no_cubierto')
     auto = models.BooleanField(default=False)
 
     # PROVIENE = tipo de la persona (se autocompleta al elegir la persona)
