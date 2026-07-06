@@ -117,6 +117,18 @@ export class AsignacionService {
     );
   }
 
+  // Asignados (ocupados ese día) + los que están en FRANCO ese día (disponibles).
+  obtenerAsignadosYFranco(mes: number, anio: number, fecha?: string): Observable<{ asignados: number[]; franco: number[] }> {
+    let params = new HttpParams();
+    if (fecha) params = params.set('fecha', fecha);
+    return this.apiService.get<any>(`/personas-asignadas/${mes}/${anio}/`, params).pipe(
+      map(response => ({
+        asignados: (response?.persona_ids ?? []) as number[],
+        franco: (response?.franco_ids ?? []) as number[],
+      }))
+    );
+  }
+
   // Conteo de cupos ocupados por puesto en el mes (todos los cantones).
   obtenerPuestosOcupacion(mes: number, anio: number): Observable<{ [puestoId: number]: number }> {
     return this.apiService.get<any>(`/puestos-ocupacion/${mes}/${anio}/`).pipe(

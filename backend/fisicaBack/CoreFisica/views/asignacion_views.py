@@ -2535,8 +2535,19 @@ def personas_asignadas(request, mes, anio):
         ).exclude(end_date__isnull=False, end_date__lt=fecha_obj)
         dnf = _calendar_dnf_for_date(fecha_obj)  # {asignacion_id: 'D'|'N'|'F'}
         # Ocupada = tiene alguna asignación ese día que NO sea franco (D/N o sin letra).
-        ids = {a['persona_id'] for a in asigs.values('id', 'persona_id') if dnf.get(a['id']) != 'F'}
-        return JsonResponse({'persona_ids': list(ids)}, status=status.HTTP_200_OK)
+        # Franco = ese día está en F (disponible como reemplazo -> estado FR/TRABAJADO).
+        ocupados = set()
+        francos = set()
+        for a in asigs.values('id', 'persona_id'):
+            if dnf.get(a['id']) == 'F':
+                francos.add(a['persona_id'])
+            else:
+                ocupados.add(a['persona_id'])
+        francos -= ocupados  # si trabaja en otra asignación ese día, no es franco disponible
+        return JsonResponse(
+            {'persona_ids': list(ocupados), 'franco_ids': list(francos)},
+            status=status.HTTP_200_OK,
+        )
 
     month_start = datetime.date(anio, mes, 1)
     if mes == 12:

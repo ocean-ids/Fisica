@@ -384,7 +384,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     const mes = Number(mesStr);
     const anio = Number(anioStr);
 
-    const abrir = (assignedPersonaIds: number[]) => {
+    const abrir = (assignedPersonaIds: number[], francoPersonaIds: number[]) => {
       const dialogRef = this.dialog.open(ReporteAsistenciaEditDialogComponent, {
         width: '700px',
         maxWidth: '95vw',
@@ -393,19 +393,21 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
           fecha: this.filtroFecha || null,
           occupiedReemplazoIds,
           assignedPersonaIds,
+          francoPersonaIds,
         }
       });
       this._afterEditClosed(dialogRef, row);
     };
 
     if (Number.isFinite(mes) && Number.isFinite(anio)) {
-      // Pasar la fecha: quien está en FRANCO (F) ese día cuenta como disponible.
-      this.asignacionService.obtenerPersonasAsignadas(mes, anio, this.filtroFecha || undefined).subscribe({
-        next: (ids) => abrir(ids || []),
-        error: () => abrir([]),
+      // Pasar la fecha: quien está en FRANCO (F) ese día cuenta como disponible,
+      // y además se usa para autocompletar el estado FR/TRABAJADO.
+      this.asignacionService.obtenerAsignadosYFranco(mes, anio, this.filtroFecha || undefined).subscribe({
+        next: (r) => abrir(r?.asignados || [], r?.franco || []),
+        error: () => abrir([], []),
       });
     } else {
-      abrir([]);
+      abrir([], []);
     }
   }
 
