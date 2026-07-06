@@ -20,7 +20,7 @@
       <a mat-list-item [routerLink]="item.path" routerLinkActive="active" class="text-decoration-none">
         <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
         <span matListItemTitle>{{ item.label }}</span>
-        <button type="button" class="chevron-btn" (click)="toggle(item.label, $event)"
+        <button matListItemMeta type="button" class="chevron-btn" (click)="toggle(item.label, $event)"
                 [attr.aria-label]="'Desplegar ' + item.label">
           <mat-icon [class.rotated]="isExpanded(item.label)">expand_more</mat-icon>
         </button>
@@ -29,7 +29,7 @@
         @for (child of item.children; track child.label) {
           <a mat-list-item [routerLink]="child.path" [queryParams]="child.queryParams || null"
              routerLinkActive="active" class="text-decoration-none submenu-item">
-            <span class="submenu-bullet">•</span>
+            <mat-icon matListItemIcon class="submenu-bullet">radio_button_unchecked</mat-icon>
             <span matListItemTitle>{{ child.label }}</span>
           </a>
         }
