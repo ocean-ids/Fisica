@@ -324,7 +324,12 @@ def obtener_asignaciones(request, mes=None, anio=None):
 
         # Evitar duplicados por persona: si ya existe asignacion del mes solicitado,
         # no incluir para esa misma persona la asignacion recurrente heredada de meses previos.
-        personas_con_mes = base_qs.filter(mes=mes, anio=anio).values('persona_id')
+        # IMPORTANTE: excluir persona_id NULL (asignaciones vacantes). Un NULL en el
+        # subquery envenena el `NOT IN` (persona_id NOT IN (..., NULL) -> UNKNOWN para
+        # todas las filas), vaciando la rama recurrente ese mes. Ver bug julio/vacantes.
+        personas_con_mes = base_qs.filter(
+            mes=mes, anio=anio, persona_id__isnull=False
+        ).values('persona_id')
 
         base_qs = base_qs.filter(
             Q(mes=mes, anio=anio) |
