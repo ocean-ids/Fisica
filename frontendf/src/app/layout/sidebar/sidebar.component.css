@@ -37,14 +37,15 @@
   border: 0;
   background: transparent;
   padding: 0;
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   cursor: pointer;
   color: inherit;
 }
 .chevron-btn mat-icon {
   transition: transform 0.25s ease;
+  margin: 0;
 }
 .chevron-btn mat-icon.rotated {
   transform: rotate(180deg);
@@ -67,14 +68,18 @@
   max-height: 500px;
 }
 
-/* Ítems hijos: indentados, con viñeta */
+/* Ítems hijos: indentados, con viñeta (círculo pequeño) */
 :host ::ng-deep .submenu-item {
-  padding-left: 30px !important;
+  padding-left: 18px !important;
   font-size: 14px;
 }
-.submenu-bullet {
-  margin-right: 12px;
+:host ::ng-deep .submenu-item .submenu-bullet {
+  font-size: 10px;
+  width: 10px;
+  height: 10px;
   color: #9aa0a6;
-  font-size: 18px;
-  line-height: 1;
+}
+/* el círculo no debe crecer con el hover de iconos */
+:host ::ng-deep mat-nav-list a.submenu-item:hover .submenu-bullet {
+  transform: none;
 }
