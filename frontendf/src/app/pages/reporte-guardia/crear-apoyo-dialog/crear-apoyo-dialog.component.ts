@@ -7,8 +7,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
-import { Observable, of } from 'rxjs';
-import { debounceTime, startWith, switchMap, catchError } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { debounceTime, startWith, map } from 'rxjs/operators';
 import { ClienteService } from '../../../services/cliente.service';
 import { InstalacionService } from '../../../services/instalacion.service';
 import { PuestoService } from '../../../services/puesto.service';
@@ -36,6 +36,7 @@ export class CrearApoyoDialogComponent implements OnInit {
   clientes: Cliente[] = [];
   instalaciones: Instalacion[] = [];
   puestos: Puesto[] = [];
+  personasAll: Persona[] = [];
   clienteId: number | null = null;
   instalacionId: number | null = null;
   puestoId: number | null = null;
@@ -74,14 +75,17 @@ export class CrearApoyoDialogComponent implements OnInit {
       }
     });
 
-    // Autocomplete de personas: búsqueda en el servidor por nombre/cédula.
+    // Cargar todas las personas y filtrar localmente (dropdown poblado + filtrable).
+    this.personaSrv.getPersonas({}).subscribe((ps) => { this.personasAll = ps || []; });
     this.personasFiltradas$ = this.personaCtrl.valueChanges.pipe(
       startWith(''),
-      debounceTime(250),
-      switchMap((val: any) => {
-        const q = typeof val === 'string' ? val : `${val?.nombres || ''} ${val?.apellidos || ''}`;
-        if (!q || q.trim().length < 2) { return of([] as Persona[]); }
-        return this.personaSrv.getPersonas({ q: q.trim() }).pipe(catchError(() => of([] as Persona[])));
+      debounceTime(120),
+      map((val: any) => {
+        const q = (typeof val === 'string' ? val : this.displayPersona(val)).toLowerCase().trim();
+        if (!q) { return this.personasAll.slice(0, 50); }
+        return this.personasAll
+          .filter(p => `${p.nombres || ''} ${p.apellidos || ''} ${p.cedula || ''}`.toLowerCase().includes(q))
+          .slice(0, 50);
       }),
     );
   }
