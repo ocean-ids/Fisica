@@ -11,16 +11,34 @@ import { AuthService } from '../../services/auth.service';
   styleUrl: './sidebar.component.css'
 })
 export class SidebarComponent implements OnInit {
-  allMenuItems = [
+  allMenuItems: Array<any> = [
     { path: '/dashboard/clientes', label: 'Clientes', icon: 'business', permission: 'CoreFisica.view_cliente' },
     { path: '/dashboard/instalaciones', label: 'Instalaciones', icon: 'location_city', permission: 'CoreFisica.view_instalacion' },
     { path: '/dashboard/puestos', label: 'Puestos', icon: 'work', permission: 'CoreFisica.view_puesto' },
     { path: '/dashboard/personas', label: 'Personal', icon: 'admin_panel_settings', permission: 'CoreFisica.view_persona' },
-    { path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'assignment_ind', permission: 'CoreFisica.view_asignacion' },
+    {
+      path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'assignment_ind', permission: 'CoreFisica.view_asignacion',
+      children: [
+        { path: '/dashboard/asignaciones', label: 'Sacafranco', queryParams: { seccion: 'sacafranco' }, permission: 'CoreFisica.view_asignacion' },
+      ],
+    },
     { path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'how_to_reg', permission: 'CoreFisica.view_reporteasistencia' },
     { path: '/dashboard/consolidado', label: 'Consolidado', icon: 'assignment', permission: 'CoreFisica.view_consolidado' },
     { path: '/dashboard/reporte-guardia', label: 'Reporte Guardia', icon: 'summarize', permission: 'CoreFisica.view_reporteguardia' }
   ];
+
+  // Submenús desplegados (por label).
+  expanded: Record<string, boolean> = {};
+
+  toggle(label: string, ev?: Event): void {
+    ev?.preventDefault();
+    ev?.stopPropagation();
+    this.expanded[label] = !this.expanded[label];
+  }
+
+  isExpanded(label: string): boolean {
+    return !!this.expanded[label];
+  }
 
   fullName = '';
   username = '';
@@ -42,7 +60,13 @@ export class SidebarComponent implements OnInit {
   }
 
   get menuItems() {
-    return this.allMenuItems.filter(item => !item.permission || this.authService.hasPermission(item.permission));
+    return this.allMenuItems
+      .filter(item => !item.permission || this.authService.hasPermission(item.permission))
+      .map(item => {
+        if (!item.children?.length) { return item; }
+        const children = item.children.filter((c: any) => !c.permission || this.authService.hasPermission(c.permission));
+        return { ...item, children };
+      });
   }
 
   get displayName(): string {
