@@ -40,6 +40,7 @@ export class ReporteAsistenciaEditDialogComponent {
   reemplazoCtrl = new FormControl<Persona | string | null>('');
   reemplazosOcupadosIds = new Set<number>();
   personasAsignadasIds = new Set<number>();
+  personasFrancoIds = new Set<number>();
   cargandoReemplazos = false;
   guardando = false;
   error = '';
@@ -55,6 +56,7 @@ export class ReporteAsistenciaEditDialogComponent {
       fecha?: string | null;
       occupiedReemplazoIds?: number[];
       assignedPersonaIds?: number[];
+      francoPersonaIds?: number[];
     }
   ) {
     this.dialogRef.disableClose = true;
@@ -66,6 +68,12 @@ export class ReporteAsistenciaEditDialogComponent {
     // Personas con asignación activa: el backend no permite usarlas como reemplazo.
     this.personasAsignadasIds = new Set(
       (data?.assignedPersonaIds || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    );
+    // Personas en FRANCO ese día: al elegirlas como reemplazo, estado = FR/TRABAJADO.
+    this.personasFrancoIds = new Set(
+      (data?.francoPersonaIds || [])
         .map((id) => Number(id))
         .filter((id) => Number.isFinite(id) && id > 0)
     );
@@ -172,6 +180,11 @@ export class ReporteAsistenciaEditDialogComponent {
     }
 
     this.form.get('reemplazo_id')?.setValue(value?.id ?? null);
+
+    // Si el reemplazo elegido está en FRANCO ese día, el estado es FR/TRABAJADO.
+    if (value?.id && this.personasFrancoIds.has(Number(value.id))) {
+      this.form.get('estado')?.setValue('FR/TRABAJADO');
+    }
   }
 
   getDescripcionesFiltradas(): string[] {
