@@ -10,6 +10,7 @@ import { GlobalFilterStateService } from '../../services/global-filter-state.ser
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { map, distinctUntilChanged, debounceTime } from 'rxjs/operators';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-reporte-guardia',
@@ -47,14 +48,50 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
   ];
 
   // Campos que se pueden editar por sección (los demás salen de solo lectura).
+  // APOYO es 100% manual (CRUD): todos sus campos son editables.
   readonly editablesPorSeccion: Record<string, string[]> = {
     DOBLADAS: [], ADICIONALES: [], ADELANTOS: [],
     NO_CUBIERTOS: ['autorizacion', 'motivo'],
-    FALTOS: ['motivo'], HUECA: ['motivo'], APOYO: ['motivo'],
+    FALTOS: ['motivo'], HUECA: ['motivo'],
+    APOYO: ['cliente', 'puesto', 'persona_nombre', 'proviene', 'motivo'],
   };
 
   editablesDe(seccion: string): string[] {
     return this.editablesPorSeccion[seccion] || [];
+  }
+
+  // APOYO: crear una fila manual (solo vive en el reporte de guardia).
+  crearApoyo(): void {
+    const cols = this.secciones.find(s => s.key === 'APOYO')?.cols || [];
+    const ref = this.dialog.open(ReporteGuardiaEditDialogComponent, {
+      width: '640px',
+      maxWidth: '95vw',
+      data: { row: { seccion: 'APOYO' }, campos: [], editables: cols, etiquetas: this.etiquetas, titulo: 'Crear apoyo' },
+    });
+    ref.afterClosed().subscribe((res) => {
+      if (!res) { return; }
+      this.srv.crear({ ...res, seccion: 'APOYO', fecha: this.filtroFecha, turno: this.filtroTurno } as any).subscribe({
+        next: () => this.cargar(),
+        error: () => this.cargar(),
+      });
+    });
+  }
+
+  // APOYO: eliminar una fila manual.
+  eliminar(f: ReporteGuardia): void {
+    if (!f.id) { return; }
+    Swal.fire({
+      title: '¿Eliminar apoyo?',
+      text: `${f.puesto || ''} ${f.persona_nombre || ''}`.trim(),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    }).then((r) => {
+      if (r.isConfirmed) {
+        this.srv.eliminar(f.id!).subscribe({ next: () => this.cargar(), error: () => this.cargar() });
+      }
+    });
   }
 
   celda(f: any, campo: string): string {

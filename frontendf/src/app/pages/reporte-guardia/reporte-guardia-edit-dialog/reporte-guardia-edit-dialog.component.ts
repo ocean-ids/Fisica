@@ -12,6 +12,7 @@ interface DialogData {
   campos: string[];                    // columnas de solo lectura de esa sección
   editables: string[];                 // campos editables (p. ej. autorizacion, motivo)
   etiquetas: Record<string, string>;
+  titulo?: string;                     // título del diálogo (p. ej. "Crear apoyo")
 }
 
 @Component({
@@ -29,6 +30,7 @@ export class ReporteGuardiaEditDialogComponent {
   campos: string[];
   editables: string[];
   etiquetas: Record<string, string>;
+  titulo: string;
   valores: Record<string, string> = {};
 
   constructor(
@@ -39,6 +41,7 @@ export class ReporteGuardiaEditDialogComponent {
     this.campos = data.campos || [];
     this.editables = (data.editables && data.editables.length) ? data.editables : ['motivo'];
     this.etiquetas = data.etiquetas || {};
+    this.titulo = data.titulo || `Editar registro — ${data.row?.seccion || ''}`;
     for (const campo of this.editables) {
       this.valores[campo] = ((this.row as any)?.[campo] ?? '').toString();
     }

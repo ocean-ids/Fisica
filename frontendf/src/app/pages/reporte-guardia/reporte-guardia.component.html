@@ -17,6 +17,11 @@
 
   <div *ngFor="let s of secciones" class="mb-4">
     <h5 class="border-bottom pb-1 text-center fw-bold">{{ s.label }}</h5>
+    <div *ngIf="s.key === 'APOYO'" class="d-flex justify-content-end mb-2">
+      <button type="button" class="btn btn-sm btn-primary" (click)="crearApoyo()">
+        <i class="bi bi-plus-lg"></i> Crear apoyo
+      </button>
+    </div>
     <table class="table table-bordered table-sm align-middle text-center">
       <thead class="table-light">
         <tr>
@@ -33,6 +38,11 @@
             <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
                     (click)="editar(f)" title="Editar">
               <i class="bi bi-pencil"></i>
+            </button>
+            <button *ngIf="s.key === 'APOYO'" type="button"
+                    class="btn btn-sm btn-outline-danger py-0 px-2 ms-1"
+                    (click)="eliminar(f)" title="Eliminar">
+              <i class="bi bi-trash"></i>
             </button>
           </td>
         </tr>
