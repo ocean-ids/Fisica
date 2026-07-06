@@ -15,10 +15,30 @@
     </div>
   </div>
 
-  @for (item of menuItems; track item.path) {
-    <a mat-list-item [routerLink]="item.path" routerLinkActive="active" class="text-decoration-none">
-      <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-      <span matListItemTitle>{{ item.label }}</span>
-    </a>
+  @for (item of menuItems; track item.label) {
+    @if (item.children?.length) {
+      <a mat-list-item [routerLink]="item.path" routerLinkActive="active" class="text-decoration-none">
+        <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+        <span matListItemTitle>{{ item.label }}</span>
+        <button type="button" class="chevron-btn" (click)="toggle(item.label, $event)"
+                [attr.aria-label]="'Desplegar ' + item.label">
+          <mat-icon [class.rotated]="isExpanded(item.label)">expand_more</mat-icon>
+        </button>
+      </a>
+      <div class="submenu" [class.open]="isExpanded(item.label)">
+        @for (child of item.children; track child.label) {
+          <a mat-list-item [routerLink]="child.path" [queryParams]="child.queryParams || null"
+             routerLinkActive="active" class="text-decoration-none submenu-item">
+            <span class="submenu-bullet">•</span>
+            <span matListItemTitle>{{ child.label }}</span>
+          </a>
+        }
+      </div>
+    } @else {
+      <a mat-list-item [routerLink]="item.path" routerLinkActive="active" class="text-decoration-none">
+        <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+        <span matListItemTitle>{{ item.label }}</span>
+      </a>
+    }
   }
 </mat-nav-list>

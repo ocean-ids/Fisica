@@ -31,3 +31,50 @@
 :host ::ng-deep mat-nav-list a[mat-list-item]:hover mat-icon {
   transform: scale(1.28);
 }
+
+/* Botón chevron del submenú (a la derecha del ítem padre) */
+.chevron-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  color: inherit;
+}
+.chevron-btn mat-icon {
+  transition: transform 0.25s ease;
+}
+.chevron-btn mat-icon.rotated {
+  transform: rotate(180deg);
+}
+/* evitar que el hover-scale de iconos afecte al chevron */
+:host ::ng-deep mat-nav-list a[mat-list-item]:hover .chevron-btn mat-icon {
+  transform: none;
+}
+:host ::ng-deep mat-nav-list a[mat-list-item]:hover .chevron-btn mat-icon.rotated {
+  transform: rotate(180deg);
+}
+
+/* Contenedor del submenú: se despliega con animación */
+.submenu {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.28s ease;
+}
+.submenu.open {
+  max-height: 500px;
+}
+
+/* Ítems hijos: indentados, con viñeta */
+:host ::ng-deep .submenu-item {
+  padding-left: 30px !important;
+  font-size: 14px;
+}
+.submenu-bullet {
+  margin-right: 12px;
+  color: #9aa0a6;
+  font-size: 18px;
+  line-height: 1;
+}
