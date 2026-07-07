@@ -186,50 +186,9 @@ class AsignacionCalendarioLogAdmin(admin.ModelAdmin):
 		return False
 
 
-class UserProfileAdminForm(forms.ModelForm):
-	modulos_ocultos = forms.MultipleChoiceField(
-		choices=MODULOS_MENU,
-		widget=forms.CheckboxSelectMultiple,
-		required=False,
-		label='Módulos ocultos del menú',
-		help_text='Marca los módulos que NO se mostrarán en el menú de este usuario. '
-		          'No afecta el acceso a datos (los endpoints siguen usando los permisos view_*).',
-	)
-
-	class Meta:
-		model = UserProfile
-		fields = '__all__'
-
-
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-	form = UserProfileAdminForm
-	list_display = ('user', 'cargo', 'user_is_active', 'updated_at')
-	search_fields = ('user__username', 'user__email', 'cargo')
-	list_filter = ('user__is_active',)
-
-	def user_is_active(self, obj):
-		return obj.user.is_active
-	user_is_active.boolean = True
-	user_is_active.short_description = 'Activo'
-
-	def has_module_permission(self, request):
-		return request.user.has_perm('CoreFisica.view_userprofile')
-
-	def has_view_permission(self, request, obj=None):
-		return request.user.has_perm('CoreFisica.view_userprofile')
-
-	def has_change_permission(self, request, obj=None):
-		return request.user.has_perm('CoreFisica.change_userprofile')
-
-	def has_add_permission(self, request):
-		return request.user.has_perm('CoreFisica.add_userprofile')
-
-	def has_delete_permission(self, request, obj=None):
-		return request.user.has_perm('CoreFisica.delete_userprofile')
-
-
 # --- Perfil incrustado DENTRO del admin de Usuario (todo en un solo lugar) ---
+# El modelo UserProfile NO se registra por separado a propósito: se edita solo
+# desde la ficha del Usuario (inline), para no tener dos secciones distintas.
 class UserProfileInlineForm(forms.ModelForm):
 	modulos_ocultos = forms.MultipleChoiceField(
 		choices=MODULOS_MENU,
