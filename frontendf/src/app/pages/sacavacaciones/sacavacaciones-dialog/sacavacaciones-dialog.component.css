@@ -10,16 +10,30 @@
   width: 100%;
 }
 
-.vac-row {
+.vac-cal-label {
+  font-size: 12px;
+  color: #6c757d;
+  margin: 4px 0 2px;
+}
+
+/* Calendario en línea, dentro del modal */
+.vac-cal {
+  border: 1px solid #d9e2ef;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.vac-cal mat-calendar {
+  width: 100%;
+}
+
+.vac-resumen {
   display: flex;
-  gap: 8px;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  padding: 4px 2px 2px;
 }
-
-.vac-row mat-form-field {
-  flex: 1;
-}
-
-.vac-row .vac-dias {
-  max-width: 100px;
-  flex: 0 0 100px;
+.vac-resumen strong {
+  color: #0c2f5a;
 }
