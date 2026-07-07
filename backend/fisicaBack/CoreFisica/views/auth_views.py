@@ -49,6 +49,8 @@ def _serialize_user(request, user: User):
         "is_superuser": user.is_superuser,
         "groups": list(user.groups.values_list('name', flat=True)),
         "permissions": sorted(list(user.get_all_permissions())),
+        # Módulos ocultos del menú (no afecta el acceso a datos, solo el menú/rutas).
+        "modulos_ocultos": list(profile.modulos_ocultos or []),
     }
 
 #funcion get_client_ip que recibe un request y devuelve la ip del cliente, teniendo en cuenta posibles proxies

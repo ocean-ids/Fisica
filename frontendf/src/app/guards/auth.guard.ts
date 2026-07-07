@@ -3,19 +3,20 @@ import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 
 const dashboardRoutesByPermission = [
-  { path: '/dashboard/clientes', permission: 'CoreFisica.view_cliente' },
-  { path: '/dashboard/instalaciones', permission: 'CoreFisica.view_instalacion' },
-  { path: '/dashboard/puestos', permission: 'CoreFisica.view_puesto' },
-  { path: '/dashboard/personas', permission: 'CoreFisica.view_persona' },
-  { path: '/dashboard/horarios', permission: 'CoreFisica.view_horario' },
-  { path: '/dashboard/asignaciones', permission: 'CoreFisica.view_asignacion' },
-  { path: '/dashboard/reporte-asistencia', permission: 'CoreFisica.view_reporteasistencia' },
-  { path: '/dashboard/consolidado', permission: 'CoreFisica.view_consolidado' },
+  { path: '/dashboard/clientes', permission: 'CoreFisica.view_cliente', key: 'clientes' },
+  { path: '/dashboard/instalaciones', permission: 'CoreFisica.view_instalacion', key: 'instalaciones' },
+  { path: '/dashboard/puestos', permission: 'CoreFisica.view_puesto', key: 'puestos' },
+  { path: '/dashboard/personas', permission: 'CoreFisica.view_persona', key: 'personas' },
+  { path: '/dashboard/horarios', permission: 'CoreFisica.view_horario', key: 'horarios' },
+  { path: '/dashboard/asignaciones', permission: 'CoreFisica.view_asignacion', key: 'asignaciones' },
+  { path: '/dashboard/reporte-asistencia', permission: 'CoreFisica.view_reporteasistencia', key: 'reporte-asistencia' },
+  { path: '/dashboard/consolidado', permission: 'CoreFisica.view_consolidado', key: 'consolidado' },
 ];
 
 function getFirstAccessibleDashboardRoute(authService: AuthService): string | null {
-  const accessibleRoute = dashboardRoutesByPermission.find(({ permission }) =>
-    authService.hasPermission(permission)
+  // El primer módulo con permiso Y que no esté oculto para este usuario.
+  const accessibleRoute = dashboardRoutesByPermission.find(({ permission, key }) =>
+    authService.hasPermission(permission) && !authService.isModuleHidden(key)
   );
 
   return accessibleRoute?.path ?? null;
@@ -47,12 +48,16 @@ export const permissionGuard: CanActivateFn = (
   const authService = inject(AuthService);
   const router = inject(Router);
   const permission: string = route.data['permission'];
+  const moduleKey: string = route.data['moduleKey'];
 
   if (!authService.isLoggedIn()) {
     return router.createUrlTree(['/login']);
   }
 
-  if (!permission || authService.hasPermission(permission)) {
+  // Módulo oculto por el admin: no accesible ni por URL (aunque tenga el dato).
+  const oculto = moduleKey && authService.isModuleHidden(moduleKey);
+
+  if (!oculto && (!permission || authService.hasPermission(permission))) {
     return true;
   }
 

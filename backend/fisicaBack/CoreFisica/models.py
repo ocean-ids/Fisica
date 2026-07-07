@@ -1244,10 +1244,31 @@ class ReporteVacaciones(models.Model):
     def __str__(self):
         return f"{self.persona_sale} ({self.fecha_desde} - {self.fecha_hasta})"
 
+# Módulos del menú (clave usada en el frontend, etiqueta para el admin).
+# Sirve para OCULTAR módulos del menú por usuario sin quitarle el acceso a datos
+# (los endpoints siguen protegidos por sus permisos view_*).
+MODULOS_MENU = [
+    ('clientes', 'Clientes'),
+    ('instalaciones', 'Instalaciones'),
+    ('puestos', 'Puestos'),
+    ('personas', 'Personal'),
+    ('horarios', 'Horarios'),
+    ('asignaciones', 'Asignaciones'),
+    ('sacavacaciones', 'Sacavacaciones'),
+    ('reporte-asistencia', 'Reportes Asistencia'),
+    ('consolidado', 'Consolidado'),
+    ('reporte-guardia', 'Reporte Guardia'),
+]
+
+
 class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     photo = models.ImageField(upload_to='user_photos/', null=True, blank=True)
     cargo = models.CharField(max_length=100, null=True, blank=True)
+    # Lista de claves de módulos OCULTOS en el menú para este usuario.
+    # El usuario puede tener el permiso view_* (para que otros módulos usen sus
+    # datos) y aun así no ver el módulo en el menú si su clave está aquí.
+    modulos_ocultos = models.JSONField(default=list, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
