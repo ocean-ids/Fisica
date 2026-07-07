@@ -446,8 +446,8 @@
                 </mat-slide-toggle>
                 <div class="cert-file">
                   <a *ngIf="certArchivos[t.id]" [href]="certArchivos[t.id]" target="_blank" class="cert-ver">📄 Ver</a>
-                  <a *ngIf="certArchivos[t.id]" [href]="certArchivos[t.id]" [attr.download]="t.nombre"
-                     class="cert-ver cert-descargar">⬇ Descargar</a>
+                  <a *ngIf="certArchivos[t.id]" href="javascript:void(0)"
+                     (click)="descargarArchivoCert(t)" class="cert-ver cert-descargar">⬇ Descargar</a>
                   <button *ngIf="certArchivos[t.id]" type="button" class="cert-quitar"
                           (click)="quitarArchivoCert(t.id)" title="Quitar archivo">
                     <i class="bi bi-file-earmark-x"></i>

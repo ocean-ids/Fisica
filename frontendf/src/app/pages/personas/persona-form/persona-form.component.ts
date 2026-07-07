@@ -1,5 +1,7 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { saveAs } from 'file-saver';
 import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -123,8 +125,25 @@ export class PersonaFormComponent implements OnInit {
     private ubicacionService: UbicacionService,
     private provinciasService: ProvinciasService,
     private clienteService: ClienteService,
-    private personaService: PersonaService
+    private personaService: PersonaService,
+    private http: HttpClient
   ) {}
+
+  // Descarga el archivo del certificado (blob), forzando la descarga incluso
+  // cuando el archivo está en otro dominio (dev). Si falla, lo abre.
+  descargarArchivoCert(t: any): void {
+    const url = this.certArchivos?.[t?.id];
+    if (!url) { return; }
+    this.http.get(url, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const m = String(url).split('?')[0].match(/\.([a-zA-Z0-9]+)$/);
+        const ext = m ? `.${m[1]}` : '';
+        const nombre = `${(t?.nombre || 'certificado')}${ext}`;
+        saveAs(blob, nombre);
+      },
+      error: () => { window.open(url, '_blank'); },
+    });
+  }
 
   ngOnInit(): void {
     const p: any = this.persona || {};
