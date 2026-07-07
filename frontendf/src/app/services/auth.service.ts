@@ -257,6 +257,19 @@ export class AuthService {
     return JSON.parse(localStorage.getItem('groups') ?? '[]');
   }
 
+  // Módulos que el admin ocultó del menú para este usuario (no afecta datos).
+  // Los superusuarios / ADMIN ven todo.
+  isModuleHidden(moduleKey: string): boolean {
+    if (!moduleKey) return false;
+    const user = this.getUserFromStorage();
+    if (!user) return false;
+    if (user.is_superuser === true) return false;
+    const groups: string[] = JSON.parse(localStorage.getItem('groups') ?? '[]');
+    if (groups.some(g => (g ?? '').toUpperCase() === 'ADMIN')) return false;
+    const ocultos: string[] = Array.isArray(user.modulos_ocultos) ? user.modulos_ocultos : [];
+    return ocultos.includes(moduleKey);
+  }
+
   solicitarResetPassword(email: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/solicitar-reset-password/`, { email });
   }

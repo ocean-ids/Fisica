@@ -1,5 +1,6 @@
+from django import forms
 from django.contrib import admin
-from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, Consolidado, UserProfile, AsignacionCalendarioLog, AuditLog
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, Consolidado, UserProfile, AsignacionCalendarioLog, AuditLog, MODULOS_MENU
 
 admin.site.site_header = 'Seguridad Física'
 admin.site.site_title = 'Seguridad Física'
@@ -183,8 +184,24 @@ class AsignacionCalendarioLogAdmin(admin.ModelAdmin):
 		return False
 
 
+class UserProfileAdminForm(forms.ModelForm):
+	modulos_ocultos = forms.MultipleChoiceField(
+		choices=MODULOS_MENU,
+		widget=forms.CheckboxSelectMultiple,
+		required=False,
+		label='Módulos ocultos del menú',
+		help_text='Marca los módulos que NO se mostrarán en el menú de este usuario. '
+		          'No afecta el acceso a datos (los endpoints siguen usando los permisos view_*).',
+	)
+
+	class Meta:
+		model = UserProfile
+		fields = '__all__'
+
+
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
+	form = UserProfileAdminForm
 	list_display = ('user', 'cargo', 'user_is_active', 'updated_at')
 	search_fields = ('user__username', 'user__email', 'cargo')
 	list_filter = ('user__is_active',)
