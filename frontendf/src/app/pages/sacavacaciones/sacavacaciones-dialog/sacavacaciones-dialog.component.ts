@@ -8,7 +8,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule, MAT_DATE_LOCALE } from '@angular/material/core';
 import { Observable } from 'rxjs';
 import { debounceTime, startWith, map } from 'rxjs/operators';
 import { ClienteService } from '../../../services/cliente.service';
@@ -27,9 +26,8 @@ interface DialogData {
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatAutocompleteModule, MatButtonModule,
-    MatDatepickerModule, MatNativeDateModule,
+    MatDatepickerModule,
   ],
-  providers: [{ provide: MAT_DATE_LOCALE, useValue: 'es-EC' }],
   templateUrl: './sacavacaciones-dialog.component.html',
   styleUrl: './sacavacaciones-dialog.component.css',
 })
