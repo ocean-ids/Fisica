@@ -39,9 +39,9 @@
 
   <mat-form-field appearance="outline">
     <mat-label>Vacaciones (Desde – Hasta)</mat-label>
-    <mat-date-range-input [rangePicker]="rangoPicker">
-      <input matStartDate [(ngModel)]="fechaDesde" placeholder="Desde" (ngModelChange)="calcularDias()">
-      <input matEndDate [(ngModel)]="fechaHasta" placeholder="Hasta" (ngModelChange)="calcularDias()">
+    <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker">
+      <input matStartDate formControlName="start" placeholder="Desde">
+      <input matEndDate formControlName="end" placeholder="Hasta">
     </mat-date-range-input>
     <mat-datepicker-toggle matIconSuffix [for]="rangoPicker"></mat-datepicker-toggle>
     <mat-date-range-picker #rangoPicker></mat-date-range-picker>

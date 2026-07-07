@@ -1,6 +1,6 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -51,6 +51,11 @@ export class SacavacacionesDialogComponent implements OnInit {
   periodo = '';
   fechaDesde: Date | null = null;
   fechaHasta: Date | null = null;
+  // Rango de fechas del picker (Desde–Hasta).
+  rangoForm = new FormGroup({
+    start: new FormControl<Date | null>(null),
+    end: new FormControl<Date | null>(null),
+  });
   dias: number | null = null;
   esEdicion = false;
   private editSaleId: number | null = null;
@@ -70,6 +75,7 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.periodo = row.periodo || '';
       this.fechaDesde = this._fromISO(row.fecha_desde);
       this.fechaHasta = this._fromISO(row.fecha_hasta);
+      this.rangoForm.setValue({ start: this.fechaDesde, end: this.fechaHasta });
       this.dias = (row.dias ?? null) as number | null;
       this.editSaleId = row.persona_sale_ref ?? null;
       this.editCubreId = row.sacavacaciones_ref ?? null;
@@ -83,6 +89,13 @@ export class SacavacacionesDialogComponent implements OnInit {
         const c = this.clientes.find(x => x.nombre_comercial === row.cliente);
         if (c) { this.clienteId = c.id!; }
       }
+    });
+
+    // Al elegir el rango en el calendario, actualizar fechas y recalcular días.
+    this.rangoForm.valueChanges.subscribe((v) => {
+      this.fechaDesde = v.start ?? null;
+      this.fechaHasta = v.end ?? null;
+      this.calcularDias();
     });
 
     this.personaSrv.getPersonas({}).subscribe((ps) => { this.personasAll = ps || []; });
