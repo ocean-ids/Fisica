@@ -7,6 +7,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule, MAT_DATE_LOCALE } from '@angular/material/core';
 import { Observable } from 'rxjs';
 import { debounceTime, startWith, map } from 'rxjs/operators';
 import { ClienteService } from '../../../services/cliente.service';
@@ -25,7 +27,9 @@ interface DialogData {
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatAutocompleteModule, MatButtonModule,
+    MatDatepickerModule, MatNativeDateModule,
   ],
+  providers: [{ provide: MAT_DATE_LOCALE, useValue: 'es-EC' }],
   templateUrl: './sacavacaciones-dialog.component.html',
   styleUrl: './sacavacaciones-dialog.component.css',
 })
@@ -45,8 +49,8 @@ export class SacavacacionesDialogComponent implements OnInit {
   cubreSel: Persona | null = null;
 
   periodo = '';
-  fechaDesde: string | null = null;
-  fechaHasta: string | null = null;
+  fechaDesde: Date | null = null;
+  fechaHasta: Date | null = null;
   dias: number | null = null;
   esEdicion = false;
   private editSaleId: number | null = null;
@@ -64,8 +68,8 @@ export class SacavacacionesDialogComponent implements OnInit {
     this.esEdicion = !!row?.id;
     if (row) {
       this.periodo = row.periodo || '';
-      this.fechaDesde = row.fecha_desde || null;
-      this.fechaHasta = row.fecha_hasta || null;
+      this.fechaDesde = this._fromISO(row.fecha_desde);
+      this.fechaHasta = this._fromISO(row.fecha_hasta);
       this.dias = (row.dias ?? null) as number | null;
       this.editSaleId = row.persona_sale_ref ?? null;
       this.editCubreId = row.sacavacaciones_ref ?? null;
@@ -116,13 +120,26 @@ export class SacavacacionesDialogComponent implements OnInit {
   // Días = contador de días calendario inclusive entre desde y hasta.
   calcularDias(): void {
     if (this.fechaDesde && this.fechaHasta) {
-      const d1 = new Date(this.fechaDesde + 'T00:00:00');
-      const d2 = new Date(this.fechaHasta + 'T00:00:00');
-      const diff = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1;
+      const diff = Math.round((this.fechaHasta.getTime() - this.fechaDesde.getTime()) / 86400000) + 1;
       this.dias = diff > 0 ? diff : 0;
     } else {
       this.dias = 0;
     }
+  }
+
+  // 'YYYY-MM-DD' (texto del backend) -> Date local. Y viceversa (sin corrimiento
+  // de zona horaria).
+  private _fromISO(s: any): Date | null {
+    if (!s) { return null; }
+    const [y, m, d] = String(s).slice(0, 10).split('-').map(Number);
+    return (y && m && d) ? new Date(y, m - 1, d) : null;
+  }
+  private _toISO(d: Date | null): string | null {
+    if (!d) { return null; }
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 
   get valido(): boolean {
@@ -134,8 +151,8 @@ export class SacavacacionesDialogComponent implements OnInit {
     const out: any = {
       cliente: cli?.nombre_comercial || '',
       periodo: (this.periodo || '').trim(),
-      fecha_desde: this.fechaDesde || null,
-      fecha_hasta: this.fechaHasta || null,
+      fecha_desde: this._toISO(this.fechaDesde),
+      fecha_hasta: this._toISO(this.fechaHasta),
       dias: this.dias || 0,
     };
     // Persona que sale
