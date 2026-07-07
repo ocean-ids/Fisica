@@ -1,5 +1,7 @@
 from django import forms
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import User
 from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, Consolidado, UserProfile, AsignacionCalendarioLog, AuditLog, MODULOS_MENU
 
 admin.site.site_header = 'Seguridad Física'
@@ -225,6 +227,41 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 	def has_delete_permission(self, request, obj=None):
 		return request.user.has_perm('CoreFisica.delete_userprofile')
+
+
+# --- Perfil incrustado DENTRO del admin de Usuario (todo en un solo lugar) ---
+class UserProfileInlineForm(forms.ModelForm):
+	modulos_ocultos = forms.MultipleChoiceField(
+		choices=MODULOS_MENU,
+		widget=forms.CheckboxSelectMultiple,
+		required=False,
+		label='Módulos ocultos del menú',
+		help_text='Marca los módulos que NO se mostrarán en el menú de este usuario. '
+		          'No afecta el acceso a datos (los endpoints siguen usando los permisos view_*).',
+	)
+
+	class Meta:
+		model = UserProfile
+		fields = ('cargo', 'photo', 'modulos_ocultos')
+
+
+class UserProfileInline(admin.StackedInline):
+	model = UserProfile
+	form = UserProfileInlineForm
+	can_delete = False
+	verbose_name = 'Perfil'
+	verbose_name_plural = 'Perfil y módulos del menú'
+	fk_name = 'user'
+
+
+class CustomUserAdmin(UserAdmin):
+	# Muestra el perfil (cargo, foto, módulos ocultos) en la misma página del
+	# usuario, junto a permisos y grupos. Así se edita TODO en un solo lugar.
+	inlines = [UserProfileInline]
+
+
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)
 
 
 @admin.register(AuditLog)
