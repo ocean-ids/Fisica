@@ -83,17 +83,21 @@ export class SacavacacionesDialogComponent implements OnInit {
 
     this.personaSrv.getPersonas({}).subscribe((ps) => { this.personasAll = ps || []; });
     this.saleFiltradas$ = this.filtro(this.saleCtrl);
-    this.cubreFiltradas$ = this.filtro(this.cubreCtrl);
+    // "Quién cubre" solo puede ser personal de tipo SACAVACACIONES.
+    this.cubreFiltradas$ = this.filtro(this.cubreCtrl, 'SACAVACACIONES');
   }
 
-  private filtro(ctrl: FormControl): Observable<Persona[]> {
+  private filtro(ctrl: FormControl, soloTipo?: string): Observable<Persona[]> {
     return ctrl.valueChanges.pipe(
       startWith(''),
       debounceTime(120),
       map((val: any) => {
+        const base = soloTipo
+          ? this.personasAll.filter(p => String(p.tipo || '').toUpperCase() === soloTipo)
+          : this.personasAll;
         const q = (typeof val === 'string' ? val : this.displayPersona(val)).toLowerCase().trim();
-        if (!q) { return this.personasAll.slice(0, 50); }
-        return this.personasAll
+        if (!q) { return base.slice(0, 50); }
+        return base
           .filter(p => `${p.nombres || ''} ${p.apellidos || ''} ${p.cedula || ''}`.toLowerCase().includes(q))
           .slice(0, 50);
       }),
