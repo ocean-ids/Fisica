@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDatepickerModule, DateRange } from '@angular/material/datepicker';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, MAT_DATE_LOCALE } from '@angular/material/core';
 import { Observable } from 'rxjs';
 import { debounceTime, startWith, map } from 'rxjs/operators';
@@ -51,7 +51,6 @@ export class SacavacacionesDialogComponent implements OnInit {
   periodo = '';
   fechaDesde: Date | null = null;
   fechaHasta: Date | null = null;
-  rango = new DateRange<Date>(null, null);   // para el calendario en línea (Desde–Hasta)
   dias: number | null = null;
   esEdicion = false;
   private editSaleId: number | null = null;
@@ -71,7 +70,6 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.periodo = row.periodo || '';
       this.fechaDesde = this._fromISO(row.fecha_desde);
       this.fechaHasta = this._fromISO(row.fecha_hasta);
-      this.rango = new DateRange<Date>(this.fechaDesde, this.fechaHasta);
       this.dias = (row.dias ?? null) as number | null;
       this.editSaleId = row.persona_sale_ref ?? null;
       this.editCubreId = row.sacavacaciones_ref ?? null;
@@ -118,28 +116,6 @@ export class SacavacacionesDialogComponent implements OnInit {
 
   onSaleSel(p: Persona): void { this.saleSel = p; }
   onCubreSel(p: Persona): void { this.cubreSel = p; }
-
-  // Selección en el calendario en línea: 1er clic = Desde, 2do clic = Hasta.
-  onRangoSel(fecha: Date | null): void {
-    if (!fecha) { return; }
-    if (!this.rango.start || this.rango.end) {
-      this.rango = new DateRange<Date>(fecha, null);          // reiniciar rango
-    } else if (fecha >= this.rango.start) {
-      this.rango = new DateRange<Date>(this.rango.start, fecha);
-    } else {
-      this.rango = new DateRange<Date>(fecha, this.rango.start); // clic anterior al inicio
-    }
-    this.fechaDesde = this.rango.start;
-    this.fechaHasta = this.rango.end;
-    this.calcularDias();
-  }
-
-  fmt(d: Date | null): string {
-    if (!d) { return '—'; }
-    const day = String(d.getDate()).padStart(2, '0');
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    return `${day}/${m}/${d.getFullYear()}`;
-  }
 
   // Días = contador de días calendario inclusive entre desde y hasta.
   calcularDias(): void {

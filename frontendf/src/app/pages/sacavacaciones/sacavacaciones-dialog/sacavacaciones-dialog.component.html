@@ -37,13 +37,16 @@
     </mat-autocomplete>
   </mat-form-field>
 
-  <div class="vac-cal-label">Vacaciones (elige Desde y Hasta en el calendario)</div>
-  <div class="vac-cal">
-    <mat-calendar [selected]="rango" (selectedChange)="onRangoSel($event)"></mat-calendar>
-  </div>
+  <mat-form-field appearance="outline">
+    <mat-label>Vacaciones (Desde – Hasta)</mat-label>
+    <mat-date-range-input [rangePicker]="rangoPicker">
+      <input matStartDate [(ngModel)]="fechaDesde" placeholder="Desde" (ngModelChange)="calcularDias()">
+      <input matEndDate [(ngModel)]="fechaHasta" placeholder="Hasta" (ngModelChange)="calcularDias()">
+    </mat-date-range-input>
+    <mat-datepicker-toggle matIconSuffix [for]="rangoPicker"></mat-datepicker-toggle>
+    <mat-date-range-picker #rangoPicker></mat-date-range-picker>
+  </mat-form-field>
   <div class="vac-resumen">
-    <span><strong>Desde:</strong> {{ fmt(fechaDesde) }}</span>
-    <span><strong>Hasta:</strong> {{ fmt(fechaHasta) }}</span>
     <span><strong>Días:</strong> {{ dias || 0 }}</span>
   </div>
 </mat-dialog-content>
