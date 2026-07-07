@@ -122,10 +122,12 @@ export class PuestosComponent implements OnInit {
 
   cargarPuestos(): void {
     if (this.clienteSeleccionado) {
+      // Recordar el filtro de instalación para restaurarlo tras recargar: al
+      // crear/editar/eliminar un puesto no debe perderse.
+      const instalacionPrevia = this.instalacionSeleccionada;
       this.puestoService.getPuestosPorCliente(this.clienteSeleccionado).subscribe({
         next: data => {
           this.puestos = data;
-          this.instalacionSeleccionada = null;
           // Lista única de instalaciones de los puestos cargados
           const map = new Map<number, string>();
           (data || []).forEach((p: any) => {
@@ -136,6 +138,10 @@ export class PuestosComponent implements OnInit {
           this.instalaciones = Array.from(map.entries())
             .map(([id, nombre]) => ({ id, nombre }))
             .sort((a, b) => a.nombre.localeCompare(b.nombre));
+          // Mantener el filtro si la instalación sigue existiendo; si ya no está
+          // (p. ej. cambió el cliente), limpiarlo.
+          this.instalacionSeleccionada = (instalacionPrevia != null && map.has(instalacionPrevia))
+            ? instalacionPrevia : null;
         },
         error: err => console.error('Error al cargar puestos:', err)
       });
