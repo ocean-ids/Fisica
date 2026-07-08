@@ -145,23 +145,29 @@ export class SacavacacionesDialogComponent implements OnInit {
 
     this.personaSrv.getPersonas({}).subscribe((ps) => { this.personasAll = ps || []; });
     this.saleFiltradas$ = this.filtro(this.saleCtrl);
-    // "Quién cubre" solo puede ser personal de tipo SACAVACACIONES.
+    // "Quién cubre": salen TODOS, pero los SACAVACACIONES primero.
     this.cubreFiltradas$ = this.filtro(this.cubreCtrl, 'SACAVACACIONES');
   }
 
-  private filtro(ctrl: FormControl, soloTipo?: string): Observable<Persona[]> {
+  private filtro(ctrl: FormControl, prioriTipo?: string): Observable<Persona[]> {
     return ctrl.valueChanges.pipe(
       startWith(''),
       debounceTime(120),
       map((val: any) => {
-        const base = soloTipo
-          ? this.personasAll.filter(p => String(p.tipo || '').toUpperCase() === soloTipo)
-          : this.personasAll;
         const q = (typeof val === 'string' ? val : this.displayPersona(val)).toLowerCase().trim();
-        if (!q) { return base.slice(0, 50); }
-        return base
-          .filter(p => `${p.nombres || ''} ${p.apellidos || ''} ${p.cedula || ''}`.toLowerCase().includes(q))
-          .slice(0, 50);
+        // Todas las personas (o las que coinciden con la búsqueda).
+        let base = q
+          ? this.personasAll.filter(p => `${p.nombres || ''} ${p.apellidos || ''} ${p.cedula || ''}`.toLowerCase().includes(q))
+          : this.personasAll;
+        // Si hay un tipo prioritario, ese tipo va PRIMERO (pero salen TODOS).
+        if (prioriTipo) {
+          base = [...base].sort((a, b) => {
+            const pa = String(a.tipo || '').toUpperCase() === prioriTipo ? 0 : 1;
+            const pb = String(b.tipo || '').toUpperCase() === prioriTipo ? 0 : 1;
+            return pa - pb;
+          });
+        }
+        return base.slice(0, 200);
       }),
     );
   }
