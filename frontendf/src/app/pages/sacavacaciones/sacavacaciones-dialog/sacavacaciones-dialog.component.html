@@ -38,9 +38,8 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Vacaciones (Desde – Hasta · referencia 15 días)</mat-label>
-    <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker"
-      [comparisonStart]="compStart" [comparisonEnd]="compEnd">
+    <mat-label>Vacaciones (Desde – Hasta)</mat-label>
+    <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker">
       <input matStartDate formControlName="start" placeholder="Desde">
       <input matEndDate formControlName="end" placeholder="Hasta">
     </mat-date-range-input>
@@ -48,6 +47,7 @@
     <mat-date-range-picker #rangoPicker></mat-date-range-picker>
   </mat-form-field>
   <div class="vac-resumen">
+    <span *ngIf="compEnd" class="vac-ref">📌 15 días llegan al <strong>{{ fmt(compEnd) }}</strong> (elige el Hasta ahí o más)</span>
     <span><strong>Días:</strong> {{ dias || 0 }}</span>
   </div>
 
