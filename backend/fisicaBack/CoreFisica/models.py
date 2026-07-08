@@ -1234,6 +1234,11 @@ class ReporteVacaciones(models.Model):
     fecha_hasta = models.DateField(null=True, blank=True)
     dias = models.PositiveIntegerField(default=0)
 
+    # Días pendientes: otro rango (por si no le dieron todas las vacaciones).
+    fecha_desde_pendiente = models.DateField(null=True, blank=True)
+    fecha_hasta_pendiente = models.DateField(null=True, blank=True)
+    dias_pendientes = models.PositiveIntegerField(default=0)
+
     orden = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

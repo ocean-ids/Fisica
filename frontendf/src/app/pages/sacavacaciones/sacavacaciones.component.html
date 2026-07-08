@@ -20,6 +20,9 @@
         <th>Desde</th>
         <th>Hasta</th>
         <th>Días</th>
+        <th>Pend. Desde</th>
+        <th>Pend. Hasta</th>
+        <th>Días pend.</th>
         <th style="width:100px">Acción</th>
       </tr>
     </thead>
@@ -33,6 +36,9 @@
         <td>{{ fechaDMA(f.fecha_desde) }}</td>
         <td>{{ fechaDMA(f.fecha_hasta) }}</td>
         <td>{{ f.dias }}</td>
+        <td>{{ fechaDMA(f.fecha_desde_pendiente) }}</td>
+        <td>{{ fechaDMA(f.fecha_hasta_pendiente) }}</td>
+        <td>{{ f.dias_pendientes || 0 }}</td>
         <td>
           <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
                   (click)="editar(f)" title="Editar">
@@ -45,7 +51,7 @@
         </td>
       </tr>
       <tr *ngIf="!filas.length">
-        <td colspan="9" class="text-center text-muted">Sin registros de vacaciones.</td>
+        <td colspan="12" class="text-center text-muted">Sin registros de vacaciones.</td>
       </tr>
     </tbody>
   </table>
