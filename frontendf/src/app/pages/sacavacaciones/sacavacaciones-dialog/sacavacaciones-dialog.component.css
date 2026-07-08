@@ -46,3 +46,10 @@
 .vac-resumen strong {
   color: #0c2f5a;
 }
+.vac-ref {
+  color: #0c2f5a;
+  background: #eef4ff;
+  border: 1px dashed #90b4f0;
+  border-radius: 8px;
+  padding: 2px 8px;
+}
