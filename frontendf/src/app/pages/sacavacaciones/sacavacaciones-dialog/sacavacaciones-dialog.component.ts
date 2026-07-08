@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, Injectable, Directive } from '@angular/core';
+import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -7,11 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
-import {
-  MatDatepickerModule, DateRange,
-  MatDateRangeSelectionStrategy, MAT_DATE_RANGE_SELECTION_STRATEGY,
-} from '@angular/material/datepicker';
-import { DateAdapter } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { Observable } from 'rxjs';
 import { debounceTime, startWith, map } from 'rxjs/operators';
 import { ClienteService } from '../../../services/cliente.service';
@@ -24,52 +20,13 @@ interface DialogData {
   row?: ReporteVacaciones;   // presente = edición
 }
 
-// Estrategia de rango: al marcar el Desde SUGIERE 15 días (preview resaltado),
-// pero el usuario hace clic en el Hasta para fijar el día (donde él quiera).
-@Injectable()
-export class Vac15PreviewStrategy implements MatDateRangeSelectionStrategy<Date> {
-  constructor(private _adapter: DateAdapter<Date>) {}
-
-  // Dos clics: 1º marca el inicio (picker abierto), 2º fija el fin donde el usuario haga clic.
-  selectionFinished(date: Date | null, current: DateRange<Date>): DateRange<Date> {
-    const start = current?.start ?? null;
-    const end = current?.end ?? null;
-    if (start === null || end !== null) {
-      return new DateRange<Date>(date, null);          // primer clic: solo inicio
-    }
-    if (date && date < start) {
-      return new DateRange<Date>(date, null);          // clic antes del inicio: reinicia
-    }
-    return new DateRange<Date>(start, date);           // segundo clic: fija el fin
-  }
-
-  // Preview: mientras no hay fin, resalta 15 días (o hasta donde pase el mouse).
-  createPreview(activeDate: Date | null, current: DateRange<Date>): DateRange<Date> {
-    const start = current?.start ?? null;
-    if (start && !current.end) {
-      if (activeDate && activeDate > start) {
-        return new DateRange<Date>(start, activeDate);
-      }
-      return new DateRange<Date>(start, this._adapter.addCalendarDays(start, 14));
-    }
-    return new DateRange<Date>(null, null);
-  }
-}
-
-@Directive({
-  selector: '[appVac15]',
-  standalone: true,
-  providers: [{ provide: MAT_DATE_RANGE_SELECTION_STRATEGY, useClass: Vac15PreviewStrategy }],
-})
-export class Vac15Directive {}
-
 @Component({
   selector: 'app-sacavacaciones-dialog',
   standalone: true,
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatAutocompleteModule, MatButtonModule,
-    MatDatepickerModule, Vac15Directive,
+    MatDatepickerModule,
   ],
   templateUrl: './sacavacaciones-dialog.component.html',
   styleUrl: './sacavacaciones-dialog.component.css',
@@ -99,6 +56,10 @@ export class SacavacacionesDialogComponent implements OnInit {
     end: new FormControl<Date | null>(null),
   });
   dias: number | null = null;
+  // Referencia de 15 días (rango de comparación con "rayitas"): NO selecciona,
+  // solo marca dónde caen los 15 días para no contar. El usuario fija el Hasta.
+  compStart: Date | null = null;
+  compEnd: Date | null = null;
 
   // Días pendientes: otro rango (mismo picker) por si no le dieron todas.
   fechaDesdePend: Date | null = null;
@@ -127,6 +88,7 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.fechaDesde = this._fromISO(row.fecha_desde);
       this.fechaHasta = this._fromISO(row.fecha_hasta);
       this.rangoForm.setValue({ start: this.fechaDesde, end: this.fechaHasta });
+      this._setRef(this.fechaDesde);
       this.dias = (row.dias ?? null) as number | null;
       this.fechaDesdePend = this._fromISO(row.fecha_desde_pendiente);
       this.fechaHastaPend = this._fromISO(row.fecha_hasta_pendiente);
@@ -147,9 +109,11 @@ export class SacavacacionesDialogComponent implements OnInit {
     });
 
     // Vacaciones: el rango se fija con dos clics (inicio + fin que elige el usuario).
+    // Al marcar el Desde, la referencia de 15 días (rayitas) se coloca en Desde..+14.
     this.rangoForm.valueChanges.subscribe((v) => {
       this.fechaDesde = v.start ?? null;
       this.fechaHasta = v.end ?? null;
+      this._setRef(this.fechaDesde);
       this.calcularDias();
     });
     // Rango de días pendientes.
@@ -196,6 +160,17 @@ export class SacavacacionesDialogComponent implements OnInit {
 
   onSaleSel(p: Persona): void { this.saleSel = p; }
   onCubreSel(p: Persona): void { this.cubreSel = p; }
+
+  // Coloca la referencia de 15 días (Desde .. Desde+14) para las "rayitas".
+  private _setRef(desde: Date | null): void {
+    if (desde) {
+      this.compStart = desde;
+      this.compEnd = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate() + 14);
+    } else {
+      this.compStart = null;
+      this.compEnd = null;
+    }
+  }
 
   fmt(d: Date | null): string {
     if (!d) { return '—'; }
