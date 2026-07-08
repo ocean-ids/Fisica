@@ -22,7 +22,15 @@
 
   <mat-form-field appearance="outline">
     <mat-label>Período</mat-label>
-    <input matInput [(ngModel)]="periodo" placeholder="ej. 2024 - 2025">
+    <mat-select [(ngModel)]="periodo">
+      <mat-option *ngFor="let p of periodos" [value]="p">{{ p }}</mat-option>
+      <mat-option [value]="OTRO">Otro…</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" *ngIf="periodo === OTRO">
+    <mat-label>Período (escribir)</mat-label>
+    <input matInput [(ngModel)]="periodoManual" placeholder="ej. 2022 - 2023">
   </mat-form-field>
 
   <mat-form-field appearance="outline">

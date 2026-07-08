@@ -47,6 +47,9 @@ export class SacavacacionesDialogComponent implements OnInit {
   cubreSel: Persona | null = null;
 
   periodo = '';
+  periodoManual = '';                 // cuando se elige "Otro"
+  periodos: string[] = [];            // opciones del desplegable
+  readonly OTRO = 'OTRO';
   // Vacaciones (rango): al marcar Desde sugiere 15 días; el usuario hace clic en
   // el Hasta para fijar el día (puede ser el 15 o más).
   fechaDesde: Date | null = null;
@@ -77,10 +80,22 @@ export class SacavacacionesDialogComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // Períodos alrededor del año actual (ej. 2023-2024 … 2027-2028).
+    const y = new Date().getFullYear();
+    this.periodos = [];
+    for (let i = -3; i <= 1; i++) { this.periodos.push(`${y + i} - ${y + i + 1}`); }
+
     const row = this.data?.row;
     this.esEdicion = !!row?.id;
     if (row) {
-      this.periodo = row.periodo || '';
+      // Si el período guardado está en la lista, se selecciona; si no, es "Otro".
+      const p = row.periodo || '';
+      if (p && !this.periodos.includes(p)) {
+        this.periodo = this.OTRO;
+        this.periodoManual = p;
+      } else {
+        this.periodo = p;
+      }
       this.fechaDesde = this._fromISO(row.fecha_desde);
       this.fechaHasta = this._fromISO(row.fecha_hasta);
       this.rangoForm.setValue({ start: this.fechaDesde, end: this.fechaHasta });
@@ -195,7 +210,7 @@ export class SacavacacionesDialogComponent implements OnInit {
     const cli = this.clientes.find(c => c.id === this.clienteId);
     const out: any = {
       cliente: cli?.nombre_comercial || '',
-      periodo: (this.periodo || '').trim(),
+      periodo: (this.periodo === this.OTRO ? this.periodoManual : this.periodo || '').trim(),
       fecha_desde: this._toISO(this.fechaDesde),
       fecha_hasta: this._toISO(this.fechaHasta),
       dias: this.dias || 0,
