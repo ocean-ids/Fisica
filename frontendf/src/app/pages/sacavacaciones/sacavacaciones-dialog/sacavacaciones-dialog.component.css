@@ -27,6 +27,15 @@
   width: 100%;
 }
 
+/* Desde / Hasta lado a lado */
+.vac-row {
+  display: flex;
+  gap: 8px;
+}
+.vac-row mat-form-field {
+  flex: 1;
+}
+
 .vac-resumen {
   display: flex;
   gap: 16px;
