@@ -84,7 +84,7 @@ export class SacavacacionesDialogComponent implements OnInit {
     // vacaciones pendientes de años pasados) y un par hacia adelante.
     const y = new Date().getFullYear();
     this.periodos = [];
-    for (let i = -12; i <= 2; i++) { this.periodos.push(`${y + i} - ${y + i + 1}`); }
+    for (let i = -12; i <= 10; i++) { this.periodos.push(`${y + i} - ${y + i + 1}`); }
 
     const row = this.data?.row;
     this.esEdicion = !!row?.id;
