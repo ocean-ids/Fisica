@@ -56,10 +56,6 @@ export class SacavacacionesDialogComponent implements OnInit {
     end: new FormControl<Date | null>(null),
   });
   dias: number | null = null;
-  // Referencia de 15 días (rango de comparación con "rayitas"): NO selecciona,
-  // solo marca dónde caen los 15 días para no contar. El usuario fija el Hasta.
-  compStart: Date | null = null;
-  compEnd: Date | null = null;
 
   // Días pendientes: otro rango (mismo picker) por si no le dieron todas.
   fechaDesdePend: Date | null = null;
@@ -88,7 +84,6 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.fechaDesde = this._fromISO(row.fecha_desde);
       this.fechaHasta = this._fromISO(row.fecha_hasta);
       this.rangoForm.setValue({ start: this.fechaDesde, end: this.fechaHasta });
-      this._setRef(this.fechaDesde);
       this.dias = (row.dias ?? null) as number | null;
       this.fechaDesdePend = this._fromISO(row.fecha_desde_pendiente);
       this.fechaHastaPend = this._fromISO(row.fecha_hasta_pendiente);
@@ -109,11 +104,9 @@ export class SacavacacionesDialogComponent implements OnInit {
     });
 
     // Vacaciones: el rango se fija con dos clics (inicio + fin que elige el usuario).
-    // Al marcar el Desde, la referencia de 15 días (rayitas) se coloca en Desde..+14.
     this.rangoForm.valueChanges.subscribe((v) => {
       this.fechaDesde = v.start ?? null;
       this.fechaHasta = v.end ?? null;
-      this._setRef(this.fechaDesde);
       this.calcularDias();
     });
     // Rango de días pendientes.
@@ -160,17 +153,6 @@ export class SacavacacionesDialogComponent implements OnInit {
 
   onSaleSel(p: Persona): void { this.saleSel = p; }
   onCubreSel(p: Persona): void { this.cubreSel = p; }
-
-  // Coloca la referencia de 15 días (Desde .. Desde+14) para las "rayitas".
-  private _setRef(desde: Date | null): void {
-    if (desde) {
-      this.compStart = desde;
-      this.compEnd = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate() + 14);
-    } else {
-      this.compStart = null;
-      this.compEnd = null;
-    }
-  }
 
   fmt(d: Date | null): string {
     if (!d) { return '—'; }
