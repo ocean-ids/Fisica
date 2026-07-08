@@ -33,27 +33,28 @@
       </div>
     </div>
 
-    <!--<button class="btn btn-outline-secondary" (click)="abrirNuevoPatron()" >
-      <i class="bi bi-grid-3x3-gap"></i> Nuevo Patrón
-    </button>-->
-    <button class="btn btn-outline-primary" type="button" (click)="abrirModalVistasCantones()">
-      <i class="bi bi-layout-text-window-reverse"></i> Nueva vista
-    </button>
-    <button class="btn btn-outline-success" (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel">
-      <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
-      Descargar
-    </button>
-
-    <div class="d-flex align-items-center gap-2 ms-auto">
-      <div class="text-muted d-none d-lg-block" *ngIf="getTotalPages()">
-        <span *ngIf="!isVistaCantonActiva()">Canton o Ciudad {{ provinciaPage }} de {{ getTotalPages() }}</span>
-        <span *ngIf="isVistaCantonActiva()">Vista personalizada</span>
+    <div class="d-flex flex-nowrap align-items-center gap-2 ms-lg-auto">
+      <div class="d-flex align-items-center gap-2">
+        <select class="form-select form-select-sm" [(ngModel)]="selectedCantonKey" (change)="onCantonSelect()" [ngModelOptions]="{standalone:true}">
+          <optgroup label="Vistas guardadas" *ngIf="cantonViews.length">
+            <option *ngFor="let v of cantonViews" [ngValue]="'view:' + v.id">Vista: {{ v.nombre }} ({{ v.tipo === 'cliente' ? v.clienteIds.length : (v.tipo === 'persona_tipo' ? v.tipos.length : v.cantonIds.length) }})</option>
+          </optgroup>
+        </select>
+        <div class="text-muted d-none d-lg-block" *ngIf="getTotalPages()">
+          <span *ngIf="!isVistaCantonActiva()">Canton o Ciudad {{ provinciaPage }} de {{ getTotalPages() }}</span>
+          <span *ngIf="isVistaCantonActiva()"></span>
+        </div>
       </div>
-      <select class="form-select form-select-sm" [(ngModel)]="selectedCantonKey" (change)="onCantonSelect()" [ngModelOptions]="{standalone:true}">
-        <optgroup label="Vistas guardadas" *ngIf="cantonViews.length">
-          <option *ngFor="let v of cantonViews" [ngValue]="'view:' + v.id">Vista: {{ v.nombre }} ({{ v.tipo === 'cliente' ? v.clienteIds.length : (v.tipo === 'persona_tipo' ? v.tipos.length : v.cantonIds.length) }})</option>
-        </optgroup>
-      </select>
+      <!--<button class="btn btn-outline-secondary" (click)="abrirNuevoPatron()" >
+        <i class="bi bi-grid-3x3-gap"></i> Nuevo Patrón
+      </button>-->
+      <button class="btn btn-outline-primary" type="button" (click)="abrirModalVistasCantones()">
+        <i class="bi bi-layout-text-window-reverse"></i> Nueva vista
+      </button>
+      <button class="btn btn-outline-success" (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel">
+        <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
+        Descargar
+      </button>
     </div>
   </div>
   <div class="row asig-row g-0" [ngClass]="{ 'justify-content-center': !displayRows.length }">
