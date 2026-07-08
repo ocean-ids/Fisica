@@ -37,9 +37,10 @@
     </mat-autocomplete>
   </mat-form-field>
 
-  <mat-form-field appearance="outline" appVac15>
-    <mat-label>Vacaciones (Desde – Hasta, sugiere 15 días)</mat-label>
-    <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker">
+  <mat-form-field appearance="outline">
+    <mat-label>Vacaciones (Desde – Hasta · referencia 15 días)</mat-label>
+    <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker"
+      [comparisonStart]="compStart" [comparisonEnd]="compEnd">
       <input matStartDate formControlName="start" placeholder="Desde">
       <input matEndDate formControlName="end" placeholder="Hasta">
     </mat-date-range-input>
