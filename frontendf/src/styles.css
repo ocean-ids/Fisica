@@ -286,3 +286,19 @@ body.theme-dark .login-card {
 .cdk-overlay-container {
   z-index: 2000 !important;
 }
+
+/* ===== MÓVIL / TABLET (<992px): tablas más compactas (fuente y padding menores) ===== */
+@media (max-width: 991.98px) {
+  .table {
+    font-size: 12px;
+  }
+  .table th,
+  .table td {
+    padding: 0.35rem 0.3rem;
+  }
+  /* Botones dentro de las tablas más chicos en celular */
+  .table .btn {
+    padding: 0.15rem 0.4rem;
+    font-size: 12px;
+  }
+}

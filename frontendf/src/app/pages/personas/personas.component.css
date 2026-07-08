@@ -71,3 +71,18 @@
   color: #6c757d !important;
   opacity: 0.9;
 }
+
+/* ===== MÓVIL / TABLET (<992px): columnas más angostas y texto que se ajusta ===== */
+@media (max-width: 991.98px) {
+  :host .table {
+    font-size: 10px;
+    table-layout: fixed;      /* reparte el ancho de forma uniforme entre columnas */
+    width: 100%;
+  }
+  :host .table th,
+  :host .table td {
+    padding: 0.2rem 0.15rem;
+    white-space: normal;
+    word-break: break-word;   /* corta palabras largas para no estirar la columna */
+  }
+}

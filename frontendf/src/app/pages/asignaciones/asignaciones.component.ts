@@ -400,6 +400,13 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // En móvil/tablet (<992px) arrancamos ocultando columnas informativas anchas
+    // (Horario, Nominativo y Cliente) para dejar más espacio al calendario.
+    // El usuario puede volver a mostrarlas con el engranaje ⚙️.
+    if (typeof window !== 'undefined' && window.innerWidth < 992) {
+      this.columnasOcultas = ['horario', 'codigo', 'cliente'];
+    }
+
     this.cargarCatalogos();
     this.selectedCantonKey = localStorage.getItem(this.selectedCantonKeyStorageKey) || '';
 

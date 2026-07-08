@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { HttpClient } from '@angular/common/http';
 import { saveAs } from 'file-saver';
@@ -12,13 +13,17 @@ import { SacavacacionesDialogComponent } from './sacavacaciones-dialog/sacavacac
 @Component({
   selector: 'app-sacavacaciones',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './sacavacaciones.component.html',
   styleUrl: './sacavacaciones.component.css',
 })
 export class SacavacacionesComponent implements OnInit {
   filas: ReporteVacaciones[] = [];
   loading = false;
+
+  // Filtro por año del "Desde" (0 = Todos), año actual por defecto.
+  anioFiltro: number = new Date().getFullYear();
+  anios: number[] = [];
 
   constructor(
     private srv: ReporteVacacionesService,
@@ -33,9 +38,31 @@ export class SacavacacionesComponent implements OnInit {
   cargar(): void {
     this.loading = true;
     this.srv.listar().subscribe({
-      next: (rows) => { this.filas = rows || []; this.loading = false; },
+      next: (rows) => {
+        this.filas = rows || [];
+        // Años disponibles según la fecha "Desde" de los registros.
+        const set = new Set<number>();
+        for (const f of this.filas) {
+          const y = this._anio(f.fecha_desde);
+          if (y) { set.add(y); }
+        }
+        this.anios = Array.from(set).sort((a, b) => b - a);
+        this.loading = false;
+      },
       error: () => { this.filas = []; this.loading = false; },
     });
+  }
+
+  private _anio(v: any): number | null {
+    if (!v) { return null; }
+    const y = Number(String(v).slice(0, 4));
+    return Number.isFinite(y) ? y : null;
+  }
+
+  // Filas mostradas según el año elegido (0 = Todos).
+  get filasFiltradas(): ReporteVacaciones[] {
+    if (!this.anioFiltro) { return this.filas; }
+    return this.filas.filter(f => this._anio(f.fecha_desde) === this.anioFiltro);
   }
 
   fechaDMA(v: any): string {

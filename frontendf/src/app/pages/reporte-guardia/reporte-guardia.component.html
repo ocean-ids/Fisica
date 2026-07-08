@@ -21,6 +21,7 @@
 
   <div *ngFor="let s of secciones" class="mb-4">
     <h5 class="border-bottom pb-1 text-center fw-bold">{{ s.label }}</h5>
+    <div class="table-responsive">
     <table class="table table-bordered table-sm align-middle text-center">
       <thead class="table-light">
         <tr>
@@ -54,5 +55,6 @@
         </tr>
       </tbody>
     </table>
+    </div>
   </div>
 </div>
