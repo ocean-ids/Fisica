@@ -37,15 +37,16 @@
     </mat-autocomplete>
   </mat-form-field>
 
-  <mat-form-field appearance="outline">
-    <mat-label>Vacaciones — Desde (15 días)</mat-label>
-    <input matInput [matDatepicker]="pDesde" [(ngModel)]="fechaDesde"
-           (ngModelChange)="onDesdeChange()" (dateChange)="onDesdeChange()">
-    <mat-datepicker-toggle matIconSuffix [for]="pDesde"></mat-datepicker-toggle>
-    <mat-datepicker #pDesde></mat-datepicker>
+  <mat-form-field appearance="outline" appVac15>
+    <mat-label>Vacaciones (Desde – Hasta, 15 días)</mat-label>
+    <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker">
+      <input matStartDate formControlName="start" placeholder="Desde">
+      <input matEndDate formControlName="end" placeholder="Hasta">
+    </mat-date-range-input>
+    <mat-datepicker-toggle matIconSuffix [for]="rangoPicker"></mat-datepicker-toggle>
+    <mat-date-range-picker #rangoPicker></mat-date-range-picker>
   </mat-form-field>
   <div class="vac-resumen">
-    <span><strong>Hasta:</strong> {{ fmt(fechaHasta) }}</span>
     <span><strong>Días:</strong> {{ dias || 0 }}</span>
   </div>
 
