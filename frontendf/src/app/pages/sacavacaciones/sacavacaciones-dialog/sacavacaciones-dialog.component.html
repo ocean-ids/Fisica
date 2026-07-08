@@ -38,15 +38,13 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Vacaciones (15 días — elige el Desde)</mat-label>
-    <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker">
-      <input matStartDate formControlName="start" placeholder="Desde">
-      <input matEndDate formControlName="end" placeholder="Hasta">
-    </mat-date-range-input>
-    <mat-datepicker-toggle matIconSuffix [for]="rangoPicker"></mat-datepicker-toggle>
-    <mat-date-range-picker #rangoPicker></mat-date-range-picker>
+    <mat-label>Vacaciones — Desde (15 días)</mat-label>
+    <input matInput [matDatepicker]="pDesde" [(ngModel)]="fechaDesde" (dateChange)="onDesdeChange()">
+    <mat-datepicker-toggle matIconSuffix [for]="pDesde"></mat-datepicker-toggle>
+    <mat-datepicker #pDesde></mat-datepicker>
   </mat-form-field>
   <div class="vac-resumen">
+    <span><strong>Hasta:</strong> {{ fmt(fechaHasta) }}</span>
     <span><strong>Días:</strong> {{ dias || 0 }}</span>
   </div>
 

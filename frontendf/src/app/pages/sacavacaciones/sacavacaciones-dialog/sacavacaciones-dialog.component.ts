@@ -47,13 +47,9 @@ export class SacavacacionesDialogComponent implements OnInit {
   cubreSel: Persona | null = null;
 
   periodo = '';
+  // Vacaciones: se elige solo el Desde; el Hasta es Desde + 14 (15 días).
   fechaDesde: Date | null = null;
   fechaHasta: Date | null = null;
-  // Rango de fechas del picker (Desde–Hasta).
-  rangoForm = new FormGroup({
-    start: new FormControl<Date | null>(null),
-    end: new FormControl<Date | null>(null),
-  });
   dias: number | null = null;
 
   // Días pendientes: otro rango (mismo picker) por si no le dieron todas.
@@ -82,7 +78,6 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.periodo = row.periodo || '';
       this.fechaDesde = this._fromISO(row.fecha_desde);
       this.fechaHasta = this._fromISO(row.fecha_hasta);
-      this.rangoForm.setValue({ start: this.fechaDesde, end: this.fechaHasta });
       this.dias = (row.dias ?? null) as number | null;
       this.fechaDesdePend = this._fromISO(row.fecha_desde_pendiente);
       this.fechaHastaPend = this._fromISO(row.fecha_hasta_pendiente);
@@ -102,19 +97,6 @@ export class SacavacacionesDialogComponent implements OnInit {
       }
     });
 
-    // Vacaciones = SIEMPRE 15 días: al marcar Desde se autocompleta el Hasta
-    // (Desde + 14 días, para que el conteo inclusive dé 15), aunque salte de mes.
-    this.rangoForm.valueChanges.subscribe((v) => {
-      let start = v.start ?? null;
-      let end = v.end ?? null;
-      if (start && !end) {
-        end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 14);
-        this.rangoForm.patchValue({ end }, { emitEvent: false });
-      }
-      this.fechaDesde = start;
-      this.fechaHasta = end;
-      this.calcularDias();
-    });
     // Rango de días pendientes.
     this.rangoPendForm.valueChanges.subscribe((v) => {
       this.fechaDesdePend = v.start ?? null;
@@ -153,6 +135,25 @@ export class SacavacacionesDialogComponent implements OnInit {
 
   onSaleSel(p: Persona): void { this.saleSel = p; }
   onCubreSel(p: Persona): void { this.cubreSel = p; }
+
+  // Vacaciones: al elegir el Desde, el Hasta = Desde + 14 días (15 inclusive),
+  // aunque salte de mes. Se recalcula siempre, cada vez que cambia el Desde.
+  onDesdeChange(): void {
+    if (this.fechaDesde) {
+      const d = this.fechaDesde;
+      this.fechaHasta = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 14);
+    } else {
+      this.fechaHasta = null;
+    }
+    this.calcularDias();
+  }
+
+  fmt(d: Date | null): string {
+    if (!d) { return '—'; }
+    const day = String(d.getDate()).padStart(2, '0');
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}/${m}/${d.getFullYear()}`;
+  }
 
   // Días = contador de días calendario inclusive entre dos fechas.
   private _diasInclusive(d1: Date | null, d2: Date | null): number {
