@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, Injectable, Directive } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -7,7 +7,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDatepickerModule } from '@angular/material/datepicker';
+import {
+  MatDatepickerModule, DateRange,
+  MatDateRangeSelectionStrategy, MAT_DATE_RANGE_SELECTION_STRATEGY,
+} from '@angular/material/datepicker';
+import { DateAdapter } from '@angular/material/core';
 import { Observable } from 'rxjs';
 import { debounceTime, startWith, map } from 'rxjs/operators';
 import { ClienteService } from '../../../services/cliente.service';
@@ -20,13 +24,37 @@ interface DialogData {
   row?: ReporteVacaciones;   // presente = edición
 }
 
+// Estrategia de rango: un clic marca 15 días (Desde + 14). Robusto y sin desync.
+@Injectable()
+export class Vacaciones15RangeStrategy implements MatDateRangeSelectionStrategy<Date> {
+  constructor(private _adapter: DateAdapter<Date>) {}
+  selectionFinished(date: Date | null): DateRange<Date> {
+    return this._range(date);
+  }
+  createPreview(activeDate: Date | null): DateRange<Date> {
+    return this._range(activeDate);
+  }
+  private _range(date: Date | null): DateRange<Date> {
+    if (!date) { return new DateRange<Date>(null, null); }
+    return new DateRange<Date>(date, this._adapter.addCalendarDays(date, 14));
+  }
+}
+
+// Directiva para aplicar la estrategia SOLO al picker de vacaciones (no al de pendientes).
+@Directive({
+  selector: '[appVac15]',
+  standalone: true,
+  providers: [{ provide: MAT_DATE_RANGE_SELECTION_STRATEGY, useClass: Vacaciones15RangeStrategy }],
+})
+export class Vac15Directive {}
+
 @Component({
   selector: 'app-sacavacaciones-dialog',
   standalone: true,
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatAutocompleteModule, MatButtonModule,
-    MatDatepickerModule,
+    MatDatepickerModule, Vac15Directive,
   ],
   templateUrl: './sacavacaciones-dialog.component.html',
   styleUrl: './sacavacaciones-dialog.component.css',
@@ -47,9 +75,13 @@ export class SacavacacionesDialogComponent implements OnInit {
   cubreSel: Persona | null = null;
 
   periodo = '';
-  // Vacaciones: se elige solo el Desde; el Hasta es Desde + 14 (15 días).
+  // Vacaciones (rango): con la estrategia, un clic marca 15 días (Desde–Hasta).
   fechaDesde: Date | null = null;
   fechaHasta: Date | null = null;
+  rangoForm = new FormGroup({
+    start: new FormControl<Date | null>(null),
+    end: new FormControl<Date | null>(null),
+  });
   dias: number | null = null;
 
   // Días pendientes: otro rango (mismo picker) por si no le dieron todas.
@@ -78,6 +110,7 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.periodo = row.periodo || '';
       this.fechaDesde = this._fromISO(row.fecha_desde);
       this.fechaHasta = this._fromISO(row.fecha_hasta);
+      this.rangoForm.setValue({ start: this.fechaDesde, end: this.fechaHasta });
       this.dias = (row.dias ?? null) as number | null;
       this.fechaDesdePend = this._fromISO(row.fecha_desde_pendiente);
       this.fechaHastaPend = this._fromISO(row.fecha_hasta_pendiente);
@@ -97,6 +130,12 @@ export class SacavacacionesDialogComponent implements OnInit {
       }
     });
 
+    // Vacaciones: el rango lo arma la estrategia (15 días) al hacer un clic.
+    this.rangoForm.valueChanges.subscribe((v) => {
+      this.fechaDesde = v.start ?? null;
+      this.fechaHasta = v.end ?? null;
+      this.calcularDias();
+    });
     // Rango de días pendientes.
     this.rangoPendForm.valueChanges.subscribe((v) => {
       this.fechaDesdePend = v.start ?? null;
@@ -135,18 +174,6 @@ export class SacavacacionesDialogComponent implements OnInit {
 
   onSaleSel(p: Persona): void { this.saleSel = p; }
   onCubreSel(p: Persona): void { this.cubreSel = p; }
-
-  // Vacaciones: al elegir el Desde, el Hasta = Desde + 14 días (15 inclusive),
-  // aunque salte de mes. Se recalcula siempre, cada vez que cambia el Desde.
-  onDesdeChange(): void {
-    if (this.fechaDesde) {
-      const d = this.fechaDesde;
-      this.fechaHasta = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 14);
-    } else {
-      this.fechaHasta = null;
-    }
-    this.calcularDias();
-  }
 
   fmt(d: Date | null): string {
     if (!d) { return '—'; }
