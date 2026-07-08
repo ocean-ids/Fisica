@@ -102,10 +102,17 @@ export class SacavacacionesDialogComponent implements OnInit {
       }
     });
 
-    // Al elegir el rango en el calendario, actualizar fechas y recalcular días.
+    // Vacaciones = SIEMPRE 15 días: al marcar Desde se autocompleta el Hasta
+    // (Desde + 14 días, para que el conteo inclusive dé 15), aunque salte de mes.
     this.rangoForm.valueChanges.subscribe((v) => {
-      this.fechaDesde = v.start ?? null;
-      this.fechaHasta = v.end ?? null;
+      let start = v.start ?? null;
+      let end = v.end ?? null;
+      if (start && !end) {
+        end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 14);
+        this.rangoForm.patchValue({ end }, { emitEvent: false });
+      }
+      this.fechaDesde = start;
+      this.fechaHasta = end;
       this.calcularDias();
     });
     // Rango de días pendientes.
