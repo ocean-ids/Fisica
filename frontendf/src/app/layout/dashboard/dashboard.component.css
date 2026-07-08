@@ -46,3 +46,27 @@
   background-color: var(--app-bg);
   color: var(--text-primary);
 }
+
+/* ===== MÓVIL / TABLET (<992px): el menú flota por encima del contenido ===== */
+@media (max-width: 991.98px) {
+  .dashboard-content.is-mobile .sidebar-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 240px;
+    z-index: 1050;                 /* por encima del contenido */
+    box-shadow: 2px 0 14px rgba(0, 0, 0, 0.3);
+    background-color: var(--panel-bg);
+  }
+  .dashboard-content.is-mobile .sidebar-wrapper.collapsed {
+    width: 0;                       /* cerrado: no ocupa espacio */
+  }
+  /* Fondo oscuro detrás del menú abierto */
+  .dashboard-content.is-mobile .sidebar-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1040;                  /* debajo del menú, sobre el contenido */
+  }
+}

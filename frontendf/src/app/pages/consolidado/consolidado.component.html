@@ -9,7 +9,7 @@
     </div>
   </div>
 
-  <div class="d-flex align-items-center mb-3">
+  <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2 mb-3">
     <div class="d-flex gap-2 align-items-center justify-content-start flex-grow-1" style="flex-basis: 0;">
       <input
         type="date"
@@ -21,19 +21,18 @@
         placeholder="dd/mm/aaaa">
     </div>
     <div class="d-flex justify-content-center flex-grow-1" style="flex-basis: 0;">
-      <mat-button-toggle-group 
+      <mat-button-toggle-group
         name="turnoFiltro"
         [(ngModel)]="filtroTurno"
         (change)="_saveFilters(); cargar()"
         aria-label="Filtro de turno">
         <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
-        <mat-button-toggle disabled>Turnos:</mat-button-toggle>
         <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
       </mat-button-toggle-group>
 
     </div>
 
-    <div class="d-flex gap-2 justify-content-end flex-grow-1" style="flex-basis: 0;">
+    <div class="d-grid d-sm-flex gap-2 justify-content-lg-end flex-grow-1" style="flex-basis: 0;">
       <button type="button" class="btn btn-outline-primary" title="Agregar personal de consola" aria-label="Agregar personal de consola" (click)="crearPersonalConsola()">
         <i class="bi bi-plus-lg" style="margin-right:6px;"></i>
         Agregar consola

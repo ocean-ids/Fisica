@@ -536,3 +536,74 @@ table.table {
   width: 100%;
 }
 
+/* ===== MÓVIL / TABLET (<992px): compactar columnas y calendario ===== */
+@media (max-width: 991.98px) {
+  /* Fuente general de la tabla más chica */
+  .asig-table-card .table {
+    font-size: 10px;
+  }
+  /* Liberar anchos mínimos/máximos fijados inline en las columnas informativas
+     (Persona tenía min-width:180px, Cliente/Puesto max-width) para que se ajusten */
+  .shared-row > td,
+  .sacafranco-row > td {
+    min-width: 0 !important;
+    max-width: none !important;
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+    word-break: break-word;
+  }
+  /* Badges de tipo de persona más pequeños */
+  .shared-row .badge {
+    font-size: 8px;
+    padding: 2px 4px;
+  }
+  /* Calendario: días más angostos y texto menor para que quepan más en pantalla */
+  .calendar-day {
+    min-width: 13px;
+  }
+  .calendar-input {
+    font-size: 9px;
+  }
+  .calendar-day-num,
+  .calendar-day-initial {
+    font-size: 8px;
+    line-height: 1.05;
+  }
+  /* Botones de acción compactos */
+  .shared-row .btn,
+  .sacafranco-row .btn {
+    padding: 0.1rem 0.3rem;
+  }
+  /* Barra superior en una sola fila: botones y select compactos */
+  .asig-toolbar .btn {
+    font-size: 12px;
+    padding: 0.25rem 0.5rem;
+    white-space: nowrap;
+  }
+  .asig-toolbar .form-select {
+    font-size: 12px;
+    max-width: 160px;
+  }
+  /* Encabezado del calendario: selector de fecha más chico para bajar el alto */
+  .calendar-header-cell .form-control[type="date"] {
+    font-size: 11px;
+    padding: 2px 5px;
+    max-width: 125px !important;
+    height: auto;
+  }
+  .calendar-header-cell > .d-flex {
+    margin-bottom: 2px !important;
+  }
+  /* Bajar la altura reservada del encabezado */
+  .asig-table-card .table thead {
+    height: auto !important;
+  }
+  /* Quitar el hueco entre la barra de botones y la tabla */
+  .asig-toolbar {
+    margin-bottom: 0.15rem !important;
+  }
+  .asig-row {
+    margin-top: 0 !important;
+  }
+}
+

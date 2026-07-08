@@ -67,10 +67,10 @@
               <th>Nombre de Puesto</th>
               <th>Tipo de Puesto</th>
               <!--<th>Cantidad de Puesto</th>-->
-              <th>Días</th>
-              <th> Horas</th>
-              <th>Turno</th>
-              <th>Resumen</th>
+              <th class="d-none d-lg-table-cell">Días</th>
+              <th class="d-none d-lg-table-cell"> Horas</th>
+              <th class="d-none d-lg-table-cell">Turno</th>
+              <th class="d-none d-lg-table-cell">Resumen</th>
               <th>Instalación</th>
               <th class="text-center">Acciones</th>
             </tr>
@@ -83,10 +83,10 @@
               </td>
               <td>{{puesto.tipo}}</td>
               <!--<td>{{ puesto.cantidad_puestos }}</td>-->
-              <td>{{ getDias(puesto) }}</td>
-              <td>{{ getHoras(puesto) }}</td>
-              <td>{{ getTurnos(puesto) }}</td>
-              <td>
+              <td class="d-none d-lg-table-cell">{{ getDias(puesto) }}</td>
+              <td class="d-none d-lg-table-cell">{{ getHoras(puesto) }}</td>
+              <td class="d-none d-lg-table-cell">{{ getTurnos(puesto) }}</td>
+              <td class="d-none d-lg-table-cell">
                 <span
                   [matMenuTriggerFor]="tooltipMenu"
                   class="tooltip-trigger"
@@ -107,10 +107,10 @@
               <td>
                 <div class="d-flex align-middle justify-content-around gap-2">
                 <button class="btn btn-sm btn-outline-primary" (click)="abrirFormularioNuevo(puesto)">
-                  <i class="bi bi-pencil"></i> Editar
+                  <i class="bi bi-pencil"></i> <span class="d-none d-lg-inline">Editar</span>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" (click)="eliminarPuesto(puesto.id!)">
-                  <i class="bi bi-trash"></i> Eliminar
+                  <i class="bi bi-trash"></i> <span class="d-none d-lg-inline">Eliminar</span>
                 </button>
                 </div>
               </td>

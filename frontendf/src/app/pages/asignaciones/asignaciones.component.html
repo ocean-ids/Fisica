@@ -18,42 +18,37 @@
       </section>
     </div>
   </div>
-  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-3">
-    <div class="d-flex flex-wrap align-items-start gap-2 mt-2 abs">
-      <div class="fila-dropdown">
-        <button class="btn btn-primary" type="button" (click)="toggleFilaMenu()">
-          <i class="bi bi-card-checklist"></i> Crear Fila <i class="bi bi-caret-down-fill ms-1"></i>
+  <div class="d-flex flex-row flex-wrap align-items-center gap-2 mb-3 asig-toolbar">
+    <div class="fila-dropdown">
+      <button class="btn btn-primary" type="button" (click)="toggleFilaMenu()">
+        <i class="bi bi-card-checklist"></i> Crear Fila <i class="bi bi-caret-down-fill ms-1"></i>
+      </button>
+      <div class="fila-menu" *ngIf="showFilaMenu">
+        <button type="button" (click)="agregarFilaTipo('asignacion')">
+          <i class="bi bi-clipboard-check"></i> Asignación
         </button>
-        <div class="fila-menu" *ngIf="showFilaMenu">
-          <button type="button" (click)="agregarFilaTipo('asignacion')">
-            <i class="bi bi-clipboard-check"></i> Asignación
-          </button>
-          <button type="button" (click)="agregarFilaTipo('sacafranco')">
-            <i class="bi bi-plus-square"></i> Sacafranco
-          </button>
-        </div>
+        <button type="button" (click)="agregarFilaTipo('sacafranco')">
+          <i class="bi bi-plus-square"></i> Sacafranco
+        </button>
       </div>
     </div>
 
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-      <!--<button class="btn btn-outline-secondary" (click)="abrirNuevoPatron()" >
-        <i class="bi bi-grid-3x3-gap"></i> Nuevo Patrón
-      </button>-->
-      <button class="btn btn-outline-primary" type="button" (click)="abrirModalVistasCantones()">
-        <i class="bi bi-layout-text-window-reverse"></i> Nueva vista
-      </button>
-      <button class="btn btn-outline-success" (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel">
-        <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
-        Descargar
-      </button>
-    </div>
-  </div>
-  <div class="d-flex justify-content-md-end align-items-center gap-2 mb-4">
-    <div class="text-muted" *ngIf="getTotalPages()">
-      <span *ngIf="!isVistaCantonActiva()">Canton o Ciudad {{ provinciaPage }} de {{ getTotalPages() }}</span>
-      <span *ngIf="isVistaCantonActiva()">Vista personalizada</span>
-    </div>
-    <div class="d-flex align-items-center gap-2">
+    <!--<button class="btn btn-outline-secondary" (click)="abrirNuevoPatron()" >
+      <i class="bi bi-grid-3x3-gap"></i> Nuevo Patrón
+    </button>-->
+    <button class="btn btn-outline-primary" type="button" (click)="abrirModalVistasCantones()">
+      <i class="bi bi-layout-text-window-reverse"></i> Nueva vista
+    </button>
+    <button class="btn btn-outline-success" (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel">
+      <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
+      Descargar
+    </button>
+
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <div class="text-muted d-none d-lg-block" *ngIf="getTotalPages()">
+        <span *ngIf="!isVistaCantonActiva()">Canton o Ciudad {{ provinciaPage }} de {{ getTotalPages() }}</span>
+        <span *ngIf="isVistaCantonActiva()">Vista personalizada</span>
+      </div>
       <select class="form-select form-select-sm" [(ngModel)]="selectedCantonKey" (change)="onCantonSelect()" [ngModelOptions]="{standalone:true}">
         <optgroup label="Vistas guardadas" *ngIf="cantonViews.length">
           <option *ngFor="let v of cantonViews" [ngValue]="'view:' + v.id">Vista: {{ v.nombre }} ({{ v.tipo === 'cliente' ? v.clienteIds.length : (v.tipo === 'persona_tipo' ? v.tipos.length : v.cantonIds.length) }})</option>

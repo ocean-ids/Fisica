@@ -28,25 +28,25 @@
         <table class="table table-hover table-bordered w-100">
           <thead class="table-light">
             <tr class="text-center align-middle">
-              <th>Nominativo</th>
+              <th class="d-none d-lg-table-cell">Nominativo</th>
               <th>Cliente</th>
               <th>Nombre de la Instalación</th>
               <th>Provincia</th>
               <th>Ciudad o Cantón</th>
-              <th>Dirección</th>
-              <th class="text-center"  style="width: 80px;">Zonas</th>
+              <th class="d-none d-lg-table-cell">Dirección</th>
+              <th class="text-center d-none d-lg-table-cell"  style="width: 80px;">Zonas</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr class="text-center align-middle" *ngFor="let instalacion of instalaciones">
-              <td>{{ instalacion.codigo || '-' }}</td>
+              <td class="d-none d-lg-table-cell">{{ instalacion.codigo || '-' }}</td>
               <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
               <td>{{ instalacion.nombre || '-' }}</td>
               <td>{{ instalacion.provincia_nombre || '-' }}</td>
               <td>{{ instalacion.canton_nombre || '-' }}</td>
-              <td>{{ instalacion.direccion || '-' }}</td>
-              <td>
+              <td class="d-none d-lg-table-cell">{{ instalacion.direccion || '-' }}</td>
+              <td class="d-none d-lg-table-cell">
                 <ng-container *ngIf="instalacion.zonas?.length; else sinZonas">
                   <div *ngFor="let z of instalacion.zonas">
                     {{ z.titulo || '-' }}
@@ -57,10 +57,10 @@
               <td class="align-middle">
                 <div class="d-flex justify-content-center gap-2">
                   <button class="btn btn-sm btn-outline-primary" (click)="abrirModal(instalacion)">
-                    <i class="bi bi-pencil"></i> Editar
+                    <i class="bi bi-pencil"></i> <span class="d-none d-lg-inline">Editar</span>
                   </button>
                   <button class="btn btn-sm btn-outline-danger" (click)="confirmarEliminar(instalacion)">
-                    <i class="bi bi-trash"></i> Eliminar
+                    <i class="bi bi-trash"></i> <span class="d-none d-lg-inline">Eliminar</span>
                   </button>
                 </div>
               </td>

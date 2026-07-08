@@ -119,3 +119,28 @@ mat-toolbar {
   z-index: 1;
   animation: notifBeat 1.6s ease-in-out infinite;
 }
+
+/* ===== MÓVIL (<768px): que la barra superior quepa ===== */
+@media (max-width: 767.98px) {
+  /* Menos margen del botón hamburguesa (en escritorio es ms-5 = 3rem) */
+  mat-toolbar .btn-toggle {
+    margin-left: 0.5rem !important;
+  }
+  /* Ocultar el nombre de usuario (queda el avatar con su menú) */
+  .username {
+    display: none;
+  }
+  /* Apretar la zona derecha (tema, campana, avatar) */
+  mat-toolbar .ms-auto {
+    gap: 0.5rem !important;
+  }
+  /* Permitir que el buscador se achique sin desbordar */
+  mat-toolbar .input-group {
+    min-width: 0;
+  }
+  /* Un poco menos de padding lateral en la barra */
+  mat-toolbar {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}

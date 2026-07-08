@@ -32,6 +32,21 @@
   background-color: #be9a57;
 }
 
+/* El menú puede scrollear si no cabe (para llegar a todos los módulos)
+   y SEPARA los módulos con gap (el contenedor es flex column). */
+:host ::ng-deep mat-nav-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  gap: 6px;
+}
+
+/* Ítems como "píldora": margen lateral y esquinas redondeadas */
+:host ::ng-deep mat-nav-list a[mat-list-item] {
+  margin-left: 8px !important;
+  margin-right: 8px !important;
+  border-radius: 8px;
+}
+
 /* Iconos del menú: crecen suavemente al pasar el mouse */
 :host ::ng-deep mat-nav-list a[mat-list-item] mat-icon {
   transition: transform 0.18s ease;
