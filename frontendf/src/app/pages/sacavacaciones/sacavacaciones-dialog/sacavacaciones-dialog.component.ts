@@ -80,10 +80,11 @@ export class SacavacacionesDialogComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Períodos alrededor del año actual (ej. 2023-2024 … 2027-2028).
+    // Períodos alrededor del año actual: bastantes años hacia atrás (para las
+    // vacaciones pendientes de años pasados) y un par hacia adelante.
     const y = new Date().getFullYear();
     this.periodos = [];
-    for (let i = -3; i <= 1; i++) { this.periodos.push(`${y + i} - ${y + i + 1}`); }
+    for (let i = -12; i <= 2; i++) { this.periodos.push(`${y + i} - ${y + i + 1}`); }
 
     const row = this.data?.row;
     this.esEdicion = !!row?.id;
