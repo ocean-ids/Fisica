@@ -124,15 +124,27 @@ def exportar_reporte_vacaciones_excel(request):
         ws.merge_cells(start_row=r + 4, start_column=5, end_row=r + 4, end_column=7)
         ws.cell(row=r + 4, column=5, value=(item.sacavacaciones or 'N/A')).alignment = center
 
+        # Fila 6: días pendientes (otro rango)
+        ws.cell(row=r + 5, column=1, value='PEND. DESDE:').font = bold
+        ws.cell(row=r + 5, column=2, value=_dma(item.fecha_desde_pendiente)).alignment = center
+        ws.cell(row=r + 5, column=3, value='HASTA:').font = bold
+        ws.merge_cells(start_row=r + 5, start_column=4, end_row=r + 5, end_column=5)
+        ws.cell(row=r + 5, column=4, value=_dma(item.fecha_hasta_pendiente)).alignment = center
+        ws.merge_cells(start_row=r + 5, start_column=6, end_row=r + 5, end_column=7)
+        pend_txt = f"{item.dias_pendientes} DIAS PEND." if item.dias_pendientes else ''
+        pc = ws.cell(row=r + 5, column=6, value=pend_txt)
+        pc.font = bold
+        pc.alignment = center
+
         # Bordes de todo el bloque
-        for rr in range(r, r + 5):
+        for rr in range(r, r + 6):
             for cc in range(1, 8):
                 ws.cell(row=rr, column=cc).border = border
 
     row = 1
     for item in qs:
         bloque(row, item)
-        row += 6  # 5 filas del bloque + 1 en blanco
+        row += 7  # 6 filas del bloque + 1 en blanco
 
     if not qs:
         ws.cell(row=1, column=1, value='Sin registros de vacaciones.')

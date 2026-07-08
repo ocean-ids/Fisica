@@ -9,6 +9,9 @@ export interface ReporteVacaciones {
   fecha_desde?: string | null;
   fecha_hasta?: string | null;
   dias?: number;
+  fecha_desde_pendiente?: string | null;
+  fecha_hasta_pendiente?: string | null;
+  dias_pendientes?: number;
   orden?: number;
   created_at?: string;
   updated_at?: string;

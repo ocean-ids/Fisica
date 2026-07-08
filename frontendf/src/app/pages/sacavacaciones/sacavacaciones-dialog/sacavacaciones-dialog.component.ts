@@ -55,6 +55,15 @@ export class SacavacacionesDialogComponent implements OnInit {
     end: new FormControl<Date | null>(null),
   });
   dias: number | null = null;
+
+  // Días pendientes: otro rango (mismo picker) por si no le dieron todas.
+  fechaDesdePend: Date | null = null;
+  fechaHastaPend: Date | null = null;
+  rangoPendForm = new FormGroup({
+    start: new FormControl<Date | null>(null),
+    end: new FormControl<Date | null>(null),
+  });
+  diasPend: number | null = null;
   esEdicion = false;
   private editSaleId: number | null = null;
   private editCubreId: number | null = null;
@@ -75,6 +84,10 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.fechaHasta = this._fromISO(row.fecha_hasta);
       this.rangoForm.setValue({ start: this.fechaDesde, end: this.fechaHasta });
       this.dias = (row.dias ?? null) as number | null;
+      this.fechaDesdePend = this._fromISO(row.fecha_desde_pendiente);
+      this.fechaHastaPend = this._fromISO(row.fecha_hasta_pendiente);
+      this.rangoPendForm.setValue({ start: this.fechaDesdePend, end: this.fechaHastaPend });
+      this.diasPend = (row.dias_pendientes ?? null) as number | null;
       this.editSaleId = row.persona_sale_ref ?? null;
       this.editCubreId = row.sacavacaciones_ref ?? null;
       if (row.persona_sale) { this.saleCtrl.setValue(row.persona_sale); }
@@ -94,6 +107,12 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.fechaDesde = v.start ?? null;
       this.fechaHasta = v.end ?? null;
       this.calcularDias();
+    });
+    // Rango de días pendientes.
+    this.rangoPendForm.valueChanges.subscribe((v) => {
+      this.fechaDesdePend = v.start ?? null;
+      this.fechaHastaPend = v.end ?? null;
+      this.diasPend = this._diasInclusive(this.fechaDesdePend, this.fechaHastaPend);
     });
 
     this.personaSrv.getPersonas({}).subscribe((ps) => { this.personasAll = ps || []; });
@@ -128,14 +147,15 @@ export class SacavacacionesDialogComponent implements OnInit {
   onSaleSel(p: Persona): void { this.saleSel = p; }
   onCubreSel(p: Persona): void { this.cubreSel = p; }
 
-  // Días = contador de días calendario inclusive entre desde y hasta.
+  // Días = contador de días calendario inclusive entre dos fechas.
+  private _diasInclusive(d1: Date | null, d2: Date | null): number {
+    if (!d1 || !d2) { return 0; }
+    const diff = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1;
+    return diff > 0 ? diff : 0;
+  }
+
   calcularDias(): void {
-    if (this.fechaDesde && this.fechaHasta) {
-      const diff = Math.round((this.fechaHasta.getTime() - this.fechaDesde.getTime()) / 86400000) + 1;
-      this.dias = diff > 0 ? diff : 0;
-    } else {
-      this.dias = 0;
-    }
+    this.dias = this._diasInclusive(this.fechaDesde, this.fechaHasta);
   }
 
   // 'YYYY-MM-DD' (texto del backend) -> Date local. Y viceversa (sin corrimiento
@@ -165,6 +185,9 @@ export class SacavacacionesDialogComponent implements OnInit {
       fecha_desde: this._toISO(this.fechaDesde),
       fecha_hasta: this._toISO(this.fechaHasta),
       dias: this.dias || 0,
+      fecha_desde_pendiente: this._toISO(this.fechaDesdePend),
+      fecha_hasta_pendiente: this._toISO(this.fechaHastaPend),
+      dias_pendientes: this.diasPend || 0,
     };
     // Persona que sale
     if (this.saleSel) {
