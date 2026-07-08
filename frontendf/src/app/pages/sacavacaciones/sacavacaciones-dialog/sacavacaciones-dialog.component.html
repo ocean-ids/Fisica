@@ -39,7 +39,8 @@
 
   <mat-form-field appearance="outline">
     <mat-label>Vacaciones — Desde (15 días)</mat-label>
-    <input matInput [matDatepicker]="pDesde" [(ngModel)]="fechaDesde" (dateChange)="onDesdeChange()">
+    <input matInput [matDatepicker]="pDesde" [(ngModel)]="fechaDesde"
+           (ngModelChange)="onDesdeChange()" (dateChange)="onDesdeChange()">
     <mat-datepicker-toggle matIconSuffix [for]="pDesde"></mat-datepicker-toggle>
     <mat-datepicker #pDesde></mat-datepicker>
   </mat-form-field>
