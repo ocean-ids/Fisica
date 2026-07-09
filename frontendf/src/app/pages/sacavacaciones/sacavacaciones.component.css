@@ -1,3 +1,12 @@
 :host {
   display: block;
 }
+
+/* ===== MÓVIL / TABLET (<992px): botones y select del header más chicos ===== */
+@media (max-width: 991.98px) {
+  :host .btn,
+  :host .form-select {
+    font-size: 13px;
+    padding: 0.3rem 0.55rem;
+  }
+}
