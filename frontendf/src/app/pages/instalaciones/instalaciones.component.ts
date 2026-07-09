@@ -112,6 +112,7 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
       nombre: data.nombre || '',
       cliente: data.cliente_id,
       direccion: data.direccion || '',
+      sector: data.sector || '',
       provincia_id: data.provincia_id || data.provincia,
       canton_id: data.canton_id || data.canton,
       zona_id: data.zona_id || null
@@ -135,6 +136,7 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
       nombre: data.nombre || '',
       cliente: data.cliente_id,
       direccion: data.direccion || '',
+      sector: data.sector || '',
       provincia_id: data.provincia_id || data.provincia,
       canton_id: data.canton_id || data.canton,
       zona_id: data.zona_id|| null,
