@@ -20,7 +20,17 @@ export class AuthService {
   private readonly WARNING_MS = 2 * 60 * 1000; // avisar 2 min antes
   private inactivityTimerId: any = null;
   private warningActive = false;
-  private boundResetActivity = () => this.resetInactivityTimer();
+  private boundResetActivity = () => {
+    this.lastActivityAt = Date.now();
+    this.resetInactivityTimer();
+  };
+
+  // Renovación automática del token mientras el usuario esté activo.
+  // El contador de "3 horas" es por INACTIVIDAD: si se usa la app, el token se
+  // renueva y la sesión no se corta; si se deja quieta 3 h, se cierra.
+  private lastActivityAt = Date.now();
+  private readonly REFRESH_BEFORE_MS = 5 * 60 * 1000; // renovar 5 min antes de expirar
+  private refreshing = false;
 
 
   constructor(private http: HttpClient, private router: Router) {
@@ -151,11 +161,54 @@ export class AuthService {
     this.tokenCheckId = setInterval(() => {
       const token = localStorage.getItem('access_token');
       if (!token) return;
+
+      // ¿El usuario ha estado activo dentro de la ventana de inactividad?
+      const activo = (Date.now() - this.lastActivityAt) < this.INACTIVITY_MS;
+
       if (this.isTokenExpired(token)) {
+        // Token vencido: si sigue activo y hay refresh, intentar renovar
+        // (p. ej. al volver de suspensión); si no, cerrar sesión.
+        if (activo && this.getRefreshToken()) {
+          this.tryRefresh();
+        } else {
+          this.forceLogout();
+          this.router.navigate(['/login']);
+        }
+        return;
+      }
+
+      // Token aún válido pero por vencer y usuario activo → renovar antes de que expire.
+      if (activo && this.expiresWithin(token, this.REFRESH_BEFORE_MS) && this.getRefreshToken()) {
+        this.tryRefresh();
+      }
+    }, 30000); // chequeo cada 30s
+  }
+
+  /** ¿El token vence dentro de los próximos `ms` milisegundos? */
+  private expiresWithin(token: string, ms: number): boolean {
+    try {
+      const [, payload] = token.split('.');
+      const decoded = JSON.parse(atob(payload));
+      const expMs = decoded?.exp ? decoded.exp * 1000 : 0;
+      if (!expMs) return true;
+      return (expMs - Date.now()) <= ms;
+    } catch {
+      return true;
+    }
+  }
+
+  /** Renueva el access token con el refresh token; si falla, cierra sesión. */
+  private tryRefresh(): void {
+    if (this.refreshing || !this.getRefreshToken()) return;
+    this.refreshing = true;
+    this.refreshToken().subscribe({
+      next: () => { this.refreshing = false; },
+      error: () => {
+        this.refreshing = false;
         this.forceLogout();
         this.router.navigate(['/login']);
       }
-    }, 30000); // chequeo cada 30s
+    });
   }
 
   getAccessToken(): string | null {
