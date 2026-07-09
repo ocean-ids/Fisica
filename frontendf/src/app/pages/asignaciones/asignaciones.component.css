@@ -598,6 +598,10 @@ table.table {
   .asig-table-card .table thead {
     height: auto !important;
   }
+  /* Ocultar la fila de "ojitos" (toggle de columnas): en móvil se usa el engranaje */
+  .header-toggle-row {
+    display: none !important;
+  }
   /* Quitar el hueco entre la barra de botones y la tabla */
   .asig-toolbar {
     margin-bottom: 0.15rem !important;
