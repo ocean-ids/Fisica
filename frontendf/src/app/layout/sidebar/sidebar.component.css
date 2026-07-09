@@ -37,14 +37,19 @@
 :host ::ng-deep mat-nav-list {
   overflow-y: auto;
   overflow-x: hidden;
-  gap: 6px;
+  gap: 10px;
+  padding-top: 6px;
+  padding-bottom: 12px;
 }
 
-/* Ítems como "píldora": margen lateral y esquinas redondeadas */
+/* Ítems como "píldora": margen lateral, más alto y fondo tenue para
+   que cada módulo se distinga bien (sobre todo en móvil). */
 :host ::ng-deep mat-nav-list a[mat-list-item] {
   margin-left: 8px !important;
   margin-right: 8px !important;
   border-radius: 8px;
+  min-height: 46px !important;
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Iconos del menú: crecen suavemente al pasar el mouse */
@@ -82,13 +87,16 @@
 }
 
 /* Contenedor del submenú: se despliega con animación */
+/* Submenú: oculto por defecto, se muestra al desplegar.
+   Uso display (no max-height) porque dentro de un contenedor flex el
+   max-height es poco fiable y a veces no despliega en móvil. */
 .submenu {
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height 0.28s ease;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
 }
 .submenu.open {
-  max-height: 500px;
+  display: flex;
 }
 
 /* Ítems hijos: indentados, con viñeta (círculo pequeño) */
