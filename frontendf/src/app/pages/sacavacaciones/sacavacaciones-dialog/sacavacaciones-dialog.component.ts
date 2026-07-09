@@ -144,9 +144,13 @@ export class SacavacacionesDialogComponent implements OnInit {
       debounceTime(120),
       map((val: any) => {
         const q = (typeof val === 'string' ? val : this.displayPersona(val)).toLowerCase().trim();
-        // Todas las personas (o las que coinciden con la búsqueda).
-        let base = q
-          ? this.personasAll.filter(p => `${p.nombres || ''} ${p.apellidos || ''} ${p.cedula || ''}`.toLowerCase().includes(q))
+        const tokens = q.split(/\s+/).filter(Boolean);
+        // Todas las personas (o las que coinciden con la búsqueda; cada palabra en cualquier orden).
+        let base = tokens.length
+          ? this.personasAll.filter(p => {
+              const hay = `${p.nombres || ''} ${p.apellidos || ''} ${p.cedula || ''}`.toLowerCase();
+              return tokens.every(t => hay.includes(t));
+            })
           : this.personasAll;
         // Si hay un tipo prioritario, ese tipo va PRIMERO (pero salen TODOS).
         if (prioriTipo) {

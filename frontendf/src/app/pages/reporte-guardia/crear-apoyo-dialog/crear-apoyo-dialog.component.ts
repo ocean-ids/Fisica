@@ -83,8 +83,12 @@ export class CrearApoyoDialogComponent implements OnInit {
       map((val: any) => {
         const q = (typeof val === 'string' ? val : this.displayPersona(val)).toLowerCase().trim();
         if (!q) { return this.personasAll.slice(0, 50); }
+        const tokens = q.split(/\s+/).filter(Boolean);
         return this.personasAll
-          .filter(p => `${p.nombres || ''} ${p.apellidos || ''} ${p.cedula || ''}`.toLowerCase().includes(q))
+          .filter(p => {
+            const hay = `${p.nombres || ''} ${p.apellidos || ''} ${p.cedula || ''}`.toLowerCase();
+            return tokens.every(t => hay.includes(t));
+          })
           .slice(0, 50);
       }),
     );
