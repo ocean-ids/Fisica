@@ -47,14 +47,15 @@ export class SacafrancoPersonasModalComponent implements OnInit {
   private applyFilters(): void {
     // Ya no se filtra por cantón: se muestran todas las personas sacafranco.
     const all = this.personasAll || [];
-    const q = this.normalizeText(this.filtroNombre);
-    if (!q) {
+    const tokens = this.normalizeText(this.filtroNombre || '').split(/\s+/).filter(Boolean);
+    if (!tokens.length) {
       this.personasFiltradas = all;
       return;
     }
     this.personasFiltradas = all.filter(p => {
-      const fullName = this.normalizeText(`${p.apellidos || ''} ${p.nombres || ''}`);
-      return fullName.includes(q);
+      // Cada palabra debe estar en "nombres apellidos cédula" (cualquier orden).
+      const hay = this.normalizeText(`${p.nombres || ''} ${p.apellidos || ''} ${(p as any).cedula || ''}`);
+      return tokens.every(t => hay.includes(t));
     });
   }
 

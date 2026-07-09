@@ -324,10 +324,12 @@ export class AsignacionFormComponent implements OnInit {
 
   filtrarPersonas(value: string): void {
     const term = (value || '').trim().toLowerCase();
+    const tokens = term.split(/\s+/).filter(Boolean);
     this.personasFiltradas = this.getPersonasActivas().filter(persona => {
-      if (!term) return true;
-      const full = `${persona.apellidos || ''} ${persona.nombres || ''}`.toLowerCase();
-      return full.includes(term);
+      if (!tokens.length) return true;
+      // Coincide si cada palabra escrita está en "nombres apellidos cédula" (cualquier orden).
+      const hay = `${persona.nombres || ''} ${persona.apellidos || ''} ${persona.cedula || ''}`.toLowerCase();
+      return tokens.every(t => hay.includes(t));
     });
   }
 
