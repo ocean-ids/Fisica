@@ -533,8 +533,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   // ¿La asignación coincide con el texto buscado? (cliente, persona, puesto, nominativo)
+  // Se divide el texto en palabras y CADA palabra debe estar en el conjunto de
+  // campos, así el nombre completo (2 nombres + 2 apellidos) funciona en cualquier orden.
   private asigCoincide(a: any, term: string): boolean {
-    const campos = [
+    const tokens = (term || '').toLowerCase().split(/\s+/).filter(Boolean);
+    if (!tokens.length) return true;
+    const hay = [
       a?.cliente_detalle?.nombre_comercial,
       a?.puesto_detalle?.nombre,
       a?.puesto_detalle?.resumen,
@@ -542,8 +546,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       a?.persona_detalle?.apellidos,
       a?.persona_detalle?.cedula,
       this.getCodigoInstalacionAsignacion(a),
-    ];
-    return campos.some(c => (c || '').toString().toLowerCase().includes(term));
+    ].map(c => (c || '').toString().toLowerCase()).join(' ');
+    return tokens.every(t => hay.includes(t));
   }
 
   // Busca en lo ya cargado TODAS las coincidencias, guarda sus ids y va a la primera.
