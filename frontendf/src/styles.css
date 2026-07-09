@@ -289,6 +289,17 @@ body.theme-dark .login-card {
 
 /* ===== MÓVIL / TABLET (<992px): tablas más compactas (fuente y padding menores) ===== */
 @media (max-width: 991.98px) {
+  /* Títulos de módulo más pequeños para ganar espacio (todos los módulos) */
+  .main-content h2,
+  .main-content h2.text-center {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .main-content h3,
+  .main-content h3.text-center {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
   .table {
     font-size: 12px;
   }
