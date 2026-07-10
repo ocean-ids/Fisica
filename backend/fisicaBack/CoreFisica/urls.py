@@ -21,6 +21,7 @@ from .views.consolidado_views import obtener_consolidado, crear_consolidado, act
 from .views.vista_canton_views import vistas_cantones
 from .views.novedad_puesto_views import obtener_novedades, crear_novedad, actualizar_novedad, eliminar_novedad, exportar_novedades_excel
 from .views.sync_views import sincronizar_empleado
+from .views.html_pdf_views import html_a_pdf
 from .views.reporte_vacaciones_views import (
     listar_reporte_vacaciones, crear_reporte_vacaciones, exportar_reporte_vacaciones_excel,
     actualizar_reporte_vacaciones, eliminar_reporte_vacaciones,
@@ -112,6 +113,7 @@ urlpatterns = [
     path('sacafranco-filas/<int:id>/', eliminar_sacafranco_fila),
     path('vistas-cantones/', vistas_cantones),
     path('sync/empleado/', sincronizar_empleado),
+    path('html-a-pdf/', html_a_pdf),
     path('reporte-asignaciones/', exportar_asignaciones_excel, name='reporte_asignaciones'),
     path('asignacion-semanal/', listar_asignacion_semanal),
     path('asignacion-semanal/mes/', listar_asignacion_semanal_mes),
