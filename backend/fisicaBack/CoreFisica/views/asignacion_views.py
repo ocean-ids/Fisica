@@ -443,17 +443,28 @@ def obtener_asignaciones(request, mes=None, anio=None):
             'provincia_id': None
         })
 
-    # Un cliente que ya tiene VISTA DE EMPRESA se muestra SOLO en esa vista: se
-    # excluye de las vistas por cantón / generales para que no salga duplicado,
-    # INCLUSO al buscar por texto (debe encontrarse desde su propia vista de empresa,
-    # no aparecer en los cantones a los que pertenece geográficamente).
+    # Lo que ya está en una VISTA DE EMPRESA se muestra SOLO en esa vista: se
+    # excluye de las vistas por cantón / generales para que no salga duplicado.
+    # La exclusión es POR INSTALACIÓN cuando la vista de empresa define
+    # instalaciones específicas; si la vista no define instalaciones ("toda la
+    # empresa"), se excluye el cliente completo (comportamiento anterior).
+    # Así, una instalación de un cliente que NO esté en ninguna vista de empresa
+    # sigue apareciendo en su cantón, aunque otras instalaciones del mismo cliente
+    # sí estén en una vista de empresa.
     if not cliente_ids:
         from ..models import VistaCanton
-        clientes_empresa = set()
+        clientes_toda_empresa = set()   # vistas de empresa SIN instalaciones -> excluir cliente completo
+        instalaciones_empresa = set()   # vistas de empresa CON instalaciones -> excluir solo esas
         for v in VistaCanton.objects.filter(tipo='cliente'):
-            clientes_empresa.update(int(c) for c in (v.clientes or []) if str(c).strip())
-        if clientes_empresa:
-            asignaciones = asignaciones.exclude(cliente_id__in=clientes_empresa)
+            insts = [int(i) for i in (v.instalaciones or []) if str(i).strip()]
+            if insts:
+                instalaciones_empresa.update(insts)
+            else:
+                clientes_toda_empresa.update(int(c) for c in (v.clientes or []) if str(c).strip())
+        if clientes_toda_empresa:
+            asignaciones = asignaciones.exclude(cliente_id__in=clientes_toda_empresa)
+        if instalaciones_empresa:
+            asignaciones = asignaciones.exclude(instalacion_id__in=instalaciones_empresa)
 
     # Vista por empresa: devolver TODAS las asignaciones de esos clientes (lista plana,
     # sin paginar por cantón). El frontend la trata como una vista (igual que canton_ids).
