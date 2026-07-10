@@ -5,6 +5,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Librerías del SO para WeasyPrint (HTML->PDF): Pango/HarfBuzz/FFI + fuentes.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpango-1.0-0 \
+        libpangoft2-1.0-0 \
+        libharfbuzz0b \
+        libffi8 \
+        fonts-dejavu-core \
+        fontconfig \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt /app/requirements.txt
 
 RUN python - <<'PY'

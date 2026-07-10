@@ -25,6 +25,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_HOST: db
       DB_PORT: "5432"
+      ERP_SYNC_API_KEY: ${ERP_SYNC_API_KEY:-}
+      PDF_API_KEY: ${PDF_API_KEY:-}
     volumes:
       - sf_media:/app/media
     depends_on:
