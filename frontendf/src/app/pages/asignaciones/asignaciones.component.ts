@@ -354,8 +354,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   monthValue: string = '';
   dateValue: string = '';   // fecha (YYYY-MM-DD) mostrada en el selector (día/mes/año)
   filtroTexto: string = '';
-  highlightedAsigId: number | null = null;   // fila resaltada tras una búsqueda
-  matchIds: number[] = [];                    // ids de las coincidencias de la búsqueda
+  highlightedAsigId: number | null = null;   // fila (asignación) resaltada tras una búsqueda
+  highlightedSacaId: number | null = null;   // fila (sacafranco) resaltada tras una búsqueda
+  matches: Array<{ type: 'asignacion' | 'sacafranco'; id: number }> = []; // coincidencias de la búsqueda
   currentMatchIndex: number = 0;              // índice de la coincidencia actual
   private highlightTimer: any = null;
   private filterSub?: Subscription;
@@ -518,7 +519,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const term = (this.filtroTexto || '').trim().toLowerCase();
     if (!term) {
       this.highlightedAsigId = null;
-      this.matchIds = [];
+      this.highlightedSacaId = null;
+      this.matches = [];
       this.currentMatchIndex = 0;
       this.publicarMatchNav();
       if (this.highlightTimer) clearTimeout(this.highlightTimer);
@@ -529,7 +531,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   // Publica el estado de coincidencias al buscador global (flechas dentro del input).
   private publicarMatchNav(): void {
-    this.globalFilter.setMatchNav(this.matchIds.length, this.currentMatchIndex, '/dashboard/asignaciones');
+    this.globalFilter.setMatchNav(this.matches.length, this.currentMatchIndex, '/dashboard/asignaciones');
   }
 
   // ¿La asignación coincide con el texto buscado? (cliente, persona, puesto, nominativo)
@@ -550,56 +552,76 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     return tokens.every(t => hay.includes(t));
   }
 
-  // Busca en lo ya cargado TODAS las coincidencias, guarda sus ids y va a la primera.
+  // ¿La fila de SACAFRANCO coincide con el texto? (persona asignada al sacafranco)
+  private sacaCoincide(fila: any, term: string): boolean {
+    const tokens = (term || '').toLowerCase().split(/\s+/).filter(Boolean);
+    if (!tokens.length) return true;
+    const hay = [
+      fila?.persona_detalle?.nombres,
+      fila?.persona_detalle?.apellidos,
+      fila?.persona_detalle?.cedula,
+    ].map(c => (c || '').toString().toLowerCase()).join(' ');
+    return tokens.every(t => hay.includes(t));
+  }
+
+  // Busca en lo ya cargado TODAS las coincidencias (asignaciones Y sacafranco) y va a la primera.
   private scrollALocalMatch(term: string): void {
-    const filas = this.displayRows || [];
-    this.matchIds = filas
-      .filter(r => r.type === 'asignacion' && (r as any).asig && this.asigCoincide((r as any).asig, term))
-      .map(r => (r as any).asig.id as number)
-      .filter(id => id != null);
-    if (!this.matchIds.length) {
+    const filas = (this.displayRows || []) as any[];
+    this.matches = [];
+    for (const r of filas) {
+      if (r.type === 'asignacion' && r.asig && r.asig.id != null && this.asigCoincide(r.asig, term)) {
+        this.matches.push({ type: 'asignacion', id: r.asig.id });
+      } else if (r.type === 'sacafranco' && r.fila && r.fila.id != null && this.sacaCoincide(r.fila, term)) {
+        this.matches.push({ type: 'sacafranco', id: r.fila.id });
+      }
+    }
+    if (!this.matches.length) {
       this.highlightedAsigId = null;
+      this.highlightedSacaId = null;
       this.currentMatchIndex = 0;
       this.publicarMatchNav();
       return;
     }
     this.currentMatchIndex = 0;
     this.publicarMatchNav();
-    this.scrollAId(this.matchIds[0]);
+    this.scrollAMatch(this.matches[0]);
   }
 
-  // Hace scroll suave a la fila indicada y la resalta unos segundos.
-  private scrollAId(id: number): void {
+  // Hace scroll suave a la fila (asignación o sacafranco) y la resalta unos segundos.
+  private scrollAMatch(m: { type: 'asignacion' | 'sacafranco'; id: number }): void {
     setTimeout(() => {
-      const el = document.getElementById('asig-row-' + id);
+      const anchor = (m.type === 'sacafranco' ? 'saca-row-' : 'asig-row-') + m.id;
+      const el = document.getElementById(anchor);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-      this.highlightedAsigId = id;
+      this.highlightedAsigId = m.type === 'asignacion' ? m.id : null;
+      this.highlightedSacaId = m.type === 'sacafranco' ? m.id : null;
       if (this.highlightTimer) clearTimeout(this.highlightTimer);
       this.highlightTimer = setTimeout(() => {
         this.highlightedAsigId = null;
+        this.highlightedSacaId = null;
       }, 3000);
     }, 60);
   }
 
   // Navegación entre coincidencias (flechas del buscador).
   get tieneVariasCoincidencias(): boolean {
-    return (this.matchIds?.length || 0) > 1;
+    return (this.matches?.length || 0) > 1;
   }
 
   irSiguienteCoincidencia(): void {
-    if (!this.matchIds.length) return;
-    this.currentMatchIndex = (this.currentMatchIndex + 1) % this.matchIds.length;
+    if (!this.matches.length) return;
+    this.currentMatchIndex = (this.currentMatchIndex + 1) % this.matches.length;
     this.publicarMatchNav();
-    this.scrollAId(this.matchIds[this.currentMatchIndex]);
+    this.scrollAMatch(this.matches[this.currentMatchIndex]);
   }
 
   irAnteriorCoincidencia(): void {
-    if (!this.matchIds.length) return;
-    this.currentMatchIndex = (this.currentMatchIndex - 1 + this.matchIds.length) % this.matchIds.length;
+    if (!this.matches.length) return;
+    this.currentMatchIndex = (this.currentMatchIndex - 1 + this.matches.length) % this.matches.length;
     this.publicarMatchNav();
-    this.scrollAId(this.matchIds[this.currentMatchIndex]);
+    this.scrollAMatch(this.matches[this.currentMatchIndex]);
   }
 
   setProvinciaFilter(key: string, label?: string): void {

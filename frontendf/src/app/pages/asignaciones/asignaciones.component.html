@@ -239,6 +239,8 @@
                   cdkDragLockAxis="y"
                   cdkDragPreviewContainer="parent"
                   style="height: 45px;"
+                  [attr.id]="'saca-row-' + row.fila.id"
+                  [class.row-busqueda-activa]="row.fila.id === highlightedSacaId"
                   class="align-middle sacafranco-row">
                   <div *cdkDragPreview class="drag-lift-card">
                     <i class="bi bi-arrows-move"></i>
