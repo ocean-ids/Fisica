@@ -2600,3 +2600,145 @@ def puestos_ocupacion(request, mes, anio):
              .annotate(total=Count('id')))
     ocupacion = {str(f['puesto_id']): f['total'] for f in filas if f['puesto_id'] is not None}
     return JsonResponse({'ocupacion': ocupacion}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def exportar_asignaciones_reimportable(request):
+    """Exporta asignaciones + sacafranco del mes en el MISMO formato que acepta el
+    importador (formato 'reporte'), para que 'descargar -> re-importar' funcione.
+
+    Genera una tabla PLANA (sin celdas combinadas ni logo):
+      NOMINATIVO | CLIENTE | PUESTO | TIPO | CEDULA | APELLIDOS Y NOMBRES |
+      H INGRESO | H SALIDA | 1 | 2 | ... | N
+    Parametros: mes, anio (opcionales; por defecto el mes actual) y filtros
+    opcionales cliente_ids / canton_ids / instalacion_ids (CSV).
+    """
+    if not request.user.has_perm('CoreFisica.export_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    import calendar as _cal
+
+    def _int_csv(name):
+        out = []
+        for x in (request.GET.get(name) or '').split(','):
+            x = x.strip()
+            if x.isdigit():
+                out.append(int(x))
+        return out
+
+    try:
+        mes = int(request.GET.get('mes') or datetime.date.today().month)
+        anio = int(request.GET.get('anio') or datetime.date.today().year)
+        if not (1 <= mes <= 12):
+            raise ValueError
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'mes/anio invalidos'}, status=400)
+
+    cliente_ids = _int_csv('cliente_ids')
+    canton_ids = _int_csv('canton_ids')
+    instalacion_ids = _int_csv('instalacion_ids')
+
+    WEEK_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+    month_start = datetime.date(anio, mes, 1)
+    days_in_month = _cal.monthrange(anio, mes)[1]
+
+    def _hhmm(t):
+        if not t:
+            return ''
+        try:
+            return t.strftime('%H:%M')
+        except Exception:
+            return str(t)[:5]
+
+    def _val(smap, key_id, d):
+        wd = datetime.date(anio, mes, d).weekday()
+        field = WEEK_KEYS[wd]
+        ws_month = month_start + datetime.timedelta(days=((d - 1) // 7) * 7)
+        ws_iso = datetime.date(anio, mes, d) - datetime.timedelta(days=wd)
+        for ws_ in (ws_month, ws_iso):
+            s = smap.get((key_id, ws_))
+            if s:
+                v = getattr(s, field, '') or ''
+                if str(v).strip():
+                    return str(v).strip()
+        return ''
+
+    # --- Asignaciones ---
+    asigs = (Asignacion.objects
+             .filter(estado='ACTIVO', mes=mes, anio=anio, persona__isnull=False)
+             .exclude(persona__tipo='SACAFRANCO')
+             .select_related('persona', 'cliente', 'instalacion', 'instalacion__canton',
+                             'puesto', 'puesto__horario', 'horario'))
+    if cliente_ids:
+        asigs = asigs.filter(cliente_id__in=cliente_ids)
+    if canton_ids:
+        asigs = asigs.filter(instalacion__canton_id__in=canton_ids)
+    if instalacion_ids:
+        asigs = asigs.filter(instalacion_id__in=instalacion_ids)
+    asigs = list(asigs)
+
+    sem_map = {}
+    for s in AsignacionSemanal.objects.filter(asignacion_id__in=[a.id for a in asigs]):
+        sem_map[(s.asignacion_id, s.week_start)] = s
+
+    # --- Sacafranco ---
+    sf_qs = SacafrancoFila.objects.filter(mes=mes, anio=anio, persona__isnull=False).select_related('persona')
+    if canton_ids:
+        # Sacafranco cuyo ambito (cantones) se cruza con los cantones de la vista.
+        sf_qs = sf_qs.filter(cantones__overlap=canton_ids)
+    sfilas = list(sf_qs)
+    sf_map = {}
+    for s in SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id__in=[f.id for f in sfilas]):
+        sf_map[(s.sacafranco_fila_id, s.week_start)] = s
+
+    # --- Orden de la VISTA: por provincia y por 'orden' (igual que en pantalla),
+    #     entremezclando asignaciones y sacafranco. ---
+    combinado = []
+    for a in asigs:
+        prov = getattr(getattr(getattr(a, 'instalacion', None), 'canton', None), 'provincia_id', None)
+        combinado.append(((prov if prov is not None else 999999), (a.orden or 0), a.id, 'asig', a))
+    for f in sfilas:
+        combinado.append(((f.provincia_id if f.provincia_id is not None else 999999),
+                          (f.orden or 0), f.id, 'saca', f))
+    combinado.sort(key=lambda r: (r[0], r[1], r[2]))
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f"REIMPORT {mes}-{anio}"
+    ws.append(['NOMINATIVO', 'CLIENTE', 'PUESTO', 'TIPO', 'CEDULA',
+               'APELLIDOS Y NOMBRES', 'H INGRESO', 'H SALIDA'] + list(range(1, days_in_month + 1)))
+
+    for _prov, _orden, _id, tipo_fila, obj in combinado:
+        p = obj.persona
+        if tipo_fila == 'asig':
+            pu = obj.puesto
+            hor = obj.horario or (getattr(pu, 'horario', None) if pu else None)
+            tipo = (getattr(pu, 'resumen', '') or '').strip() or str(getattr(pu, 'cantidad_puestos', 1) or 1)
+            ws.append([
+                (getattr(obj.instalacion, 'codigo', '') or ''),
+                (getattr(obj.cliente, 'nombre_comercial', '') or ''),
+                (getattr(pu, 'nombre', '') or ''),
+                tipo,
+                (getattr(p, 'cedula', '') or ''),
+                f"{getattr(p, 'apellidos', '') or ''} {getattr(p, 'nombres', '') or ''}".strip(),
+                _hhmm(getattr(hor, 'hora_ingreso', None)),
+                _hhmm(getattr(hor, 'hora_salida', None)),
+            ] + [_val(sem_map, obj.id, d) for d in range(1, days_in_month + 1)])
+        else:
+            ws.append([
+                '', '', 'SACAFRANCO', '',
+                (getattr(p, 'cedula', '') or ''),
+                f"{getattr(p, 'apellidos', '') or ''} {getattr(p, 'nombres', '') or ''}".strip(),
+                _hhmm(getattr(obj, 'hora_ingreso', None)),
+                _hhmm(getattr(obj, 'hora_salida', None)),
+            ] + [_val(sf_map, obj.id, d) for d in range(1, days_in_month + 1)])
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    resp['Content-Disposition'] = f'attachment; filename="asignaciones_reimportable_{mes}_{anio}.xlsx"'
+    return resp
