@@ -32,3 +32,16 @@ class HtmlPdfEndpointTests(TestCase):
         r = self._post({'html': '<h1>hola</h1>'}, key='secreto123')
         self.assertIn(r.status_code, (200, 500, 503))
         self.assertNotIn(r.status_code, (400, 401))
+
+    def test_html_6mb_no_es_rechazado_por_tamano(self):
+        # ~6 MB (mayor al viejo default de Django de 2.5 MB) debe PASAR la validacion
+        # de tamano (llega al generador), gracias a DATA_UPLOAD_MAX_MEMORY_SIZE y al
+        # limite de 10 MB del endpoint.
+        html = '<p>' + ('x' * (6 * 1024 * 1024)) + '</p>'
+        r = self._post({'html': html}, key='secreto123')
+        self.assertNotIn(r.status_code, (400, 401, 413))
+
+    def test_html_mayor_a_10mb_da_413(self):
+        html = 'x' * (11 * 1024 * 1024)  # ~11 MB > 10 MB
+        r = self._post({'html': html}, key='secreto123')
+        self.assertEqual(r.status_code, 413)

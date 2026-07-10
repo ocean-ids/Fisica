@@ -2106,33 +2106,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Descarga un Excel PLANO en el MISMO formato que acepta el importador
-  // (respeta el orden de la vista). Se puede volver a importar tal cual.
-  descargarReimportable() {
-    const mm = String(this.mes).padStart(2, '0');
-    let params = `mes=${mm}&anio=${this.anio}`;
-    const v = this.getActiveView();
-    if (v?.tipo === 'canton' && v.cantonIds?.length) {
-      params += `&canton_ids=${v.cantonIds.join(',')}`;
-    } else if (v?.tipo === 'cliente') {
-      if (v.clienteIds?.length) { params += `&cliente_ids=${v.clienteIds.join(',')}`; }
-      if (v.instalacionIds?.length) { params += `&instalacion_ids=${v.instalacionIds.join(',')}`; }
-    } else if (this.selectedCantonId != null) {
-      params += `&canton_ids=${this.selectedCantonId}`;
-    }
-    const url = `${environment.apiUrl}/exportar-asignaciones-reimportable/?${params}`;
-    this.http.get(url, { responseType: 'blob' })
-      .subscribe({
-        next: (blob) => {
-          saveAs(blob, `asignaciones_reimportable_${this.anio}_${mm}.xlsx`);
-        },
-        error: err => {
-          console.error('Error exportando re-importable:', err);
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo exportar el archivo re-importable' });
-        }
-      });
-  }
-
   //abrirModalEditar se encarga de abrir un diálogo para editar una asignación existente, inicializando el estado del componente con la información de la asignación seleccionada, y luego mostrando el formulario correspondiente para que el usuario pueda modificar la información de la asignación. Después de cerrar el diálogo, si se guardaron los cambios, se actualiza el estado del componente con la nueva información y se llama al método para guardar la asignación en el backend
   abrirModalEditar(asignacion: Asignacion): void {
     this.modoEdicion = true;

@@ -41,9 +41,14 @@ class ExportReimportableTests(TestCase):
 
     def _auth(self): return {'HTTP_AUTHORIZATION': f'Bearer {self.access}'}
 
-    def _importar(self, contenido, nombre='r.xlsx'):
+    def _importar(self, contenido, nombre='r.xlsx', con_mes=True):
         f = SimpleUploadedFile(nombre, contenido, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        return self.client.post('/api/v1/importar-puestos-asignaciones/?mes=7&anio=2026', {'file': f}, **self._auth())
+        # con_mes=False simula la importacion desde Puestos (sin ?mes=&anio=):
+        # el mes/anio deben detectarse desde la propia hoja.
+        url = '/api/v1/importar-puestos-asignaciones/'
+        if con_mes:
+            url += '?mes=7&anio=2026'
+        return self.client.post(url, {'file': f}, **self._auth())
 
     def test_roundtrip_con_export_reimportable(self):
         # 1) import inicial
@@ -52,20 +57,23 @@ class ExportReimportableTests(TestCase):
         asig_count = Asignacion.objects.filter(persona=p).count()
         saca_count = SacafrancoFila.objects.filter(persona__cedula='0987654321').count()
 
-        # 2) NUEVO export re-importable
-        exp = self.client.get('/api/v1/exportar-asignaciones-reimportable/?mes=7&anio=2026', **self._auth())
+        # 2) DESCARGAR el reporte de Asignaciones (el "Descargar" de siempre)
+        exp = self.client.get('/api/v1/reporte-asignaciones/?mes=07&anio=2026', **self._auth())
         self.assertEqual(exp.status_code, 200, exp.content[:200])
 
-        # 3) ¿el importador lo reconoce?
+        # 3) el descargable DEBE ser re-importable (trae hoja DATOS en formato reporte)
         wb = load_workbook(io.BytesIO(exp.content), data_only=True)
         reconocible = es_formato_reporte(wb)
-        print(f"\n[NUEVO EXPORT] ¿es re-importable? -> {reconocible}")
-        self.assertTrue(reconocible, 'El nuevo export DEBE ser reconocible por el importador')
+        print(f"\n[DESCARGABLE Asignaciones] ¿es re-importable? -> {reconocible}")
+        self.assertTrue(reconocible, 'El descargable de Asignaciones DEBE ser reconocible por el importador')
 
-        # 4) re-importar el export
-        r2 = self._importar(exp.content, nombre='reexport.xlsx')
-        print(f"[RE-IMPORT] HTTP {r2.status_code} -> {json.dumps(r2.json(), ensure_ascii=False)[:250]}")
+        # 4) re-importar el descargable SIN pasar mes/anio (como desde Puestos):
+        #    el mes/anio debe detectarse desde la hoja (fila "JULIO 2026").
+        r2 = self._importar(exp.content, nombre='reexport.xlsx', con_mes=False)
+        cuerpo = r2.json()
+        print(f"[RE-IMPORT sin mes] HTTP {r2.status_code} -> {json.dumps(cuerpo, ensure_ascii=False)[:250]}")
         self.assertEqual(r2.status_code, 200, r2.content)
+        self.assertEqual(cuerpo.get('errores', []), [], 'no debe haber errores de deteccion de mes')
 
         # 5) NO duplica
         self.assertEqual(Asignacion.objects.filter(persona=p).count(), asig_count, 'no debe duplicar asignaciones')

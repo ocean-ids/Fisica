@@ -2452,6 +2452,16 @@ def exportar_asignaciones_excel(request):
             ws_prov = wb.create_sheet(title=sheet_title)
             build_sheet(ws_prov, sheet_title, prov_rows)
 
+    # Hoja DATOS: tabla plana en el formato del importador. Hace que este mismo
+    # descargable se pueda VOLVER A IMPORTAR desde Puestos (actualiza puestos ->
+    # asignaciones; reporte y consolidado se derivan de eso). Las hojas visuales
+    # se ignoran al importar; solo se lee 'DATOS'.
+    try:
+        _datos_ws = wb.create_sheet('DATOS')
+        _llenar_hoja_reimportable(_datos_ws, month, year)
+    except Exception:
+        pass
+
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="reporte_asignaciones_calendario_{year}_{month}.xlsx"'
     output = BytesIO()
@@ -2602,41 +2612,16 @@ def puestos_ocupacion(request, mes, anio):
     return JsonResponse({'ocupacion': ocupacion}, status=status.HTTP_200_OK)
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def exportar_asignaciones_reimportable(request):
-    """Exporta asignaciones + sacafranco del mes en el MISMO formato que acepta el
-    importador (formato 'reporte'), para que 'descargar -> re-importar' funcione.
-
-    Genera una tabla PLANA (sin celdas combinadas ni logo):
+def _llenar_hoja_reimportable(ws, mes, anio, cliente_ids=None, canton_ids=None, instalacion_ids=None):
+    """Llena una hoja `ws` con la tabla PLANA que acepta el importador (formato 'reporte'):
       NOMINATIVO | CLIENTE | PUESTO | TIPO | CEDULA | APELLIDOS Y NOMBRES |
       H INGRESO | H SALIDA | 1 | 2 | ... | N
-    Parametros: mes, anio (opcionales; por defecto el mes actual) y filtros
-    opcionales cliente_ids / canton_ids / instalacion_ids (CSV).
+    Respeta el orden de la vista (provincia + orden) e intercala asignaciones y sacafranco.
     """
-    if not request.user.has_perm('CoreFisica.export_asignacion'):
-        return JsonResponse({'error': 'No autorizado'}, status=403)
     import calendar as _cal
-
-    def _int_csv(name):
-        out = []
-        for x in (request.GET.get(name) or '').split(','):
-            x = x.strip()
-            if x.isdigit():
-                out.append(int(x))
-        return out
-
-    try:
-        mes = int(request.GET.get('mes') or datetime.date.today().month)
-        anio = int(request.GET.get('anio') or datetime.date.today().year)
-        if not (1 <= mes <= 12):
-            raise ValueError
-    except (TypeError, ValueError):
-        return JsonResponse({'error': 'mes/anio invalidos'}, status=400)
-
-    cliente_ids = _int_csv('cliente_ids')
-    canton_ids = _int_csv('canton_ids')
-    instalacion_ids = _int_csv('instalacion_ids')
+    cliente_ids = cliente_ids or []
+    canton_ids = canton_ids or []
+    instalacion_ids = instalacion_ids or []
 
     WEEK_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
     month_start = datetime.date(anio, mes, 1)
@@ -2663,7 +2648,6 @@ def exportar_asignaciones_reimportable(request):
                     return str(v).strip()
         return ''
 
-    # --- Asignaciones ---
     asigs = (Asignacion.objects
              .filter(estado='ACTIVO', mes=mes, anio=anio, persona__isnull=False)
              .exclude(persona__tipo='SACAFRANCO')
@@ -2681,18 +2665,14 @@ def exportar_asignaciones_reimportable(request):
     for s in AsignacionSemanal.objects.filter(asignacion_id__in=[a.id for a in asigs]):
         sem_map[(s.asignacion_id, s.week_start)] = s
 
-    # --- Sacafranco ---
     sf_qs = SacafrancoFila.objects.filter(mes=mes, anio=anio, persona__isnull=False).select_related('persona')
     if canton_ids:
-        # Sacafranco cuyo ambito (cantones) se cruza con los cantones de la vista.
         sf_qs = sf_qs.filter(cantones__overlap=canton_ids)
     sfilas = list(sf_qs)
     sf_map = {}
     for s in SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id__in=[f.id for f in sfilas]):
         sf_map[(s.sacafranco_fila_id, s.week_start)] = s
 
-    # --- Orden de la VISTA: por provincia y por 'orden' (igual que en pantalla),
-    #     entremezclando asignaciones y sacafranco. ---
     combinado = []
     for a in asigs:
         prov = getattr(getattr(getattr(a, 'instalacion', None), 'canton', None), 'provincia_id', None)
@@ -2702,9 +2682,12 @@ def exportar_asignaciones_reimportable(request):
                           (f.orden or 0), f.id, 'saca', f))
     combinado.sort(key=lambda r: (r[0], r[1], r[2]))
 
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = f"REIMPORT {mes}-{anio}"
+    # Fila de titulo con MES + AÑO (ej. "JULIO 2026"): el importador detecta el
+    # mes/año desde aqui cuando se importa sin pasar ?mes=&anio= (como desde Puestos).
+    MESES_ES = ['', 'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO',
+                'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
+    ws.append([f"{MESES_ES[mes]} {anio}"])
+
     ws.append(['NOMINATIVO', 'CLIENTE', 'PUESTO', 'TIPO', 'CEDULA',
                'APELLIDOS Y NOMBRES', 'H INGRESO', 'H SALIDA'] + list(range(1, days_in_month + 1)))
 
@@ -2733,6 +2716,35 @@ def exportar_asignaciones_reimportable(request):
                 _hhmm(getattr(obj, 'hora_salida', None)),
             ] + [_val(sf_map, obj.id, d) for d in range(1, days_in_month + 1)])
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def exportar_asignaciones_reimportable(request):
+    """(Opcional) Descarga SOLO la tabla plana re-importable, sin el reporte visual."""
+    if not request.user.has_perm('CoreFisica.export_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    def _int_csv(name):
+        out = []
+        for x in (request.GET.get(name) or '').split(','):
+            x = x.strip()
+            if x.isdigit():
+                out.append(int(x))
+        return out
+
+    try:
+        mes = int(request.GET.get('mes') or datetime.date.today().month)
+        anio = int(request.GET.get('anio') or datetime.date.today().year)
+        if not (1 <= mes <= 12):
+            raise ValueError
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'mes/anio invalidos'}, status=400)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f"DATOS {mes}-{anio}"
+    _llenar_hoja_reimportable(ws, mes, anio, _int_csv('cliente_ids'),
+                              _int_csv('canton_ids'), _int_csv('instalacion_ids'))
     buf = BytesIO()
     wb.save(buf)
     buf.seek(0)
