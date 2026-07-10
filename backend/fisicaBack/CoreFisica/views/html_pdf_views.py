@@ -25,8 +25,8 @@ from rest_framework import status
 
 log = logging.getLogger("html2pdf")
 
-# Tamano maximo del HTML aceptado (anti-abuso): 5 MB.
-MAX_HTML_BYTES = 5 * 1024 * 1024
+# Tamano maximo del HTML aceptado (anti-abuso): 10 MB.
+MAX_HTML_BYTES = 10 * 1024 * 1024
 
 
 @api_view(['POST'])

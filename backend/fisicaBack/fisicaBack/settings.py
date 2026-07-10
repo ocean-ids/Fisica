@@ -48,6 +48,11 @@ SYNC_API_KEY = os.getenv('ERP_SYNC_API_KEY', '')
 # API key para el endpoint HTML -> PDF (consumido por Power Automate).
 PDF_API_KEY = os.getenv('PDF_API_KEY', '')
 
+# Tope del cuerpo de la petición: el HTML del endpoint HTML->PDF viaja en el JSON,
+# así que el límite efectivo lo pone Django (default 2.5 MB). Se sube a 15 MB para
+# permitir HTML de hasta ~10 MB (con holgura por el escape del JSON).
+DATA_UPLOAD_MAX_MEMORY_SIZE = 15 * 1024 * 1024
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool('DEBUG', default=False)
 
