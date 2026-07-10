@@ -23,5 +23,6 @@ rpds-py==0.30.0
 sqlparse==0.4.4
 tzdata==2025.1
 uritemplate==4.2.0
+pydyf==0.10.0
 weasyprint==62.3
 whitenoise==6.12.0
