@@ -129,6 +129,7 @@
                 <tr
                   *ngIf="row.type === 'asignacion' && row.asig.persona_detalle?.is_active !== false"
                   cdkDrag
+                  [cdkDragDisabled]="dragDeshabilitado"
                   [cdkDragData]="row"
                   cdkDragLockAxis="y"
                   cdkDragPreviewContainer="parent"
@@ -235,6 +236,7 @@
                 <tr
                   *ngIf="row.type === 'sacafranco' && !columnaOculta('sacafranco')"
                   cdkDrag
+                  [cdkDragDisabled]="dragDeshabilitado"
                   [cdkDragData]="row"
                   cdkDragLockAxis="y"
                   cdkDragPreviewContainer="parent"
