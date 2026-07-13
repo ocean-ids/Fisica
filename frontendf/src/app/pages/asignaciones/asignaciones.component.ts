@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Cliente, Persona, Instalacion, Puesto, Horario, Asignacion } from '../../models';
 import { PatronAsignacion, SacafrancoFila } from '../../models/asignacion.model';
@@ -60,6 +60,15 @@ import { CantonMixView, CantonViewsModalComponent, VistaTipo } from './canton-vi
   styleUrl: './asignaciones.component.css'
 })
 export class AsignacionesComponent implements OnInit, OnDestroy {
+  // Drag & drop solo en escritorio. En movil/tablet (<992px) se desactiva
+  // para poder hacer scroll con el dedo.
+  dragDeshabilitado = typeof window !== 'undefined' && window.innerWidth < 992;
+
+  @HostListener('window:resize')
+  onResizeDrag(): void {
+    this.dragDeshabilitado = window.innerWidth < 992;
+  }
+
   private readonly selectedCantonKeyStorageKey = 'asig_selected_canton_key';
   showColumnMenu = false;
   weeksForMonth: string[] = [];
