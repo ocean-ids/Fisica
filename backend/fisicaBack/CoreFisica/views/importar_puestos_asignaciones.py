@@ -1068,6 +1068,10 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
             ri, col = _rep_detectar_columnas(rows)
             if ri is None:
                 continue
+            # Si la hoja proviene del DESCARGABLE (hoja 'DATOS'), solo se actualiza
+            # el mes exportado: NO se proyectan 36 meses (seria lentisimo y pisaria
+            # meses futuros). Las plantillas normales si proyectan el patron.
+            proyectar = not str(ws.title or '').strip().upper().startswith('DATOS')
             sheet_year, sheet_month = _detect_month_year_from_sheet(rows)
             mes = req_month or sheet_month
             anio = req_year or sheet_year
@@ -1157,7 +1161,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     # Continuar el patrón del sacafranco en los próximos 36 meses
                     sf_vals = [(v or '').upper() for v in cal]
                     sf_ciclo = _ciclo_para_continuar(sf_vals)
-                    if sf_ciclo and any(str(x).strip() for x in sf_ciclo):
+                    if proyectar and sf_ciclo and any(str(x).strip() for x in sf_ciclo):
                         sf_len = len(sf_ciclo)
                         sf_idx = len(sf_vals)
 
@@ -1300,7 +1304,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 # Detectar el período REAL (ej. DDDNNNF=7) para no repetir el mes entero.
                 cal_vals = [(v or '').upper() for v in cal]
                 ciclo = _ciclo_para_continuar(cal_vals)
-                if ciclo and any(str(x).strip() for x in ciclo):
+                if proyectar and ciclo and any(str(x).strip() for x in ciclo):
                     cycle_len = len(ciclo)
                     seq_idx = len(cal_vals)  # desfase global: continúa donde terminó el mes
 

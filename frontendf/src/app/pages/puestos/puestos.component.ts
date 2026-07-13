@@ -362,6 +362,15 @@ export class PuestosComponent implements OnInit {
     const file = input.files && input.files[0];
     if (!file) return;
 
+    // Indicador de carga: la importación puede tardar (procesa muchas filas y meses).
+    Swal.fire({
+      title: 'Importando...',
+      html: 'Procesando el archivo, no cierres la ventana.',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
     this.puestoService.importPuestosAsignaciones(file, this.clienteSeleccionado || undefined).subscribe({
       next: (res) => {
         const resumen = `Filas: ${res?.filas_validas || 0}/${res?.total_filas || 0}`
