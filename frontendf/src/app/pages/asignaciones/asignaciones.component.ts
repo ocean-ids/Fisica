@@ -69,6 +69,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.dragDeshabilitado = window.innerWidth < 992;
   }
 
+  // Fila recien creada: se hace scroll+resaltado a ella cuando se reconstruye la lista.
+  private scrollAFilaNuevaPendiente: { type: 'asignacion' | 'sacafranco'; id: number } | null = null;
+
   private readonly selectedCantonKeyStorageKey = 'asig_selected_canton_key';
   showColumnMenu = false;
   weeksForMonth: string[] = [];
@@ -1433,6 +1436,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.asignacionService.crearSacafrancoFila(payload).subscribe({
         next: fila => {
           this.sacafrancoRows = [...(this.sacafrancoRows || []), fila].filter(f => f && f.id);
+          if (fila?.id) { this.scrollAFilaNuevaPendiente = { type: 'sacafranco', id: fila.id }; }
           this.buildDisplayRows();
           this.updateCalendarOrder();
           this.loadCalendarWeeks();
@@ -1789,6 +1793,13 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     this.displayRows = rows;
     this.displayAssignmentRows = displayAssignments;
+
+    // Si se acaba de crear una fila, hacer scroll + resaltado a ella (una sola vez).
+    if (this.scrollAFilaNuevaPendiente) {
+      const objetivo = this.scrollAFilaNuevaPendiente;
+      this.scrollAFilaNuevaPendiente = null;
+      setTimeout(() => this.scrollAMatch(objetivo), 200);
+    }
   }
 
   //onDragStarted se encarga de manejar el evento de inicio de arrastre para una asignación específica, actualizando el estado del componente para indicar qué asignación está siendo arrastrada, lo que permite controlar la lógica relacionada con el arrastre y soltar en la vista, como mostrar indicadores visuales o habilitar ciertas funcionalidades mientras se realiza el arrastre
@@ -2399,6 +2410,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         if (reasignar) {
           Swal.fire({ icon: 'success', title: 'Persona reasignada', timer: 1200, showConfirmButton: false });
         }
+        if (created?.id) { this.scrollAFilaNuevaPendiente = { type: 'asignacion', id: created.id }; }
         this.cargarAsignaciones();
         this.resetAsignacionState();
         this.loadCalendarWeeks();
