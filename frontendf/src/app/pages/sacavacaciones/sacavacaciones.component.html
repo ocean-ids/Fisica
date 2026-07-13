@@ -2,15 +2,14 @@
   <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2 mb-3">
     <h3 class="text-center m-0 flex-grow-1">Reporte de Vacaciones del Personal</h3>
     <div class="d-grid d-sm-flex gap-2 align-items-center">
-      <select class="form-select form-select-sm" [(ngModel)]="anioFiltro">
-        <option [ngValue]="0">Todos</option>
-        <option *ngFor="let a of anios" [ngValue]="a">{{ a }}</option>
-      </select>
-      <button type="button" class="btn btn-outline-success" (click)="exportar()">
-        <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+      <input type="number" class="form-control form-control-sm" style="max-width: 110px;"
+        [(ngModel)]="anioFiltro" placeholder="Año"
+        title="Escribe un año. Déjalo vacío para ver todos.">
+      <button type="button" class="btn border-0 bg-transparent p-1" title="Exportar Excel" aria-label="Exportar Excel" (click)="exportar()">
+        <img src="assets/images/excel-icon.png" alt="Exportar Excel" width="28" height="28" />
       </button>
-      <button type="button" class="btn btn-primary" (click)="crear()">
-        <i class="bi bi-plus-lg"></i> Nuevo registro
+      <button type="button" class="btn btn-primary btn-sm" (click)="crear()">
+        <i class="bi bi-plus-sm"></i> Nuevo registro
       </button>
     </div>
   </div>
