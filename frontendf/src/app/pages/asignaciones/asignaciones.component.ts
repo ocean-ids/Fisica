@@ -2127,6 +2127,38 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   //abrirModalEditar se encarga de abrir un diálogo para editar una asignación existente, inicializando el estado del componente con la información de la asignación seleccionada, y luego mostrando el formulario correspondiente para que el usuario pueda modificar la información de la asignación. Después de cerrar el diálogo, si se guardaron los cambios, se actualiza el estado del componente con la nueva información y se llama al método para guardar la asignación en el backend
+  // Detecta el patron de turnos (ej. 331=DDDNNNF, 222=DDNNFF, 332=DDDNNNFF)
+  // a partir de la secuencia D/N/F del calendario del mes de esa asignacion.
+  // El codigo es el conteo D-N-F del ciclo minimo que se repite. '' si no hay patron.
+  detectarPatron(asignacion: Asignacion): string {
+    const row = (this.displayRows || []).find(
+      (r: any) => r.type === 'asignacion' && r.asig?.id === asignacion?.id
+    );
+    if (!row) return '';
+    const seq: string[] = [];
+    for (const ws of (this.weeksForMonth || [])) {
+      const calRow = this.getCalendarRow(row, ws);
+      for (const dayKey of (this.calendarMonthDayKeys[ws] || [])) {
+        const v = ((calRow?.[dayKey] || '') + '').trim().toUpperCase().charAt(0);
+        if (v === 'D' || v === 'N' || v === 'F') { seq.push(v); }
+      }
+    }
+    const n = seq.length;
+    if (n < 2) return '';
+    // Ciclo minimo: menor p tal que seq[i] === seq[i % p] para todo i.
+    let periodo: string[] = seq;
+    for (let p = 1; p < n; p++) {
+      let ok = true;
+      for (let i = 0; i < n; i++) { if (seq[i] !== seq[i % p]) { ok = false; break; } }
+      if (ok) { periodo = seq.slice(0, p); break; }
+    }
+    if (periodo.length === n) return ''; // sin repeticion clara -> personalizado
+    const d = periodo.filter(x => x === 'D').length;
+    const noc = periodo.filter(x => x === 'N').length;
+    const f = periodo.filter(x => x === 'F').length;
+    return `${d}${noc}${f}`;
+  }
+
   abrirModalEditar(asignacion: Asignacion): void {
     this.modoEdicion = true;
     this.textoBotonAsignacion = 'Actualizar';
@@ -2160,7 +2192,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         instalacionSeleccionada: this.instalacionSeleccionada,
         occupiedPuestoIds: this.getOccupiedPuestoIds(asignacion.id),
         occupiedCounts: this.ocupacionExcluyendo(asignacion),
-        assignedPersonaIds: this.getAssignedPersonaIds(asignacion.id)
+        assignedPersonaIds: this.getAssignedPersonaIds(asignacion.id),
+        patronDetectado: this.detectarPatron(asignacion)
       }
     });
 
