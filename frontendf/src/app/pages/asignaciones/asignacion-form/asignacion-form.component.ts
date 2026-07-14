@@ -25,6 +25,7 @@ export interface AsignacionFormData {
   occupiedPuestoIds?: number[];
   occupiedCounts?: { [puestoId: number]: number };
   assignedPersonaIds?: number[];
+  patronDetectado?: string;   // patron de turnos detectado (ej. '331'); solo referencia
 }
 
 export interface AsignacionFormResult {
