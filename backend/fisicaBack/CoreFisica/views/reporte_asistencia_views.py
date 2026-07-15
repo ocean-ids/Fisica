@@ -1020,6 +1020,13 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
         if _h:
             hueca_motivo = _h.motivo or ''
 
+    # Preservar los campos editados a mano (overrides) por sección, para
+    # re-aplicarlos tras regenerar las filas auto.
+    prev_overrides = {}
+    for _r in ReporteGuardia.objects.filter(reporte_asistencia=override, auto=True):
+        if _r.overrides:
+            prev_overrides.setdefault(_r.seccion, _r.overrides)
+
     # Quitar TODAS las filas auto previas de este reporte (cualquier fecha) para reflejar
     # cambios y no dejar huérfanos si cambió la fecha del reporte. El ReporteAsistencia
     # tiene una sola fecha_reporte vigente, así que solo debe existir la de la fecha actual.
@@ -1058,7 +1065,7 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
         filas.append((seccion_reemplazo, override.reemplazo, ''))
 
     for seccion, persona, motivo in filas:
-        ReporteGuardia.objects.create(
+        _row = ReporteGuardia.objects.create(
             fecha=fecha_reporte,
             turno=turno,
             seccion=seccion,
@@ -1070,10 +1077,16 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
             auto=True,
             motivo=motivo,
         )
+        _ov = prev_overrides.get(seccion)
+        if _ov:
+            for _k, _v in _ov.items():
+                setattr(_row, _k, _v)
+            _row.overrides = _ov
+            _row.save()
 
     # HUECA espeja al ADICIONAL: solo Cliente/Puesto/Fecha + Motivo editable (preservado).
     if seccion_reemplazo == 'ADICIONALES':
-        ReporteGuardia.objects.create(
+        _hueca = ReporteGuardia.objects.create(
             fecha=fecha_reporte,
             turno=turno,
             seccion='HUECA',
@@ -1084,6 +1097,12 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
             auto=True,
             motivo=hueca_motivo,          # conserva el motivo escrito a mano
         )
+        _ov = prev_overrides.get('HUECA')
+        if _ov:
+            for _k, _v in _ov.items():
+                setattr(_hueca, _k, _v)
+            _hueca.overrides = _ov
+            _hueca.save()
 
 
 @api_view(['PUT', 'PATCH'])

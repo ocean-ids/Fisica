@@ -48,13 +48,16 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
     { key: 'APOYO',        label: 'APOYO',        cols: ['cliente','puesto','persona_nombre','proviene','motivo'], total: false },
   ];
 
-  // Campos que se pueden editar por sección (los demás salen de solo lectura).
-  // APOYO es 100% manual (CRUD): todos sus campos son editables.
+  // Todos los campos de cada sección son editables (para corregir errores).
+  // El cambio queda SOLO en el reporte de guardia y se conserva al re-sincronizar.
   readonly editablesPorSeccion: Record<string, string[]> = {
-    DOBLADAS: [], ADICIONALES: [], ADELANTOS: [],
-    NO_CUBIERTOS: ['autorizacion', 'motivo'],
-    FALTOS: ['motivo'], HUECA: ['motivo'],
-    APOYO: ['cliente', 'puesto', 'persona_nombre', 'proviene', 'motivo'],
+    DOBLADAS:     ['cliente', 'puesto', 'persona_nombre', 'proviene', 'valor'],
+    ADICIONALES:  ['cliente', 'puesto', 'persona_nombre', 'proviene'],
+    ADELANTOS:    ['cliente', 'puesto', 'persona_nombre', 'proviene', 'tipo'],
+    NO_CUBIERTOS: ['cliente', 'puesto', 'autorizacion', 'motivo'],
+    FALTOS:       ['cliente', 'puesto', 'persona_nombre', 'motivo'],
+    HUECA:        ['cliente', 'puesto', 'motivo', 'fecha_evento'],
+    APOYO:        ['cliente', 'puesto', 'persona_nombre', 'proviene', 'motivo'],
   };
 
   editablesDe(seccion: string): string[] {

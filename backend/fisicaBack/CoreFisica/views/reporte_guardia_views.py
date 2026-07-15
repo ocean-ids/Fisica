@@ -10,6 +10,12 @@ from ..serializers import ReporteGuardiaSerializer
 
 TURNOS = ('Diurno', 'Nocturno')
 
+# Campos de contenido que el usuario puede editar a mano en el reporte de guardia.
+EDITABLE_CONTENT_FIELDS = (
+    'cliente', 'puesto', 'persona_nombre', 'proviene', 'valor', 'tipo',
+    'autorizacion', 'motivo', 'fecha_evento',
+)
+
 
 def _sync_no_cubiertos(fecha, turno):
     """Refleja en NO_CUBIERTOS los puestos (asignaciones) SIN persona para esa
@@ -84,10 +90,17 @@ def _sync_no_cubiertos(fecha, turno):
         puesto = getattr(a.puesto, 'nombre', '') or ''
         row = existentes.get(a.id)
         if row:
-            if row.cliente != cliente or row.puesto != puesto:
+            ov = row.overrides or {}
+            cambios = []
+            # No pisar los campos que el usuario editó a mano.
+            if 'cliente' not in ov and row.cliente != cliente:
                 row.cliente = cliente
+                cambios.append('cliente')
+            if 'puesto' not in ov and row.puesto != puesto:
                 row.puesto = puesto
-                row.save(update_fields=['cliente', 'puesto'])
+                cambios.append('puesto')
+            if cambios:
+                row.save(update_fields=cambios)
         else:
             ReporteGuardia.objects.create(
                 fecha=fecha_obj, turno=turno, seccion='NO_CUBIERTOS',
@@ -131,8 +144,19 @@ def actualizar_reporte_guardia(request, id):
     fila = get_object_or_404(ReporteGuardia, id=id)
     s = ReporteGuardiaSerializer(fila, data=request.data, partial=True)
     s.is_valid(raise_exception=True)
-    s.save()
-    return Response(s.data)
+    fila = s.save()
+    # En filas auto (generadas desde asistencia), registrar los campos editados a
+    # mano para conservarlos cuando la fila se regenere. Las manuales (APOYO) no se
+    # regeneran, así que no hace falta.
+    if fila.auto:
+        ov = dict(fila.overrides or {})
+        for campo in request.data:
+            if campo in EDITABLE_CONTENT_FIELDS:
+                ov[campo] = request.data.get(campo)
+        if ov != (fila.overrides or {}):
+            fila.overrides = ov
+            fila.save(update_fields=['overrides'])
+    return Response(ReporteGuardiaSerializer(fila).data)
 
 
 @api_view(['DELETE'])

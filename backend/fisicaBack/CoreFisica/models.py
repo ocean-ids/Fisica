@@ -1202,6 +1202,9 @@ class ReporteGuardia(models.Model):
     fecha_evento = models.DateField(null=True, blank=True)                    # columna FECHA de Hueca
 
     orden = models.PositiveIntegerField(default=0)
+    # Campos editados a mano en el reporte de guardia; se conservan al re-sincronizar
+    # las filas auto. Formato {nombre_campo: valor}. Vacío = sin ediciones manuales.
+    overrides = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

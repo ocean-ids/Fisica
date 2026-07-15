@@ -52,6 +52,7 @@
         <tr *ngIf="s.total && filasDe(s.key).length" class="fw-bold table-light">
           <td [attr.colspan]="s.cols.length">Total</td>
           <td>{{ totalValor(s.key).toFixed(2) }}</td>
+          <td *ngIf="editablesDe(s.key).length"></td>
         </tr>
       </tbody>
     </table>
