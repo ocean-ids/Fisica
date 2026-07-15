@@ -18,6 +18,7 @@ import { ReporteVacaciones } from '../../../models/reporte-vacaciones.model';
 
 interface DialogData {
   row?: ReporteVacaciones;   // presente = edición
+  anioDefecto?: number | null;   // al crear: año en que se abre el calendario
 }
 
 @Component({
@@ -69,6 +70,8 @@ export class SacavacacionesDialogComponent implements OnInit {
   });
   diasPend: number | null = null;
   esEdicion = false;
+  // Año al que pertenece el registro (lo usa el filtro). Editable.
+  anio: number | null = null;
   private editSaleId: number | null = null;
   private editCubreId: number | null = null;
 
@@ -88,6 +91,13 @@ export class SacavacacionesDialogComponent implements OnInit {
 
     const row = this.data?.row;
     this.esEdicion = !!row?.id;
+    // Año del registro: al editar sale del registro (respaldo: año de fecha_desde);
+    // al crear sale del filtro activo (o el año actual).
+    if (this.esEdicion) {
+      this.anio = row?.anio ?? (row?.fecha_desde ? Number(String(row.fecha_desde).slice(0, 4)) : null);
+    } else {
+      this.anio = this.data?.anioDefecto || new Date().getFullYear();
+    }
     if (row) {
       // Si el período guardado está en la lista, se selecciona; si no, es "Otro".
       const p = row.periodo || '';
@@ -174,6 +184,11 @@ export class SacavacacionesDialogComponent implements OnInit {
   onSaleSel(p: Persona): void { this.saleSel = p; }
   onCubreSel(p: Persona): void { this.cubreSel = p; }
 
+  // Los calendarios se abren en el año del registro (1 de enero de ese año).
+  get startAt(): Date | null {
+    return this.anio ? new Date(this.anio, 0, 1) : null;
+  }
+
   fmt(d: Date | null): string {
     if (!d) { return '—'; }
     const day = String(d.getDate()).padStart(2, '0');
@@ -215,6 +230,7 @@ export class SacavacacionesDialogComponent implements OnInit {
     const cli = this.clientes.find(c => c.id === this.clienteId);
     const out: any = {
       cliente: cli?.nombre_comercial || '',
+      anio: this.anio || null,
       periodo: (this.periodo === this.OTRO ? this.periodoManual : this.periodo || '').trim(),
       fecha_desde: this._toISO(this.fechaDesde),
       fecha_hasta: this._toISO(this.fechaHasta),
