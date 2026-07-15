@@ -1242,12 +1242,16 @@ class ReporteVacaciones(models.Model):
     fecha_hasta_pendiente = models.DateField(null=True, blank=True)
     dias_pendientes = models.PositiveIntegerField(default=0)
 
+    # Año al que pertenece el registro (lo usa el filtro). Independiente de las
+    # fechas: al crear se toma del filtro de año activo; es editable.
+    anio = models.PositiveIntegerField(null=True, blank=True, db_index=True)
+
     orden = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-fecha_desde', 'orden', 'id']
+        ordering = ['-anio', '-fecha_desde', 'orden', 'id']
 
     def __str__(self):
         return f"{self.persona_sale} ({self.fecha_desde} - {self.fecha_hasta})"

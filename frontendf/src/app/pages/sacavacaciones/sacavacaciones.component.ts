@@ -40,10 +40,10 @@ export class SacavacacionesComponent implements OnInit {
     this.srv.listar().subscribe({
       next: (rows) => {
         this.filas = rows || [];
-        // Años disponibles según la fecha "Desde" de los registros.
+        // Años disponibles según el campo 'anio' (con respaldo a la fecha "Desde").
         const set = new Set<number>();
         for (const f of this.filas) {
-          const y = this._anio(f.fecha_desde);
+          const y = f.anio ?? this._anio(f.fecha_desde);
           if (y) { set.add(y); }
         }
         this.anios = Array.from(set).sort((a, b) => b - a);
@@ -62,7 +62,7 @@ export class SacavacacionesComponent implements OnInit {
   // Filas mostradas según el año elegido (0 = Todos).
   get filasFiltradas(): ReporteVacaciones[] {
     if (!this.anioFiltro) { return this.filas; }
-    return this.filas.filter(f => this._anio(f.fecha_desde) === this.anioFiltro);
+    return this.filas.filter(f => (f.anio ?? this._anio(f.fecha_desde)) === this.anioFiltro);
   }
 
   fechaDMA(v: any): string {
@@ -83,7 +83,8 @@ export class SacavacacionesComponent implements OnInit {
     const ref = this.dialog.open(SacavacacionesDialogComponent, {
       width: '560px',
       maxWidth: '95vw',
-      data: { row: row || undefined },
+      // Al crear, el calendario se abre en el año del filtro (para no caer en el actual).
+      data: { row: row || undefined, anioDefecto: this.anioFiltro || null },
     });
     ref.afterClosed().subscribe((res) => {
       if (!res) { return; }

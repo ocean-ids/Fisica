@@ -12,6 +12,7 @@ export interface ReporteVacaciones {
   fecha_desde_pendiente?: string | null;
   fecha_hasta_pendiente?: string | null;
   dias_pendientes?: number;
+  anio?: number | null;
   orden?: number;
   created_at?: string;
   updated_at?: string;

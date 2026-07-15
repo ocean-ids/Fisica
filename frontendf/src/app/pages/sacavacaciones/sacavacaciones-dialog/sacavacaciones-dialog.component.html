@@ -52,7 +52,7 @@
       <input matEndDate formControlName="end" placeholder="Hasta">
     </mat-date-range-input>
     <mat-datepicker-toggle matIconSuffix [for]="rangoPicker"></mat-datepicker-toggle>
-    <mat-date-range-picker #rangoPicker></mat-date-range-picker>
+    <mat-date-range-picker #rangoPicker [startAt]="startAt"></mat-date-range-picker>
   </mat-form-field>
   <div class="vac-resumen">
     <span><strong>Días:</strong> {{ dias || 0 }}</span>
@@ -65,7 +65,7 @@
       <input matEndDate formControlName="end" placeholder="Hasta">
     </mat-date-range-input>
     <mat-datepicker-toggle matIconSuffix [for]="rangoPendPicker"></mat-datepicker-toggle>
-    <mat-date-range-picker #rangoPendPicker></mat-date-range-picker>
+    <mat-date-range-picker #rangoPendPicker [startAt]="startAt"></mat-date-range-picker>
   </mat-form-field>
   <div class="vac-resumen">
     <span><strong>Días pendientes:</strong> {{ diasPend || 0 }}</span>
