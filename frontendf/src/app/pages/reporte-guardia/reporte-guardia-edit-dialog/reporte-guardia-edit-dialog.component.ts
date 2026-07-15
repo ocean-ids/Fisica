@@ -43,7 +43,12 @@ export class ReporteGuardiaEditDialogComponent {
     this.etiquetas = data.etiquetas || {};
     this.titulo = data.titulo || `Editar registro — ${data.row?.seccion || ''}`;
     for (const campo of this.editables) {
-      this.valores[campo] = ((this.row as any)?.[campo] ?? '').toString();
+      const raw = (this.row as any)?.[campo];
+      if (campo === 'fecha_evento' || campo === 'fecha') {
+        this.valores[campo] = raw ? String(raw).slice(0, 10) : '';
+      } else {
+        this.valores[campo] = (raw ?? '').toString();
+      }
     }
   }
 
@@ -58,10 +63,29 @@ export class ReporteGuardiaEditDialogComponent {
     return (v ?? '') === '' ? '-' : String(v);
   }
 
+  // Tipo de input HTML según el campo.
+  tipoInput(campo: string): 'number' | 'date' | 'text' {
+    if (campo === 'valor') { return 'number'; }
+    if (campo === 'fecha_evento' || campo === 'fecha') { return 'date'; }
+    return 'text';
+  }
+
+  // ¿Se muestra como textarea (texto largo) en vez de input de una línea?
+  esTextarea(campo: string): boolean {
+    return campo === 'motivo' || campo === 'autorizacion';
+  }
+
   guardar(): void {
-    const out: Record<string, string> = {};
+    const out: Record<string, any> = {};
     for (const campo of this.editables) {
-      out[campo] = (this.valores[campo] || '').trim();
+      const v = (this.valores[campo] ?? '').toString().trim();
+      if (campo === 'valor') {
+        out[campo] = v === '' ? 0 : Number(v);
+      } else if (campo === 'fecha_evento' || campo === 'fecha') {
+        out[campo] = v === '' ? null : v;
+      } else {
+        out[campo] = v;
+      }
     }
     this.dialogRef.close(out);
   }
