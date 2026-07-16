@@ -207,7 +207,26 @@ def _build_estado_agentes_counts(rows):
         'custodio': 0,
     }
 
+    # RETEN/CUSTODIO se cuentan por el TIPO del reemplazo (ya no por el estado):
+    # si el que cubre es RETEN o CUSTODIO, va directo al contador.
+    reemplazo_ids = [r.get('reemplazo_id') for r in rows if r.get('reemplazo_id')]
+    tipo_por_id = {}
+    if reemplazo_ids:
+        tipo_por_id = {
+            p['id']: (p['tipo'] or '').strip().upper()
+            for p in Persona.objects.filter(id__in=reemplazo_ids).values('id', 'tipo')
+        }
+
     for row in rows:
+        # Prioridad: si el reemplazo es RETEN/CUSTODIO, se cuenta por tipo y se ignora el estado.
+        tipo_reemplazo = tipo_por_id.get(row.get('reemplazo_id'))
+        if tipo_reemplazo == 'RETEN':
+            counts['reten'] += 1
+            continue
+        if tipo_reemplazo == 'CUSTODIO':
+            counts['custodio'] += 1
+            continue
+
         estado = (row.get('estado') or '').strip().upper()
         if not estado:
             continue
