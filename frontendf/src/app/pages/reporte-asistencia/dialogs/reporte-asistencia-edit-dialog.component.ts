@@ -31,9 +31,10 @@ import Swal from 'sweetalert2';
   styleUrl: './reporte-asistencia-edit-dialog.component.css'
 })
 export class ReporteAsistenciaEditDialogComponent {
-  readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'EVENTUAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO', 'RETEN', 'CUSTODIO'];
+  // RETEN y CUSTODIO se retiraron: ahora se cuentan en el consolidado por el TIPO del reemplazo.
+  readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'EVENTUAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO'];
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
-  readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL']);
+  readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL']);
   descripcionesComunes: string[] = [];
 
   reemplazos: Persona[] = [];
