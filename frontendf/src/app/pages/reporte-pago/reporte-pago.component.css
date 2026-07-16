@@ -1,0 +1,13 @@
+:host {
+  display: block;
+}
+
+table td,
+table th {
+  vertical-align: middle;
+}
+
+@media (max-width: 991.98px) {
+  h3 { font-size: 1.15rem; }
+  table { font-size: 0.8rem; }
+}

@@ -1,0 +1,39 @@
+<div class="container-fluid px-0">
+  <div class="d-flex align-items-center mb-3 gap-2">
+    <h3 class="m-0 flex-grow-1 text-center">Tarifas de Pago</h3>
+    <button type="button" class="btn btn-primary btn-sm" (click)="nueva()">
+      <i class="bi bi-cash-coin"></i> Nueva tarifa
+    </button>
+  </div>
+
+  <div class="table-responsive">
+  <table class="table table-bordered table-sm align-middle">
+    <thead class="table-light text-center">
+      <tr>
+        <th>Tipo de servicio</th>
+        <th style="width:120px">Rango horas</th>
+        <th style="width:110px">Valor</th>
+        <th style="width:110px">Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let t of tarifas">
+        <td>{{ t.tipo_servicio }}</td>
+        <td class="text-center">{{ t.horas_min }}-{{ t.horas_max }} h</td>
+        <td class="text-end">{{ num(t.valor).toFixed(2) }}</td>
+        <td class="text-center">
+          <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" (click)="editar(t)" title="Editar">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" (click)="eliminar(t)" title="Eliminar">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+      <tr *ngIf="!tarifas.length">
+        <td colspan="4" class="text-center text-muted">Sin tarifas.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>

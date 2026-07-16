@@ -24,7 +24,13 @@ export class SidebarComponent implements OnInit {
     },
     { key: 'reporte-asistencia', path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'how_to_reg', permission: 'CoreFisica.view_reporteasistencia' },
     { key: 'consolidado', path: '/dashboard/consolidado', label: 'Consolidado', icon: 'assignment', permission: 'CoreFisica.view_consolidado' },
-    { key: 'reporte-guardia', path: '/dashboard/reporte-guardia', label: 'Reporte Guardia', icon: 'summarize', permission: 'CoreFisica.view_reporteguardia' }
+    { key: 'reporte-guardia', path: '/dashboard/reporte-guardia', label: 'Reporte Guardia', icon: 'summarize', permission: 'CoreFisica.view_reporteguardia' },
+    {
+      key: 'reporte-pago', path: '/dashboard/reporte-pago', label: 'Reporte Pagos', icon: 'payments', permission: 'CoreFisica.view_reporteguardia',
+      children: [
+        { key: 'tarifas-pago', path: '/dashboard/tarifas-pago', label: 'Tarifas de Pago', permission: 'CoreFisica.view_reporteguardia' },
+      ],
+    }
   ];
 
   // Submenús desplegados (por label).

@@ -15,6 +15,8 @@ import { ReporteAsistenciaComponent } from './pages/reporte-asistencia/reporte-a
 import { ConsolidadoComponent } from './pages/consolidado/consolidado.component';
 import { ReporteGuardiaComponent } from './pages/reporte-guardia/reporte-guardia.component';
 import { SacavacacionesComponent } from './pages/sacavacaciones/sacavacaciones.component';
+import { ReportePagoComponent } from './pages/reporte-pago/reporte-pago.component';
+import { TarifasPagoComponent } from './pages/tarifas-pago/tarifas-pago.component';
 
 export const routes: Routes = [
   {path: '', component: LoginComponent},
@@ -37,6 +39,8 @@ export const routes: Routes = [
       { path: 'consolidado', component: ConsolidadoComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_consolidado', moduleKey: 'consolidado' }},
       { path: 'reporte-guardia', component: ReporteGuardiaComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia', moduleKey: 'reporte-guardia' }},
       { path: 'sacavacaciones', component: SacavacacionesComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_asignacion', moduleKey: 'sacavacaciones' }},
+      { path: 'reporte-pago', component: ReportePagoComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia', moduleKey: 'reporte-pago' }},
+      { path: 'tarifas-pago', component: TarifasPagoComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia', moduleKey: 'tarifas-pago' }},
     ]
   },
   { path: '**', redirectTo: ''}
