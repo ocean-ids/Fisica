@@ -1,0 +1,132 @@
+<div class="container-fluid px-0">
+  <h3 class="mb-3 text-center">Reporte de Pagos</h3>
+
+  <div class="d-flex align-items-center mb-3">
+    <div class="flex-grow-1" style="flex-basis:0;">
+      <input type="date" lang="es" class="form-control form-control-sm w-auto"
+             [value]="filtroFecha" (change)="onFechaChange($event)">
+    </div>
+    <div class="flex-grow-1 d-flex justify-content-center" style="flex-basis:0;">
+      <mat-button-toggle-group [(ngModel)]="filtroTurno" (change)="cargar()" aria-label="Turno">
+        <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
+        <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+    <div class="flex-grow-1 d-flex justify-content-end" style="flex-basis:0;">
+      <span class="text-muted small" *ngIf="loading">Cargando…</span>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- FORMULARIO (izquierda) -->
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-header py-2 fw-bold">Detalle del pago</div>
+        <div class="card-body" *ngIf="sel; else sinSel">
+          <div class="mb-2">
+            <label class="form-label mb-0 small text-muted">Guardia</label>
+            <div class="fw-semibold">{{ sel.persona_nombre || '—' }}</div>
+            <div class="small text-muted">
+              {{ sel.cliente }} · {{ sel.puesto }} <span class="badge bg-secondary">{{ sel.seccion }}</span>
+            </div>
+          </div>
+
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0 small">Tipo de servicio</label>
+              <select class="form-select form-select-sm" [(ngModel)]="sel.tipo_servicio" (ngModelChange)="onTipoChange()">
+                <option value="">— Seleccione —</option>
+                <option *ngFor="let t of tipos" [value]="t">{{ t }}</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0 small">Rango horario</label>
+              <select class="form-select form-select-sm" [(ngModel)]="selTarifaId" (ngModelChange)="onRangoChange()"
+                      [disabled]="!sel.tipo_servicio">
+                <option [ngValue]="null">— Seleccione —</option>
+                <option *ngFor="let r of rangosDe(sel.tipo_servicio)" [ngValue]="r.id">{{ rangoLabel(r) }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <label class="form-label mb-0 small">Valor calculado</label>
+              <input type="text" class="form-control form-control-sm text-end" [value]="num(sel.valor_calculado).toFixed(2)" disabled>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0 small">Valor total</label>
+              <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end"
+                     [(ngModel)]="sel.valor_total" [placeholder]="num(sel.valor_calculado).toFixed(2)">
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <label class="form-label mb-0 small">Referencia / descripción</label>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="sel.referencia">
+          </div>
+
+          <hr class="my-2">
+          <div class="small text-muted">
+            <div><strong>Cédula:</strong> {{ sel.cedula || '—' }}</div>
+            <div><strong>Banco:</strong> {{ sel.banco || '—' }}</div>
+            <div><strong>Cuenta:</strong> {{ sel.tipo_cuenta }} {{ sel.numero_cuenta }}</div>
+          </div>
+
+          <div class="text-end mt-2">
+            <button type="button" class="btn btn-primary btn-sm" (click)="guardar()">
+               Guardar
+            </button>
+          </div>
+        </div>
+        <ng-template #sinSel>
+          <div class="card-body text-center text-muted py-4">
+            Selecciona un pago de la lista →
+          </div>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- LISTA (derecha) -->
+    <div class="col-lg-7">
+      <div class="table-responsive">
+      <table class="table table-bordered table-sm table-hover align-middle">
+        <thead class="table-light text-center">
+          <tr>
+            <th style="width:34px">Nº</th>
+            <th>Guardia</th>
+            <th>Tipo de servicio</th>
+            <th style="width:90px">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of filas; let i = index"
+              (click)="seleccionar(f)" class="rp-fila"
+              [class.table-primary]="sel === f" style="cursor:pointer">
+            <td class="text-center">{{ i + 1 }}</td>
+            <td>
+              {{ f.persona_nombre }}
+              <div class="small text-muted">{{ f.cliente }} · {{ f.puesto }}</div>
+            </td>
+            <td>
+              {{ f.tipo_servicio || '—' }}
+              <span *ngIf="!f.tipo_servicio" class="badge bg-warning text-dark">sin tipo</span>
+            </td>
+            <td class="text-end">{{ valorFila(f).toFixed(2) }}</td>
+          </tr>
+          <tr *ngIf="!filas.length">
+            <td colspan="4" class="text-center text-muted">
+              Sin pagos para esta fecha/turno. Se generan desde el Reporte de Guardia
+              (Dobladas, Adicionales, Adelantos, Apoyo).
+            </td>
+          </tr>
+          <tr *ngIf="filas.length" class="fw-bold table-light">
+            <td colspan="3" class="text-end">Total a pagar</td>
+            <td class="text-end">{{ totalPagar.toFixed(2) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>

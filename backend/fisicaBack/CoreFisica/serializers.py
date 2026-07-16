@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.db import transaction
 from django.core.validators import RegexValidator
 from .utils import parse_input
-from .models import Asignacion, AsignacionSemanal, Instalacion, Persona, Provincia, Puesto, PuestoHorario, PatronAsignacion, SacafrancoFila, SacafrancoFilaSemanal, ReporteGuardia, ReporteVacaciones
+from .models import Asignacion, AsignacionSemanal, Instalacion, Persona, Provincia, Puesto, PuestoHorario, PatronAsignacion, SacafrancoFila, SacafrancoFilaSemanal, ReporteGuardia, ReporteVacaciones, TarifaPago, ReportePago
 
 
 class PatronAsignacionSerializer(serializers.ModelSerializer):
@@ -396,3 +396,17 @@ class ReporteVacacionesSerializer(serializers.ModelSerializer):
         read_only_fields = ('created_at', 'updated_at')
         # En filas auto, proviene se autocompleta en el save() del modelo desde
         # persona_ref.tipo. En filas manuales (APOYO) se puede escribir a mano.
+
+
+class TarifaPagoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TarifaPago
+        fields = '__all__'
+        read_only_fields = ('created_at', 'updated_at')
+
+
+class ReportePagoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReportePago
+        fields = '__all__'
+        read_only_fields = ('created_at', 'updated_at', 'valor_calculado')

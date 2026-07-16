@@ -30,6 +30,10 @@ from .views.reporte_guardia_views import (
     listar_reporte_guardia, crear_reporte_guardia,
     actualizar_reporte_guardia, eliminar_reporte_guardia,
 )
+from .views.reporte_pago_views import (
+    listar_reporte_pago, actualizar_reporte_pago,
+    listar_tarifas, listar_tipos_servicio, crear_tarifa, actualizar_tarifa, eliminar_tarifa,
+)
 
 
 
@@ -135,6 +139,13 @@ urlpatterns = [
     path('reporte-guardia/crear/', crear_reporte_guardia, name='reporte-guardia-crear'),
     path('reporte-guardia/<int:id>/', actualizar_reporte_guardia, name='reporte-guardia-actualizar'),
     path('reporte-guardia/<int:id>/eliminar/', eliminar_reporte_guardia, name='reporte-guardia-eliminar'),
+    path('reporte-pago/', listar_reporte_pago, name='reporte-pago'),
+    path('reporte-pago/<int:id>/', actualizar_reporte_pago, name='reporte-pago-actualizar'),
+    path('tarifas-pago/', listar_tarifas, name='tarifas-pago'),
+    path('tarifas-pago/tipos/', listar_tipos_servicio, name='tarifas-pago-tipos'),
+    path('tarifas-pago/crear/', crear_tarifa, name='tarifas-pago-crear'),
+    path('tarifas-pago/<int:id>/', actualizar_tarifa, name='tarifas-pago-actualizar'),
+    path('tarifas-pago/<int:id>/eliminar/', eliminar_tarifa, name='tarifas-pago-eliminar'),
     path('reporte-vacaciones/', listar_reporte_vacaciones, name='reporte-vacaciones'),
     path('reporte-vacaciones/crear/', crear_reporte_vacaciones, name='reporte-vacaciones-crear'),
     path('reporte-vacaciones/exportar-excel/', exportar_reporte_vacaciones_excel, name='reporte-vacaciones-excel'),

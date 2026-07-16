@@ -1256,6 +1256,69 @@ class ReporteVacaciones(models.Model):
     def __str__(self):
         return f"{self.persona_sale} ({self.fecha_desde} - {self.fecha_hasta})"
 
+
+class TarifaPago(models.Model):
+    """Tarifa de pago por tipo de servicio y banda de horas (editable).
+    El valor se busca por la banda cuyo rango [horas_min, horas_max] incluye las horas."""
+    tipo_servicio = models.CharField(max_length=80, db_index=True)
+    horas_min = models.PositiveIntegerField()
+    horas_max = models.PositiveIntegerField()
+    valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    orden = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['tipo_servicio', 'horas_min']
+        unique_together = ('tipo_servicio', 'horas_min', 'horas_max')
+
+    def __str__(self):
+        return f"{self.tipo_servicio} {self.horas_min}-{self.horas_max}: {self.valor}"
+
+
+class ReportePago(models.Model):
+    """Un registro de pago. Deriva del REPORTE DE GUARDIA (por fecha + turno):
+    a cada guardia que cubrió se le calcula el pago segun tipo de servicio y horas."""
+    TURNOS = [('Diurno', 'Diurno'), ('Nocturno', 'Nocturno')]
+
+    fecha = models.DateField(db_index=True)
+    turno = models.CharField(max_length=10, choices=TURNOS, db_index=True)
+    seccion = models.CharField(max_length=15, blank=True, default='')   # sección de guardia de origen
+    reporte_guardia_ref = models.ForeignKey(
+        'ReporteGuardia', on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos'
+    )
+    persona_ref = models.ForeignKey(
+        'Persona', on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos'
+    )
+
+    # Datos copiados al momento del pago (por si luego cambian en la ficha).
+    cliente = models.CharField(max_length=120, blank=True, default='')
+    puesto = models.CharField(max_length=160, blank=True, default='')
+    persona_nombre = models.CharField(max_length=160, blank=True, default='')
+    cedula = models.CharField(max_length=20, blank=True, default='')
+    banco = models.CharField(max_length=80, blank=True, default='')
+    tipo_cuenta = models.CharField(max_length=20, blank=True, default='')
+    numero_cuenta = models.CharField(max_length=30, blank=True, default='')
+
+    # Ingreso manual + cálculo automático.
+    tipo_servicio = models.CharField(max_length=80, blank=True, default='')
+    horas = models.PositiveIntegerField(null=True, blank=True)
+    valor_calculado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    valor_total = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # ajuste manual
+    referencia = models.CharField(max_length=200, blank=True, default='')
+
+    auto = models.BooleanField(default=True)   # True = vino del reporte de guardia
+    orden = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['fecha', 'turno', 'orden', 'id']
+
+    def __str__(self):
+        return f"{self.persona_nombre} {self.fecha} {self.turno}: {self.valor_total or self.valor_calculado}"
+
+
 # Módulos del menú (clave usada en el frontend, etiqueta para el admin).
 # Sirve para OCULTAR módulos del menú por usuario sin quitarle el acceso a datos
 # (los endpoints siguen protegidos por sus permisos view_*).
@@ -1270,6 +1333,8 @@ MODULOS_MENU = [
     ('reporte-asistencia', 'Reportes Asistencia'),
     ('consolidado', 'Consolidado'),
     ('reporte-guardia', 'Reporte Guardia'),
+    ('reporte-pago', 'Reporte de Pagos'),
+    ('tarifas-pago', 'Tarifas de Pago'),
 ]
 
 

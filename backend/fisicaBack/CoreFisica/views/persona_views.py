@@ -397,14 +397,17 @@ def obtener_personas(request):
         elif unidad == 'CARGA':
             personas = personas.filter(Q(unidad_negocio__icontains='CARGA') | Q(unidad_negocio__iexact='SC'))
         if q:
-            qn = _strip_accents(q)
-            personas = personas.filter(
-                Q(nombres__unaccent__icontains=qn) |
-                Q(apellidos__unaccent__icontains=qn) |
-                Q(cedula__icontains=q) |
-                Q(provincia__nombre__unaccent__icontains=qn) |
-                Q(canton__nombre__unaccent__icontains=qn)
-            )
+            # Cada palabra debe aparecer en algún campo (nombre completo en cualquier
+            # orden): "Juan Perez" o "Perez Juan" -> encuentra a Juan Pérez.
+            for token in q.split():
+                tn = _strip_accents(token)
+                personas = personas.filter(
+                    Q(nombres__unaccent__icontains=tn) |
+                    Q(apellidos__unaccent__icontains=tn) |
+                    Q(cedula__icontains=token) |
+                    Q(provincia__nombre__unaccent__icontains=tn) |
+                    Q(canton__nombre__unaccent__icontains=tn)
+                )
 
         if tipo:
             personas = personas.filter(tipo=tipo)
