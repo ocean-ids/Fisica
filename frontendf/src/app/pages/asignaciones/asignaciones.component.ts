@@ -69,6 +69,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.dragDeshabilitado = window.innerWidth < 992;
   }
 
+  // Multi-arrastre: filas seleccionadas con Ctrl/Shift + clic.
+  // Clave por fila: 'asig-<id>' o 'saca-<id>'.
+  selectedRowKeys = new Set<string>();
+  private selectionAnchorKey: string | null = null;
+
   // Fila recien creada: se hace scroll+resaltado a ella cuando se reconstruye la lista.
   private scrollAFilaNuevaPendiente: { type: 'asignacion' | 'sacafranco'; id: number } | null = null;
 
@@ -1689,7 +1694,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     const draggedRow = event.item?.data as any;
     if (!draggedRow) return;
-    if (event.previousIndex === event.currentIndex) return;
     if (!this.displayRows || !this.displayRows.length) return;
 
     // LISTA PLANA Y LIBRE: se puede arrastrar cualquier fila (asignacion o
@@ -1698,11 +1702,32 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       r => r?.type === 'asignacion' || r?.type === 'sacafranco'
     );
     if (event.previousIndex < 0 || event.previousIndex >= orderableRows.length) return;
-    moveItemInArray(orderableRows, event.previousIndex, event.currentIndex);
+
+    // Multi-arrastre: si la fila arrastrada está dentro de la selección (y hay
+    // más de una seleccionada), se mueve TODO el bloque junto, conservando su orden.
+    const draggedKey = this.rowKey(draggedRow);
+    const multi = this.selectedRowKeys.size > 1 && this.selectedRowKeys.has(draggedKey);
+    let finalRows: any[];
+    if (multi) {
+      const selIdx = orderableRows
+        .map((r, i) => (this.selectedRowKeys.has(this.rowKey(r)) ? i : -1))
+        .filter(i => i >= 0);
+      const selectedRows = selIdx.map(i => orderableRows[i]);
+      const rest = orderableRows.filter((_, i) => !selIdx.includes(i));
+      const before = selIdx.filter(i => i < event.currentIndex).length;
+      let insertAt = event.currentIndex - before;
+      insertAt = Math.max(0, Math.min(insertAt, rest.length));
+      rest.splice(insertAt, 0, ...selectedRows);
+      finalRows = rest;
+    } else {
+      if (event.previousIndex === event.currentIndex) return;
+      moveItemInArray(orderableRows, event.previousIndex, event.currentIndex);
+      finalRows = orderableRows;
+    }
 
     const ordenAsignaciones: { id: number; orden: number }[] = [];
     const ordenSacafranco: { id: number; orden: number }[] = [];
-    orderableRows.forEach((row, idx) => {
+    finalRows.forEach((row, idx) => {
       if (row.type === 'asignacion' && row.asig?.id) {
         row.asig.orden = idx;
         ordenAsignaciones.push({ id: row.asig.id, orden: idx });
@@ -1712,13 +1737,13 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.displayRows = orderableRows as any;
-    this.displayAssignmentRows = orderableRows
+    this.displayRows = finalRows as any;
+    this.displayAssignmentRows = finalRows
       .filter(r => r?.type === 'asignacion')
       .map(r => (r as any).asig)
       .filter(a => !!a);
     this.asignaciones = [...this.displayAssignmentRows];
-    this.sacafrancoRows = orderableRows
+    this.sacafrancoRows = finalRows
       .filter(r => r?.type === 'sacafranco')
       .map(r => (r as any).fila)
       .filter(f => !!f);
@@ -1726,6 +1751,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.updateCalendarOrder();
     this.persistOrder(ordenAsignaciones);
     this.persistSacafrancoOrder(ordenSacafranco);
+    this.limpiarSeleccion();
   }
 
   // trackByAsignacion se utiliza como función de seguimiento para optimizar la renderización de la lista de asignaciones en la vista, devolviendo un identificador único para cada asignación basado en su id, el id del puesto detalle o el índice como último recurso, lo que permite a Angular identificar correctamente los elementos y evitar renderizaciones innecesarias al actualizar la lista
@@ -1810,6 +1836,59 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   // onDragEnded se encarga de manejar el evento de finalización de arrastre para una asignación, restableciendo el estado del componente para indicar que ya no se está arrastrando ninguna asignación, y luego utilizando un temporizador para limpiar cualquier punto de referencia relacionado con el arrastre después de un breve retraso, lo que ayuda a evitar problemas de renderización o lógica relacionada con el arrastre en la vista
   onDragEnded(): void {
     this.draggingAsignacionId = null;
+  }
+
+  // ---- Multi-selección de filas (Ctrl/Shift + clic) para arrastre múltiple ----
+
+  // Clave única de una fila ordenable.
+  rowKey(row: any): string {
+    if (!row) { return ''; }
+    return row.type === 'asignacion' ? `asig-${row.asig?.id}` : `saca-${row.fila?.id}`;
+  }
+
+  isRowSelected(row: any): boolean {
+    return this.selectedRowKeys.has(this.rowKey(row));
+  }
+
+  get seleccionCount(): number {
+    return this.selectedRowKeys.size;
+  }
+
+  limpiarSeleccion(): void {
+    this.selectedRowKeys.clear();
+    this.selectionAnchorKey = null;
+  }
+
+  private filasOrdenables(): any[] {
+    return (this.displayRows || []).filter(r => r?.type === 'asignacion' || r?.type === 'sacafranco');
+  }
+
+  // Selección con Ctrl/Cmd (alternar) o Shift (rango). Sin modificador NO hace
+  // nada (para no interferir con inputs/botones/calendario de la fila).
+  onRowSelect(row: any, ev: MouseEvent): void {
+    if (this.dragDeshabilitado) { return; }                     // en móvil/tablet no aplica
+    if (!(ev.ctrlKey || ev.metaKey || ev.shiftKey)) { return; } // solo con Ctrl/Shift
+    const target = ev.target as HTMLElement | null;
+    if (target && target.closest('input, textarea, select, button, a, mat-select, .calendar-input')) {
+      return;   // clic sobre un control: no seleccionar
+    }
+    const key = this.rowKey(row);
+    if (!key) { return; }
+    ev.preventDefault();
+
+    if (ev.shiftKey && this.selectionAnchorKey) {
+      const keys = this.filasOrdenables().map(r => this.rowKey(r));
+      const a = keys.indexOf(this.selectionAnchorKey);
+      const b = keys.indexOf(key);
+      if (a >= 0 && b >= 0) {
+        const [lo, hi] = a < b ? [a, b] : [b, a];
+        for (let i = lo; i <= hi; i++) { this.selectedRowKeys.add(keys[i]); }
+      }
+    } else {
+      if (this.selectedRowKeys.has(key)) { this.selectedRowKeys.delete(key); }
+      else { this.selectedRowKeys.add(key); }
+      this.selectionAnchorKey = key;
+    }
   }
 
   //persistOrder se encarga de persistir el orden de las asignaciones en el backend, tomando un arreglo opcional de ordenes que contiene los identificadores y el nuevo orden de las asignaciones, y luego realizando una llamada al servicio correspondiente para guardar esta información, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente

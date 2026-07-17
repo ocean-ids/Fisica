@@ -27,6 +27,12 @@
 }
 .fila-puesto-cerrado .tooltip-trigger { color: #9aa0a6; }
 
+/* Fila seleccionada para arrastre múltiple (Ctrl/Shift + clic). */
+.fila-seleccionada > td {
+  background-color: #dbeafe !important;
+  box-shadow: inset 0 0 0 9999px rgba(59, 130, 246, 0.08);
+}
+
 /* Fila resaltada al ubicar un resultado de búsqueda con scroll. */
 .row-busqueda-activa > td {
   background-color: #fff3cd !important;
