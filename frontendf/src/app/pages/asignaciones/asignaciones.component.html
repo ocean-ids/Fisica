@@ -135,14 +135,17 @@
                   cdkDragPreviewContainer="parent"
                   (cdkDragStarted)="onDragStarted(row.asig)"
                   (cdkDragEnded)="onDragEnded()"
+                  (click)="onRowSelect(row, $event)"
                   [attr.id]="'asig-row-' + row.asig.id"
                   [class.row-busqueda-activa]="row.asig.id === highlightedAsigId"
+                  [class.fila-seleccionada]="isRowSelected(row)"
                   [class.fila-puesto-cerrado]="row.asig.puesto_detalle?.activo === false"
                   class="text-center align-middle shared-row"
                   style="height: 70px;">
                   <div *cdkDragPreview class="drag-lift-card">
                     <i class="bi bi-arrows-move"></i>
-                    {{ row.asig.persona_detalle?.apellidos }} {{ row.asig.persona_detalle?.nombres }}
+                    <ng-container *ngIf="isRowSelected(row) && seleccionCount > 1; else unoAsig">{{ seleccionCount }} filas</ng-container>
+                    <ng-template #unoAsig>{{ row.asig.persona_detalle?.apellidos }} {{ row.asig.persona_detalle?.nombres }}</ng-template>
                   </div>
                   <td *ngIf="!columnaOculta('horario')" class="align-middle overflow-hidden" style="height: 70px;">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                   <td *ngIf="!columnaOculta('codigo')" class="align-middle overflow-hidden" style="height: 70px;">{{ getCodigoInstalacionAsignacion(row.asig) }}</td>
@@ -240,13 +243,16 @@
                   [cdkDragData]="row"
                   cdkDragLockAxis="y"
                   cdkDragPreviewContainer="parent"
+                  (click)="onRowSelect(row, $event)"
                   style="height: 45px;"
                   [attr.id]="'saca-row-' + row.fila.id"
                   [class.row-busqueda-activa]="row.fila.id === highlightedSacaId"
+                  [class.fila-seleccionada]="isRowSelected(row)"
                   class="align-middle sacafranco-row">
                   <div *cdkDragPreview class="drag-lift-card">
                     <i class="bi bi-arrows-move"></i>
-                    {{ row.fila.persona_detalle?.apellidos }} {{ row.fila.persona_detalle?.nombres }}
+                    <ng-container *ngIf="isRowSelected(row) && seleccionCount > 1; else unoSaca">{{ seleccionCount }} filas</ng-container>
+                    <ng-template #unoSaca>{{ row.fila.persona_detalle?.apellidos }} {{ row.fila.persona_detalle?.nombres }}</ng-template>
                   </div>
                   <td *ngIf="!columnaOculta('horario')" class="bg-warning-subtle align-middle text-center">{{ row.fila.hora_ingreso | slice:0:5 }}  {{ row.fila.hora_salida | slice:0:5 }}</td>
                   <td *ngIf="!columnaOculta('codigo')" class="bg-warning-subtle"></td>
