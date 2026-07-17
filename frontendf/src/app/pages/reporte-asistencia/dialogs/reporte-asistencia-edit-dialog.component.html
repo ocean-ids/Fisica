@@ -24,21 +24,24 @@
   </div>
 
   <form [formGroup]="form" class="editable-grid">
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Nombre y Apellidos</mat-label>
-      <input matInput [value]="data.row.nombre_apellidos || '-'" readonly>
-    </mat-form-field>
+    <fieldset class="grupo-fila">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Nombre y Apellidos</mat-label>
+        <input matInput [value]="data.row.nombre_apellidos || '-'" readonly>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Asistencia</mat-label>
-      <mat-select formControlName="estado_asistencia" [disabled]="guardando">
-        <mat-option [value]="null">Seleccione</mat-option>
-        <mat-option *ngFor="let estado of estadosAsistenciaDisponibles" [value]="estado">
-          {{ estado === 'ASISTIO' ? 'ASISTE' : 'FALTO' }}
-        </mat-option>
-      </mat-select>
-    </mat-form-field>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Asistencia</mat-label>
+        <mat-select formControlName="estado_asistencia" [disabled]="guardando">
+          <mat-option [value]="null">Seleccione</mat-option>
+          <mat-option *ngFor="let estado of estadosAsistenciaDisponibles" [value]="estado">
+            {{ estado === 'ASISTIO' ? 'ASISTE' : 'FALTO' }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </fieldset>
 
+    <fieldset class="grupo-fila">
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Reemplazo</mat-label>
       <input
@@ -70,8 +73,9 @@
         <mat-option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</mat-option>
       </mat-select>
     </mat-form-field>
+    </fieldset>
 
-    <mat-form-field appearance="outline" class="full-width">
+    <mat-form-field appearance="outline" class="full-width span-2">
       <mat-label>Descripción</mat-label>
       <textarea
         matInput
