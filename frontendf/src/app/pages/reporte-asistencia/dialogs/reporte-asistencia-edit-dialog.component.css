@@ -23,6 +23,18 @@ mat-dialog-content {
   grid-column: 1 / -1;
 }
 
+/* Recuadro que encierra cada fila: (Nombre/Asistencia) y (Reemplazo/Estado) */
+.grupo-fila {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px 12px 2px;
+  margin: 0 0 8px;
+}
+
 .error {
   margin-top: 6px;
   color: #b00020;
@@ -35,7 +47,8 @@ mat-dialog-content {
   }
 
   .readonly-grid,
-  .editable-grid {
+  .editable-grid,
+  .grupo-fila {
     grid-template-columns: 1fr;
   }
 
