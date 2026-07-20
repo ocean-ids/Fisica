@@ -291,7 +291,7 @@ export class AsignacionFormComponent implements OnInit {
     return this.personas.filter(persona => {
       const tipo = (persona.tipo || '').toString().toUpperCase();
       if (persona.is_active === false) return false;
-      if (tipo === 'SACAFRANCO') return false;
+      if (tipo === 'SACAFRANCO' || tipo === 'SACAVACACIONES') return false;
       return true;
     });
   }

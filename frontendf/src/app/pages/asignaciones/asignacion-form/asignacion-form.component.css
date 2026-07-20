@@ -67,3 +67,37 @@
 	background-color: #4c5d77;
 	color: #f2f5fa;
 }
+
+/* Panel de Persona a ancho normal. Nombre en 1ª línea (completo) y los badges
+   (tipo + estado) juntos en la 2ª línea, así el "En uso/Disponible" NO se corta. */
+::ng-deep .persona-autocomplete-panel .mat-mdc-option {
+	height: auto;
+	min-height: 44px;
+	padding-top: 6px;
+	padding-bottom: 6px;
+}
+::ng-deep .persona-autocomplete-panel .mat-mdc-option .mdc-list-item__primary-text {
+	width: 100%;
+	white-space: normal;
+	overflow: visible;
+}
+::ng-deep .persona-autocomplete-panel .persona-row {
+	width: 100%;
+}
+::ng-deep .persona-autocomplete-panel .persona-nombre {
+	white-space: normal;
+	line-height: 1.2;
+}
+::ng-deep .persona-autocomplete-panel .persona-badges {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	margin-top: 3px;
+}
+::ng-deep .persona-autocomplete-panel .persona-tipo-badge,
+::ng-deep .persona-autocomplete-panel .persona-estado-badge {
+	flex: 0 0 auto;
+	white-space: nowrap;
+	font-size: 10px;
+}
