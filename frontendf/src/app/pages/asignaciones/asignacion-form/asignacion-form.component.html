@@ -91,21 +91,22 @@
 
         <mat-autocomplete
           #personaAuto="matAutocomplete"
+          class="persona-autocomplete-panel"
           [displayWith]="displayPersonaLabel"
           (optionSelected)="seleccionarPersona($event.option.value)"
         >
           <mat-option *ngFor="let per of personasFiltradas" [value]="per">
-            <div class="d-flex justify-content-between align-items-center w-100 gap-2">
-              <span>{{ per.apellidos }} {{ per.nombres }}
-                <span class="badge rounded-pill bg-info text-dark" style="font-size: 10px;">
+            <div class="persona-row">
+              <div class="persona-nombre">{{ per.apellidos }} {{ per.nombres }}</div>
+              <div class="persona-badges">
+                <span class="badge rounded-pill bg-info text-dark persona-tipo-badge">
                   {{ per.tipo }}<span *ngIf="getProvinciaCanton(per)"> · {{ getProvinciaCanton(per) }}</span>
                 </span>
-              </span>
-              <span class="badge rounded-pill"
-                [ngClass]="isPersonaAssigned(per) ? 'bg-warning text-dark' : 'bg-success text-white'"
-                style="font-size: 10px; white-space: nowrap;">
-                {{ isPersonaAssigned(per) ? 'En uso' : 'Disponible' }}
-              </span>
+                <span class="badge rounded-pill persona-estado-badge"
+                  [ngClass]="isPersonaAssigned(per) ? 'bg-warning text-dark' : 'bg-success text-white'">
+                  {{ isPersonaAssigned(per) ? 'En uso' : 'Disponible' }}
+                </span>
+              </div>
             </div>
           </mat-option>
         </mat-autocomplete>
