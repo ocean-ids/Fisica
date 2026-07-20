@@ -15,15 +15,15 @@
         Descargar
       </button>
     </div>
-    <div class="d-grid d-sm-flex flex-wrap gap-2 align-items-center">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
         <!--Filtro por texto (cédula, nombre, apellido)-->
-        <select class="form-select"
+        <select class="form-select w-auto" style="min-width:180px;"
                 [(ngModel)]="filtroUnidad" (ngModelChange)="cargarPersonas()">
           <option value="">Todas las unidades</option>
           <option value="FISICA">Seguridad Física</option>
           <option value="CARGA">Seguridad de Carga</option>
         </select>
-        <select class="form-select"
+        <select class="form-select w-auto" style="min-width:170px;"
                 [(ngModel)]="filtroTipo" (ngModelChange)="cargarPersonas()">
           <option value="">Todos los tipos</option>
           <option *ngFor="let t of tipos" [value]="t">{{ t }}</option>
