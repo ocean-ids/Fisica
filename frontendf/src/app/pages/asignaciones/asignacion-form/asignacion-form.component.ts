@@ -286,12 +286,12 @@ export class AsignacionFormComponent implements OnInit {
   }
 
   getPersonasActivas(): Persona[] {
-    // Todos los tipos EXCEPTO sacafranco, sin filtrar por provincia/cantón
-    // (se muestran todas y se indica su provincia/cantón con un badge).
+    // Todos los tipos EXCEPTO sacavacaciones (sacafranco SÍ aparece), sin filtrar
+    // por provincia/cantón (se muestran todas y se indica su ubicación con un badge).
     return this.personas.filter(persona => {
       const tipo = (persona.tipo || '').toString().toUpperCase();
       if (persona.is_active === false) return false;
-      if (tipo === 'SACAFRANCO' || tipo === 'SACAVACACIONES') return false;
+      if (tipo === 'SACAVACACIONES') return false;
       return true;
     });
   }
