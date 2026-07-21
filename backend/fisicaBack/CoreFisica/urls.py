@@ -22,6 +22,7 @@ from .views.vista_canton_views import vistas_cantones
 from .views.novedad_puesto_views import obtener_novedades, crear_novedad, actualizar_novedad, eliminar_novedad, exportar_novedades_excel
 from .views.sync_views import sincronizar_empleado
 from .views.html_pdf_views import html_a_pdf
+from .views.image_resize_views import reducir_imagen
 from .views.reporte_vacaciones_views import (
     listar_reporte_vacaciones, crear_reporte_vacaciones, exportar_reporte_vacaciones_excel,
     actualizar_reporte_vacaciones, eliminar_reporte_vacaciones,
@@ -118,6 +119,7 @@ urlpatterns = [
     path('vistas-cantones/', vistas_cantones),
     path('sync/empleado/', sincronizar_empleado),
     path('html-a-pdf/', html_a_pdf),
+    path('reducir-imagen/', reducir_imagen),
     path('reporte-asignaciones/', exportar_asignaciones_excel, name='reporte_asignaciones'),
     path('exportar-asignaciones-reimportable/', exportar_asignaciones_reimportable, name='exportar_asignaciones_reimportable'),
     path('asignacion-semanal/', listar_asignacion_semanal),
