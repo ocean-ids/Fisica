@@ -142,10 +142,21 @@
                   [class.fila-puesto-cerrado]="row.asig.puesto_detalle?.activo === false"
                   class="text-center align-middle shared-row"
                   style="height: 70px;">
-                  <div *cdkDragPreview class="drag-lift-card">
-                    <i class="bi bi-arrows-move"></i>
-                    <ng-container *ngIf="isRowSelected(row) && seleccionCount > 1; else unoAsig">{{ seleccionCount }} filas</ng-container>
-                    <ng-template #unoAsig>{{ row.asig.persona_detalle?.apellidos }} {{ row.asig.persona_detalle?.nombres }}</ng-template>
+                  <div *cdkDragPreview class="drag-lift-row">
+                    <ng-container *ngIf="isRowSelected(row) && seleccionCount > 1; else unoAsig">
+                      <div class="lift-count-row"><i class="bi bi-arrows-move"></i> {{ seleccionCount }} filas seleccionadas</div>
+                    </ng-container>
+                    <ng-template #unoAsig>
+                      <div class="lift-cell lift-mover"><i class="bi bi-arrows-move"></i></div>
+                      <div class="lift-cell lift-horario">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }} {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</div>
+                      <div class="lift-cell lift-nom">{{ getCodigoInstalacionAsignacion(row.asig) }}</div>
+                      <div class="lift-cell lift-cli">{{ row.asig.cliente_detalle?.nombre_comercial }}</div>
+                      <div class="lift-cell lift-pue">{{ row.asig.puesto_detalle?.nombre }}</div>
+                      <div class="lift-cell lift-per">
+                        <div class="fw-semibold">{{ row.asig.persona_detalle?.apellidos }} {{ row.asig.persona_detalle?.nombres }}</div>
+                        <div class="text-muted">{{ row.asig.persona_detalle?.cedula }}</div>
+                      </div>
+                    </ng-template>
                   </div>
                   <td *ngIf="!columnaOculta('horario')" class="align-middle overflow-hidden" style="height: 70px;">{{ row.asig.horario_detalle?.hora_ingreso | slice:0:5 }}  {{ row.asig.horario_detalle?.hora_salida | slice:0:5 }}</td>
                   <td *ngIf="!columnaOculta('codigo')" class="align-middle overflow-hidden" style="height: 70px;">{{ getCodigoInstalacionAsignacion(row.asig) }}</td>
@@ -249,10 +260,18 @@
                   [class.row-busqueda-activa]="row.fila.id === highlightedSacaId"
                   [class.fila-seleccionada]="isRowSelected(row)"
                   class="align-middle sacafranco-row">
-                  <div *cdkDragPreview class="drag-lift-card">
-                    <i class="bi bi-arrows-move"></i>
-                    <ng-container *ngIf="isRowSelected(row) && seleccionCount > 1; else unoSaca">{{ seleccionCount }} filas</ng-container>
-                    <ng-template #unoSaca>{{ row.fila.persona_detalle?.apellidos }} {{ row.fila.persona_detalle?.nombres }}</ng-template>
+                  <div *cdkDragPreview class="drag-lift-row">
+                    <ng-container *ngIf="isRowSelected(row) && seleccionCount > 1; else unoSaca">
+                      <div class="lift-count-row"><i class="bi bi-arrows-move"></i> {{ seleccionCount }} filas seleccionadas</div>
+                    </ng-container>
+                    <ng-template #unoSaca>
+                      <div class="lift-cell lift-mover"><i class="bi bi-arrows-move"></i></div>
+                      <div class="lift-cell lift-per">
+                        <div class="fw-semibold">{{ row.fila.persona_detalle?.apellidos }} {{ row.fila.persona_detalle?.nombres }}</div>
+                        <div class="text-muted">{{ row.fila.persona_detalle?.cedula }}</div>
+                      </div>
+                      <div class="lift-cell lift-saca">SACAFRANCO</div>
+                    </ng-template>
                   </div>
                   <td *ngIf="!columnaOculta('horario')" class="bg-warning-subtle align-middle text-center">{{ row.fila.hora_ingreso | slice:0:5 }}  {{ row.fila.hora_salida | slice:0:5 }}</td>
                   <td *ngIf="!columnaOculta('codigo')" class="bg-warning-subtle"></td>

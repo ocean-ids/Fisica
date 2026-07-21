@@ -458,18 +458,72 @@ table.table {
 }
 
 /* Preview flotante al arrastrar: tarjeta "levantada" que sigue al cursor */
-.drag-lift-card {
+/* Preview flotante "mini-fila": conserva la forma de las columnas fijas
+   (horario, nominativo, cliente, puesto, persona), sin el calendario. */
+.drag-lift-row {
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
+  align-items: stretch;
   background: #ffffff;
   color: #0f172a;
-  border-radius: 10px;
+  border-radius: 8px;
+  border-left: 4px solid #4338ca;
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-  font-weight: 600;
-  font-size: 13px;
-  white-space: nowrap;
+  overflow: hidden;
+  font-size: 12px;
+}
+.drag-lift-row .lift-cell {
+  padding: 6px 10px;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  white-space: normal;
+  line-height: 1.2;
+}
+.drag-lift-row .lift-cell:last-child {
+  border-right: none;
+}
+.drag-lift-row .lift-mover {
+  align-items: center;
+  color: #4338ca;
+  font-size: 16px;
+}
+.drag-lift-row .lift-horario { width: 90px; }
+.drag-lift-row .lift-nom     { width: 90px; }
+.drag-lift-row .lift-cli     { width: 150px; }
+.drag-lift-row .lift-pue     { width: 160px; }
+.drag-lift-row .lift-per     { width: 190px; }
+.drag-lift-row .lift-per .text-muted { font-size: 11px; }
+.drag-lift-row .lift-saca {
+  align-items: center;
+  font-weight: 700;
+  color: #4338ca;
+}
+.drag-lift-row .lift-count-row {
+  padding: 10px 16px;
+  font-weight: 700;
+  color: #4338ca;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Hueco donde caerá la fila (placeholder): fondo suave, SIN líneas punteadas. */
+.cdk-drag-placeholder > td {
+  background: #eef2ff !important;
+  color: transparent !important;
+}
+.cdk-drag-placeholder > td * {
+  visibility: hidden;
+}
+
+/* Animación suave: al soltar, la fila y las demás se deslizan a su lugar. */
+.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+.cdk-drop-list-dragging .cdk-drag:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
 }
 
 /* Botón "Fila" con menú desplegable (Asignación / Sacafranco) */
