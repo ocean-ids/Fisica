@@ -15,7 +15,9 @@ Usa WeasyPrint (HTML + CSS, sin JavaScript). El import es perezoso para que la
 app arranque aunque WeasyPrint / sus librerias del SO no esten instaladas.
 """
 import base64
+import io
 import logging
+import re
 
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
@@ -31,6 +33,57 @@ log = logging.getLogger("html2pdf")
 
 # Tamano maximo del HTML aceptado (anti-abuso): 10 MB.
 MAX_HTML_BYTES = 10 * 1024 * 1024
+
+# Umbral por imagen embebida (base64 decodificado) a partir del cual se recomprime
+# antes de renderizar. Fotos de celular sin comprimir (varios MB, resolucion nativa)
+# son la causa mas comun de renders lentos / consumo alto de memoria con WeasyPrint.
+IMG_DOWNSCALE_THRESHOLD_BYTES = 700 * 1024
+IMG_MAX_WIDTH_PX = 1000
+IMG_JPEG_QUALITY = 80
+
+_DATA_URI_RE = re.compile(r'data:image/(?:png|jpe?g);base64,([A-Za-z0-9+/=]+)')
+
+
+def _downscale_embedded_images(html):
+    """Recomprime imagenes base64 embebidas que superen el umbral de tamano.
+
+    Evita que una sola foto sin comprimir (p.ej. 4000x3000 de camara) infle el
+    HTML y dispare timeouts o falta de memoria al rasterizarla en WeasyPrint,
+    aunque el HTML completo este por debajo de MAX_HTML_BYTES."""
+    try:
+        from PIL import Image  # type: ignore
+    except Exception:
+        return html  # Pillow no disponible: no tocamos el HTML.
+
+    def _replace(match):
+        b64 = match.group(1)
+        approx_bytes = len(b64) * 3 // 4
+        if approx_bytes < IMG_DOWNSCALE_THRESHOLD_BYTES:
+            return match.group(0)
+        try:
+            raw = base64.b64decode(b64)
+            img = Image.open(io.BytesIO(raw))
+            if img.width > IMG_MAX_WIDTH_PX:
+                ratio = IMG_MAX_WIDTH_PX / img.width
+                img = img.resize(
+                    (IMG_MAX_WIDTH_PX, max(1, int(img.height * ratio))),
+                    Image.LANCZOS,
+                )
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=IMG_JPEG_QUALITY, optimize=True)
+            new_b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+            log.info(
+                "html2pdf: imagen recomprimida %.1fKB -> %.1fKB",
+                len(raw) / 1024, len(buf.getvalue()) / 1024,
+            )
+            return "data:image/jpeg;base64," + new_b64
+        except Exception as e:  # noqa: BLE001
+            log.warning("html2pdf: no se pudo recomprimir una imagen embebida: %s", e)
+            return match.group(0)
+
+    return _DATA_URI_RE.sub(_replace, html)
 
 
 class PdfApiKeyAuthentication(BaseAuthentication):
@@ -116,9 +169,12 @@ def html_a_pdf(request):
     orientacion = 'landscape' if horizontal else 'portrait'
     page_css = f"@page {{ size: {formato} {orientacion}; margin: {margen}; }}"
 
+    # Recomprime imagenes base64 embebidas grandes (evita 500/timeout con fotos gigantes).
+    html_str = _downscale_embedded_images(str(html))
+
     try:
-        log.info("HTML->PDF: %d caracteres (formato=%s, horizontal=%s)", len(str(html)), formato, horizontal)
-        pdf_bytes = HTML(string=str(html)).write_pdf(stylesheets=[_css(page_css)])
+        log.info("HTML->PDF: %d caracteres (formato=%s, horizontal=%s)", len(html_str), formato, horizontal)
+        pdf_bytes = HTML(string=html_str).write_pdf(stylesheets=[_css(page_css)])
         pdf_b64 = base64.b64encode(pdf_bytes).decode('utf-8')
         log.info("HTML->PDF: PDF generado (%.1f KB)", len(pdf_bytes) / 1024)
         return Response({'exito': True, 'pdf_base64': pdf_b64}, status=status.HTTP_200_OK)
