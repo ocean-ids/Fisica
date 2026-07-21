@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, BehaviorSubject, tap } from 'rxjs';
+import { Observable, BehaviorSubject, of, tap, catchError } from 'rxjs';
 import type { LoginResponse } from '../models/login.models';
 import { environment } from '@env/environment';
 import Swal from 'sweetalert2';
@@ -114,19 +114,19 @@ export class AuthService {
   logout(): Observable<any> {
     const refreshToken = this.getRefreshToken();
     
-    // Intentar hacer logout en el backend (blacklist)
+    // Intentar hacer logout en el backend (blacklist). El cierre de sesión debe
+    // ocurrir SIEMPRE, aunque el backend falle (token ya expirado/rotado/blacklist
+    // o error de red): el blacklist es "mejor esfuerzo".
     if (refreshToken) {
-      return this.http.post(`${this.apiUrl}/logout/`, 
+      return this.http.post(`${this.apiUrl}/logout/`,
         { refresh: refreshToken }
       ).pipe(
+        catchError(() => of({ message: 'Logout local' })),  // no bloquear el cierre por un 400/red
         tap(() => this.clearTokens())
       );
     } else {
       this.clearTokens();
-      return new Observable(observer => {
-        observer.next({ message: 'Logout exitoso' });
-        observer.complete();
-      });
+      return of({ message: 'Logout exitoso' });
     }
   }
 
