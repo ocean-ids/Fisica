@@ -94,37 +94,25 @@ def login_view(request):
 @csrf_exempt
 #logout_view que recibe un request con un refresh token en el body, intenta invalidar el token y devuelve un mensaje de éxito o error  
 def logout_view(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            refresh_token = data.get('refresh')
-            
-            
-            if not refresh_token:
-                return JsonResponse(
-                    {"error": "Refresh token requerido."}, 
-                    status=400
-                )
-            
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            
-            return JsonResponse(
-                {"message": "Logout exitoso"}, 
-                status=200  
-            )
-            
-        except Exception as e:
-            return JsonResponse(
-                {"error": f"Token inválido o expirado: {str(e)}"}, 
-                status=400
-            )
-    else:
+    if request.method != 'POST':
+        return JsonResponse({"error": "Método no permitido"}, status=405)
 
-        return JsonResponse(
-            {"error": "Método no permitido"}, 
-            status=405
-        )
+    # El logout SIEMPRE procede (el cliente descarta sus tokens). Poner el refresh
+    # en la blacklist es "mejor esfuerzo": si ya está expirado/rotado/blacklisteado
+    # (p. ej. tras una rotación con red lenta), NO es un error para el usuario.
+    try:
+        data = json.loads(request.body or b'{}')
+    except Exception:
+        data = {}
+
+    refresh_token = data.get('refresh')
+    if refresh_token:
+        try:
+            RefreshToken(refresh_token).blacklist()
+        except Exception as e:
+            logging.getLogger('auth').info("logout: refresh no blacklisteado (%s)", e)
+
+    return JsonResponse({"message": "Logout exitoso"}, status=200)
 
 #funcion user_view que recibe un request con un token de acceso valido, devuelve la información del usuario autenticado, incluyendo la url de la foto del perfil y los permisos
 @api_view(['GET'])
