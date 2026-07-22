@@ -26,6 +26,11 @@ export class PersonaService {
     return this.apiService.put<Persona>(`/actualizar-persona/${id}/`, persona);
   }
 
+  // Cambia SOLO el tipo de la persona (la vista actualiza campo por campo, es seguro enviar parcial).
+  cambiarTipo(id: number, tipo: string): Observable<Persona>{
+    return this.apiService.put<Persona>(`/actualizar-persona/${id}/`, { tipo });
+  }
+
   deletePersona(id: number): Observable<any>{
     return this.apiService.delete(`/eliminar-persona/${id}/`);
   }

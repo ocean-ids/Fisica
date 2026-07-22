@@ -11,6 +11,9 @@ import { Asignacion, PatronAsignacion } from '../../../models/asignacion.model';
 import { Cliente, Persona, Instalacion, Puesto, Horario } from '../../../models';
 import { InstalacionService } from '../../../services/instalacion.service';
 import { PuestoService } from '../../../services/puesto.service';
+import { PersonaService } from '../../../services/persona.service';
+import { firstValueFrom } from 'rxjs';
+import Swal from 'sweetalert2';
 
 export interface AsignacionFormData {
   asignacion: Asignacion;
@@ -84,6 +87,7 @@ export class AsignacionFormComponent implements OnInit {
     private dialogRef: MatDialogRef<AsignacionFormComponent, AsignacionFormResult>,
     private instalacionService: InstalacionService,
     private puestoService: PuestoService,
+    private personaService: PersonaService,
     @Inject(MAT_DIALOG_DATA) public data: AsignacionFormData
   ) {
     this.asignacion = { ...data.asignacion };
@@ -417,8 +421,40 @@ export class AsignacionFormComponent implements OnInit {
       && !!this.asignacion.start_date;
     }
 
-  onSave(): void {
+  async onSave(): Promise<void> {
     if (!this.isFormValid() || this.isSaving) return;
+
+    // Si la persona es SACAFRANCO y se la asigna a un puesto fijo, ofrecer cambiar su tipo a FIJOS.
+    const persona = this.personaSeleccionada;
+    const esSacafranco = (persona?.tipo || '').toString().toUpperCase() === 'SACAFRANCO';
+    if (esSacafranco && persona?.id) {
+      const nombre = `${persona.apellidos || ''} ${persona.nombres || ''}`.trim();
+      const res = await Swal.fire({
+        icon: 'question',
+        title: '¿Cambiar tipo a FIJOS?',
+        html: `<b>${nombre}</b> es <b>SACAFRANCO</b> y lo estás asignando a un puesto fijo.<br>¿Deseas cambiar su tipo a <b>FIJOS</b>?`,
+        showCancelButton: true,
+        confirmButtonText: 'Sí, cambiar a FIJOS',
+        cancelButtonText: 'No, dejar SACAFRANCO',
+        confirmButtonColor: '#0d6efd',
+      });
+      if (res.isConfirmed) {
+        this.isSaving = true;
+        try {
+          await firstValueFrom(this.personaService.cambiarTipo(persona.id, 'FIJOS'));
+          persona.tipo = 'FIJOS';
+        } catch {
+          // Si falla el cambio de tipo, avisar pero continuar: la asignación se guarda igual.
+          await Swal.fire({
+            icon: 'warning',
+            title: 'No se pudo cambiar el tipo',
+            text: 'La asignación se guardará igual; el tipo quedó como SACAFRANCO.',
+          });
+        }
+        this.isSaving = false;
+      }
+    }
+
     this.isSaving = true;
     this.dialogRef.close({
       action: 'save',
