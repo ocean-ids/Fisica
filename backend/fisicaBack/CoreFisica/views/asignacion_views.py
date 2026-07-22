@@ -319,7 +319,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
     # si se proporcionan mes y año, filtrar asignaciones activas que correspondan al mes/año o que sean recurrentes y tengan rango de fechas que incluya el mes/año. Si no se proporcionan mes/año, devolver todas las asignaciones activas. En ambos casos, excluir personas de tipo SACAFRANCO y ordenar por orden y id para mantener un orden consistente.   
     base_qs = Asignacion.objects.filter(
         estado='ACTIVO'
-    ).exclude(persona__tipo='SACAFRANCO').exclude(puesto__activo=False)  # ocultar puestos CERRADOS
+    ).exclude(puesto__activo=False)  # ocultar puestos CERRADOS (SACAFRANCO con asignación SÍ se incluye)
 
     if mes and anio:
         month_start = datetime.date(int(anio), int(mes), 1)
@@ -1971,7 +1971,8 @@ def exportar_asignaciones_excel(request):
     from ..models import VistaCanton, Instalacion
 
     # Base comun (igual que obtener_asignaciones, con el fix del NULL en NOT IN).
-    _base = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').exclude(puesto__activo=False)
+    # SACAFRANCO con asignación normal SÍ se incluye (aparece en lista y vistas).
+    _base = Asignacion.objects.filter(estado='ACTIVO').exclude(puesto__activo=False)
     _personas_con_mes = _base.filter(mes=month, anio=year, persona_id__isnull=False).values('persona_id')
     _base = _base.filter(
         Q(mes=month, anio=year) |

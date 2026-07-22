@@ -1638,9 +1638,13 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   private getAssignedSacafrancoPersonaIds(): number[] {
-    return (this.sacafrancoRows || [])
+    // Filas del módulo sacafranco
+    const enFilas = (this.sacafrancoRows || [])
       .map(r => r?.persona || r?.persona_detalle?.id)
       .filter((id): id is number => !!id);
+    // Incluir también a quien ya tenga una asignación regular (local + otros cantones),
+    // para que un SACAFRANCO asignado a un puesto salga "Asignado" y no "Disponible".
+    return Array.from(new Set([...enFilas, ...this.getAssignedPersonaIds()]));
   }
 
   private buildProvinciaSortOrderFromRows(rows: Array<any>): void {
