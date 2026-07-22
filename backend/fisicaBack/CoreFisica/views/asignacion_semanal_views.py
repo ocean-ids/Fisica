@@ -494,7 +494,8 @@ def _cleanup_auto_sacafranco_from_token_map(sacafranco_fila_id, week_start_date,
 def _auto_create_asignacion_semanal_for_week(week_start_date, provincia_id=None, canton_id=None):
     try:
         from ..models import Asignacion, Puesto
-        asigns = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').filter(
+        # SACAFRANCO con asignación regular SÍ tiene calendario D/N/F propio (no se excluye).
+        asigns = Asignacion.objects.filter(estado='ACTIVO').filter(
             Q(mes=week_start_date.month, anio=week_start_date.year) |
             (Q(recurring=True) & Q(start_date__lte=week_start_date) & (Q(end_date__isnull=True) | Q(end_date__gte=week_start_date)))
         ).select_related('puesto', 'patronAsignacion')
@@ -755,7 +756,7 @@ def listar_asignacion_semanal(request):
                 try:
                     from ..models import Asignacion, Puesto
                     # encontrar asignaciones activas que aplican a esta semana
-                    asigns = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').filter(
+                    asigns = Asignacion.objects.filter(estado='ACTIVO').filter(
                         Q(mes=ws.month, anio=ws.year) |
                         (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
                     ).select_related('puesto', 'patronAsignacion')
@@ -989,7 +990,7 @@ def listar_asignacion_semanal(request):
             if not auto_create:
                 try:
                     from ..models import Asignacion
-                    active_asigns = Asignacion.objects.filter(estado='ACTIVO').exclude(persona__tipo='SACAFRANCO').filter(
+                    active_asigns = Asignacion.objects.filter(estado='ACTIVO').filter(
                         Q(mes=ws.month, anio=ws.year) |
                         (Q(recurring=True) & Q(start_date__lte=ws) & (Q(end_date__isnull=True) | Q(end_date__gte=ws)))
                     )
@@ -1191,7 +1192,7 @@ def listar_asignacion_semanal_mes(request):
         from ..models import Asignacion
         assigns = list(
             Asignacion.objects.filter(estado='ACTIVO')
-            .exclude(persona__tipo='SACAFRANCO')
+            # SACAFRANCO con asignación regular SÍ tiene calendario D/N/F propio (no se excluye).
             .filter(
                 Q(mes=mes, anio=anio) |
                 (Q(recurring=True) & Q(start_date__lte=last_day) & (Q(end_date__isnull=True) | Q(end_date__gte=first_day)))
@@ -1422,7 +1423,7 @@ def crear_o_actualizar_asignacion_semanal(request):
                     mes=ws.month,
                     anio=ws.year,
                     estado='ACTIVO'
-                ).exclude(persona__tipo='SACAFRANCO').order_by('-id').first()
+                ).order_by('-id').first()
                 if target_asig:
                     effective_asignacion_id = target_asig.id
                     effective_puesto_id = target_asig.puesto_id or puesto_id
