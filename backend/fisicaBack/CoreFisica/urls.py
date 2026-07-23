@@ -32,7 +32,8 @@ from .views.reporte_guardia_views import (
     actualizar_reporte_guardia, eliminar_reporte_guardia,
 )
 from .views.reporte_pago_views import (
-    listar_reporte_pago, actualizar_reporte_pago,
+    listar_reporte_pago, actualizar_reporte_pago, resumen_mensual_reporte_pago,
+    detalle_persona_mes_reporte_pago,
     listar_tarifas, listar_tipos_servicio, crear_tarifa, actualizar_tarifa, eliminar_tarifa,
 )
 
@@ -142,6 +143,8 @@ urlpatterns = [
     path('reporte-guardia/<int:id>/', actualizar_reporte_guardia, name='reporte-guardia-actualizar'),
     path('reporte-guardia/<int:id>/eliminar/', eliminar_reporte_guardia, name='reporte-guardia-eliminar'),
     path('reporte-pago/', listar_reporte_pago, name='reporte-pago'),
+    path('reporte-pago/resumen-mensual/', resumen_mensual_reporte_pago, name='reporte-pago-resumen-mensual'),
+    path('reporte-pago/detalle-persona/', detalle_persona_mes_reporte_pago, name='reporte-pago-detalle-persona'),
     path('reporte-pago/<int:id>/', actualizar_reporte_pago, name='reporte-pago-actualizar'),
     path('tarifas-pago/', listar_tarifas, name='tarifas-pago'),
     path('tarifas-pago/tipos/', listar_tipos_servicio, name='tarifas-pago-tipos'),

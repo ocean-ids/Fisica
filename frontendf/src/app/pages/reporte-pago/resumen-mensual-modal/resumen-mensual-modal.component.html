@@ -1,0 +1,120 @@
+<h2 class="text-center" mat-dialog-title>Resumen mensual de pagos</h2>
+
+<mat-dialog-content>
+  <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <select class="form-select form-select-sm w-auto" [(ngModel)]="mesSel" (ngModelChange)="cargarResumen()">
+      <option *ngFor="let m of meses" [ngValue]="m.v">{{ m.n }}</option>
+    </select>
+    <select class="form-select form-select-sm w-auto" [(ngModel)]="anioSel" (ngModelChange)="cargarResumen()">
+      <option *ngFor="let y of anios" [ngValue]="y">{{ y }}</option>
+    </select>
+    <select class="form-select form-select-sm w-auto" [(ngModel)]="tipoSel" (ngModelChange)="cargarResumen()"
+            title="Tipo de servicio">
+      <option value="">Todos los tipos</option>
+      <option *ngFor="let t of tipos" [value]="t">{{ t }}</option>
+    </select>
+    <span class="text-muted small" *ngIf="loadingResumen">Cargando…</span>
+  </div>
+
+  <div *ngIf="resumen && !loadingResumen">
+    <div class="alert alert-primary d-flex justify-content-between align-items-center py-2">
+      <span class="fw-semibold">Total del mes{{ tipoSel ? ' · ' + tipoSel : '' }}</span>
+      <span class="fs-5 fw-bold">${{ num(resumen.total_general).toFixed(2) }}</span>
+    </div>
+
+    <div class="row g-3">
+      <!-- Por tipo de servicio -->
+      <div class="col-lg-5">
+        <div class="card">
+          <div class="card-header py-2 fw-bold">Total por tipo de servicio</div>
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr><th>Tipo de servicio</th><th class="text-end" style="width:110px">Total</th></tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let t of resumen.por_tipo_servicio">
+                  <td>{{ t.tipo_servicio }}</td>
+                  <td class="text-end">{{ num(t.total).toFixed(2) }}</td>
+                </tr>
+                <tr *ngIf="!resumen.por_tipo_servicio.length">
+                  <td colspan="2" class="text-center text-muted">Sin pagos en el mes.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Por persona -->
+      <div class="col-lg-7">
+        <div class="card">
+          <div class="card-header py-2 fw-bold">Total por persona</div>
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width:34px">Nº</th><th>Persona</th>
+                  <th>Cédula</th><th class="text-end" style="width:110px">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <ng-container *ngFor="let p of resumen.por_persona; let i = index">
+                  <tr (click)="togglePersona(p.persona_id)"
+                      [class.table-primary]="personaExpandidaId === p.persona_id"
+                      [style.cursor]="p.persona_id ? 'pointer' : 'default'">
+                    <td class="text-center">
+                      <i class="bi" [ngClass]="personaExpandidaId === p.persona_id ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"
+                         *ngIf="p.persona_id"></i>
+                      {{ i + 1 }}
+                    </td>
+                    <td>{{ p.persona_nombre || '—' }}</td>
+                    <td>{{ p.cedula || '—' }}</td>
+                    <td class="text-end">{{ num(p.total).toFixed(2) }}</td>
+                  </tr>
+                  <!-- Desglose de la persona en el mes -->
+                  <tr *ngIf="personaExpandidaId === p.persona_id">
+                    <td colspan="4" class="p-0 bg-light">
+                      <div class="p-2">
+                        <div class="small text-muted mb-1" *ngIf="loadingDetalle">Cargando desglose…</div>
+                        <table class="table table-sm table-bordered mb-0" *ngIf="!loadingDetalle">
+                          <thead class="table-light">
+                            <tr>
+                              <th>Fecha</th><th>Turno</th><th>Cliente / Puesto</th>
+                              <th>Sección</th><th>Tipo de servicio</th><th class="text-end">Valor</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr *ngFor="let d of detallePersona">
+                              <td>{{ d.fecha }}</td>
+                              <td>{{ d.turno }}</td>
+                              <td>{{ d.cliente }} · {{ d.puesto }}</td>
+                              <td><span class="badge bg-secondary">{{ d.seccion }}</span></td>
+                              <td>{{ d.tipo_servicio || '—' }}</td>
+                              <td class="text-end">{{ valorFila(d).toFixed(2) }}</td>
+                            </tr>
+                            <tr *ngIf="!detallePersona.length">
+                              <td colspan="6" class="text-center text-muted">Sin desglose.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+                <tr *ngIf="!resumen.por_persona.length">
+                  <td colspan="4" class="text-center text-muted">Sin pagos en el mes.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cerrar()">Cerrar</button>
+</mat-dialog-actions>
+|

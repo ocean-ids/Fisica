@@ -12,8 +12,11 @@
         <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
       </mat-button-toggle-group>
     </div>
-    <div class="flex-grow-1 d-flex justify-content-end" style="flex-basis:0;">
+    <div class="flex-grow-1 d-flex justify-content-end align-items-center gap-2" style="flex-basis:0;">
       <span class="text-muted small" *ngIf="loading">Cargando…</span>
+      <button type="button" class="btn btn-outline-primary btn-sm text-nowrap" (click)="abrirResumenMensual()">
+        <i class="bi bi-calendar3"></i> Resumen mensual
+      </button>
     </div>
   </div>
 
