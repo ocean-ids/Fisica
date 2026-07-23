@@ -2,14 +2,16 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ReportePagoService } from '../../services/reporte-pago.service';
 import { ReportePago, TarifaPago } from '../../models/reporte-pago.model';
+import { ResumenMensualModalComponent } from './resumen-mensual-modal/resumen-mensual-modal.component';
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-reporte-pago',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonToggleModule],
+  imports: [CommonModule, FormsModule, MatButtonToggleModule, MatDialogModule],
   templateUrl: './reporte-pago.component.html',
   styleUrl: './reporte-pago.component.css',
 })
@@ -23,11 +25,21 @@ export class ReportePagoComponent implements OnInit {
   sel: ReportePago | null = null;      // fila activa en el formulario
   selTarifaId: number | null = null;   // rango horario elegido (id de tarifa)
 
-  constructor(private srv: ReportePagoService) {}
+  constructor(private srv: ReportePagoService, private dialog: MatDialog) {}
 
   ngOnInit(): void {
     this.srv.listarTarifas().subscribe({ next: (t) => (this.tarifas = t || []), error: () => (this.tarifas = []) });
     this.cargar();
+  }
+
+  // Abre el resumen mensual en un modal (mes/año/tipo de servicio, totales y por persona).
+  abrirResumenMensual(): void {
+    this.dialog.open(ResumenMensualModalComponent, {
+      width: '900px',
+      maxWidth: '95vw',
+      maxHeight: '90vh',
+      data: { tipos: this.tipos },
+    });
   }
 
   cargar(): void {

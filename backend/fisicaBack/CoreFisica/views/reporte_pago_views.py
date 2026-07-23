@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.db.models import Sum, F, Case, When, DecimalField
 
 from ..models import ReporteGuardia, ReportePago, TarifaPago
 from ..serializers import ReportePagoSerializer, TarifaPagoSerializer
@@ -157,6 +158,90 @@ def actualizar_reporte_pago(request, id):
         efectivo = p.valor_total if (p.valor_total or 0) > 0 else p.valor_calculado
         ReporteGuardia.objects.filter(id=p.reporte_guardia_ref_id).update(valor=efectivo or 0)
     return Response(ReportePagoSerializer(p).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def resumen_mensual_reporte_pago(request):
+    """Resumen del mes (?mes=&anio=): total general, total por tipo de servicio y
+    total por persona. Suma el valor DEFINITIVO (valor_total si > 0, si no el
+    valor_calculado). Antes de sumar, sincroniza los pagos de cada fecha/turno del
+    mes que tenga guardia pagable, para que el total esté completo aunque no se haya
+    abierto cada día en la vista diaria."""
+    try:
+        mes = int(request.GET.get('mes'))
+        anio = int(request.GET.get('anio'))
+        if not (1 <= mes <= 12):
+            raise ValueError
+    except (TypeError, ValueError):
+        return Response({'error': 'mes/anio inválidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Asegurar que existan los pagos del mes.
+    fechas_turnos = ReporteGuardia.objects.filter(
+        fecha__year=anio, fecha__month=mes, seccion__in=SECCIONES_PAGABLES
+    ).values_list('fecha', 'turno').distinct()
+    for fecha, turno in fechas_turnos:
+        if fecha and turno in TURNOS:
+            _sync_pagos(fecha, turno)
+
+    efectivo = Case(
+        When(valor_total__gt=0, then=F('valor_total')),
+        default=F('valor_calculado'),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )
+    qs = ReportePago.objects.filter(fecha__year=anio, fecha__month=mes)
+    # Filtro opcional por un tipo de servicio específico.
+    tipo_filtro = (request.GET.get('tipo_servicio') or '').strip()
+    if tipo_filtro:
+        qs = qs.filter(tipo_servicio=tipo_filtro)
+    qs = qs.annotate(_efectivo=efectivo)
+
+    por_tipo = [
+        {'tipo_servicio': (r['tipo_servicio'] or '(sin tipo)'), 'total': float(r['total'] or 0)}
+        for r in qs.values('tipo_servicio').annotate(total=Sum('_efectivo')).order_by('-total')
+    ]
+    por_persona = [
+        {
+            'persona_id': r['persona_ref_id'],
+            'persona_nombre': r['persona_nombre'] or '',
+            'cedula': r['cedula'] or '',
+            'total': float(r['total'] or 0),
+        }
+        for r in qs.values('persona_ref_id', 'persona_nombre', 'cedula')
+                   .annotate(total=Sum('_efectivo')).order_by('persona_nombre')
+    ]
+    total_general = float(qs.aggregate(t=Sum('_efectivo'))['t'] or 0)
+
+    return Response({
+        'mes': mes, 'anio': anio,
+        'total_general': total_general,
+        'por_tipo_servicio': por_tipo,
+        'por_persona': por_persona,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def detalle_persona_mes_reporte_pago(request):
+    """Pagos de UNA persona en el mes (?mes=&anio=&persona_id=), para el desglose
+    del resumen mensual. Devuelve las filas de ReportePago ordenadas por fecha/turno."""
+    try:
+        mes = int(request.GET.get('mes'))
+        anio = int(request.GET.get('anio'))
+        persona_id = int(request.GET.get('persona_id'))
+        if not (1 <= mes <= 12):
+            raise ValueError
+    except (TypeError, ValueError):
+        return Response({'error': 'mes/anio/persona_id inválidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    qs = ReportePago.objects.select_related('persona_ref').filter(
+        fecha__year=anio, fecha__month=mes, persona_ref_id=persona_id
+    )
+    tipo_filtro = (request.GET.get('tipo_servicio') or '').strip()
+    if tipo_filtro:
+        qs = qs.filter(tipo_servicio=tipo_filtro)
+    qs = qs.order_by('fecha', 'turno')
+    return Response(ReportePagoSerializer(qs, many=True).data)
 
 
 # ---------------------------------------------------------------- Tarifas (editor)

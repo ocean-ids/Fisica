@@ -29,3 +29,11 @@ export interface TarifaPago {
   valor: number;
   orden?: number;
 }
+
+export interface ResumenMensualPago {
+  mes: number;
+  anio: number;
+  total_general: number;
+  por_tipo_servicio: Array<{ tipo_servicio: string; total: number }>;
+  por_persona: Array<{ persona_id: number | null; persona_nombre: string; cedula: string; total: number }>;
+}
