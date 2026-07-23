@@ -32,7 +32,9 @@ import Swal from 'sweetalert2';
 })
 export class ReporteAsistenciaEditDialogComponent {
   // RETEN y CUSTODIO se retiraron: ahora se cuentan en el consolidado por el TIPO del reemplazo.
-  readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'EVENTUAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO'];
+  // EVENTUAL y FR/TRABAJADO se retiraron: ahora se calculan solos en el consolidado
+  // (EVENTUAL por el tipo del reemplazo; FR/TRABAJADO si el reemplazo estaba en franco).
+  readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'ADEL/TURNO', 'DOBLA'];
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
   readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL']);
   descripcionesComunes: string[] = [];
@@ -181,11 +183,8 @@ export class ReporteAsistenciaEditDialogComponent {
     }
 
     this.form.get('reemplazo_id')?.setValue(value?.id ?? null);
-
-    // Si el reemplazo elegido está en FRANCO ese día, el estado es FR/TRABAJADO.
-    if (value?.id && this.personasFrancoIds.has(Number(value.id))) {
-      this.form.get('estado')?.setValue('FR/TRABAJADO');
-    }
+    // FR/TRABAJADO ya no se setea a mano: el consolidado lo detecta solo cuando el
+    // reemplazo estaba en franco (F) ese día.
   }
 
   getDescripcionesFiltradas(): string[] {
