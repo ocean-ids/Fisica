@@ -31,10 +31,10 @@ import Swal from 'sweetalert2';
   styleUrl: './reporte-asistencia-edit-dialog.component.css'
 })
 export class ReporteAsistenciaEditDialogComponent {
-  // RETEN y CUSTODIO se retiraron: ahora se cuentan en el consolidado por el TIPO del reemplazo.
-  // EVENTUAL y FR/TRABAJADO se retiraron: ahora se calculan solos en el consolidado
-  // (EVENTUAL por el tipo del reemplazo; FR/TRABAJADO si el reemplazo estaba en franco).
-  readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'ADEL/TURNO', 'DOBLA'];
+  // RETEN y CUSTODIO se retiraron: se cuentan en el consolidado por el TIPO del reemplazo.
+  // EVENTUAL se retiró: se cuenta solo (por el tipo del reemplazo).
+  // FR/TRABAJADO SÍ es manual (se elige aquí y se autocompleta si el reemplazo está en franco).
+  readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO'];
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
   readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL']);
   descripcionesComunes: string[] = [];
@@ -183,8 +183,12 @@ export class ReporteAsistenciaEditDialogComponent {
     }
 
     this.form.get('reemplazo_id')?.setValue(value?.id ?? null);
-    // FR/TRABAJADO ya no se setea a mano: el consolidado lo detecta solo cuando el
-    // reemplazo estaba en franco (F) ese día.
+
+    // Si el reemplazo elegido está en FRANCO ese día, se autocompleta el estado FR/TRABAJADO
+    // (queda editable: el usuario puede cambiarlo).
+    if (value?.id && this.personasFrancoIds.has(Number(value.id))) {
+      this.form.get('estado')?.setValue('FR/TRABAJADO');
+    }
   }
 
   getDescripcionesFiltradas(): string[] {

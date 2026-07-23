@@ -196,31 +196,7 @@ def _count_faltas_from_reporte(rows):
     return total
 
 
-def _franco_persona_ids_for_date(fecha_obj):
-    """IDs de personas que ese día están en FRANCO (F) según el calendario D/N/F
-    y que no tienen además otra asignación trabajando ese día (mismo criterio que
-    'personas_asignadas'). Se usa para contar FR/TRABAJADO automáticamente."""
-    if not fecha_obj:
-        return set()
-    from django.db.models import Q
-    from .reporte_asistencia_views import _calendar_dnf_for_date
-    asigs = Asignacion.objects.filter(estado='ACTIVO', persona__isnull=False).filter(
-        Q(mes=fecha_obj.month, anio=fecha_obj.year) |
-        Q(fecha=fecha_obj) |
-        (Q(recurring=True) & Q(start_date__lte=fecha_obj) & (Q(end_date__isnull=True) | Q(end_date__gte=fecha_obj)))
-    ).exclude(end_date__isnull=False, end_date__lt=fecha_obj)
-    dnf = _calendar_dnf_for_date(fecha_obj)  # {asignacion_id: 'D'|'N'|'F'}
-    ocupados, francos = set(), set()
-    for a in asigs.values('id', 'persona_id'):
-        if dnf.get(a['id']) == 'F':
-            francos.add(a['persona_id'])
-        else:
-            ocupados.add(a['persona_id'])
-    francos -= ocupados  # si trabaja en otra asignación ese día, no es franco disponible
-    return francos
-
-
-def _build_estado_agentes_counts(rows, fecha_obj=None):
+def _build_estado_agentes_counts(rows):
     counts = {
         'dobla': 0,
         'franco_trabajados': 0,
@@ -231,11 +207,8 @@ def _build_estado_agentes_counts(rows, fecha_obj=None):
         'custodio': 0,
     }
 
-    # Detección AUTOMÁTICA por el reemplazo (ya no se elige a mano el estado):
-    #  - RETEN / CUSTODIO / EVENTUAL -> por el TIPO de la persona que cubre.
-    #  - FR/TRABAJADO -> si la persona que cubre estaba en FRANCO (F) ese día.
-    # DOBLA / ADICIONAL / ADEL/TURNO se siguen eligiendo a mano y tienen prioridad
-    # sobre la detección de franco.
+    # RETEN / CUSTODIO / EVENTUAL se cuentan por el TIPO de la persona que cubre.
+    # DOBLA / ADICIONAL / ADEL/TURNO y FR/TRABAJADO se eligen a mano (por el estado).
     reemplazo_ids = [r.get('reemplazo_id') for r in rows if r.get('reemplazo_id')]
     tipo_por_id = {}
     if reemplazo_ids:
@@ -243,7 +216,6 @@ def _build_estado_agentes_counts(rows, fecha_obj=None):
             p['id']: (p['tipo'] or '').strip().upper()
             for p in Persona.objects.filter(id__in=reemplazo_ids).values('id', 'tipo')
         }
-    franco_ids = _franco_persona_ids_for_date(fecha_obj)
 
     for row in rows:
         reemplazo_id = row.get('reemplazo_id')
@@ -272,12 +244,7 @@ def _build_estado_agentes_counts(rows, fecha_obj=None):
             counts['unidades_adicionales'] += 1
             continue
 
-        # Prioridad 3: FR/TRABAJADO automático (el reemplazo estaba en franco ese día).
-        if reemplazo_id and reemplazo_id in franco_ids:
-            counts['franco_trabajados'] += 1
-            continue
-
-        # Compatibilidad con filas antiguas que tenían el estado puesto a mano.
+        # FR/TRABAJADO se elige a mano (más los estados heredados).
         if 'FR/TRABAJADO' in estado or 'FRANCO' in estado:
             counts['franco_trabajados'] += 1
             continue
@@ -412,7 +379,7 @@ def obtener_consolidado_resumen(request):
     reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q)
 
     manual = _build_resumen_manual(fecha_obj, turno_val, reporte_rows)
-    estados = _build_estado_agentes_counts(reporte_rows, fecha_obj)
+    estados = _build_estado_agentes_counts(reporte_rows)
     return JsonResponse({
         'manual': manual,
         'estado_agentes': estados
@@ -636,7 +603,7 @@ def exportar_consolidado_excel(request):
         data = _build_consolidado_data(fecha, turno_val, zona=zona, q=q)
         reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q)
         manual = _build_resumen_manual(fecha_obj, turno_val, reporte_rows) if turno_val else None
-        estados = _build_estado_agentes_counts(reporte_rows, fecha_obj)
+        estados = _build_estado_agentes_counts(reporte_rows)
 
         ws['A1'] = 'FECHA:'
         ws.merge_cells(start_row=1, start_column=2, end_row=1, end_column=3)
@@ -818,7 +785,7 @@ def exportar_consolidado_pdf(request):
     turno_val = turno if turno in ALLOWED_TURNOS else None
     reporte_rows = _build_reporte_asistencia_data(fecha=_parse_fecha(fecha).isoformat(), turno=turno_val, zona=zona, q=q)
     manual = _build_resumen_manual(_parse_fecha(fecha), turno_val, reporte_rows) if turno_val else None
-    estados = _build_estado_agentes_counts(reporte_rows, _parse_fecha(fecha))
+    estados = _build_estado_agentes_counts(reporte_rows)
 
     output = BytesIO()
     p = canvas.Canvas(output, pagesize=landscape(letter))
