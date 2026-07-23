@@ -196,7 +196,31 @@ def _count_faltas_from_reporte(rows):
     return total
 
 
-def _build_estado_agentes_counts(rows):
+def _franco_persona_ids_for_date(fecha_obj):
+    """IDs de personas que ese día están en FRANCO (F) según el calendario D/N/F
+    y que no tienen además otra asignación trabajando ese día (mismo criterio que
+    'personas_asignadas'). Se usa para contar FR/TRABAJADO automáticamente."""
+    if not fecha_obj:
+        return set()
+    from django.db.models import Q
+    from .reporte_asistencia_views import _calendar_dnf_for_date
+    asigs = Asignacion.objects.filter(estado='ACTIVO', persona__isnull=False).filter(
+        Q(mes=fecha_obj.month, anio=fecha_obj.year) |
+        Q(fecha=fecha_obj) |
+        (Q(recurring=True) & Q(start_date__lte=fecha_obj) & (Q(end_date__isnull=True) | Q(end_date__gte=fecha_obj)))
+    ).exclude(end_date__isnull=False, end_date__lt=fecha_obj)
+    dnf = _calendar_dnf_for_date(fecha_obj)  # {asignacion_id: 'D'|'N'|'F'}
+    ocupados, francos = set(), set()
+    for a in asigs.values('id', 'persona_id'):
+        if dnf.get(a['id']) == 'F':
+            francos.add(a['persona_id'])
+        else:
+            ocupados.add(a['persona_id'])
+    francos -= ocupados  # si trabaja en otra asignación ese día, no es franco disponible
+    return francos
+
+
+def _build_estado_agentes_counts(rows, fecha_obj=None):
     counts = {
         'dobla': 0,
         'franco_trabajados': 0,
@@ -207,8 +231,11 @@ def _build_estado_agentes_counts(rows):
         'custodio': 0,
     }
 
-    # RETEN/CUSTODIO se cuentan por el TIPO del reemplazo (ya no por el estado):
-    # si el que cubre es RETEN o CUSTODIO, va directo al contador.
+    # Detección AUTOMÁTICA por el reemplazo (ya no se elige a mano el estado):
+    #  - RETEN / CUSTODIO / EVENTUAL -> por el TIPO de la persona que cubre.
+    #  - FR/TRABAJADO -> si la persona que cubre estaba en FRANCO (F) ese día.
+    # DOBLA / ADICIONAL / ADEL/TURNO se siguen eligiendo a mano y tienen prioridad
+    # sobre la detección de franco.
     reemplazo_ids = [r.get('reemplazo_id') for r in rows if r.get('reemplazo_id')]
     tipo_por_id = {}
     if reemplazo_ids:
@@ -216,38 +243,49 @@ def _build_estado_agentes_counts(rows):
             p['id']: (p['tipo'] or '').strip().upper()
             for p in Persona.objects.filter(id__in=reemplazo_ids).values('id', 'tipo')
         }
+    franco_ids = _franco_persona_ids_for_date(fecha_obj)
 
     for row in rows:
-        # Prioridad: si el reemplazo es RETEN/CUSTODIO, se cuenta por tipo y se ignora el estado.
-        tipo_reemplazo = tipo_por_id.get(row.get('reemplazo_id'))
+        reemplazo_id = row.get('reemplazo_id')
+        # Prioridad 1: unidades especiales por TIPO del reemplazo.
+        tipo_reemplazo = tipo_por_id.get(reemplazo_id)
         if tipo_reemplazo == 'RETEN':
             counts['reten'] += 1
             continue
         if tipo_reemplazo == 'CUSTODIO':
             counts['custodio'] += 1
             continue
-
-        estado = (row.get('estado') or '').strip().upper()
-        if not estado:
+        if tipo_reemplazo == 'EVENTUAL':
+            counts['unidades_eventuales'] += 1
             continue
 
+        estado = (row.get('estado') or '').strip().upper()
+
+        # Prioridad 2: estados que SÍ se eligen a mano.
         if 'DOBL' in estado:
             counts['dobla'] += 1
             continue
+        if 'ADEL' in estado:
+            counts['adelanto_turno'] += 1
+            continue
+        if 'ADICIONAL' in estado:
+            counts['unidades_adicionales'] += 1
+            continue
+
+        # Prioridad 3: FR/TRABAJADO automático (el reemplazo estaba en franco ese día).
+        if reemplazo_id and reemplazo_id in franco_ids:
+            counts['franco_trabajados'] += 1
+            continue
+
+        # Compatibilidad con filas antiguas que tenían el estado puesto a mano.
         if 'FR/TRABAJADO' in estado or 'FRANCO' in estado:
             counts['franco_trabajados'] += 1
             continue
         if 'EVENTUAL' in estado:
             counts['unidades_eventuales'] += 1
             continue
-        if 'ADEL' in estado:
-            counts['adelanto_turno'] += 1
-            continue
         if 'RETEN' in estado:
             counts['reten'] += 1
-            continue
-        if 'ADICIONAL' in estado:
-            counts['unidades_adicionales'] += 1
             continue
         if 'CUSTODIO' in estado:
             counts['custodio'] += 1
@@ -374,7 +412,7 @@ def obtener_consolidado_resumen(request):
     reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q)
 
     manual = _build_resumen_manual(fecha_obj, turno_val, reporte_rows)
-    estados = _build_estado_agentes_counts(reporte_rows)
+    estados = _build_estado_agentes_counts(reporte_rows, fecha_obj)
     return JsonResponse({
         'manual': manual,
         'estado_agentes': estados
@@ -598,7 +636,7 @@ def exportar_consolidado_excel(request):
         data = _build_consolidado_data(fecha, turno_val, zona=zona, q=q)
         reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q)
         manual = _build_resumen_manual(fecha_obj, turno_val, reporte_rows) if turno_val else None
-        estados = _build_estado_agentes_counts(reporte_rows)
+        estados = _build_estado_agentes_counts(reporte_rows, fecha_obj)
 
         ws['A1'] = 'FECHA:'
         ws.merge_cells(start_row=1, start_column=2, end_row=1, end_column=3)
@@ -780,7 +818,7 @@ def exportar_consolidado_pdf(request):
     turno_val = turno if turno in ALLOWED_TURNOS else None
     reporte_rows = _build_reporte_asistencia_data(fecha=_parse_fecha(fecha).isoformat(), turno=turno_val, zona=zona, q=q)
     manual = _build_resumen_manual(_parse_fecha(fecha), turno_val, reporte_rows) if turno_val else None
-    estados = _build_estado_agentes_counts(reporte_rows)
+    estados = _build_estado_agentes_counts(reporte_rows, _parse_fecha(fecha))
 
     output = BytesIO()
     p = canvas.Canvas(output, pagesize=landscape(letter))
