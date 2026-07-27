@@ -152,11 +152,19 @@ export interface CantonViewsModalResult {
 
         <!-- 2) Instalaciones: chips (acumulan de varias empresas). El desplegable muestra
              las de la empresa elegida arriba; para agregar de otra, cambia la empresa. -->
-        @if (empresaActivaId != null || selectedInstalaciones.length) {
-          <div class="hint-inst">Elige las instalaciones de la empresa. Para agregar de otra empresa, cámbiala arriba.</div>
+        @if (empresaActivaId != null || selectedInstalaciones.length || selectedEmpresasToda.length) {
+          <div class="hint-inst">Elige instalaciones específicas o agrega <b>toda la empresa</b>. Cambia de empresa arriba para agregar de otra.</div>
           <mat-form-field class="w-100" appearance="outline">
             <mat-label>Instalaciones seleccionadas</mat-label>
             <mat-chip-grid #chipGridI aria-label="Seleccion de instalaciones">
+              @for (eid of selectedEmpresasToda; track eid) {
+                <mat-chip-row (removed)="removeEmpresaToda(eid)">
+                  {{ getName('cliente', eid) }} <small class="text-muted">· TODA LA EMPRESA</small>
+                  <button matChipRemove [attr.aria-label]="'Quitar ' + getName('cliente', eid)">
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                </mat-chip-row>
+              }
               @for (i of selectedInstalaciones; track i.id) {
                 <mat-chip-row (removed)="removeInstalacion(i.id)">
                   {{ i.nombre }} <small class="text-muted">· {{ getName('cliente', i.empresaId) }}</small>
@@ -167,12 +175,15 @@ export interface CantonViewsModalResult {
               }
             </mat-chip-grid>
             <input
-              [placeholder]="cargandoInstalaciones ? 'Cargando...' : (empresaActivaId == null ? 'Elige una empresa arriba' : (instalacionesActiva.length ? 'Buscar instalacion...' : 'Sin instalaciones'))"
+              [placeholder]="cargandoInstalaciones ? 'Cargando...' : (empresaActivaId == null ? 'Elige una empresa arriba' : 'Buscar instalación o (Toda la empresa)...')"
               [(ngModel)]="query"
               [matChipInputFor]="chipGridI"
               [matAutocomplete]="autoInst"
             />
-            <mat-autocomplete #autoInst="matAutocomplete" (optionSelected)="addInstalacion($event.option.value)">
+            <mat-autocomplete #autoInst="matAutocomplete" (optionSelected)="onInstOption($event.option.value)">
+              @if (empresaActivaId != null && !selectedEmpresasToda.includes(empresaActivaId)) {
+                <mat-option [value]="'__TODA__'">➤ Toda la empresa ({{ getName('cliente', empresaActivaId) }})</mat-option>
+              }
               @for (i of filteredInstalaciones; track i.id) {
                 <mat-option [value]="i.id">{{ i.nombre }}</mat-option>
               }
@@ -260,6 +271,8 @@ export class CantonViewsModalComponent {
   instalacionesActiva: { id: number; nombre: string }[] = [];  // instalaciones de la empresa activa
   // Chips: instalaciones elegidas (de una o varias empresas), con su empresa.
   selectedInstalaciones: { id: number; nombre: string; empresaId: number }[] = [];
+  // Empresas agregadas COMPLETAS ("toda la empresa", sin instalaciones específicas).
+  selectedEmpresasToda: number[] = [];
   cargandoInstalaciones = false;
   readonly tiposDisponibles = TIPOS_PERSONA;
   query = '';
@@ -389,8 +402,9 @@ export class CantonViewsModalComponent {
 
   // Carga las instalaciones de una empresa.
   //  - modo normal: las pone como opciones de la empresa activa (para elegir).
-  //  - preset (al editar): agrega como chips las instalaciones guardadas de esa empresa.
-  private cargarInstalacionesActiva(clienteId: number, preset?: number[]): void {
+  //  - esEdicion=true: repone lo guardado -> chips de las instalaciones de ESTA empresa que
+  //    estén en preset; si la empresa no tiene ninguna en preset, se marca como "toda la empresa".
+  private cargarInstalacionesActiva(clienteId: number, preset?: number[], esEdicion = false): void {
     if (!clienteId) return;
     this.cargandoInstalaciones = true;
     this.instalacionService.getInstalaciones({ cliente_id: clienteId }).subscribe({
@@ -400,19 +414,29 @@ export class CantonViewsModalComponent {
         if (this.empresaActivaId === clienteId) {
           this.instalacionesActiva = nuevas;
         }
-        // Al editar: reponer como chips las instalaciones guardadas de ESTA empresa.
-        if (preset && preset.length) {
+        if (esEdicion) {
           const validos = new Set(nuevas.map(i => i.id));
           const yaId = new Set(this.selectedInstalaciones.map(i => i.id));
-          const chips = preset
+          const chips = (preset || [])
             .filter(pid => validos.has(pid) && !yaId.has(pid))
             .map(pid => ({ id: pid, nombre: nuevas.find(n => n.id === pid)?.nombre || `INSTALACION ${pid}`, empresaId: clienteId }));
-          if (chips.length) this.selectedInstalaciones = [...this.selectedInstalaciones, ...chips];
+          if (chips.length) {
+            this.selectedInstalaciones = [...this.selectedInstalaciones, ...chips];
+          } else if (!this.selectedEmpresasToda.includes(clienteId)) {
+            // Sin instalaciones específicas de esta empresa en la vista -> toda la empresa.
+            this.selectedEmpresasToda = [...this.selectedEmpresasToda, clienteId];
+          }
         }
         this.cargandoInstalaciones = false;
       },
       error: () => { this.cargandoInstalaciones = false; }
     });
+  }
+
+  // Opción elegida del desplegable de instalaciones: instalación específica o "toda la empresa".
+  onInstOption(value: any): void {
+    if (value === '__TODA__') { this.addEmpresaToda(this.empresaActivaId); return; }
+    this.addInstalacion(value);
   }
 
   addInstalacion(id: number): void {
@@ -421,6 +445,8 @@ export class CantonViewsModalComponent {
     const inst = (this.instalacionesActiva || []).find(i => i.id === id);
     if (!inst) return;
     this.selectedInstalaciones = [...this.selectedInstalaciones, { id: inst.id, nombre: inst.nombre, empresaId: this.empresaActivaId }];
+    // Si la empresa estaba como "toda", pasa a instalaciones específicas.
+    this.selectedEmpresasToda = this.selectedEmpresasToda.filter(x => x !== this.empresaActivaId);
     this.query = '';
   }
 
@@ -428,21 +454,34 @@ export class CantonViewsModalComponent {
     this.selectedInstalaciones = this.selectedInstalaciones.filter(x => x.id !== id);
   }
 
+  // Agregar la empresa completa (toda la empresa): quita sus instalaciones específicas.
+  addEmpresaToda(eid: number | null): void {
+    if (eid == null || this.selectedEmpresasToda.includes(eid)) return;
+    this.selectedEmpresasToda = [...this.selectedEmpresasToda, eid];
+    this.selectedInstalaciones = this.selectedInstalaciones.filter(i => i.empresaId !== eid);
+    this.query = '';
+  }
+
+  removeEmpresaToda(eid: number): void {
+    this.selectedEmpresasToda = this.selectedEmpresasToda.filter(x => x !== eid);
+  }
+
   saveView(): void {
     const nombre = (this.viewName || '').trim();
     if (!nombre) return;
     if (this.tipo === 'canton' && this.selectedCantonIds.length < 1) return;
-    if (this.tipo === 'cliente' && this.selectedInstalaciones.length < 1) return;
+    if (this.tipo === 'cliente' && (this.selectedInstalaciones.length + this.selectedEmpresasToda.length) < 1) return;
     if (this.tipo === 'persona_tipo' && this.selectedTipos.length < 1) return;
 
-    // Empresas de la vista = las empresas de las instalaciones elegidas (sin repetir).
-    const empresasDeInst = Array.from(new Set(this.selectedInstalaciones.map(i => i.empresaId)));
+    // Empresas de la vista = empresas de las instalaciones elegidas + empresas "toda" (sin repetir).
+    const empresasDeInst = this.selectedInstalaciones.map(i => i.empresaId);
+    const clienteIds = Array.from(new Set([...empresasDeInst, ...this.selectedEmpresasToda]));
 
     const nueva: Omit<CantonMixView, 'id'> = {
       nombre,
       tipo: this.tipo,
       cantonIds: this.tipo === 'canton' ? [...this.selectedCantonIds] : [],
-      clienteIds: this.tipo === 'cliente' ? empresasDeInst : [],
+      clienteIds: this.tipo === 'cliente' ? clienteIds : [],
       instalacionIds: this.tipo === 'cliente' ? this.selectedInstalaciones.map(i => i.id) : [],
       tipos: this.tipo === 'persona_tipo' ? [...this.selectedTipos] : [],
     };
@@ -462,14 +501,15 @@ export class CantonViewsModalComponent {
     this.selectedCantonIds = [...(v.cantonIds || [])];
     this.selectedTipos = [...(v.tipos || [])];
     this.selectedInstalaciones = [];
+    this.selectedEmpresasToda = [];
     this.instalacionesActiva = [];
     // Empresa activa = la primera de la vista (para que el desplegable muestre sus instalaciones).
     this.empresaActivaId = (v.clienteIds && v.clienteIds.length) ? v.clienteIds[0] : null;
     this.empresaModel = this.empresaActivaId;
-    // Cargar las instalaciones de cada empresa de la vista y reponer como chips las guardadas.
+    // Reponer por empresa: chips de las instalaciones guardadas, o "toda la empresa" si no tenía.
     const preset = [...(v.instalacionIds || [])];
     for (const cid of (v.clienteIds || [])) {
-      this.cargarInstalacionesActiva(cid, preset);
+      this.cargarInstalacionesActiva(cid, preset, true);
     }
   }
 
@@ -489,6 +529,7 @@ export class CantonViewsModalComponent {
     this.empresaActivaId = null;
     this.instalacionesActiva = [];
     this.selectedInstalaciones = [];
+    this.selectedEmpresasToda = [];
     this.cargandoInstalaciones = false;
     this.query = '';
   }
