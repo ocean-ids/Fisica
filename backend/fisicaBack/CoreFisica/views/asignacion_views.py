@@ -367,8 +367,21 @@ def obtener_asignaciones(request, mes=None, anio=None):
     if cliente_id:
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
     if cliente_ids:
-        asignaciones = asignaciones.filter(cliente_id__in=cliente_ids)
-    if instalacion_ids:
+        # Vista de empresa (puede mezclar): las empresas con instalaciones específicas
+        # muestran solo esas; las empresas sin instalaciones elegidas muestran toda la empresa.
+        if instalacion_ids:
+            from ..models import Instalacion
+            _emp_con_inst = set(
+                Instalacion.objects.filter(id__in=instalacion_ids).values_list('cliente_id', flat=True)
+            )
+            _emp_toda = [c for c in cliente_ids if c not in _emp_con_inst]
+            _cond = Q(instalacion_id__in=instalacion_ids)
+            if _emp_toda:
+                _cond |= Q(cliente_id__in=_emp_toda)
+            asignaciones = asignaciones.filter(_cond)
+        else:
+            asignaciones = asignaciones.filter(cliente_id__in=cliente_ids)
+    elif instalacion_ids:
         asignaciones = asignaciones.filter(instalacion_id__in=instalacion_ids)
     if tipos:
         asignaciones = asignaciones.filter(persona__tipo__in=tipos)
@@ -1997,8 +2010,20 @@ def exportar_asignaciones_excel(request):
     def build_asignaciones(cliente_ids=None, instalacion_ids=None, canton_ids=None, tipos=None, exclude_empresa=True):
         qs = _base
         if cliente_ids:
-            qs = qs.filter(cliente_id__in=cliente_ids)
-        if instalacion_ids:
+            # Vista de empresa (puede mezclar): empresas con instalaciones específicas
+            # muestran solo esas; empresas sin instalaciones muestran toda la empresa.
+            if instalacion_ids:
+                _emp_con_inst = set(
+                    Instalacion.objects.filter(id__in=instalacion_ids).values_list('cliente_id', flat=True)
+                )
+                _emp_toda = [c for c in cliente_ids if c not in _emp_con_inst]
+                _cond = Q(instalacion_id__in=instalacion_ids)
+                if _emp_toda:
+                    _cond |= Q(cliente_id__in=_emp_toda)
+                qs = qs.filter(_cond)
+            else:
+                qs = qs.filter(cliente_id__in=cliente_ids)
+        elif instalacion_ids:
             qs = qs.filter(instalacion_id__in=instalacion_ids)
         if tipos:
             qs = qs.filter(persona__tipo__in=tipos)
