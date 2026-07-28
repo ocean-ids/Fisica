@@ -1237,7 +1237,8 @@ def historial_reporte_asistencia(request, asignacion_id):
             'estado_asistencia': _normalize_estado_asistencia(h.estado_asistencia),
             'estado': h.estado or '',
             'reemplazo': reemplazo_nombre,
-            'descripcion': h.descripcion or '',
+            # La descripción auto de sacafranco ("Cobertura SACAFRANCO AUTO ...") se muestra vacía.
+            'descripcion': '' if _is_auto_sacafranco_desc(h.descripcion) else (h.descripcion or ''),
             'row_color': h.row_color or '',
             'creado_en': h.creado_en.isoformat() if h.creado_en else None,
         })
