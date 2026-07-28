@@ -418,8 +418,14 @@ def actualizar_puesto(request, id):
                         turno_val = h.get('turno') or 'Diurno'
                         hi = h.get('hora_ingreso') or None
                         ho = h.get('hora_salida') or None
-                        PuestoHorario.objects.create(puesto=puesto, dia=dia, horas=horas, turno=turno_val,
-                                                     hora_ingreso=hi, hora_salida=ho)
+                        # update_or_create: si un día se repite entre bloques, se actualiza
+                        # (gana el último) en vez de fallar por la restricción unique (puesto, dia),
+                        # que antes abortaba todo el guardado y hacía "desaparecer" filas.
+                        PuestoHorario.objects.update_or_create(
+                            puesto=puesto, dia=dia,
+                            defaults={'horas': horas, 'turno': turno_val,
+                                      'hora_ingreso': hi, 'hora_salida': ho},
+                        )
                         horarios_payload.append({
                             'dia': dia,
                             'horas': horas,
@@ -427,8 +433,8 @@ def actualizar_puesto(request, id):
                             'hora_ingreso': hi,
                             'hora_salida': ho,
                         })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger('puestos').warning('Error guardando horarios del puesto %s: %s', id, e)
         try:
             puesto.sync_from_horarios()
             puesto.save()

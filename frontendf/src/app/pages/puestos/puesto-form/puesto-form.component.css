@@ -14,3 +14,40 @@ mat-dialog-content {
 :host-context(body.theme-dark) mat-dialog-actions {
   color: #ffffff;
 }
+
+/* Grupo de días con recuadro + etiqueta flotante, al estilo de los campos "outline". */
+.days-field {
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.38);
+  border-radius: 4px;
+  padding: 14px 12px;
+  margin-bottom: 1.34375em;   /* alinea con el espacio inferior de mat-form-field */
+}
+.days-field-label {
+  position: absolute;
+  top: -0.6em;
+  left: 8px;
+  padding: 0 4px;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.6);
+}
+.days-checks {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Sube el botón "–" para que quede centrado con los campos (que reservan espacio inferior). */
+.btn-quitar-horario {
+  margin-bottom: 0.65em;
+}
+
+:host-context(body.theme-dark) .days-field {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+:host-context(body.theme-dark) .days-field-label {
+  background: #303030;
+  color: rgba(255, 255, 255, 0.7);
+}
