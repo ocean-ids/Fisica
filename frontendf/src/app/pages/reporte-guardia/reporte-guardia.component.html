@@ -12,15 +12,18 @@
         <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
       </mat-button-toggle-group>
     </div>
-    <div class="flex-grow-1 d-flex justify-content-end" style="flex-basis:0;">
-      <button type="button" class="btn btn-outline-primary" (click)="crearApoyo()">
-        <i class="bi bi-plus-lg"></i> Crear apoyo
-      </button>
-    </div>
+    <div class="flex-grow-1" style="flex-basis:0;"></div>
   </div>
 
   <div *ngFor="let s of secciones" class="mb-4">
-    <h5 class="border-bottom pb-1 text-center fw-bold">{{ s.label }}</h5>
+    <h5 class="border-bottom pb-1 fw-bold d-flex align-items-center justify-content-center gap-2">
+      <span>{{ s.label }}</span>
+      <button *ngIf="esManual(s.key)" type="button"
+              class="btn btn-sm btn-outline-primary py-0 px-2"
+              (click)="crearManual(s.key)" [title]="'Agregar ' + s.label">
+        <i class="bi bi-plus-lg"></i>
+      </button>
+    </h5>
     <div class="table-responsive">
     <table class="table table-bordered table-sm align-middle text-center">
       <thead class="table-light">
@@ -39,7 +42,7 @@
                     (click)="editar(f)" title="Editar">
               <i class="bi bi-pencil"></i>
             </button>
-            <button *ngIf="s.key === 'APOYO'" type="button"
+            <button *ngIf="esManual(s.key)" type="button"
                     class="btn btn-sm btn-outline-danger py-0 px-2 ms-1"
                     (click)="eliminar(f)" title="Eliminar">
               <i class="bi bi-trash"></i>

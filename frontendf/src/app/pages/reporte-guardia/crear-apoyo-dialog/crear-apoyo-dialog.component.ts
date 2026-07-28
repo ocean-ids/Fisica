@@ -19,7 +19,10 @@ import { Persona } from '../../../models/persona.model';
 import { ReporteGuardia } from '../../../models/reporte-guardia.model';
 
 interface DialogData {
-  row?: ReporteGuardia;   // presente = edición
+  row?: ReporteGuardia;      // presente = edición
+  seccion?: string;          // sección (APOYO, DOBLADAS, ...); define qué campos se muestran
+  cols?: string[];           // campos editables de esa sección
+  titulo?: string;
 }
 
 @Component({
@@ -45,7 +48,15 @@ export class CrearApoyoDialogComponent implements OnInit {
   personaSel: Persona | null = null;
   proviene = '';
   motivo = '';
+  // Campos extra según la sección.
+  valor: number | null = null;
+  tipo = '';
+  autorizacion = '';
+  fechaEvento = '';   // yyyy-mm-dd
   esEdicion = false;
+  seccion = 'APOYO';
+  cols: string[] = ['cliente', 'puesto', 'persona_nombre', 'proviene', 'motivo'];
+  titulo = '';
   private editPersonaId: number | null = null;
 
   constructor(
@@ -60,9 +71,18 @@ export class CrearApoyoDialogComponent implements OnInit {
   ngOnInit(): void {
     const row = this.data?.row;
     this.esEdicion = !!row?.id;
+    this.seccion = this.data?.seccion || (row?.seccion || 'APOYO');
+    if (this.data?.cols && this.data.cols.length) { this.cols = this.data.cols; }
+    this.titulo = this.data?.titulo || (this.esEdicion ? `Editar — ${this.seccion}` : `Crear ${this.seccion.toLowerCase()}`);
+
     if (row) {
       this.motivo = row.motivo || '';
       this.proviene = row.proviene || '';
+      this.valor = (row as any).valor != null ? Number((row as any).valor) : null;
+      this.tipo = (row as any).tipo || '';
+      this.autorizacion = (row as any).autorizacion || '';
+      const fe = (row as any).fecha_evento;
+      this.fechaEvento = fe ? String(fe).slice(0, 10) : '';
       this.editPersonaId = (row as any).persona_ref ?? null;
       if (row.persona_nombre) { this.personaCtrl.setValue(row.persona_nombre); }
     }
@@ -92,6 +112,11 @@ export class CrearApoyoDialogComponent implements OnInit {
           .slice(0, 50);
       }),
     );
+  }
+
+  // ¿Se muestra este campo en esta sección?
+  muestra(campo: string): boolean {
+    return this.cols.includes(campo);
   }
 
   // Cliente -> carga sus instalaciones. En edición, ubica el puesto para preseleccionar.
@@ -151,18 +176,25 @@ export class CrearApoyoDialogComponent implements OnInit {
     const out: any = {
       cliente: cli?.nombre_comercial || '',
       puesto: pto?.nombre || '',            // solo el nombre del puesto
-      motivo: (this.motivo || '').trim(),
     };
-    if (p) {
-      out.persona_nombre = `${p.nombres} ${p.apellidos}`.trim();
-      out.persona_ref = p.id;
-      out.proviene = p.tipo || '';
-    } else {
-      // Edición sin cambiar la persona: conservar la existente.
-      out.persona_ref = this.editPersonaId;
-      out.persona_nombre = typeof this.personaCtrl.value === 'string' ? this.personaCtrl.value : '';
-      out.proviene = this.proviene || '';
+    if (this.muestra('persona_nombre')) {
+      if (p) {
+        out.persona_nombre = `${p.nombres} ${p.apellidos}`.trim();
+        out.persona_ref = p.id;
+        out.proviene = p.tipo || '';
+      } else {
+        // Sin cambiar la persona: conservar la existente.
+        out.persona_ref = this.editPersonaId;
+        out.persona_nombre = typeof this.personaCtrl.value === 'string' ? this.personaCtrl.value : '';
+        out.proviene = this.proviene || '';
+      }
     }
+    if (this.muestra('proviene') && !this.muestra('persona_nombre')) { out.proviene = this.proviene || ''; }
+    if (this.muestra('valor')) { out.valor = this.valor == null || (this.valor as any) === '' ? 0 : Number(this.valor); }
+    if (this.muestra('tipo')) { out.tipo = (this.tipo || '').trim(); }
+    if (this.muestra('autorizacion')) { out.autorizacion = (this.autorizacion || '').trim(); }
+    if (this.muestra('motivo')) { out.motivo = (this.motivo || '').trim(); }
+    if (this.muestra('fecha_evento')) { out.fecha_evento = this.fechaEvento || null; }
     this.ref.close(out);
   }
 

@@ -1,11 +1,10 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatButtonToggle, MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ReporteGuardiaService } from '../../services/reporte-guardia.service';
 import { ReporteGuardia } from '../../models/reporte-guardia.model';
 import { MatDialog } from '@angular/material/dialog';
-import { ReporteGuardiaEditDialogComponent } from './reporte-guardia-edit-dialog/reporte-guardia-edit-dialog.component';
 import { CrearApoyoDialogComponent } from './crear-apoyo-dialog/crear-apoyo-dialog.component';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { Router } from '@angular/router';
@@ -64,24 +63,29 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
     return this.editablesPorSeccion[seccion] || [];
   }
 
-  // APOYO: crear una fila manual (solo vive en el reporte de guardia).
-  crearApoyo(): void {
-    this.abrirDialogApoyo(null);
+  // Secciones que se manejan a mano (crear/editar/eliminar): APOYO y NO CUBIERTOS.
+  readonly seccionesManuales = ['APOYO', 'NO_CUBIERTOS'];
+  esManual(seccion: string): boolean { return this.seccionesManuales.includes(seccion); }
+
+  // Crear una fila manual en la sección indicada (botón "+" del encabezado).
+  crearManual(seccion: string): void {
+    this.abrirDialogEditor(null, seccion);
   }
 
-  // Crear/editar APOYO con selects (cliente, puesto) + persona filtrable.
-  private abrirDialogApoyo(row: ReporteGuardia | null): void {
+  // Crear/editar cualquier sección con selects (Cliente/Instalación/Puesto) + persona filtrable.
+  private abrirDialogEditor(row: ReporteGuardia | null, seccion: string): void {
+    const cols = this.editablesDe(seccion);
     const ref = this.dialog.open(CrearApoyoDialogComponent, {
-      width: '520px',
+      width: '560px',
       maxWidth: '95vw',
-      data: { row: row || undefined },
+      data: { row: row || undefined, seccion, cols },
     });
     ref.afterClosed().subscribe((res) => {
       if (!res) { return; }
       if (row?.id) {
         this.srv.actualizar(row.id, res).subscribe({ next: () => this.cargar(), error: () => this.cargar() });
       } else {
-        this.srv.crear({ ...res, seccion: 'APOYO', fecha: this.filtroFecha, turno: this.filtroTurno } as any).subscribe({
+        this.srv.crear({ ...res, seccion, fecha: this.filtroFecha, turno: this.filtroTurno } as any).subscribe({
           next: () => this.cargar(),
           error: () => this.cargar(),
         });
@@ -125,24 +129,9 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
 
   editar(f: ReporteGuardia): void {
     if (!f.id) { return; }
-    // APOYO se edita con el mismo formulario de selects que al crear.
-    if (f.seccion === 'APOYO') { this.abrirDialogApoyo(f); return; }
-    const editables = this.editablesDe(f.seccion);
-    if (!editables.length) { return; }
-    const sec = this.secciones.find(s => s.key === f.seccion);
-    const campos = (sec?.cols || []).filter(c => !editables.includes(c));
-    const ref = this.dialog.open(ReporteGuardiaEditDialogComponent, {
-      width: '640px',
-      maxWidth: '95vw',
-      data: { row: { ...f }, campos, editables, etiquetas: this.etiquetas },
-    });
-    ref.afterClosed().subscribe((res) => {
-      if (!res) { return; }
-      this.srv.actualizar(f.id!, res).subscribe({
-        next: () => { Object.assign(f, res); },
-        error: () => { this.cargar(); },
-      });
-    });
+    if (!this.editablesDe(f.seccion).length) { return; }
+    // Todas las secciones se editan con el formulario de selects (Cliente/Puesto/Persona).
+    this.abrirDialogEditor(f, f.seccion);
   }
 
 
