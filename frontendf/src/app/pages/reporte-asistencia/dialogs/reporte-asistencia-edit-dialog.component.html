@@ -99,7 +99,9 @@
 
 <mat-dialog-actions align="end">
   <button mat-button type="button" (click)="cancelar()" [disabled]="guardando">Cancelar</button>
-  <button mat-raised-button color="primary" type="button" (click)="guardar()" [disabled]="guardando || form.invalid">
+  <button mat-raised-button color="primary" type="button" (click)="guardar()"
+          [disabled]="guardando || form.invalid || coberturaFaltoIncompleta"
+          [title]="coberturaFaltoIncompleta ? 'FALTO: elige el estado (cómo se cubrió) y el reemplazo' : ''">
     {{ guardando ? 'Guardando...' : 'Guardar' }}
   </button>
 </mat-dialog-actions>
