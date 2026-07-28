@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>{{ esEdicion ? 'Editar apoyo' : 'Crear apoyo' }}</h2>
+<h2 mat-dialog-title>{{ titulo }}</h2>
 
 <mat-dialog-content class="apoyo-form">
   <mat-form-field appearance="outline">
@@ -24,7 +24,7 @@
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field appearance="outline">
+  <mat-form-field appearance="outline" *ngIf="muestra('persona_nombre')">
     <mat-label>Nombre y apellidos</mat-label>
     <input type="text" matInput [formControl]="personaCtrl" [matAutocomplete]="auto"
            placeholder="Selecciona o escribe para filtrar…">
@@ -36,12 +36,32 @@
     </mat-autocomplete>
   </mat-form-field>
 
-  <mat-form-field appearance="outline">
+  <mat-form-field appearance="outline" *ngIf="muestra('proviene')">
     <mat-label>Proviene (tipo)</mat-label>
     <input matInput [value]="proviene" readonly placeholder="Se toma del tipo de la persona">
   </mat-form-field>
 
-  <mat-form-field appearance="outline" class="apoyo-motivo">
+  <mat-form-field appearance="outline" *ngIf="muestra('valor')">
+    <mat-label>Valor</mat-label>
+    <input matInput type="number" step="0.01" min="0" [(ngModel)]="valor">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" *ngIf="muestra('tipo')">
+    <mat-label>Tipo</mat-label>
+    <input matInput type="text" [(ngModel)]="tipo">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" *ngIf="muestra('fecha_evento')">
+    <mat-label>Fecha</mat-label>
+    <input matInput type="date" [(ngModel)]="fechaEvento">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="apoyo-motivo" *ngIf="muestra('autorizacion')">
+    <mat-label>Autorización</mat-label>
+    <textarea matInput rows="2" [(ngModel)]="autorizacion"></textarea>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="apoyo-motivo" *ngIf="muestra('motivo')">
     <mat-label>Motivo</mat-label>
     <textarea matInput rows="2" [(ngModel)]="motivo"></textarea>
   </mat-form-field>

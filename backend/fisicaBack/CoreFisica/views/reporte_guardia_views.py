@@ -115,9 +115,8 @@ def listar_reporte_guardia(request):
     fecha = request.GET.get('fecha')
     turno = request.GET.get('turno')
     seccion = request.GET.get('seccion')
-    # Mantener NO_CUBIERTOS al dia con las vacantes de esa fecha/turno.
-    if fecha and turno in TURNOS:
-        _sync_no_cubiertos(fecha, turno)
+    # NO_CUBIERTOS ahora es MANUAL: ya no se extrae automáticamente de las asignaciones
+    # vacantes. Se crea/edita/elimina a mano desde el Reporte de Guardia.
     qs = ReporteGuardia.objects.select_related('persona_ref')
     if fecha:
         qs = qs.filter(fecha=fecha)
