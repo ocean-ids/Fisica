@@ -217,8 +217,33 @@ export class ReporteAsistenciaEditDialogComponent {
     this.dialogRef.close();
   }
 
+  // FALTO sin cobertura completa: falta elegir estado (no TURNO) o reemplazo.
+  // Mientras sea true, el botón Guardar queda deshabilitado.
+  get coberturaFaltoIncompleta(): boolean {
+    const estadoAsistencia = (this.form?.value?.estado_asistencia || '').toString().toUpperCase();
+    if (estadoAsistencia !== 'FALTO') { return false; }
+    const estado = (this.form?.value?.estado || '').toString().trim().toUpperCase();
+    const reemplazoId = this.form?.value?.reemplazo_id;
+    return !reemplazoId || !estado || estado === 'TURNO';
+  }
+
   guardar(): void {
     if (this.guardando || this.form.invalid || !this.data?.row?.asignacion_id) return;
+
+    // Si la asistencia es FALTO, exigir estado de cobertura y reemplazo antes de guardar.
+    const estadoAsistencia = (this.form.value.estado_asistencia || '').toString().toUpperCase();
+    if (estadoAsistencia === 'FALTO') {
+      const estado = (this.form.value.estado || '').toString().trim().toUpperCase();
+      const reemplazoId = this.form.value.reemplazo_id;
+      if (!reemplazoId || !estado || estado === 'TURNO') {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Completa la cobertura',
+          text: 'Como la asistencia es FALTO, debes elegir el ESTADO (cómo se cubrió: ADICIONAL, DOBLA, etc.) y el REEMPLAZO (quién cubrió) antes de guardar.',
+        });
+        return;
+      }
+    }
 
     const payload: UpdateReporteAsistenciaPayload = {
       estado: this.form.value.estado || null,
