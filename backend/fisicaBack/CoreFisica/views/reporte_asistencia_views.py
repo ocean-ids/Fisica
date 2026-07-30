@@ -444,28 +444,31 @@ def _write_excel_resumen(ws, row_idx, asistencias, faltos, border):
     return row_idx
 
 
-def _reemplazo_esta_ocupado(persona_id, fecha_reporte=None, asignacion_id_actual=None):
+def _reemplazo_esta_ocupado(persona_id, fecha_reporte=None, asignacion_id_actual=None, permitir_asignado=False):
     # Un reemplazo debe estar LIBRE ese dia. Coherente con personas_asignadas /
     # el badge DISPONIBLE: si ese dia esta en FRANCO (F) o no esta programado, esta
     # disponible aunque tenga asignacion en el mes; solo se bloquea si TRABAJA (D/N).
-    if fecha_reporte:
-        asig_ids = list(
-            Asignacion.objects.filter(persona_id=persona_id, estado='ACTIVO').filter(
-                Q(mes=fecha_reporte.month, anio=fecha_reporte.year) |
-                Q(fecha=fecha_reporte) |
-                (Q(recurring=True) & Q(start_date__lte=fecha_reporte) &
-                 (Q(end_date__isnull=True) | Q(end_date__gte=fecha_reporte)))
-            ).exclude(end_date__isnull=False, end_date__lt=fecha_reporte)
-            .values_list('id', flat=True)
-        )
-        if asig_ids:
-            dnf = _calendar_dnf_for_date(fecha_reporte)  # {asignacion_id: 'D'|'N'|'F'}
-            if any(dnf.get(aid) != 'F' for aid in asig_ids):
-                return True, 'La persona seleccionada ya tiene una asignacion activa ese dia.'
-    else:
-        # Sin fecha del reporte no se puede evaluar el dia: cualquier asignacion bloquea.
-        if Asignacion.objects.filter(persona_id=persona_id, estado='ACTIVO').exists():
-            return True, 'La persona seleccionada ya tiene una asignacion activa.'
+    # permitir_asignado=True (movimiento interno / ADICIONAL con FIJOS): se omite el
+    # bloqueo por tener asignacion activa; solo se valida el doble uso como reemplazo.
+    if not permitir_asignado:
+        if fecha_reporte:
+            asig_ids = list(
+                Asignacion.objects.filter(persona_id=persona_id, estado='ACTIVO').filter(
+                    Q(mes=fecha_reporte.month, anio=fecha_reporte.year) |
+                    Q(fecha=fecha_reporte) |
+                    (Q(recurring=True) & Q(start_date__lte=fecha_reporte) &
+                     (Q(end_date__isnull=True) | Q(end_date__gte=fecha_reporte)))
+                ).exclude(end_date__isnull=False, end_date__lt=fecha_reporte)
+                .values_list('id', flat=True)
+            )
+            if asig_ids:
+                dnf = _calendar_dnf_for_date(fecha_reporte)  # {asignacion_id: 'D'|'N'|'F'}
+                if any(dnf.get(aid) != 'F' for aid in asig_ids):
+                    return True, 'La persona seleccionada ya tiene una asignacion activa ese dia.'
+        else:
+            # Sin fecha del reporte no se puede evaluar el dia: cualquier asignacion bloquea.
+            if Asignacion.objects.filter(persona_id=persona_id, estado='ACTIVO').exists():
+                return True, 'La persona seleccionada ya tiene una asignacion activa.'
 
     if fecha_reporte:
         qs = ReporteAsistencia.objects.filter(
@@ -509,10 +512,17 @@ def _resolver_reemplazo_desde_request(request, fecha_reporte=None, asignacion_id
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    # Movimiento interno (MI): en ADICIONAL, un FIJO o RETEN puede cubrir aunque ya
+    # tenga asignacion activa (no modifica su asignacion, solo se registra la cobertura).
+    estado_req = (request.data.get('estado') or '').strip().upper()
+    tipo_persona = (persona.tipo or '').strip().upper()
+    permitir_mi = estado_req == 'ADICIONAL' and tipo_persona in ('FIJOS', 'RETEN')
+
     ocupado, motivo = _reemplazo_esta_ocupado(
         persona_id=persona.id,
         fecha_reporte=fecha_reporte,
         asignacion_id_actual=asignacion_id_actual,
+        permitir_asignado=permitir_mi,
     )
     if ocupado:
         return None, JsonResponse(

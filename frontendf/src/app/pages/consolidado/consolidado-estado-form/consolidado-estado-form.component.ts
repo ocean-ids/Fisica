@@ -57,9 +57,19 @@ export class ConsolidadoEstadoFormComponent {
     });
   }
 
+  // Apoyos automaticos (estado=APOYO del reporte); solo lectura, se suman al total.
+  get apoyosAuto(): number {
+    return this.toInt(this.data?.manual?.apoyos_auto);
+  }
+
+  // Total de apoyos = automaticos + los que agregas a mano.
+  get apoyosTotal(): number {
+    return this.apoyosAuto + this.toInt(this.form.value.apoyos);
+  }
+
   get total(): number {
     const v = this.form.value;
-    return this.toInt(v.faltas) + this.toInt(v.huecas) + this.toInt(v.apoyos)
+    return this.toInt(v.faltas) + this.toInt(v.huecas) + this.toInt(v.apoyos) + this.apoyosAuto
       + this.toInt(v.capacitacion) + this.toInt(v.apertura_puesto)
       + this.toInt(v.servicios_temporales) + this.toInt(v.servicios_adicionales)
       + this.toInt(v.aprendiendo_consignas);

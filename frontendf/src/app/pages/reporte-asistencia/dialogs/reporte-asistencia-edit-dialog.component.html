@@ -43,6 +43,14 @@
 
     <fieldset class="grupo-fila">
     <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Estado</mat-label>
+      <mat-select formControlName="estado">
+        <mat-option [value]="null">Seleccione</mat-option>
+        <mat-option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
       <mat-label>Reemplazo</mat-label>
       <input
         type="text"
@@ -65,13 +73,6 @@
         </mat-option>
         <mat-option disabled *ngIf="!getReemplazosFiltrados().length">Sin coincidencias</mat-option>
       </mat-autocomplete>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Estado</mat-label>
-      <mat-select formControlName="estado">
-        <mat-option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</mat-option>
-      </mat-select>
     </mat-form-field>
     </fieldset>
 

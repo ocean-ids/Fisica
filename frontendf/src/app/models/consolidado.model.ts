@@ -20,7 +20,8 @@ export interface ConsolidadoRow {
 export interface ConsolidadoResumenManual {
   faltas: number;
   huecas: number;
-  apoyos: number;
+  apoyos: number;         // apoyos manuales (extra)
+  apoyos_auto?: number;   // apoyos automaticos (estado=APOYO del reporte)
   capacitacion: number;
   apertura_puesto: number;
   servicios_temporales: number;

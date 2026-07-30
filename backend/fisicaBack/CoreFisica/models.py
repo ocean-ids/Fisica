@@ -1023,7 +1023,7 @@ class ReporteAsistencia(models.Model):
 
     puesto_tipo = models.CharField(max_length=50, blank=True, null=True)
 
-    estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default='TURNO')
+    estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, null=True, blank=True)
     estado_asistencia = models.CharField(
         max_length=10,
         choices=ESTADO_ASISTENCIA_CHOICES,

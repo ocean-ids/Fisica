@@ -10,4 +10,8 @@ ignore = [
     "BLE001",  # except Exception a ciegas: manejo defensivo intencional.
     "C403",    # list-comprehension pudiendo ser set-comprehension.
     "RUF015",  # next(iter(x)) en vez de x[0].
+    "S110",    # try/except/pass: manejo silencioso intencional.
+    "FURB188", # removeprefix() en vez de slice condicional.
+    "PLR1730", # max(x, 1) en vez de if.
+    "RUF059",  # variables de tuple sin usar (desempaquetado parcial).
 ]
