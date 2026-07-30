@@ -37,6 +37,8 @@ export class ReporteAsistenciaEditDialogComponent {
   readonly estadosDisponibles = ['ADICIONAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO', 'APOYO'];
   // APOYO solo se permite cuando el reemplazo es de estos tipos (se valida al guardar).
   private readonly TIPOS_APOYO = ['FIJOS', 'RETEN', 'SACAVACACIONES', 'SACAFRANCO'];
+  // Movimiento Interno (MI): en ADICIONAL, estos tipos SÍ se pueden elegir aunque ya estén asignados.
+  private readonly TIPOS_MI = ['FIJOS', 'RETEN'];
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
   readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL']);
   descripcionesComunes: string[] = [];
@@ -205,12 +207,30 @@ export class ReporteAsistenciaEditDialogComponent {
   esReemplazoOcupado(p: Persona): boolean {
     if (!p?.id) return false;
     const id = Number(p.id);
-    // ASIGNADO si ya está usado como reemplazo o si tiene asignación activa.
-    return this.reemplazosOcupadosIds.has(id) || this.personasAsignadasIds.has(id);
+    // Ya usado como reemplazo en otro registro: siempre bloqueado.
+    if (this.reemplazosOcupadosIds.has(id)) return true;
+    // Con asignación activa: bloqueado, salvo movimiento interno (ADICIONAL + FIJOS/RETEN).
+    if (this.personasAsignadasIds.has(id)) {
+      return !this.esMovimientoInternoPermitido(p);
+    }
+    return false;
   }
 
-  estadoReemplazo(p: Persona): 'ASIGNADO' | 'DISPONIBLE' {
-    return this.esReemplazoOcupado(p) ? 'ASIGNADO' : 'DISPONIBLE';
+  // Movimiento interno (MI): en ADICIONAL, un FIJO o RETEN ya asignado SÍ puede cubrir.
+  esMovimientoInternoPermitido(p: Persona): boolean {
+    const estado = (this.form?.value?.estado || '').toString().toUpperCase();
+    const tipo = (p?.tipo || '').toString().toUpperCase();
+    return estado === 'ADICIONAL' && this.TIPOS_MI.includes(tipo);
+  }
+
+  estadoReemplazo(p: Persona): 'ASIGNADO' | 'DISPONIBLE' | 'MI' {
+    if (!p?.id) return 'DISPONIBLE';
+    const id = Number(p.id);
+    if (this.reemplazosOcupadosIds.has(id)) return 'ASIGNADO';
+    if (this.personasAsignadasIds.has(id)) {
+      return this.esMovimientoInternoPermitido(p) ? 'MI' : 'ASIGNADO';
+    }
+    return 'DISPONIBLE';
   }
 
   private normalizeText(value: string | null | undefined): string {
