@@ -69,7 +69,7 @@
 
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Estado</mat-label>
-      <mat-select formControlName="estado" [disabled]="guardando">
+      <mat-select formControlName="estado">
         <mat-option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</mat-option>
       </mat-select>
     </mat-form-field>
