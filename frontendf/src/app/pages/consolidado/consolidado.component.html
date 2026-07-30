@@ -110,7 +110,7 @@
           </tr>
           <tr>
             <td>APOYOS</td>
-            <td>{{ resumenManual.apoyos }}</td>
+            <td>{{ (resumenManual.apoyos || 0) + (resumenManual.apoyos_auto || 0) }}</td>
           </tr>
           <tr>
             <td>CAPACITACION</td>
