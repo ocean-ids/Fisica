@@ -34,7 +34,9 @@ export class ReporteAsistenciaEditDialogComponent {
   // RETEN y CUSTODIO se retiraron: se cuentan en el consolidado por el TIPO del reemplazo.
   // EVENTUAL se retiró: se cuenta solo (por el tipo del reemplazo).
   // FR/TRABAJADO SÍ es manual (se elige aquí y se autocompleta si el reemplazo está en franco).
-  readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO'];
+  readonly estadosDisponibles = ['TURNO', 'ADICIONAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO', 'APOYO'];
+  // APOYO solo se permite cuando el reemplazo es de estos tipos (se valida al guardar).
+  private readonly TIPOS_APOYO = ['FIJOS', 'RETEN', 'SACAVACACIONES', 'SACAFRANCO'];
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
   readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL']);
   descripcionesComunes: string[] = [];
@@ -95,8 +97,39 @@ export class ReporteAsistenciaEditDialogComponent {
       }
     });
 
+    // Estado y Reemplazo solo se habilitan cuando la asistencia es FALTO.
+    // Inicial: solo bloquea/habilita (sin limpiar, para no borrar datos existentes al abrir).
+    this.aplicarBloqueoAsistencia(this.form.get('estado_asistencia')?.value, false);
+    // Cambio del usuario: si pasa a NO FALTO, además limpia estado y reemplazo.
+    this.form.get('estado_asistencia')?.valueChanges.subscribe((v) => {
+      this.aplicarBloqueoAsistencia(v, true);
+    });
+
     this.cargarReemplazos();
     this.cargarDescripciones();
+  }
+
+  // Habilita Estado y Reemplazo solo si la asistencia es FALTO.
+  // Si no es FALTO: los deshabilita (y, si el usuario lo cambió, los limpia).
+  private aplicarBloqueoAsistencia(estadoAsistencia: any, limpiar = false): void {
+    const esFalto = (estadoAsistencia || '').toString().toUpperCase() === 'FALTO';
+    const estadoCtrl = this.form.get('estado');
+    const reemplazoIdCtrl = this.form.get('reemplazo_id');
+
+    if (esFalto) {
+      estadoCtrl?.enable({ emitEvent: false });
+      reemplazoIdCtrl?.enable({ emitEvent: false });
+      this.reemplazoCtrl.enable({ emitEvent: false });
+    } else {
+      if (limpiar) {
+        estadoCtrl?.setValue('TURNO', { emitEvent: false });
+        reemplazoIdCtrl?.setValue(null, { emitEvent: false });
+        this.reemplazoCtrl.setValue('', { emitEvent: false });
+      }
+      estadoCtrl?.disable({ emitEvent: false });
+      reemplazoIdCtrl?.disable({ emitEvent: false });
+      this.reemplazoCtrl.disable({ emitEvent: false });
+    }
   }
 
   private cargarDescripciones(): void {
@@ -198,14 +231,20 @@ export class ReporteAsistenciaEditDialogComponent {
   }
 
   getReemplazosFiltrados(): Persona[] {
+    // Si el estado es APOYO, solo se permiten reemplazos FIJOS/RETEN/SACAVACACIONES/SACAFRANCO.
+    let base = this.reemplazos;
+    if ((this.form?.value?.estado || '').toString().toUpperCase() === 'APOYO') {
+      base = base.filter(p => this.TIPOS_APOYO.includes((p.tipo || '').toString().toUpperCase()));
+    }
+
     const currentValue = this.reemplazoCtrl.value;
     const query = typeof currentValue === 'string'
       ? currentValue
       : (currentValue ? this.getNombrePersona(currentValue) : '');
     const q = this.normalizeText(query);
-    if (!q) return this.reemplazos;
+    if (!q) return base;
 
-    return this.reemplazos.filter((p) => {
+    return base.filter((p) => {
       const fullName = this.normalizeText(`${p.apellidos || ''} ${p.nombres || ''}`);
       const tipo = this.normalizeText(p.tipo || '');
       return fullName.includes(q) || tipo.includes(q);
@@ -215,6 +254,14 @@ export class ReporteAsistenciaEditDialogComponent {
   cancelar(): void {
     if (this.guardando) return;
     this.dialogRef.close();
+  }
+
+  // Tipo de la persona elegida como reemplazo.
+  get reemplazoTipo(): string {
+    const id = this.form?.value?.reemplazo_id;
+    if (!id) { return ''; }
+    const p = this.reemplazos.find(x => x.id === Number(id));
+    return (p?.tipo || '').toString().toUpperCase();
   }
 
   // FALTO sin cobertura completa: falta elegir estado (no TURNO) o reemplazo.
@@ -230,11 +277,14 @@ export class ReporteAsistenciaEditDialogComponent {
   guardar(): void {
     if (this.guardando || this.form.invalid || !this.data?.row?.asignacion_id) return;
 
+    // getRawValue incluye los controles deshabilitados (estado/reemplazo cuando NO es FALTO).
+    const raw = this.form.getRawValue();
+
     // Si la asistencia es FALTO, exigir estado de cobertura y reemplazo antes de guardar.
-    const estadoAsistencia = (this.form.value.estado_asistencia || '').toString().toUpperCase();
+    const estadoAsistencia = (raw.estado_asistencia || '').toString().toUpperCase();
     if (estadoAsistencia === 'FALTO') {
-      const estado = (this.form.value.estado || '').toString().trim().toUpperCase();
-      const reemplazoId = this.form.value.reemplazo_id;
+      const estado = (raw.estado || '').toString().trim().toUpperCase();
+      const reemplazoId = raw.reemplazo_id;
       if (!reemplazoId || !estado || estado === 'TURNO') {
         Swal.fire({
           icon: 'warning',
@@ -245,11 +295,22 @@ export class ReporteAsistenciaEditDialogComponent {
       }
     }
 
+    // APOYO solo se permite si el reemplazo es FIJOS/RETEN/SACAVACACIONES/SACAFRANCO.
+    if ((raw.estado || '').toString().toUpperCase() === 'APOYO'
+        && !this.TIPOS_APOYO.includes(this.reemplazoTipo)) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Reemplazo no válido para APOYO',
+        text: 'El estado APOYO solo aplica cuando el reemplazo es FIJOS, RETEN, SACAVACACIONES o SACAFRANCO.',
+      });
+      return;
+    }
+
     const payload: UpdateReporteAsistenciaPayload = {
-      estado: this.form.value.estado || null,
-      estado_asistencia: this.form.value.estado_asistencia || null,
-      reemplazo_id: this.form.value.reemplazo_id === '' ? null : this.form.value.reemplazo_id,
-      descripcion: this.form.value.descripcion === '' ? null : this.form.value.descripcion,
+      estado: raw.estado || null,
+      estado_asistencia: raw.estado_asistencia || null,
+      reemplazo_id: raw.reemplazo_id === '' ? null : raw.reemplazo_id,
+      descripcion: raw.descripcion === '' ? null : raw.descripcion,
       fecha: this.data?.fecha || null
     };
 

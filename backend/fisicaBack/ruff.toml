@@ -1,0 +1,13 @@
+# Configuración de Ruff para el backend.
+[lint]
+# Reglas de estilo que dan falsos positivos / ruido con el patrón habitual de Django.
+# Ninguna corresponde a un error real (manage.py check pasa limpio).
+ignore = [
+    "RUF012",  # Mutable default en atributo de clase (choices, Meta.permissions/indexes/ordering).
+    "I001",    # Orden de imports (lo maneja el editor al guardar).
+    "DTZ011",  # date.today() sin timezone: patrón normal en el proyecto.
+    "B005",    # strip() con varios caracteres.
+    "BLE001",  # except Exception a ciegas: manejo defensivo intencional.
+    "C403",    # list-comprehension pudiendo ser set-comprehension.
+    "RUF015",  # next(iter(x)) en vez de x[0].
+]
