@@ -63,9 +63,35 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
     return this.editablesPorSeccion[seccion] || [];
   }
 
-  // Secciones que se manejan a mano (crear/editar/eliminar): APOYO y NO CUBIERTOS.
-  readonly seccionesManuales = ['APOYO', 'NO_CUBIERTOS'];
+  // Todas las secciones se manejan a mano (crear/editar/eliminar). Los datos de
+  // asistencia se traen bajo demanda con "Regenerar desde asistencia".
+  readonly seccionesManuales = ['DOBLADAS', 'ADICIONALES', 'ADELANTOS', 'NO_CUBIERTOS', 'FALTOS', 'HUECA', 'APOYO'];
   esManual(seccion: string): boolean { return this.seccionesManuales.includes(seccion); }
+
+  // Trae bajo demanda faltos/dobladas/adicionales/huecas desde la asistencia del día.
+  regenerar(): void {
+    Swal.fire({
+      title: '¿Regenerar desde asistencia?',
+      text: 'Se vuelven a traer los faltos, dobladas, adicionales y huecas desde la asistencia de este día. Reemplaza esas filas automáticas (tus filas manuales se conservan).',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, regenerar',
+      cancelButtonText: 'Cancelar',
+    }).then((r) => {
+      if (!r.isConfirmed) { return; }
+      this.loading = true;
+      this.srv.regenerar(this.filtroFecha).subscribe({
+        next: () => {
+          this.cargar();
+          Swal.fire({ icon: 'success', title: 'Regenerado', timer: 1200, showConfirmButton: false });
+        },
+        error: () => {
+          this.loading = false;
+          Swal.fire({ icon: 'error', title: 'No se pudo regenerar' });
+        },
+      });
+    });
+  }
 
   // Crear una fila manual en la sección indicada (botón "+" del encabezado).
   crearManual(seccion: string): void {
@@ -93,11 +119,11 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
     });
   }
 
-  // APOYO: eliminar una fila manual.
+  // Eliminar una fila (cualquier sección).
   eliminar(f: ReporteGuardia): void {
     if (!f.id) { return; }
     Swal.fire({
-      title: '¿Eliminar apoyo?',
+      title: '¿Eliminar registro?',
       text: `${f.puesto || ''} ${f.persona_nombre || ''}`.trim(),
       icon: 'warning',
       showCancelButton: true,

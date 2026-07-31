@@ -19,4 +19,5 @@ export class ReporteGuardiaService {
   crear(data: ReporteGuardia): Observable<ReporteGuardia> { return this.api.post('/reporte-guardia/crear/', data); }
   actualizar(id: number, data: Partial<ReporteGuardia>): Observable<ReporteGuardia> { return this.api.put(`/reporte-guardia/${id}/`, data); }
   eliminar(id: number): Observable<any> { return this.api.delete(`/reporte-guardia/${id}/eliminar/`); }
+  regenerar(fecha: string): Observable<any> { return this.api.post('/reporte-guardia/regenerar/', { fecha }); }
 }
