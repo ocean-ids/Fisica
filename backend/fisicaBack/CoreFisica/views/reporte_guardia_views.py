@@ -164,3 +164,33 @@ def eliminar_reporte_guardia(request, id):
     fila = get_object_or_404(ReporteGuardia, id=id)
     fila.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def regenerar_reporte_guardia(request):
+    """Regenera BAJO DEMANDA las filas auto del reporte de guardia desde la
+    asistencia de una fecha (faltos, dobladas, adicionales, adelantos, huecas).
+    Vuelve a traer esas filas desde la asistencia y reaplica las ediciones a mano;
+    las filas MANUALES (auto=False) no se tocan. Se dispara con el boton
+    'Regenerar desde asistencia' del Reporte de Guardia."""
+    fecha = request.data.get('fecha') or request.GET.get('fecha')
+    try:
+        fecha_obj = fecha if isinstance(fecha, datetime.date) else datetime.date.fromisoformat(str(fecha))
+    except (TypeError, ValueError):
+        return Response({'error': 'fecha invalida'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from .reporte_asistencia_views import _sync_reporte_guardia
+    from ..models import ReporteAsistencia
+
+    overrides = ReporteAsistencia.objects.select_related('asignacion').filter(
+        fecha_reporte=fecha_obj, asignacion__estado='ACTIVO'
+    )
+    for ov in overrides:
+        if not ov.asignacion:
+            continue
+        try:
+            _sync_reporte_guardia(ov, ov.asignacion, fecha_obj)
+        except Exception:
+            pass
+    return Response({'ok': True})

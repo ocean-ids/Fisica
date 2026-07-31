@@ -1183,11 +1183,10 @@ def insertar_reporte_asistencia(request, asignacion_id):
     except Exception:
         pass
 
-    # Reflejar en el reporte de guardia según el estado/asistencia.
-    try:
-        _sync_reporte_guardia(override, asignacion, override.fecha_reporte)
-    except Exception:
-        pass
+    # El reporte de guardia YA NO se sincroniza automaticamente al guardar la
+    # asistencia. Ahora se regenera bajo demanda con el boton "Regenerar desde
+    # asistencia" (endpoint regenerar_reporte_guardia), para que las correcciones
+    # manuales del reporte de guardia no se pisen solas.
 
     modificado_por_nombre = ''
     if override.modificado_por:

@@ -30,6 +30,7 @@ from .views.reporte_vacaciones_views import (
 from .views.reporte_guardia_views import (
     listar_reporte_guardia, crear_reporte_guardia,
     actualizar_reporte_guardia, eliminar_reporte_guardia,
+    regenerar_reporte_guardia,
 )
 from .views.reporte_pago_views import (
     listar_reporte_pago, actualizar_reporte_pago, resumen_mensual_reporte_pago,
@@ -140,6 +141,7 @@ urlpatterns = [
     path('reporte-asistencia/exportar-pdf/', exportar_reporte_asistencia_pdf, name='reporte-asistencia-pdf'),
     path('reporte-guardia/', listar_reporte_guardia, name='reporte-guardia'),
     path('reporte-guardia/crear/', crear_reporte_guardia, name='reporte-guardia-crear'),
+    path('reporte-guardia/regenerar/', regenerar_reporte_guardia, name='reporte-guardia-regenerar'),
     path('reporte-guardia/<int:id>/', actualizar_reporte_guardia, name='reporte-guardia-actualizar'),
     path('reporte-guardia/<int:id>/eliminar/', eliminar_reporte_guardia, name='reporte-guardia-eliminar'),
     path('reporte-pago/', listar_reporte_pago, name='reporte-pago'),

@@ -12,7 +12,12 @@
         <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
       </mat-button-toggle-group>
     </div>
-    <div class="flex-grow-1" style="flex-basis:0;"></div>
+    <div class="flex-grow-1 d-flex justify-content-end" style="flex-basis:0;">
+      <button type="button" class="btn btn-sm btn-outline-success" (click)="regenerar()" [disabled]="loading"
+              title="Traer faltos, dobladas, adicionales y huecas desde la asistencia de este día">
+        <i class="bi bi-arrow-repeat"></i> Regenerar desde asistencia
+      </button>
+    </div>
   </div>
 
   <div *ngFor="let s of secciones" class="mb-4">
