@@ -266,10 +266,6 @@ def _build_resumen_manual(fecha_obj, turno_val, reporte_rows):
     if not turno_val:
         return None
     faltas_auto = _count_faltas_from_reporte(reporte_rows)
-    apoyos_auto = sum(
-        1 for r in reporte_rows
-        if (r.get('estado') or '').strip().upper() == 'APOYO'
-    )
     resumen, created = ConsolidadoResumen.objects.get_or_create(
         fecha=fecha_obj,
         turno=turno_val,
@@ -281,8 +277,7 @@ def _build_resumen_manual(fecha_obj, turno_val, reporte_rows):
     data = {
         'faltas': resumen.faltas,
         'huecas': resumen.huecas,
-        'apoyos': resumen.apoyos,            # apoyos manuales (extra)
-        'apoyos_auto': apoyos_auto,          # apoyos automaticos (estado=APOYO del reporte)
+        'apoyos': resumen.apoyos,
         'capacitacion': resumen.capacitacion,
         'apertura_puesto': resumen.apertura_puesto,
         'servicios_temporales': resumen.servicios_temporales,
@@ -717,7 +712,7 @@ def exportar_consolidado_excel(request):
             row_idx += 1
             row_idx = write_summary_row(row_idx, 'FALTOS', manual['faltas'])
             row_idx = write_summary_row(row_idx, 'HUECAS', manual['huecas'])
-            row_idx = write_summary_row(row_idx, 'APOYOS', manual['apoyos'] + manual.get('apoyos_auto', 0))
+            row_idx = write_summary_row(row_idx, 'APOYOS', manual['apoyos'])
             row_idx = write_summary_row(row_idx, 'CAPACITACION', manual['capacitacion'])
             row_idx = write_summary_row(row_idx, 'APERTURA DE PUESTO', manual['apertura_puesto'])
             row_idx = write_summary_row(row_idx, 'SERVICIOS TEMPORALES', manual['servicios_temporales'])
@@ -900,7 +895,7 @@ def exportar_consolidado_pdf(request):
         p.drawRightString(x_margin + 2.8 * inch, y, str(manual['huecas']))
         y -= 0.18 * inch
         p.drawString(x_margin, y, 'APOYOS')
-        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['apoyos'] + manual.get('apoyos_auto', 0)))
+        p.drawRightString(x_margin + 2.8 * inch, y, str(manual['apoyos']))
         y -= 0.18 * inch
         p.drawString(x_margin, y, 'CAPACITACION')
         p.drawRightString(x_margin + 2.8 * inch, y, str(manual['capacitacion']))

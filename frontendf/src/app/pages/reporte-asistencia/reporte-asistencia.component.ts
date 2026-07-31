@@ -46,7 +46,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   filtroClienteId = '';
   filtroFechaDisplay = '';
   filtroTurno = '';
-  filtroZona = 'Zona 1';
+  filtroZona = '';
 
   readonly zonaOpciones = ['', 'Zona 1', 'Zona 2', 'Zona 3'];
   readonly pageSizeOptions = [25, 50, 100];

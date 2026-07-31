@@ -512,17 +512,14 @@ def _resolver_reemplazo_desde_request(request, fecha_reporte=None, asignacion_id
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Movimiento interno (MI): en ADICIONAL, un FIJO o RETEN puede cubrir aunque ya
-    # tenga asignacion activa (no modifica su asignacion, solo se registra la cobertura).
-    estado_req = (request.data.get('estado') or '').strip().upper()
-    tipo_persona = (persona.tipo or '').strip().upper()
-    permitir_mi = estado_req == 'ADICIONAL' and tipo_persona in ('FIJOS', 'RETEN')
-
+    # Se permite elegir como reemplazo a alguien con asignacion activa (movimiento
+    # interno, para cualquier estado); no modifica su asignacion, solo registra la
+    # cobertura. Solo se valida que no este ya usado como reemplazo en otro registro.
     ocupado, motivo = _reemplazo_esta_ocupado(
         persona_id=persona.id,
         fecha_reporte=fecha_reporte,
         asignacion_id_actual=asignacion_id_actual,
-        permitir_asignado=permitir_mi,
+        permitir_asignado=True,
     )
     if ocupado:
         return None, JsonResponse(
