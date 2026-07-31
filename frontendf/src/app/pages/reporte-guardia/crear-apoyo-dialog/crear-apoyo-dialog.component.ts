@@ -7,6 +7,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { provideNativeDateAdapter } from '@angular/material/core';
 import { Observable } from 'rxjs';
 import { debounceTime, startWith, map } from 'rxjs/operators';
 import { ClienteService } from '../../../services/cliente.service';
@@ -31,7 +33,9 @@ interface DialogData {
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatAutocompleteModule, MatButtonModule,
+    MatDatepickerModule,
   ],
+  providers: [provideNativeDateAdapter()],
   templateUrl: './crear-apoyo-dialog.component.html',
   styleUrl: './crear-apoyo-dialog.component.css',
 })
@@ -55,7 +59,7 @@ export class CrearApoyoDialogComponent implements OnInit {
   valor: number | null = null;
   tipo = '';
   autorizacion = '';
-  fechaEvento = '';   // yyyy-mm-dd
+  fechaEventoDate: Date | null = null;   // valor del datepicker
   esEdicion = false;
   seccion = 'APOYO';
   cols: string[] = ['cliente', 'puesto', 'persona_nombre', 'proviene', 'motivo'];
@@ -85,7 +89,7 @@ export class CrearApoyoDialogComponent implements OnInit {
       this.tipo = (row as any).tipo || '';
       this.autorizacion = (row as any).autorizacion || '';
       const fe = (row as any).fecha_evento;
-      this.fechaEvento = fe ? String(fe).slice(0, 10) : '';
+      this.fechaEventoDate = fe ? this.parseYMD(String(fe).slice(0, 10)) : null;
       this.editPersonaId = (row as any).persona_ref ?? null;
       if (row.persona_nombre) { this.personaCtrl.setValue(row.persona_nombre); }
     }
@@ -223,6 +227,20 @@ export class CrearApoyoDialogComponent implements OnInit {
     this.proviene = p?.tipo || '';
   }
 
+  // Tope del datepicker (HUECA): no se permiten fechas futuras, solo pasadas y hoy.
+  hoyDate: Date = new Date();
+
+  private parseYMD(s: string): Date | null {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '');
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+  }
+
+  private fmtYMD(d: Date | null): string | null {
+    if (!d) { return null; }
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
   get valido(): boolean {
     return !!this.clienteId && !!this.instalacionId && !!this.puestoId;
   }
@@ -252,7 +270,7 @@ export class CrearApoyoDialogComponent implements OnInit {
     if (this.muestra('tipo')) { out.tipo = (this.tipo || '').trim(); }
     if (this.muestra('autorizacion')) { out.autorizacion = (this.autorizacion || '').trim(); }
     if (this.muestra('motivo')) { out.motivo = (this.motivo || '').trim(); }
-    if (this.muestra('fecha_evento')) { out.fecha_evento = this.fechaEvento || null; }
+    if (this.muestra('fecha_evento')) { out.fecha_evento = this.fmtYMD(this.fechaEventoDate); }
     this.ref.close(out);
   }
 

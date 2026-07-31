@@ -65,7 +65,10 @@
 
   <mat-form-field appearance="outline" *ngIf="muestra('fecha_evento')">
     <mat-label>Fecha</mat-label>
-    <input matInput type="date" [(ngModel)]="fechaEvento">
+    <input matInput [matDatepicker]="pickerFecha" [(ngModel)]="fechaEventoDate" [max]="hoyDate"
+           readonly (click)="pickerFecha.open()" placeholder="dd/mm/aaaa">
+    <mat-datepicker-toggle matIconSuffix [for]="pickerFecha"></mat-datepicker-toggle>
+    <mat-datepicker #pickerFecha></mat-datepicker>
   </mat-form-field>
 
   <mat-form-field appearance="outline" class="apoyo-motivo" *ngIf="muestra('autorizacion')">
