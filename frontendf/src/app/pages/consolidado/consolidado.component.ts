@@ -34,7 +34,6 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
     faltas: 0,
     huecas: 0,
     apoyos: 0,
-    apoyos_auto: 0,
     capacitacion: 0,
     apertura_puesto: 0,
     servicios_temporales: 0,
@@ -399,7 +398,6 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
     return this.toInt(this.resumenManual.faltas)
       + this.toInt(this.resumenManual.huecas)
       + this.toInt(this.resumenManual.apoyos)
-      + this.toInt(this.resumenManual.apoyos_auto)
       + this.toInt(this.resumenManual.capacitacion)
       + this.toInt(this.resumenManual.apertura_puesto)
       + this.toInt(this.resumenManual.servicios_temporales)
@@ -427,7 +425,6 @@ export class ConsolidadoComponent implements OnInit, OnDestroy {
       faltas: 0,
       huecas: 0,
       apoyos: 0,
-      apoyos_auto: 0,
       capacitacion: 0,
       apertura_puesto: 0,
       servicios_temporales: 0,

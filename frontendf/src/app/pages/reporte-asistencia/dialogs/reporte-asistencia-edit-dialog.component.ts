@@ -34,11 +34,7 @@ export class ReporteAsistenciaEditDialogComponent {
   // RETEN y CUSTODIO se retiraron: se cuentan en el consolidado por el TIPO del reemplazo.
   // EVENTUAL se retiró: se cuenta solo (por el tipo del reemplazo).
   // FR/TRABAJADO SÍ es manual (se elige aquí y se autocompleta si el reemplazo está en franco).
-  readonly estadosDisponibles = ['ADICIONAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO', 'APOYO'];
-  // APOYO solo se permite cuando el reemplazo es de estos tipos (se valida al guardar).
-  private readonly TIPOS_APOYO = ['FIJOS', 'RETEN', 'SACAVACACIONES', 'SACAFRANCO'];
-  // Movimiento Interno (MI): en ADICIONAL, estos tipos SÍ se pueden elegir aunque ya estén asignados.
-  private readonly TIPOS_MI = ['FIJOS', 'RETEN'];
+  readonly estadosDisponibles = ['ADICIONAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO'];
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
   readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL']);
   descripcionesComunes: string[] = [];
@@ -206,31 +202,25 @@ export class ReporteAsistenciaEditDialogComponent {
 
   esReemplazoOcupado(p: Persona): boolean {
     if (!p?.id) return false;
-    const id = Number(p.id);
-    // Ya usado como reemplazo en otro registro: siempre bloqueado.
-    if (this.reemplazosOcupadosIds.has(id)) return true;
-    // Con asignación activa: bloqueado, salvo movimiento interno (ADICIONAL + FIJOS/RETEN).
-    if (this.personasAsignadasIds.has(id)) {
-      return !this.esMovimientoInternoPermitido(p);
-    }
-    return false;
+    // Solo se bloquea si ya está usado como reemplazo en OTRO registro del reporte.
+    // Tener asignación activa (puesto) YA NO bloquea: se puede elegir (movimiento interno).
+    return this.reemplazosOcupadosIds.has(Number(p.id));
   }
 
-  // Movimiento interno (MI): en ADICIONAL, un FIJO o RETEN ya asignado SÍ puede cubrir.
-  esMovimientoInternoPermitido(p: Persona): boolean {
-    const estado = (this.form?.value?.estado || '').toString().toUpperCase();
-    const tipo = (p?.tipo || '').toString().toUpperCase();
-    return estado === 'ADICIONAL' && this.TIPOS_MI.includes(tipo);
-  }
-
-  estadoReemplazo(p: Persona): 'ASIGNADO' | 'DISPONIBLE' | 'MI' {
+  estadoReemplazo(p: Persona): 'DISPONIBLE' | 'ASIGNADO' | 'EN USO' {
     if (!p?.id) return 'DISPONIBLE';
     const id = Number(p.id);
-    if (this.reemplazosOcupadosIds.has(id)) return 'ASIGNADO';
-    if (this.personasAsignadasIds.has(id)) {
-      return this.esMovimientoInternoPermitido(p) ? 'MI' : 'ASIGNADO';
-    }
+    if (this.reemplazosOcupadosIds.has(id)) return 'EN USO';    // ya es reemplazo en otro registro (bloqueado)
+    if (this.personasAsignadasIds.has(id)) return 'ASIGNADO';   // tiene puesto, pero se puede elegir
     return 'DISPONIBLE';
+  }
+
+  // Color del badge según el estado del reemplazo.
+  colorReemplazo(p: Persona): string {
+    const e = this.estadoReemplazo(p);
+    if (e === 'EN USO') return '#dc3545';    // rojo: bloqueado (ya es reemplazo)
+    if (e === 'ASIGNADO') return '#d97706';  // ámbar: asignado pero elegible
+    return '#198754';                        // verde: disponible
   }
 
   private normalizeText(value: string | null | undefined): string {
@@ -272,12 +262,8 @@ export class ReporteAsistenciaEditDialogComponent {
   }
 
   getReemplazosFiltrados(): Persona[] {
-    // Si el estado es APOYO, solo se permiten reemplazos FIJOS/RETEN/SACAVACACIONES/SACAFRANCO.
     let base = this.reemplazos;
     const estadoActual = (this.form?.value?.estado || '').toString().toUpperCase();
-    if (estadoActual === 'APOYO') {
-      base = base.filter(p => this.TIPOS_APOYO.includes((p.tipo || '').toString().toUpperCase()));
-    }
     // En ADICIONAL el reemplazo no puede ser EVENTUAL.
     if (estadoActual === 'ADICIONAL') {
       base = base.filter(p => (p.tipo || '').toString().toUpperCase() !== 'EVENTUAL');
@@ -339,17 +325,6 @@ export class ReporteAsistenciaEditDialogComponent {
         });
         return;
       }
-    }
-
-    // APOYO solo se permite si el reemplazo es FIJOS/RETEN/SACAVACACIONES/SACAFRANCO.
-    if ((raw.estado || '').toString().toUpperCase() === 'APOYO'
-        && !this.TIPOS_APOYO.includes(this.reemplazoTipo)) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Reemplazo no válido para APOYO',
-        text: 'El estado APOYO solo aplica cuando el reemplazo es FIJOS, RETEN, SACAVACACIONES o SACAFRANCO.',
-      });
-      return;
     }
 
     // ADICIONAL no puede tener un reemplazo EVENTUAL.
