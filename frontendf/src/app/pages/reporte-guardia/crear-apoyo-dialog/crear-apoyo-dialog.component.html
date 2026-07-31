@@ -3,25 +3,37 @@
 <mat-dialog-content class="apoyo-form">
   <mat-form-field appearance="outline">
     <mat-label>Cliente</mat-label>
-    <mat-select [(ngModel)]="clienteId" (selectionChange)="onCliente()">
-      <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
-    </mat-select>
+    <input type="text" matInput [formControl]="clienteCtrl" [matAutocomplete]="autoCli"
+           placeholder="Escribe para filtrar cliente…">
+    <mat-autocomplete #autoCli="matAutocomplete" [displayWith]="displayCliente"
+                      (optionSelected)="onClienteSel($event.option.value)">
+      <mat-option *ngFor="let c of clientesFiltrados()" [value]="c">{{ c.nombre_comercial }}</mat-option>
+      <mat-option disabled *ngIf="!clientesFiltrados().length">Sin coincidencias</mat-option>
+    </mat-autocomplete>
   </mat-form-field>
 
   <mat-form-field appearance="outline">
     <mat-label>Instalación</mat-label>
-    <mat-select [(ngModel)]="instalacionId" (selectionChange)="onInstalacion()" [disabled]="!clienteId">
-      <mat-option *ngFor="let i of instalaciones" [value]="i.id">
+    <input type="text" matInput [formControl]="instalacionCtrl" [matAutocomplete]="autoInst"
+           [readonly]="!clienteId" placeholder="Escribe para filtrar instalación…">
+    <mat-autocomplete #autoInst="matAutocomplete" [displayWith]="displayInstalacion"
+                      (optionSelected)="onInstalacionSel($event.option.value)">
+      <mat-option *ngFor="let i of instalacionesFiltradas()" [value]="i">
         {{ i.nombre }}<span *ngIf="i.codigo"> ({{ i.codigo }})</span>
       </mat-option>
-    </mat-select>
+      <mat-option disabled *ngIf="clienteId && !instalacionesFiltradas().length">Sin coincidencias</mat-option>
+    </mat-autocomplete>
   </mat-form-field>
 
   <mat-form-field appearance="outline">
     <mat-label>Puesto</mat-label>
-    <mat-select [(ngModel)]="puestoId" [disabled]="!instalacionId">
-      <mat-option *ngFor="let p of puestos" [value]="p.id">{{ p.nombre }}</mat-option>
-    </mat-select>
+    <input type="text" matInput [formControl]="puestoCtrl" [matAutocomplete]="autoPue"
+           [readonly]="!instalacionId" placeholder="Escribe para filtrar puesto…">
+    <mat-autocomplete #autoPue="matAutocomplete" [displayWith]="displayPuesto"
+                      (optionSelected)="onPuestoSel($event.option.value)">
+      <mat-option *ngFor="let p of puestosFiltrados()" [value]="p">{{ p.nombre }}</mat-option>
+      <mat-option disabled *ngIf="instalacionId && !puestosFiltrados().length">Sin coincidencias</mat-option>
+    </mat-autocomplete>
   </mat-form-field>
 
   <mat-form-field appearance="outline" *ngIf="muestra('persona_nombre')">

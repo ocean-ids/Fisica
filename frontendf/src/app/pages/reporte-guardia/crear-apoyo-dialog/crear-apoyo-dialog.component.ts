@@ -43,6 +43,9 @@ export class CrearApoyoDialogComponent implements OnInit {
   clienteId: number | null = null;
   instalacionId: number | null = null;
   puestoId: number | null = null;
+  clienteCtrl = new FormControl<any>('');
+  instalacionCtrl = new FormControl<any>('');
+  puestoCtrl = new FormControl<any>('');
   personaCtrl = new FormControl<any>('');
   personasFiltradas$!: Observable<Persona[]>;
   personaSel: Persona | null = null;
@@ -91,7 +94,11 @@ export class CrearApoyoDialogComponent implements OnInit {
       this.clientes = cs || [];
       if (row?.cliente) {
         const c = this.clientes.find(x => x.nombre_comercial === row.cliente);
-        if (c) { this.clienteId = c.id!; this.onCliente(row.puesto); }
+        if (c) {
+          this.clienteId = c.id!;
+          this.clienteCtrl.setValue(c, { emitEvent: false });
+          this.onCliente(row.puesto);
+        }
       }
     });
 
@@ -123,10 +130,16 @@ export class CrearApoyoDialogComponent implements OnInit {
   onCliente(preselectPuestoNombre?: string): void {
     this.instalaciones = [];
     this.puestos = [];
-    if (!preselectPuestoNombre) { this.instalacionId = null; this.puestoId = null; }
+    if (!preselectPuestoNombre) {
+      this.instalacionId = null; this.puestoId = null;
+      this.instalacionCtrl.setValue('', { emitEvent: false });
+      this.puestoCtrl.setValue('', { emitEvent: false });
+    }
     if (!this.clienteId) { return; }
     this.instalacionSrv.getInstalaciones({ cliente_id: this.clienteId }).subscribe((is) => {
       this.instalaciones = is || [];
+      const si = this.instalaciones.find(x => x.id === this.instalacionId);
+      if (si) { this.instalacionCtrl.setValue(si, { emitEvent: false }); }
     });
     if (preselectPuestoNombre) {
       // Ubicar a qué instalación pertenece el puesto guardado para preseleccionar todo.
@@ -143,15 +156,60 @@ export class CrearApoyoDialogComponent implements OnInit {
   // Instalación -> carga sus puestos (se ve solo el nombre del puesto).
   onInstalacion(preselectPuestoNombre?: string): void {
     this.puestos = [];
-    if (!preselectPuestoNombre) { this.puestoId = null; }
+    if (!preselectPuestoNombre) {
+      this.puestoId = null;
+      this.puestoCtrl.setValue('', { emitEvent: false });
+    }
     if (!this.instalacionId) { return; }
+    const si = this.instalaciones.find(x => x.id === this.instalacionId);
+    if (si) { this.instalacionCtrl.setValue(si, { emitEvent: false }); }
     this.puestoSrv.getPuestosPorInstalacion(this.instalacionId).subscribe((ps) => {
       this.puestos = ps || [];
       if (preselectPuestoNombre) {
         const p = this.puestos.find(x => x.nombre === preselectPuestoNombre);
-        if (p) { this.puestoId = p.id; }
+        if (p) { this.puestoId = p.id; this.puestoCtrl.setValue(p, { emitEvent: false }); }
       }
     });
+  }
+
+  // --- Autocompletar Cliente / Instalación / Puesto (escribir para filtrar) ---
+  private _q(v: any): string { return (typeof v === 'string' ? v : '').toLowerCase().trim(); }
+
+  clientesFiltrados(): Cliente[] {
+    const q = this._q(this.clienteCtrl.value);
+    if (!q) { return this.clientes; }
+    return this.clientes.filter(c => (c.nombre_comercial || '').toLowerCase().includes(q));
+  }
+  instalacionesFiltradas(): Instalacion[] {
+    const q = this._q(this.instalacionCtrl.value);
+    if (!q) { return this.instalaciones; }
+    return this.instalaciones.filter(i => `${i.nombre || ''} ${(i as any).codigo || ''}`.toLowerCase().includes(q));
+  }
+  puestosFiltrados(): Puesto[] {
+    const q = this._q(this.puestoCtrl.value);
+    if (!q) { return this.puestos; }
+    return this.puestos.filter(p => (p.nombre || '').toLowerCase().includes(q));
+  }
+
+  displayCliente = (c: any): string => (c && typeof c !== 'string') ? (c.nombre_comercial || '') : (c || '');
+  displayInstalacion = (i: any): string => (i && typeof i !== 'string') ? `${i.nombre || ''}${i.codigo ? ' (' + i.codigo + ')' : ''}` : (i || '');
+  displayPuesto = (p: any): string => (p && typeof p !== 'string') ? (p.nombre || '') : (p || '');
+
+  onClienteSel(c: Cliente): void {
+    this.clienteId = c?.id ?? null;
+    this.instalacionId = null; this.puestoId = null;
+    this.instalacionCtrl.setValue('', { emitEvent: false });
+    this.puestoCtrl.setValue('', { emitEvent: false });
+    this.onCliente();
+  }
+  onInstalacionSel(i: Instalacion): void {
+    this.instalacionId = i?.id ?? null;
+    this.puestoId = null;
+    this.puestoCtrl.setValue('', { emitEvent: false });
+    this.onInstalacion();
+  }
+  onPuestoSel(p: Puesto): void {
+    this.puestoId = p?.id ?? null;
   }
 
   displayPersona = (p: any): string => {
