@@ -34,3 +34,8 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
+
+# Copias de BD / datos (no versionar; contienen datos sensibles)
+*.dump
+*.sql
+backend/fisicaBack/docs/*.xlsx

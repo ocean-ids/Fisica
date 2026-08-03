@@ -2367,7 +2367,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const codigo = this.getCodigoInstalacionAsignacion(asig) || '-';
     Swal.fire({
       icon: 'warning',
-      title: 'Puesto vacante',
+      title: 'Puesto no cubierto',
       html: `Este puesto quedó <b>sin persona asignada</b>.<br><br>` +
             `<b>Nominativo:</b> ${codigo}<br>` +
             `<b>Cliente:</b> ${cliente}<br>` +
