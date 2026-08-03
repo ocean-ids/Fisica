@@ -1,7 +1,10 @@
 """Importación masiva de puestos y asignaciones desde archivo Excel."""
 from datetime import date, datetime, time, timedelta
 import logging
+import os
 import re
+import tempfile
+import threading
 
 from django.db import transaction
 from django.http import JsonResponse
@@ -1449,3 +1452,96 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
             pass
 
     return resumen
+
+
+# ============================================================================
+# Importacion en SEGUNDO PLANO (async) — evita el timeout 524 de Cloudflare.
+# El POST responde al instante con un job_id; el proceso corre en un hilo y el
+# frontend consulta el estado hasta que termina.
+# ============================================================================
+class _ReqLite:
+    """Request minimo para reusar el importador desde el hilo (solo GET/POST)."""
+    def __init__(self, get_params):
+        self.GET = get_params or {}
+        self.POST = {}
+
+
+def _run_import_job(job_id, path, get_params, cliente_id):
+    from django.db import connection
+    from ..models import ImportJob
+    try:
+        wb = load_workbook(path, read_only=False, data_only=True)
+        req = _ReqLite(get_params)
+        if es_formato_reporte(wb):
+            resumen = importar_formato_reporte(req, wb, cliente_id)
+        else:
+            resumen = {'error': 'El archivo no tiene el formato reporte reconocido.'}
+        job = ImportJob.objects.get(id=job_id)
+        job.resumen = resumen
+        job.estado = 'error' if (resumen.get('error') and not resumen.get('filas_validas')) else 'ok'
+        job.save(update_fields=['resumen', 'estado', 'actualizado_en'])
+    except Exception as exc:
+        logger.exception('Error en import async')
+        try:
+            job = ImportJob.objects.get(id=job_id)
+            job.estado = 'error'
+            job.error = str(exc)
+            job.save(update_fields=['estado', 'error', 'actualizado_en'])
+        except Exception:
+            pass
+    finally:
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+        connection.close()
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def importar_puestos_asignaciones_async(request):
+    """Lanza la importacion en segundo plano y responde al instante con un job_id."""
+    if not request.user.has_perm('CoreFisica.import_puestos_asignaciones'):
+        return JsonResponse({'error': 'No Autorizado'}, status=403)
+    upload = request.FILES.get('file')
+    if not upload:
+        return JsonResponse({'error': 'Falta el archivo (campo file)'}, status=400)
+
+    cliente_id = request.GET.get('cliente_id')
+    try:
+        cliente_id = int(cliente_id) if cliente_id else None
+    except (TypeError, ValueError):
+        cliente_id = None
+
+    fd, path = tempfile.mkstemp(suffix='.xlsx')
+    os.close(fd)
+    with open(path, 'wb') as fh:
+        for chunk in upload.chunks():
+            fh.write(chunk)
+
+    from ..models import ImportJob
+    job = ImportJob.objects.create(tipo='puestos_asignaciones', estado='procesando')
+    get_params = {k: request.GET.get(k) for k in ('mes', 'anio', 'meses', 'desactivar_sobrantes')}
+    threading.Thread(
+        target=_run_import_job,
+        args=(str(job.id), path, get_params, cliente_id),
+        daemon=True,
+    ).start()
+    return JsonResponse({'job_id': str(job.id), 'estado': 'procesando'}, status=202)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def estado_import(request, job_id):
+    """Consulta el estado/resultado de una importacion en segundo plano."""
+    from ..models import ImportJob
+    try:
+        job = ImportJob.objects.get(id=job_id)
+    except (ImportJob.DoesNotExist, ValueError, Exception):
+        return JsonResponse({'error': 'Trabajo de importacion no encontrado'}, status=404)
+    return JsonResponse({
+        'estado': job.estado,
+        'resumen': job.resumen,
+        'error': job.error,
+    })
