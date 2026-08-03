@@ -35,7 +35,7 @@
     <div class="col-12 d-flex flex-wrap align-items-center justify-content-md-end gap-2 mt-1">
       <div class="text-muted small me-1">Reporte de apertura / modificación / cierre:</div>
       <input type="date" class="form-control form-control-sm" style="max-width: 170px;" [(ngModel)]="fechaReporteNovedad" [ngModelOptions]="{standalone:true}" />
-      <button class="btn btn-sm btn-outline-warning" (click)="abrirNovedad()">
+      <button class="btn btn-sm btn-outline-success" (click)="abrirNovedad()">
         <i class="bi bi-journal-plus"></i> Apertura / Cierre de Puesto
       </button>
       <button class="btn btn-sm btn-outline-secondary" (click)="verNovedades()" title="Ver novedades del mes por día">
@@ -43,7 +43,7 @@
       </button>
       <button class="btn btn-sm btn-outline-success" (click)="descargarNovedadesExcel()" title="Descarga el mes: una pestaña por cada día con registros">
         <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
-        Descargar FR (mes)
+        Descargar
       </button>
     </div>
 
