@@ -3,6 +3,7 @@ from django.core.validators import RegexValidator
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 import datetime
+import uuid
 
 def current_month():
     return datetime.date.today().month
@@ -10,6 +11,23 @@ def current_month():
 
 def current_year():
     return datetime.date.today().year
+
+
+class ImportJob(models.Model):
+    """Trabajo de importacion en segundo plano: la peticion web responde al
+    instante (evita el timeout 524 de Cloudflare) y el proceso corre en un hilo.
+    El frontend consulta el estado hasta que termina."""
+    ESTADOS = [('procesando', 'Procesando'), ('ok', 'Completado'), ('error', 'Error')]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tipo = models.CharField(max_length=40, default='puestos_asignaciones')
+    estado = models.CharField(max_length=12, choices=ESTADOS, default='procesando', db_index=True)
+    resumen = models.JSONField(null=True, blank=True)
+    error = models.TextField(blank=True, default='')
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.id} {self.estado}"
 
 
 class Cliente(models.Model):

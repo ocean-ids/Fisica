@@ -58,4 +58,20 @@ export class PuestoService {
             : '/importar-puestos-asignaciones/';
         return this.apiService.post<any>(endpoint, formData);
     }
+
+    // Importacion en segundo plano: responde al instante con { job_id } (evita el 524 de Cloudflare).
+    importPuestosAsignacionesAsync(file: File, clienteId?: number, meses?: number): Observable<any> {
+        const formData = new FormData();
+        formData.append('file', file);
+        const params = new URLSearchParams();
+        if (clienteId) { params.set('cliente_id', String(clienteId)); }
+        if (meses != null) { params.set('meses', String(meses)); }
+        const qs = params.toString();
+        return this.apiService.post<any>(`/importar-puestos-asignaciones/async/${qs ? '?' + qs : ''}`, formData);
+    }
+
+    // Estado/resultado de una importacion en segundo plano.
+    estadoImport(jobId: string): Observable<any> {
+        return this.apiService.get<any>(`/importar-puestos-asignaciones/estado/${jobId}/`);
+    }
 }

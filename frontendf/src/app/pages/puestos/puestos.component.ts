@@ -362,54 +362,23 @@ export class PuestosComponent implements OnInit {
     const file = input.files && input.files[0];
     if (!file) return;
 
-    // Indicador de carga: la importación puede tardar (procesa muchas filas y meses).
+    // El import corre en SEGUNDO PLANO (async): responde al instante y luego
+    // consultamos el estado. Asi no choca con el timeout 524 de Cloudflare.
     Swal.fire({
       title: 'Importando...',
-      html: 'Procesando el archivo, no cierres la ventana.',
+      html: 'Procesando en segundo plano, no cierres la ventana. Puede tardar unos minutos.',
       allowOutsideClick: false,
       allowEscapeKey: false,
       didOpen: () => Swal.showLoading(),
     });
 
-    this.puestoService.importPuestosAsignaciones(file, this.clienteSeleccionado || undefined).subscribe({
+    this.puestoService.importPuestosAsignacionesAsync(file, this.clienteSeleccionado || undefined).subscribe({
       next: (res) => {
-        const resumen = `Filas: ${res?.filas_validas || 0}/${res?.total_filas || 0}`
-          + `, Personas creadas: ${res?.personas_creadas || 0}`
-          + `, Puestos creados: ${res?.puestos_creados || 0}`
-          + `, Horarios creados: ${res?.horarios_creados || 0}`
-          + `, Asignaciones creadas: ${res?.asignaciones_creadas || 0}`
-          + `, Asignaciones actualizadas: ${res?.asignaciones_actualizadas || 0}`;
-        const errores = Array.isArray(res?.errores) ? res.errores : [];
-        let erroresHtml = '';
-        if (errores.length) {
-          // Agrupar por motivo para un resumen legible (en vez de N lineas sueltas).
-          const grupos: Record<string, number> = {};
-          for (const e of errores) {
-            const m1 = /codigo '([^']*)' no existe/.exec(e);
-            let key: string;
-            if (m1) { key = `Instalación no existe (código ${m1[1]})`; }
-            else if (/sin nominativo/.test(e)) { key = 'Fila sin código de instalación'; }
-            else if (/hora ingreso\/salida/.test(e)) { key = 'Hora ingreso/salida inválida'; }
-            else if (/nombre incompleto|apellidos\/nombres/.test(e)) { key = 'Persona nueva sin nombre completo'; }
-            else { key = 'Otros'; }
-            grupos[key] = (grupos[key] || 0) + 1;
-          }
-          const resumenErrores = Object.entries(grupos)
-            .sort((a, b) => b[1] - a[1])
-            .map(([k, n]) => `<li><b>${n}</b> — ${k}</li>`)
-            .join('');
-          erroresHtml = `<div style="text-align:left;margin-top:10px;">
-                <strong>No se importaron ${errores.length} filas:</strong>
-                <ul style="margin:6px 0 0 18px;">${resumenErrores}</ul>
-                <details style="margin-top:6px;"><summary style="cursor:pointer;">Ver detalle por fila</summary>
-                  <ul style="margin:6px 0 0 18px;max-height:200px;overflow:auto;">${errores.map((e: string) => `<li>${e}</li>`).join('')}</ul>
-                </details>
-             </div>`;
+        if (!res?.job_id) {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo iniciar la importación.' });
+          return;
         }
-        Swal.fire({ icon: 'success', title: 'Importacion', html: `${resumen}${erroresHtml}` });
-        if (this.clienteSeleccionado) {
-          this.cargarPuestos();
-        }
+        this.esperarImport(res.job_id);
       },
       error: (err) => {
         const msg = err?.error?.error || 'No se pudo importar';
@@ -418,6 +387,66 @@ export class PuestosComponent implements OnInit {
     });
 
     input.value = '';
+  }
+
+  // Consulta el estado del import en segundo plano cada 3s hasta que termina.
+  private esperarImport(jobId: string): void {
+    const intervalo = setInterval(() => {
+      this.puestoService.estadoImport(jobId).subscribe({
+        next: (est) => {
+          if (est?.estado === 'procesando') { return; }
+          clearInterval(intervalo);
+          if (est?.estado === 'ok') {
+            this.mostrarResumenImport(est.resumen || {});
+            if (this.clienteSeleccionado) { this.cargarPuestos(); }
+          } else {
+            const msg = est?.error || est?.resumen?.error || 'No se pudo importar';
+            Swal.fire({ icon: 'error', title: 'Error', text: msg });
+          }
+        },
+        error: () => {
+          clearInterval(intervalo);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo consultar el estado de la importación.' });
+        }
+      });
+    }, 3000);
+  }
+
+  // Muestra el resumen del import con los errores agrupados por motivo.
+  private mostrarResumenImport(res: any): void {
+    const resumen = `Filas: ${res?.filas_validas || 0}/${res?.total_filas || 0}`
+      + `, Personas creadas: ${res?.personas_creadas || 0}`
+      + `, Puestos creados: ${res?.puestos_creados || 0}`
+      + `, Horarios creados: ${res?.horarios_creados || 0}`
+      + `, Asignaciones creadas: ${res?.asignaciones_creadas || 0}`
+      + `, Asignaciones actualizadas: ${res?.asignaciones_actualizadas || 0}`;
+    const errores = Array.isArray(res?.errores) ? res.errores : [];
+    let erroresHtml = '';
+    if (errores.length) {
+      const grupos: Record<string, number> = {};
+      for (const e of errores) {
+        const m1 = /codigo '([^']*)' no existe/.exec(e);
+        let key: string;
+        if (m1) { key = `Instalación no existe (código ${m1[1]})`; }
+        else if (/sin nominativo/.test(e)) { key = 'Fila sin código de instalación'; }
+        else if (/hora ingreso\/salida/.test(e)) { key = 'Hora ingreso/salida inválida'; }
+        else if (/nombre incompleto|apellidos\/nombres/.test(e)) { key = 'Persona nueva sin nombre completo'; }
+        else { key = 'Otros'; }
+        grupos[key] = (grupos[key] || 0) + 1;
+      }
+      const resumenErrores = Object.entries(grupos)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, n]) => `<li><b>${n}</b> — ${k}</li>`)
+        .join('');
+      erroresHtml = `<div style="text-align:left;margin-top:10px;">
+            <strong>No se importaron ${errores.length} filas:</strong>
+            <ul style="margin:6px 0 0 18px;">${resumenErrores}</ul>
+            <details style="margin-top:6px;"><summary style="cursor:pointer;">Ver detalle por fila</summary>
+              <ul style="margin:6px 0 0 18px;max-height:200px;overflow:auto;">${errores.map((e: string) => `<li>${e}</li>`).join('')}</ul>
+            </details>
+         </div>`;
+    }
+    Swal.fire({ icon: 'success', title: 'Importación', html: `${resumen}${erroresHtml}` });
   }
 
   abrirNovedad(): void {
