@@ -373,6 +373,66 @@ def compute_horas(hora_ingreso, hora_salida):
     return int(round(hours))
 
 
+def _get_or_create_horario(hora_ingreso, hora_salida):
+    """get_or_create seguro para Horario: si hay duplicados (misma hora
+    ingreso/salida), usa el primero en vez de reventar con MultipleObjectsReturned."""
+    h = Horario.objects.filter(
+        hora_ingreso=hora_ingreso, hora_salida=hora_salida
+    ).order_by('id').first()
+    if h:
+        return h, False
+    return Horario.objects.create(hora_ingreso=hora_ingreso, hora_salida=hora_salida), True
+
+
+def _norm_puesto(s):
+    """Normaliza el nombre de un puesto para comparar sin importar
+    mayus/minus, acentos ni espacios extra."""
+    import unicodedata
+    t = str(s or '').strip().upper()
+    t = ''.join(c for c in unicodedata.normalize('NFKD', t) if not unicodedata.combining(c))
+    return re.sub(r'\s+', ' ', t)
+
+
+def _get_or_create_puesto(instalacion, nombre, defaults=None):
+    """get_or_create seguro para Puesto: empareja por nombre normalizado
+    (ignora mayus/espacios/acentos) para NO crear duplicados, y tolera duplicados
+    existentes usando el primero en vez de reventar con MultipleObjectsReturned."""
+    nombre = (nombre or '').strip()
+    p = Puesto.objects.filter(instalacion=instalacion, nombre=nombre).order_by('id').first()
+    if p:
+        return p, False
+    target = _norm_puesto(nombre)
+    for cand in Puesto.objects.filter(instalacion=instalacion).order_by('id'):
+        if _norm_puesto(cand.nombre) == target:
+            return cand, False
+    return Puesto.objects.create(instalacion=instalacion, nombre=nombre, **(defaults or {})), True
+
+
+def _meses_proyeccion(request):
+    """Cuantos meses se proyecta el patron hacia adelante. Por defecto 36.
+    Se ajusta con ?meses=N (0 = solo el mes importado, sin proyeccion). Tope 60."""
+    try:
+        val = request.GET.get('meses') or request.POST.get('meses')
+    except Exception:
+        val = None
+    try:
+        n = int(val)
+    except (TypeError, ValueError):
+        n = 36
+    return max(0, min(n, 60))
+
+
+def _quiere_desactivar_sobrantes(request):
+    """Por defecto el import NO desactiva a nadie: solo AGREGA/ACTUALIZA.
+    La desactivacion de quien ya no aparece en el archivo solo ocurre si se pide
+    explicitamente con ?desactivar_sobrantes=1 (protege los datos existentes)."""
+    try:
+        val = request.GET.get('desactivar_sobrantes') or request.POST.get('desactivar_sobrantes') or ''
+    except Exception:
+        val = ''
+    return str(val).strip().lower() in ('1', 'true', 'si', 'on')
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
@@ -465,6 +525,7 @@ def importar_puestos_asignaciones(request):
         req_month = None
     if req_year is not None and req_year < 1:
         req_year = None
+    meses_proy = _meses_proyeccion(request)
     # se inicializa un diccionario de resumen para llevar conteo de filas procesadas, personas/puestos/horarios/asignaciones creadas o actualizadas, y errores encontrados durante el proceso de importacion
     resumen = {
         'total_filas': 0,
@@ -618,10 +679,7 @@ def importar_puestos_asignaciones(request):
                     )
                     resumen['personas_creadas'] += 1
                 # se obtiene o crea un horario usando la hora_ingreso y hora_salida
-                horario, created_horario = Horario.objects.get_or_create(
-                    hora_ingreso=hora_ingreso,
-                    hora_salida=hora_salida,
-                )
+                horario, created_horario = _get_or_create_horario(hora_ingreso, hora_salida)
                 # si se creo un nuevo horario, se incrementa el contador de horarios_creados en el resumen
                 if created_horario:
                     resumen['horarios_creados'] += 1
@@ -634,13 +692,9 @@ def importar_puestos_asignaciones(request):
                 if cantidad_int < 1:
                     cantidad_int = 1
                 # se obtiene o crea un puesto usando el nombre del puesto y la instalacion
-                puesto, puesto_created = Puesto.objects.get_or_create(
-                    instalacion=instalacion,
-                    nombre=puesto_nombre,
-                    defaults={
-                        'cantidad_puestos': cantidad_int,
-                        'tipo': puesto_tipo or None,
-                    }
+                puesto, puesto_created = _get_or_create_puesto(
+                    instalacion, puesto_nombre,
+                    {'cantidad_puestos': cantidad_int, 'tipo': puesto_tipo or None}
                 )
                 #si se creo un nuevo puesto, se incrementa el cantador de puestos_ creados en el resumen
                 if puesto_created:
@@ -670,7 +724,7 @@ def importar_puestos_asignaciones(request):
                         PuestoHorario.objects.update_or_create(
                             puesto=puesto,
                             dia=dia,
-                            defaults={'horas': horas, 'turno': turno_val}
+                            defaults={'horas': min(max(horas, 0), 24), 'turno': turno_val}
                         )
 
                 try:
@@ -816,7 +870,7 @@ def importar_puestos_asignaciones(request):
 
                         # Continuar en el mes siguiente justo donde terminó el primer mes completado.
                         base_month_start = date(ref_date.year, ref_date.month, 1)
-                        for offset in range(1, 25):
+                        for offset in range(1, meses_proy + 1):
                             target_start = add_months(base_month_start, offset)
                             target_year = target_start.year
                             target_month = target_start.month
@@ -888,19 +942,20 @@ def importar_puestos_asignaciones(request):
 
                 resumen['filas_validas'] += 1
 
-            # Reemplazo sin duplicar: en cada puesto/mes/año importado, desactivar las
-            # personas que YA NO aparecen en el archivo (fueron reemplazadas).
-            for (pid, pmes, panio), persona_ids in puesto_personas.items():
-                sobrantes = Asignacion.objects.filter(
-                    puesto_id=pid, mes=pmes, anio=panio, estado='ACTIVO'
-                ).exclude(persona_id__in=persona_ids)
-                for o in sobrantes:
-                    o.estado = 'INACTIVO'
-                    o.save(update_fields=['estado'])
-                    ReporteAsistencia.objects.filter(asignacion=o).update(
-                        estado='TURNO', estado_asistencia='', reemplazo=None,
-                        descripcion=None, row_color=None
-                    )
+            # Por defecto el import NO desactiva a nadie (solo agrega/actualiza).
+            # Solo con ?desactivar_sobrantes=1 se desactiva a quien ya no viene.
+            if _quiere_desactivar_sobrantes(request):
+                for (pid, pmes, panio), persona_ids in puesto_personas.items():
+                    sobrantes = Asignacion.objects.filter(
+                        puesto_id=pid, mes=pmes, anio=panio, estado='ACTIVO'
+                    ).exclude(persona_id__in=persona_ids)
+                    for o in sobrantes:
+                        o.estado = 'INACTIVO'
+                        o.save(update_fields=['estado'])
+                        ReporteAsistencia.objects.filter(asignacion=o).update(
+                            estado='TURNO', estado_asistencia='', reemplazo=None,
+                            descripcion=None, row_color=None
+                        )
 
             if touched_asig_ids:
                 # Asegurar ReporteAsistencia base para las asignaciones importadas
@@ -1055,6 +1110,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
         req_year = int(req_year) if req_year else None
     except (TypeError, ValueError):
         req_year = None
+    meses_proy = _meses_proyeccion(request)
 
     touched_asig_ids = set()
     touched_dates = set()
@@ -1168,7 +1224,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         def _add_m(y, mo, off):
                             return (y + (mo - 1 + off) // 12), ((mo - 1 + off) % 12 + 1)
 
-                        for off in range(1, 37):
+                        for off in range(1, meses_proy + 1):
                             ty, tm = _add_m(anio, mes, off)
                             t_start = date(ty, tm, 1)
                             t_days = (date(ty, tm + 1, 1) - timedelta(days=1)).day if tm < 12 else 31
@@ -1182,12 +1238,21 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                                 df = WEEK_KEYS[date(ty, tm, dn).weekday()]
                                 wp.setdefault(wss, {})[df] = sf_ciclo[sf_idx % sf_len]
                                 sf_idx += 1
+                            # Guardar el CALENDARIO del sacafranco en bloque (rapido).
+                            SacafrancoFilaSemanal.objects.filter(
+                                sacafranco_fila=t_fila, week_start__in=list(wp.keys())
+                            ).delete()
+                            SacafrancoFilaSemanal.objects.bulk_create([
+                                SacafrancoFilaSemanal(
+                                    sacafranco_fila=t_fila, week_start=wss,
+                                    **{k: dm.get(k, '') for k in WEEK_KEYS}
+                                )
+                                for wss, dm in wp.items()
+                            ])
+                            # ...y sincronizar por semana para que el sacafranco SI se refleje
+                            # en Reporte de Asistencia y Consolidado de esos meses.
                             for wss, dm in wp.items():
-                                sem2, _ = SacafrancoFilaSemanal.objects.get_or_create(sacafranco_fila=t_fila, week_start=wss)
-                                for k, v in dm.items():
-                                    setattr(sem2, k, v)
-                                sem2.save()
-                                payload2 = {k: getattr(sem2, k, '') for k in WEEK_KEYS}
+                                payload2 = {k: dm.get(k, '') for k in WEEK_KEYS}
                                 try:
                                     err2, resolved2 = _validate_sacafranco_tokens(payload2, wss)
                                     if not err2:
@@ -1242,13 +1307,12 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     persona = Persona.objects.create(nombres=no.upper(), apellidos=ap.upper(), cedula=cedula, tipo='FIJOS')
                     resumen['personas_creadas'] += 1
 
-                horario, h_created = Horario.objects.get_or_create(hora_ingreso=hora_ingreso, hora_salida=hora_salida)
+                horario, h_created = _get_or_create_horario(hora_ingreso, hora_salida)
                 if h_created:
                     resumen['horarios_creados'] += 1
 
-                puesto, p_created = Puesto.objects.get_or_create(
-                    instalacion=instalacion, nombre=puesto_nombre,
-                    defaults={'cantidad_puestos': cantidad}
+                puesto, p_created = _get_or_create_puesto(
+                    instalacion, puesto_nombre, {'cantidad_puestos': cantidad}
                 )
                 if p_created:
                     resumen['puestos_creados'] += 1
@@ -1259,7 +1323,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     for dia in grp.get('dias', []):
                         PuestoHorario.objects.update_or_create(
                             puesto=puesto, dia=dia,
-                            defaults={'horas': grp.get('hours', 12), 'turno': grp.get('turno') or 'Diurno'}
+                            defaults={'horas': min(max(grp.get('hours', 12), 0), 24), 'turno': grp.get('turno') or 'Diurno'}
                         )
                 try:
                     puesto.sync_from_horarios()
@@ -1269,6 +1333,9 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
 
                 orden_counter += 1
                 row_orden = orden_counter
+                # No reordenar lo existente: si la asignacion ya tiene un orden, se conserva.
+                _prev = Asignacion.objects.filter(persona=persona, mes=mes, anio=anio).first()
+                _orden_val = _prev.orden if (_prev and _prev.orden) else row_orden
                 asig, created = Asignacion.objects.update_or_create(
                     persona=persona, mes=mes, anio=anio,
                     defaults={
@@ -1277,7 +1344,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         'patronAsignacion': None, 'estado': 'ACTIVO',
                         'publicada_calendario': True, 'recurring': True,
                         'start_date': month_start, 'end_date': None,
-                        'orden': row_orden,
+                        'orden': _orden_val,
                     }
                 )
                 touched_asig_ids.add(asig.id)
@@ -1313,7 +1380,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         nm = (mo - 1 + off) % 12 + 1
                         return ny, nm
 
-                    for off in range(1, 37):
+                    for off in range(1, meses_proy + 1):
                         ty, tm = _add_months(anio, mes, off)
                         t_start = date(ty, tm, 1)
                         t_days = (date(ty, tm + 1, 1) - timedelta(days=1)).day if tm < 12 else 31
@@ -1335,24 +1402,31 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                             df = WEEK_KEYS[date(ty, tm, dn).weekday()]
                             wp.setdefault(wss, {})[df] = ciclo[seq_idx % cycle_len]
                             seq_idx += 1
-                        for wss, dm in wp.items():
-                            o, _ = AsignacionSemanal.objects.get_or_create(
-                                asignacion_id=t_asig.id, week_start=wss, defaults={'puesto_id': puesto.id}
+                        # Bulk: borrar semanas existentes y crear en bloque (mucho mas rapido
+                        # que get_or_create + save por semana en la proyeccion de N meses).
+                        AsignacionSemanal.objects.filter(
+                            asignacion_id=t_asig.id, week_start__in=list(wp.keys())
+                        ).delete()
+                        AsignacionSemanal.objects.bulk_create([
+                            AsignacionSemanal(
+                                asignacion_id=t_asig.id, week_start=wss, puesto_id=puesto.id,
+                                mon=dm.get('mon', ''), tue=dm.get('tue', ''), wed=dm.get('wed', ''),
+                                thu=dm.get('thu', ''), fri=dm.get('fri', ''), sat=dm.get('sat', ''),
+                                sun=dm.get('sun', ''),
                             )
-                            for k, v in dm.items():
-                                setattr(o, k, v)
-                            o.puesto_id = puesto.id
-                            o.save()
+                            for wss, dm in wp.items()
+                        ])
 
                 resumen['filas_validas'] += 1
 
-        for (pid, pmes, panio), pers_ids in puesto_personas.items():
-            for o in Asignacion.objects.filter(puesto_id=pid, mes=pmes, anio=panio, estado='ACTIVO').exclude(persona_id__in=pers_ids):
-                o.estado = 'INACTIVO'
-                o.save(update_fields=['estado'])
-                ReporteAsistencia.objects.filter(asignacion=o).update(
-                    estado='TURNO', estado_asistencia='', reemplazo=None, descripcion=None, row_color=None
-                )
+        if _quiere_desactivar_sobrantes(request):
+            for (pid, pmes, panio), pers_ids in puesto_personas.items():
+                for o in Asignacion.objects.filter(puesto_id=pid, mes=pmes, anio=panio, estado='ACTIVO').exclude(persona_id__in=pers_ids):
+                    o.estado = 'INACTIVO'
+                    o.save(update_fields=['estado'])
+                    ReporteAsistencia.objects.filter(asignacion=o).update(
+                        estado='TURNO', estado_asistencia='', reemplazo=None, descripcion=None, row_color=None
+                    )
 
         for asig in Asignacion.objects.select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').filter(id__in=touched_asig_ids):
             rep, _ = ReporteAsistencia.objects.get_or_create(asignacion=asig)

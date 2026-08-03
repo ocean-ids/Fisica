@@ -53,7 +53,7 @@ class Command(BaseCommand):
         anomalias = []         # mismos start_date (no se pueden secuenciar)
         grupos_solapados = 0
 
-        for key, asigs in grupos.items():
+        for asigs in grupos.values():
             if len(asigs) < 2:
                 continue
             asigs.sort(key=lambda x: (x['start_date'], x['id']))

@@ -380,12 +380,32 @@ export class PuestosComponent implements OnInit {
           + `, Asignaciones creadas: ${res?.asignaciones_creadas || 0}`
           + `, Asignaciones actualizadas: ${res?.asignaciones_actualizadas || 0}`;
         const errores = Array.isArray(res?.errores) ? res.errores : [];
-        const erroresHtml = errores.length
-          ? `<div style="text-align:left;max-height:220px;overflow:auto;margin-top:8px;">
-                <strong>Errores:</strong>
-                <ul style="margin:6px 0 0 18px;">${errores.map((e: string) => `<li>${e}</li>`).join('')}</ul>
-             </div>`
-          : '';
+        let erroresHtml = '';
+        if (errores.length) {
+          // Agrupar por motivo para un resumen legible (en vez de N lineas sueltas).
+          const grupos: Record<string, number> = {};
+          for (const e of errores) {
+            const m1 = /codigo '([^']*)' no existe/.exec(e);
+            let key: string;
+            if (m1) { key = `Instalación no existe (código ${m1[1]})`; }
+            else if (/sin nominativo/.test(e)) { key = 'Fila sin código de instalación'; }
+            else if (/hora ingreso\/salida/.test(e)) { key = 'Hora ingreso/salida inválida'; }
+            else if (/nombre incompleto|apellidos\/nombres/.test(e)) { key = 'Persona nueva sin nombre completo'; }
+            else { key = 'Otros'; }
+            grupos[key] = (grupos[key] || 0) + 1;
+          }
+          const resumenErrores = Object.entries(grupos)
+            .sort((a, b) => b[1] - a[1])
+            .map(([k, n]) => `<li><b>${n}</b> — ${k}</li>`)
+            .join('');
+          erroresHtml = `<div style="text-align:left;margin-top:10px;">
+                <strong>No se importaron ${errores.length} filas:</strong>
+                <ul style="margin:6px 0 0 18px;">${resumenErrores}</ul>
+                <details style="margin-top:6px;"><summary style="cursor:pointer;">Ver detalle por fila</summary>
+                  <ul style="margin:6px 0 0 18px;max-height:200px;overflow:auto;">${errores.map((e: string) => `<li>${e}</li>`).join('')}</ul>
+                </details>
+             </div>`;
+        }
         Swal.fire({ icon: 'success', title: 'Importacion', html: `${resumen}${erroresHtml}` });
         if (this.clienteSeleccionado) {
           this.cargarPuestos();
