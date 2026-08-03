@@ -1157,6 +1157,25 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
             carry = {'nominativo': '', 'cli': '', 'pue': '', 'resumen': ''}
             carry_time = {'ing': None, 'sal': None}
 
+            # Anti-mezcla: si una persona aparece en VARIAS filas de la hoja (p.ej. GARITA
+            # y RETEN), se procesa SOLO la fila con mas dias de calendario (su asignacion
+            # real); las demas se saltan para no mezclar/pisar su calendario.
+            _cj = col.get('ced')
+            best_row_idx = {}
+            for _i2, _r2 in enumerate(rows[ri + 1:], start=ri + 2):
+                _ced2 = normalize_cedula(norm(_r2[_cj])) if (_cj is not None and _cj < len(_r2)) else ''
+                if not _ced2:
+                    continue
+                _cnt = 0
+                for _di, _dj in enumerate(col['dias']):
+                    if _di >= days_in_month:
+                        break
+                    if _dj < len(_r2) and str(parse_calendar_value(_r2[_dj]) or '').strip():
+                        _cnt += 1
+                _prev = best_row_idx.get(_ced2)
+                if _prev is None or _cnt > _prev[1]:
+                    best_row_idx[_ced2] = (_i2, _cnt)
+
             for i, row in enumerate(rows[ri + 1:], start=ri + 2):
                 if not row or all(v is None or str(v).strip() == '' for v in row):
                     continue
@@ -1172,6 +1191,13 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         carry[k] = str(v).strip()
 
                 cedula = normalize_cedula(norm(g('ced')))
+                # Anti-mezcla: si esta persona esta repetida en la hoja, solo se procesa
+                # la fila con mas calendario; las demas se saltan (no mezclar calendarios).
+                if cedula and best_row_idx.get(cedula, (i, 0))[0] != i:
+                    resumen['errores'].append(
+                        f'Fila {i}: cedula {cedula} repetida en la hoja; se usa la fila con calendario mas completo'
+                    )
+                    continue
                 puesto_nombre = carry['pue']
                 es_saca = _rep_norm(puesto_nombre) == 'SACAFRANCO'
 
