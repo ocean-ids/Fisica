@@ -425,6 +425,24 @@ def _meses_proyeccion(request):
     return max(0, min(n, 60))
 
 
+def _meses_sync_saca(request):
+    """Cuantos meses proyectados del SACAFRANCO se reflejan en Reporte de
+    Asistencia y Consolidado. El CALENDARIO del sacafranco si se proyecta a
+    todos los meses (barato), pero sincronizar Reporte/Consolidado por cada
+    semana de 36 meses es carisimo y operativamente inutil tan a futuro.
+    El mes base SIEMPRE se sincroniza; esto controla cuantos meses MAS.
+    Por defecto 2 (mes actual + proximos). Se ajusta con ?meses_sync=N."""
+    try:
+        val = request.GET.get('meses_sync') or request.POST.get('meses_sync')
+    except Exception:
+        val = None
+    try:
+        n = int(val)
+    except (TypeError, ValueError):
+        n = 2
+    return max(0, min(n, 60))
+
+
 def _quiere_desactivar_sobrantes(request):
     """Por defecto el import NO desactiva a nadie: solo AGREGA/ACTUALIZA.
     La desactivacion de quien ya no aparece en el archivo solo ocurre si se pide
@@ -1145,6 +1163,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
     except (TypeError, ValueError):
         req_year = None
     meses_proy = _meses_proyeccion(request)
+    meses_sync_saca = _meses_sync_saca(request)
 
     touched_asig_ids = set()
     touched_dates = set()
@@ -1333,15 +1352,18 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                                 for wss, dm in wp.items()
                             ])
                             # ...y sincronizar por semana para que el sacafranco SI se refleje
-                            # en Reporte de Asistencia y Consolidado de esos meses.
-                            for wss, dm in wp.items():
-                                payload2 = {k: dm.get(k, '') for k in WEEK_KEYS}
-                                try:
-                                    err2, resolved2 = _validate_sacafranco_tokens(payload2, wss)
-                                    if not err2:
-                                        _sync_sacafranco_to_reporte_y_consolidado(t_fila.id, wss, payload2, resolved2)
-                                except Exception:
-                                    pass
+                            # en Reporte de Asistencia y Consolidado. Solo para los primeros
+                            # meses (horizonte operativo): sincronizar los 36 meses por semana
+                            # es carisimo y no sirve tan a futuro. El calendario si queda completo.
+                            if off <= meses_sync_saca:
+                                for wss, dm in wp.items():
+                                    payload2 = {k: dm.get(k, '') for k in WEEK_KEYS}
+                                    try:
+                                        err2, resolved2 = _validate_sacafranco_tokens(payload2, wss)
+                                        if not err2:
+                                            _sync_sacafranco_to_reporte_y_consolidado(t_fila.id, wss, payload2, resolved2)
+                                    except Exception:
+                                        pass
 
                     resumen['sacafranco_creados'] += 1
                     resumen['filas_validas'] += 1
