@@ -411,6 +411,22 @@ def _get_or_create_puesto(instalacion, nombre, defaults=None):
     return Puesto.objects.create(instalacion=instalacion, nombre=nombre, **(defaults or {})), True
 
 
+def _get_or_create_sacafranco_fila(persona, mes, anio, orden):
+    """get_or_create seguro para SacafrancoFila. Si ya existen duplicados de
+    imports viejos (misma persona/mes/anio), usa el PRIMERO y BORRA los sobrantes
+    (con su calendario), evitando MultipleObjectsReturned y limpiando lo duplicado."""
+    from ..models import SacafrancoFila, SacafrancoFilaSemanal
+    filas = list(SacafrancoFila.objects.filter(persona=persona, mes=mes, anio=anio).order_by('id'))
+    if filas:
+        principal = filas[0]
+        if len(filas) > 1:
+            extra_ids = [f.id for f in filas[1:]]
+            SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id__in=extra_ids).delete()
+            SacafrancoFila.objects.filter(id__in=extra_ids).delete()
+        return principal, False
+    return SacafrancoFila.objects.create(persona=persona, mes=mes, anio=anio, orden=orden), True
+
+
 def _meses_proyeccion(request):
     """Cuantos meses se proyecta el patron hacia adelante. Por defecto 36.
     Se ajusta con ?meses=N (0 = solo el mes importado, sin proyeccion). Tope 60."""
@@ -1143,7 +1159,7 @@ def es_formato_reporte(wb):
 
 def importar_formato_reporte(request, wb, cliente_id_filter=None):
     from .asignacion_semanal_views import _sync_sacafranco_to_reporte_y_consolidado, _validate_sacafranco_tokens
-    from ..models import SacafrancoFila, SacafrancoFilaSemanal
+    from ..models import SacafrancoFilaSemanal
     from ..audit import suppress_audit
 
     resumen = {
@@ -1316,7 +1332,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         resumen['personas_creadas'] += 1
                     orden_counter += 1
                     row_orden = orden_counter
-                    fila, _ = SacafrancoFila.objects.get_or_create(persona=persona, mes=mes, anio=anio, defaults={'orden': row_orden})
+                    fila, _ = _get_or_create_sacafranco_fila(persona, mes, anio, row_orden)
                     if fila.orden != row_orden:
                         fila.orden = row_orden
                         fila.save(update_fields=['orden'])
@@ -1354,7 +1370,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                             ty, tm = _add_m(anio, mes, off)
                             t_start = date(ty, tm, 1)
                             t_days = (date(ty, tm + 1, 1) - timedelta(days=1)).day if tm < 12 else 31
-                            t_fila, _ = SacafrancoFila.objects.get_or_create(persona=persona, mes=tm, anio=ty, defaults={'orden': row_orden})
+                            t_fila, _ = _get_or_create_sacafranco_fila(persona, tm, ty, row_orden)
                             if t_fila.orden != row_orden:
                                 t_fila.orden = row_orden
                                 t_fila.save(update_fields=['orden'])
