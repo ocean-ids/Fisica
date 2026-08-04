@@ -1080,6 +1080,36 @@ def _rep_detectar_columnas(rows):
                             conteo[j] = conteo.get(j, 0) + 1
                 if conteo:
                     col['resumen'] = max(conteo, key=conteo.get)
+
+            # Deteccion de BLOQUES de mes: algunas hojas (p.ej. PUESTOS GENERALES)
+            # traen DOS meses pegados lado a lado (JULIO en una columna, AGOSTO en
+            # otra), con 62 columnas de dias. Sin esto el importador tomaria las
+            # primeras 31 columnas (mes equivocado) y desalinearia el calendario.
+            # Se buscan los nombres de mes en las filas encima del encabezado de
+            # numeros y se parte 'dias' en bloques por columna de inicio.
+            _MESES_BLOQUE = {
+                'ENERO': 1, 'FEBRERO': 2, 'MARZO': 3, 'ABRIL': 4, 'MAYO': 5,
+                'JUNIO': 6, 'JULIO': 7, 'AGOSTO': 8, 'SEPTIEMBRE': 9,
+                'SETIEMBRE': 9, 'OCTUBRE': 10, 'NOVIEMBRE': 11, 'DICIEMBRE': 12,
+            }
+            by_col = {}
+            for rr in range(max(0, ri - 4), ri):
+                for j, c in enumerate(rows[rr]):
+                    if c is None:
+                        continue
+                    txt = str(c).strip().upper()
+                    for name, mnum in _MESES_BLOQUE.items():
+                        if name in txt:
+                            by_col.setdefault(j, mnum)
+                            break
+            bloques = []
+            mcols = sorted(by_col.items())
+            for idx, (start_col, mnum) in enumerate(mcols):
+                end_col = mcols[idx + 1][0] if idx + 1 < len(mcols) else 10 ** 9
+                bcols = [d for d in dias if start_col <= d < end_col]
+                if bcols:
+                    bloques.append({'mes': mnum, 'dias': bcols})
+            col['bloques'] = bloques
             return ri, col
     return None, None
 
@@ -1131,8 +1161,31 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
             # el mes exportado: NO se proyectan 36 meses (seria lentisimo y pisaria
             # meses futuros). Las plantillas normales si proyectan el patron.
             proyectar = not str(ws.title or '').strip().upper().startswith('DATOS')
+
+            # Elegir el BLOQUE de mes a importar. Si la hoja trae varios meses
+            # pegados (JULIO+AGOSTO), se usa el mes objetivo: el que pida la UI
+            # (req_month), o si no, el ULTIMO bloque (los previos son referencia).
+            # Asi se toman las columnas correctas y NO se importa el mes anterior.
+            bloques = col.get('bloques') or []
+            mes_bloque = None
+            dias_cols = col['dias']
+            if bloques:
+                elegido = None
+                if req_month:
+                    elegido = next((b for b in bloques if b['mes'] == req_month), None)
+                if elegido is None:
+                    elegido = bloques[-1]
+                dias_cols = elegido['dias']
+                mes_bloque = elegido['mes']
+                if len(bloques) > 1:
+                    resumen['errores'].append(
+                        f"Hoja {ws.title}: contiene {len(bloques)} meses "
+                        f"({', '.join(str(b['mes']) for b in bloques)}); se importa el "
+                        f"mes {mes_bloque} (los demas se ignoran por ser referencia)."
+                    )
+
             sheet_year, sheet_month = _detect_month_year_from_sheet(rows)
-            mes = req_month or sheet_month
+            mes = req_month or mes_bloque or sheet_month
             anio = req_year or sheet_year
             # Fallback: detectar nombre de mes suelto (sin año) y usar año actual
             if not mes:
@@ -1167,7 +1220,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 if not _ced2:
                     continue
                 _cnt = 0
-                for _di, _dj in enumerate(col['dias']):
+                for _di, _dj in enumerate(dias_cols):
                     if _di >= days_in_month:
                         break
                     if _dj < len(_r2) and str(parse_calendar_value(_r2[_dj]) or '').strip():
@@ -1202,7 +1255,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 es_saca = _rep_norm(puesto_nombre) == 'SACAFRANCO'
 
                 cal = []
-                for d_i, dj in enumerate(col['dias']):
+                for d_i, dj in enumerate(dias_cols):
                     if d_i >= days_in_month:
                         break
                     cal.append(parse_calendar_value(row[dj]) if dj < len(row) else '')
@@ -1387,14 +1440,21 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     ws_start = month_start + timedelta(days=((day_num - 1) // 7) * 7)
                     day_field = WEEK_KEYS[date(anio, mes, day_num).weekday()]
                     cal_by_week.setdefault(ws_start, {})[day_field] = (val or '').upper()
-                for ws_start, day_map in cal_by_week.items():
-                    obj, _ = AsignacionSemanal.objects.get_or_create(
-                        asignacion_id=asig.id, week_start=ws_start, defaults={'puesto_id': puesto.id}
+                # Escritura en BLOQUE del mes base: borrar las semanas del mes y
+                # recrearlas de una (mucho mas rapido que get_or_create + save por
+                # semana; ademas garantiza que no queden datos viejos mezclados).
+                AsignacionSemanal.objects.filter(
+                    asignacion_id=asig.id, week_start__in=list(cal_by_week.keys())
+                ).delete()
+                AsignacionSemanal.objects.bulk_create([
+                    AsignacionSemanal(
+                        asignacion_id=asig.id, week_start=ws_start, puesto_id=puesto.id,
+                        mon=dm.get('mon', ''), tue=dm.get('tue', ''), wed=dm.get('wed', ''),
+                        thu=dm.get('thu', ''), fri=dm.get('fri', ''), sat=dm.get('sat', ''),
+                        sun=dm.get('sun', ''),
                     )
-                    for k, v in day_map.items():
-                        setattr(obj, k, v)
-                    obj.puesto_id = puesto.id
-                    obj.save()
+                    for ws_start, dm in cal_by_week.items()
+                ])
 
                 # Continuar el patrón D/N/F en los próximos 36 meses (ciclo continuo)
                 # Detectar el período REAL (ej. DDDNNNF=7) para no repetir el mes entero.
@@ -1409,42 +1469,87 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         nm = (mo - 1 + off) % 12 + 1
                         return ny, nm
 
+                    # 1) Calcular el calendario proyectado de TODOS los meses objetivo.
+                    targets = []  # (ty, tm, t_start, wp)
                     for off in range(1, meses_proy + 1):
                         ty, tm = _add_months(anio, mes, off)
                         t_start = date(ty, tm, 1)
                         t_days = (date(ty, tm + 1, 1) - timedelta(days=1)).day if tm < 12 else 31
-                        t_asig, _ = Asignacion.objects.update_or_create(
-                            persona=persona, mes=tm, anio=ty,
-                            defaults={
-                                'cliente': instalacion.cliente, 'instalacion': instalacion,
-                                'puesto': puesto, 'horario': horario, 'fecha': None,
-                                'patronAsignacion': None, 'estado': 'ACTIVO',
-                                'publicada_calendario': True, 'recurring': True,
-                                'start_date': t_start, 'end_date': None,
-                                'orden': row_orden,
-                            }
-                        )
-                        puesto_personas.setdefault((puesto.id, tm, ty), set()).add(persona.id)
                         wp = {}
                         for dn in range(1, t_days + 1):
                             wss = t_start + timedelta(days=((dn - 1) // 7) * 7)
                             df = WEEK_KEYS[date(ty, tm, dn).weekday()]
                             wp.setdefault(wss, {})[df] = ciclo[seq_idx % cycle_len]
                             seq_idx += 1
-                        # Bulk: borrar semanas existentes y crear en bloque (mucho mas rapido
-                        # que get_or_create + save por semana en la proyeccion de N meses).
-                        AsignacionSemanal.objects.filter(
-                            asignacion_id=t_asig.id, week_start__in=list(wp.keys())
-                        ).delete()
-                        AsignacionSemanal.objects.bulk_create([
-                            AsignacionSemanal(
-                                asignacion_id=t_asig.id, week_start=wss, puesto_id=puesto.id,
+                        targets.append((ty, tm, t_start, wp))
+                        puesto_personas.setdefault((puesto.id, tm, ty), set()).add(persona.id)
+
+                    # 2) Asignaciones de esos meses en BLOQUE (1 query para leer las
+                    #    existentes; bulk_update + bulk_create en vez de update_or_create
+                    #    por cada mes). Esto es lo que hacia lento el import de 36 meses.
+                    want = {(tm, ty) for (ty, tm, _s, _w) in targets}
+                    existing = {}
+                    for a in Asignacion.objects.filter(persona=persona):
+                        if (a.mes, a.anio) in want:
+                            existing[(a.mes, a.anio)] = a
+                    _upd_fields = ['cliente', 'instalacion', 'puesto', 'horario', 'fecha',
+                                   'patronAsignacion', 'estado', 'publicada_calendario',
+                                   'recurring', 'start_date', 'end_date', 'orden']
+                    to_update, to_create = [], []
+                    for (ty, tm, t_start, wp) in targets:
+                        a = existing.get((tm, ty))
+                        if a:
+                            a.cliente = instalacion.cliente
+                            a.instalacion = instalacion
+                            a.puesto = puesto
+                            a.horario = horario
+                            a.fecha = None
+                            a.patronAsignacion = None
+                            a.estado = 'ACTIVO'
+                            a.publicada_calendario = True
+                            a.recurring = True
+                            a.start_date = t_start
+                            a.end_date = None
+                            a.orden = row_orden
+                            to_update.append(a)
+                        else:
+                            to_create.append(Asignacion(
+                                persona=persona, mes=tm, anio=ty,
+                                cliente=instalacion.cliente, instalacion=instalacion,
+                                puesto=puesto, horario=horario, fecha=None,
+                                patronAsignacion=None, estado='ACTIVO',
+                                publicada_calendario=True, recurring=True,
+                                start_date=t_start, end_date=None, orden=row_orden,
+                            ))
+                    if to_update:
+                        Asignacion.objects.bulk_update(to_update, _upd_fields)
+                    created_objs = Asignacion.objects.bulk_create(to_create) if to_create else []
+
+                    asig_by_month = {}
+                    for a in to_update:
+                        asig_by_month[(a.mes, a.anio)] = a.id
+                    for a in created_objs:
+                        asig_by_month[(a.mes, a.anio)] = a.id
+
+                    # 3) Calendario semanal de todos los meses objetivo en BLOQUE:
+                    #    borrar de una y recrear de una (2 queries en total).
+                    all_ids = list(asig_by_month.values())
+                    if all_ids:
+                        AsignacionSemanal.objects.filter(asignacion_id__in=all_ids).delete()
+                    sem_bulk = []
+                    for (ty, tm, t_start, wp) in targets:
+                        aid = asig_by_month.get((tm, ty))
+                        if not aid:
+                            continue
+                        for wss, dm in wp.items():
+                            sem_bulk.append(AsignacionSemanal(
+                                asignacion_id=aid, week_start=wss, puesto_id=puesto.id,
                                 mon=dm.get('mon', ''), tue=dm.get('tue', ''), wed=dm.get('wed', ''),
                                 thu=dm.get('thu', ''), fri=dm.get('fri', ''), sat=dm.get('sat', ''),
                                 sun=dm.get('sun', ''),
-                            )
-                            for wss, dm in wp.items()
-                        ])
+                            ))
+                    if sem_bulk:
+                        AsignacionSemanal.objects.bulk_create(sem_bulk)
 
                 resumen['filas_validas'] += 1
 
