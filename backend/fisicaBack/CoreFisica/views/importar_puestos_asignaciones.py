@@ -1126,6 +1126,7 @@ def es_formato_reporte(wb):
 def importar_formato_reporte(request, wb, cliente_id_filter=None):
     from .asignacion_semanal_views import _sync_sacafranco_to_reporte_y_consolidado, _validate_sacafranco_tokens
     from ..models import SacafrancoFila, SacafrancoFilaSemanal
+    from ..audit import suppress_audit
 
     resumen = {
         'total_filas': 0, 'filas_validas': 0, 'personas_creadas': 0,
@@ -1151,7 +1152,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
     orden_counter = 0  # orden de presentación según el orden del Excel (igual en todos los meses)
     WEEK_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
-    with transaction.atomic():
+    with suppress_audit(), transaction.atomic():
         for ws in wb.worksheets:
             rows = list(ws.iter_rows(values_only=True))
             ri, col = _rep_detectar_columnas(rows)

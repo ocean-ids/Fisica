@@ -12,7 +12,7 @@ Se excluyen a propósito:
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from .audit import get_current_user, get_current_ip
+from .audit import get_current_user, get_current_ip, audit_is_suppressed
 from .models import (
     AuditLog,
     Cliente, Instalacion, Puesto, Persona, Asignacion, Horario,
@@ -47,13 +47,13 @@ def _registrar(accion, instance):
 
 @receiver(post_save)
 def _audit_post_save(sender, instance, created, **kwargs):
-    if sender not in AUDITED_MODELS:
+    if sender not in AUDITED_MODELS or audit_is_suppressed():
         return
     _registrar('CREATE' if created else 'UPDATE', instance)
 
 
 @receiver(post_delete)
 def _audit_post_delete(sender, instance, **kwargs):
-    if sender not in AUDITED_MODELS:
+    if sender not in AUDITED_MODELS or audit_is_suppressed():
         return
     _registrar('DELETE', instance)
