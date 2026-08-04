@@ -14,4 +14,9 @@ ignore = [
     "FURB188", # removeprefix() en vez de slice condicional.
     "PLR1730", # max(x, 1) en vez de if.
     "RUF059",  # variables de tuple sin usar (desempaquetado parcial).
+    "DTZ007",  # strptime sin %z: fechas locales sin timezone (patrón del proyecto).
+    "RUF046",  # int() sobre un valor que ya es int: redundante pero inofensivo.
+    "DTZ001",  # datetime() sin tzinfo: fechas locales sin timezone (patrón del proyecto).
+    "B023",    # closure sobre variable de loop: se usa dentro de la misma iteración.
+    "FURB122", # write() dentro de un for en vez de writelines().
 ]
