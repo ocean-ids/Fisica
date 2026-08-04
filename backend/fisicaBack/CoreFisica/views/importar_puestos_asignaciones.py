@@ -1240,9 +1240,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 if not _ced2:
                     continue
                 _cnt = 0
-                for _di, _dj in enumerate(dias_cols):
-                    if _di >= days_in_month:
-                        break
+                for _dj in col['dias']:
                     if _dj < len(_r2) and str(parse_calendar_value(_r2[_dj]) or '').strip():
                         _cnt += 1
                 _prev = best_row_idx.get(_ced2)
@@ -1271,6 +1269,32 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         f'Fila {i}: cedula {cedula} repetida en la hoja; se usa la fila con calendario mas completo'
                     )
                     continue
+
+                # Bloque de calendario de ESTA fila. Normalmente el mes objetivo
+                # (p.ej. agosto). Pero si para esta persona el bloque objetivo esta
+                # VACIO y otro bloque tiene datos (caso RONDA GENERAL: agosto vacio,
+                # julio lleno), se usa el ultimo bloque CON datos como mes base; asi
+                # la proyeccion cubre agosto y el calendario no queda en blanco.
+                if bloques:
+                    def _cnt_fila(b):
+                        return sum(
+                            1 for d in b['dias']
+                            if d < len(row) and str(parse_calendar_value(row[d]) or '').strip()
+                        )
+                    _obj_mes = req_month or mes_bloque
+                    _target = next((b for b in bloques if b['mes'] == _obj_mes), None) if _obj_mes else None
+                    if _target is None:
+                        _target = bloques[-1]
+                    _chosen = _target
+                    if _cnt_fila(_target) == 0:
+                        for b in bloques:
+                            if _cnt_fila(b) > 0:
+                                _chosen = b
+                    dias_cols = _chosen['dias']
+                    mes = _chosen['mes']
+                    month_start = date(anio, mes, 1)
+                    days_in_month = (date(anio, mes + 1, 1) - timedelta(days=1)).day if mes < 12 else 31
+
                 puesto_nombre = carry['pue']
                 es_saca = _rep_norm(puesto_nombre) == 'SACAFRANCO'
 
