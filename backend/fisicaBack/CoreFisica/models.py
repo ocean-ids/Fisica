@@ -1012,6 +1012,14 @@ class ReporteAsistencia(models.Model):
         ('FALTO', 'Falto'),
     ]
 
+    HUECA_MOTIVO_CHOICES = [
+        ('HUECA POR MOVIMIENTO INTERNO', 'Hueca por movimiento interno'),
+        ('HUECA POR SACAFRANCO', 'Hueca por sacafranco'),
+        ('HUECA POR ADELANTO DE TURNO', 'Hueca por adelanto de turno'),
+        ('HUECA POR UNIDAD FIJA', 'Hueca por unidad fija'),
+        ('HUECA POR RENUNCIA', 'Hueca por renuncia'),
+    ]
+
     TIPOS_REEMPLAZO = [
         'FIJOS',
         'SACAFRANCO',
@@ -1057,6 +1065,12 @@ class ReporteAsistencia(models.Model):
         limit_choices_to={'tipo__in': TIPOS_REEMPLAZO}
     )
     descripcion = models.CharField(max_length=200, blank=True, null=True)
+
+    # HUECA marcada a mano en el diálogo → se refleja en Reporte de Guardia (sección HUECA).
+    hueca = models.BooleanField(default=False)
+    hueca_motivo = models.CharField(max_length=40, blank=True, default='',
+                                    choices=HUECA_MOTIVO_CHOICES)
+
     modificado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

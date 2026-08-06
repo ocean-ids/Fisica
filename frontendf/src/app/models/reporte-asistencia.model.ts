@@ -12,6 +12,8 @@ export interface ReporteAsistenciaRow {
   descripcion?: string | null;
   modificado_por?: string;
   row_color?: string | null;
+  hueca?: boolean;
+  hueca_motivo?: string;
   modificado_en?: string | null;
   zona_titulo?: string;
   provincia?: string;
@@ -24,6 +26,8 @@ export interface UpdateReporteAsistenciaPayload {
   reemplazo_id?: number | null;
   descripcion?: string | null;
   row_color?: string | null;
+  hueca?: boolean;
+  hueca_motivo?: string | null;
   fecha?: string | null;
 }
 
