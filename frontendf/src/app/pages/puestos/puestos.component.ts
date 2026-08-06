@@ -361,32 +361,51 @@ export class PuestosComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const file = input.files && input.files[0];
     if (!file) return;
-
-    // El import corre en SEGUNDO PLANO (async): responde al instante y luego
-    // consultamos el estado. Asi no choca con el timeout 524 de Cloudflare.
-    Swal.fire({
-      title: 'Importando...',
-      html: 'Procesando en segundo plano, no cierres la ventana. Puede tardar unos minutos.',
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      didOpen: () => Swal.showLoading(),
-    });
-
-    this.puestoService.importPuestosAsignacionesAsync(file, this.clienteSeleccionado || undefined).subscribe({
-      next: (res) => {
-        if (!res?.job_id) {
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo iniciar la importación.' });
-          return;
-        }
-        this.esperarImport(res.job_id);
-      },
-      error: (err) => {
-        const msg = err?.error?.error || 'No se pudo importar';
-        Swal.fire({ icon: 'error', title: 'Error', text: msg });
-      }
-    });
-
     input.value = '';
+
+    // Antes de importar, preguntar si se REEMPLAZA el personal (quitar del puesto a
+    // quien ya no aparece en el archivo). Se marca SOLO si el Excel es el completo
+    // del mes; de lo contrario podria desactivar gente valida.
+    Swal.fire({
+      title: 'Importar horario',
+      input: 'checkbox',
+      inputValue: 0,
+      inputPlaceholder: 'Reemplazar personal (quitar del puesto a quien ya NO viene en el archivo)',
+      html: '<div style="font-size:13px;color:#6b7280">Marca la opción <b>solo</b> si este archivo es el <b>completo</b> del mes. '
+          + 'Si no la marcas, el import solo agrega y actualiza (no quita a nadie).</div>',
+      showCancelButton: true,
+      confirmButtonText: 'Importar',
+      cancelButtonText: 'Cancelar',
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      const reemplazarPersonal = !!result.value;
+
+      // El import corre en SEGUNDO PLANO (async): responde al instante y luego
+      // consultamos el estado. Asi no choca con el timeout 524 de Cloudflare.
+      Swal.fire({
+        title: 'Importando...',
+        html: 'Procesando en segundo plano, no cierres la ventana. Puede tardar unos minutos.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      this.puestoService.importPuestosAsignacionesAsync(
+        file, this.clienteSeleccionado || undefined, undefined, reemplazarPersonal
+      ).subscribe({
+        next: (res) => {
+          if (!res?.job_id) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo iniciar la importación.' });
+            return;
+          }
+          this.esperarImport(res.job_id);
+        },
+        error: (err) => {
+          const msg = err?.error?.error || 'No se pudo importar';
+          Swal.fire({ icon: 'error', title: 'Error', text: msg });
+        }
+      });
+    });
   }
 
   // Consulta el estado del import en segundo plano cada 3s hasta que termina.

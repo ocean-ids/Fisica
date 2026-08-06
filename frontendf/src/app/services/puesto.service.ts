@@ -60,12 +60,13 @@ export class PuestoService {
     }
 
     // Importacion en segundo plano: responde al instante con { job_id } (evita el 524 de Cloudflare).
-    importPuestosAsignacionesAsync(file: File, clienteId?: number, meses?: number): Observable<any> {
+    importPuestosAsignacionesAsync(file: File, clienteId?: number, meses?: number, desactivarSobrantes?: boolean): Observable<any> {
         const formData = new FormData();
         formData.append('file', file);
         const params = new URLSearchParams();
         if (clienteId) { params.set('cliente_id', String(clienteId)); }
         if (meses != null) { params.set('meses', String(meses)); }
+        if (desactivarSobrantes) { params.set('desactivar_sobrantes', '1'); }
         const qs = params.toString();
         return this.apiService.post<any>(`/importar-puestos-asignaciones/async/${qs ? '?' + qs : ''}`, formData);
     }

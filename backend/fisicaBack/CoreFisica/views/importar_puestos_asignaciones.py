@@ -1461,6 +1461,12 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 )
                 if p_created:
                     resumen['puestos_creados'] += 1
+                    # Aviso: puesto NUEVO creado, para que el usuario revise que no sea
+                    # un typo o basura (no se crea a ciegas: queda reportado).
+                    resumen['errores'].append(
+                        f"Fila {i}: PUESTO NUEVO creado '{puesto_nombre}' "
+                        f"(instalacion {carry['nominativo']}) — verifique que sea correcto"
+                    )
                 if not puesto.horario_id:
                     puesto.horario = horario
                     puesto.save(update_fields=['horario'])
