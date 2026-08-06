@@ -816,6 +816,8 @@ def _build_reporte_asistencia_data(
             'descripcion': descripcion,
             'modificado_por': modificado_por_nombre,
             'row_color': (override.row_color or '') if override else '',
+            'hueca': bool(getattr(override, 'hueca', False)) if override else False,
+            'hueca_motivo': (getattr(override, 'hueca_motivo', '') or '') if override else '',
             'modificado_en': modificado_en_iso,
             'zona_titulo': zona_titulo,
             'provincia': provincia_nombre,
@@ -912,6 +914,8 @@ def _build_reporte_asistencia_data(
                     'descripcion': '',
                     'modificado_por': '',
                     'row_color': '',
+                    'hueca': False,
+                    'hueca_motivo': '',
                     'modificado_en': None,
                     'zona_titulo': zona_filter_norm or 'SIN ZONA',
                     'provincia': provincia_val,
@@ -1061,6 +1065,7 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
         filas.append(('FALTOS', asignacion.persona, 'FALTO'))
 
     # 2) Reemplazo según su estado -> sección correspondiente (acepta DOBLA y DOBLADO).
+    #    FR/TRABAJADO se refleja aparte, automático al guardar (ver _sync_frtrabajado_dobladas).
     estado = (override.estado or '').upper()
     mapa = {
         'DOBLA': 'DOBLADAS', 'DOBLADO': 'DOBLADAS',
@@ -1112,6 +1117,96 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
             _hueca.save()
 
 
+def _sync_hueca_reporte_guardia(override, asignacion, fecha_reporte):
+    """Refleja el check 'Hueca' (marcado a mano en el diálogo de asistencia) en el
+    REPORTE DE GUARDIA, sección HUECA. Se crea como fila MANUAL (auto=False) para que
+    el botón 'Regenerar desde asistencia' (que borra las auto=True) NO la pise.
+
+    - hueca=True  -> crea/actualiza la fila HUECA con su motivo (dropdown).
+    - hueca=False -> la elimina.
+    """
+    from ..models import ReporteGuardia
+
+    qs = ReporteGuardia.objects.filter(reporte_asistencia=override, seccion='HUECA', auto=False)
+    # Sin check o sin fecha: no debe existir la hueca manual.
+    if not getattr(override, 'hueca', False) or not fecha_reporte:
+        qs.delete()
+        return
+
+    # Turno según el calendario D/N de esa fecha; si no hay, Diurno por defecto.
+    letra = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id)
+    turno = 'Diurno' if letra == 'D' else ('Nocturno' if letra == 'N' else 'Diurno')
+
+    cliente = getattr(asignacion.cliente, 'nombre_comercial', '') or ''
+    puesto = getattr(asignacion.puesto, 'nombre', '') or ''
+
+    # Borrar y recrear (una sola hueca manual por reporte).
+    qs.delete()
+    ReporteGuardia.objects.create(
+        fecha=fecha_reporte,
+        turno=turno,
+        seccion='HUECA',
+        cliente=cliente,
+        puesto=puesto,
+        fecha_evento=fecha_reporte,
+        reporte_asistencia=override,
+        auto=False,
+        motivo=override.hueca_motivo or '',
+    )
+
+
+def _sync_frtrabajado_dobladas(override, asignacion, fecha_reporte):
+    """Refleja el estado FR/TRABAJADO (franco trabajado) en REPORTE DE GUARDIA,
+    sección DOBLADAS, automático al guardar. Fila MANUAL (auto=False) para que el
+    botón 'Regenerar' (que borra las auto=True) NO la pise ni la duplique.
+
+    - estado == FR/TRABAJADO y hay reemplazo -> crea/actualiza la fila DOBLADAS
+      con la persona que trabajó su franco.
+    - en otro caso -> la elimina.
+    """
+    from ..models import ReporteGuardia
+
+    qs = ReporteGuardia.objects.filter(
+        reporte_asistencia=override, seccion='DOBLADAS', auto=False
+    )
+    estado = (getattr(override, 'estado', '') or '').upper()
+    rem = getattr(override, 'reemplazo', None)
+    if estado != 'FR/TRABAJADO' or not fecha_reporte or not rem:
+        qs.delete()
+        return
+
+    letra = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id)
+    turno = 'Diurno' if letra == 'D' else ('Nocturno' if letra == 'N' else 'Diurno')
+    cliente = getattr(asignacion.cliente, 'nombre_comercial', '') or ''
+    puesto = getattr(asignacion.puesto, 'nombre', '') or ''
+
+    # PROVIENE = de dónde viene el que trabajó su franco: FT-<cliente>-<puesto> de SU
+    # propio puesto (su asignación activa). Si no se encuentra, queda solo "FT".
+    origen = Asignacion.objects.select_related('cliente', 'puesto').filter(
+        persona=rem, estado='ACTIVO'
+    ).order_by('-anio', '-mes').first()
+    if origen:
+        _cli = getattr(origen.cliente, 'nombre_comercial', '') or ''
+        _pue = getattr(origen.puesto, 'nombre', '') or ''
+        proviene = '-'.join([x for x in ['FT', _cli, _pue] if x])
+    else:
+        proviene = 'FT'
+
+    qs.delete()
+    ReporteGuardia.objects.create(
+        fecha=fecha_reporte,
+        turno=turno,
+        seccion='DOBLADAS',
+        cliente=cliente,
+        puesto=puesto,
+        persona_nombre=f"{rem.nombres} {rem.apellidos}".strip(),
+        persona_ref=rem,
+        proviene=proviene,               # FT-<cliente>-<puesto> de origen (no el tipo)
+        reporte_asistencia=override,
+        auto=False,
+    )
+
+
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def insertar_reporte_asistencia(request, asignacion_id):
@@ -1139,6 +1234,12 @@ def insertar_reporte_asistencia(request, asignacion_id):
         if field in request.data:
             val = request.data.get(field) or None
             setattr(override, field, val)
+
+    if 'hueca' in request.data:
+        _hv = request.data.get('hueca')
+        override.hueca = str(_hv).strip().lower() in ('1', 'true', 'si', 'on', 'yes', 'verdadero')
+    if 'hueca_motivo' in request.data:
+        override.hueca_motivo = (request.data.get('hueca_motivo') or '').strip()
 
     fecha_reporte = override.fecha_reporte
     if 'fecha' in request.data:
@@ -1187,6 +1288,16 @@ def insertar_reporte_asistencia(request, asignacion_id):
     # asistencia. Ahora se regenera bajo demanda con el boton "Regenerar desde
     # asistencia" (endpoint regenerar_reporte_guardia), para que las correcciones
     # manuales del reporte de guardia no se pisen solas.
+    # EXCEPCION: el check 'Hueca' y el estado FR/TRABAJADO SI se reflejan
+    # automaticamente al guardar (HUECA y DOBLADAS respectivamente).
+    try:
+        _sync_hueca_reporte_guardia(override, asignacion, fecha_reporte)
+    except Exception:
+        pass
+    try:
+        _sync_frtrabajado_dobladas(override, asignacion, fecha_reporte)
+    except Exception:
+        pass
 
     modificado_por_nombre = ''
     if override.modificado_por:
@@ -1206,6 +1317,8 @@ def insertar_reporte_asistencia(request, asignacion_id):
         'reemplazo': reemplazo_nombre,
         'modificado_por': modificado_por_nombre,
         'row_color': override.row_color or '',
+        'hueca': bool(override.hueca),
+        'hueca_motivo': override.hueca_motivo or '',
         'modificado_en': override.modificado_en.isoformat() if override.modificado_en else None,
     }, status=status.HTTP_200_OK)
 

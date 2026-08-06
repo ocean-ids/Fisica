@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { ReporteAsistenciaService } from '../../../services/reporte-asistencia.service';
 import { ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../../../models';
 import { PersonaService } from '../../../services/persona.service';
@@ -25,7 +26,8 @@ import Swal from 'sweetalert2';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatSelectModule
+    MatSelectModule,
+    MatCheckboxModule
   ],
   templateUrl: './reporte-asistencia-edit-dialog.component.html',
   styleUrl: './reporte-asistencia-edit-dialog.component.css'
@@ -36,6 +38,13 @@ export class ReporteAsistenciaEditDialogComponent {
   // FR/TRABAJADO SÍ es manual (se elige aquí y se autocompleta si el reemplazo está en franco).
   readonly estadosDisponibles = ['ADICIONAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO'];
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
+  readonly huecaMotivos = [
+    'HUECA POR MOVIMIENTO INTERNO',
+    'HUECA POR SACAFRANCO',
+    'HUECA POR ADELANTO DE TURNO',
+    'HUECA POR UNIDAD FIJA',
+    'HUECA POR RENUNCIA',
+  ];
   readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL']);
   descripcionesComunes: string[] = [];
 
@@ -85,7 +94,15 @@ export class ReporteAsistenciaEditDialogComponent {
       estado: [(data?.row?.estado && data?.row?.estado !== 'TURNO') ? data.row.estado : null, Validators.required],
       estado_asistencia: [data?.row?.estado_asistencia ?? null],
       reemplazo_id: [data?.row?.reemplazo_id ?? null],
-      descripcion: [data?.row?.descripcion ?? '']
+      descripcion: [data?.row?.descripcion ?? ''],
+      hueca: [data?.row?.hueca ?? false],
+      hueca_motivo: [{ value: data?.row?.hueca_motivo ?? '', disabled: !(data?.row?.hueca) }]
+    });
+
+    // Al marcar/desmarcar "Hueca" se re-evalúa todo el bloqueo (una hueca no tiene
+    // cobertura: se limpia y deshabilita estado/reemplazo, y se habilita el motivo).
+    this.form.get('hueca')?.valueChanges.subscribe(() => {
+      this.aplicarBloqueoAsistencia(this.form.get('estado_asistencia')?.value, true);
     });
 
     this.reemplazoCtrl.setValue(data?.row?.reemplazo || '', { emitEvent: false });
@@ -119,16 +136,36 @@ export class ReporteAsistenciaEditDialogComponent {
   private aplicarBloqueoAsistencia(estadoAsistencia: any, limpiar = false): void {
     const esFalto = (estadoAsistencia || '').toString().toUpperCase() === 'FALTO';
     const estadoCtrl = this.form.get('estado');
+    const huecaCtrl = this.form.get('hueca');
+    const motivoCtrl = this.form.get('hueca_motivo');
 
+    // Estado: se habilita solo si la asistencia es FALTO (regla normal, obligatorio).
     if (esFalto) {
       estadoCtrl?.enable({ emitEvent: false });
     } else {
-      if (limpiar) {
-        estadoCtrl?.setValue(null, { emitEvent: false });
-      }
+      if (limpiar) { estadoCtrl?.setValue(null, { emitEvent: false }); }
       estadoCtrl?.disable({ emitEvent: false });
     }
-    // El reemplazo depende de FALTO Y de tener un Estado elegido.
+
+    // Check "Hueca" (extra): solo habilitado si la asistencia es FALTO.
+    if (esFalto) {
+      huecaCtrl?.enable({ emitEvent: false });
+      // Motivo: habilitado solo si la hueca está marcada.
+      if (huecaCtrl?.value) {
+        motivoCtrl?.enable({ emitEvent: false });
+      } else {
+        motivoCtrl?.disable({ emitEvent: false });
+      }
+    } else {
+      if (limpiar) {
+        huecaCtrl?.setValue(false, { emitEvent: false });
+        motivoCtrl?.setValue('', { emitEvent: false });
+      }
+      huecaCtrl?.disable({ emitEvent: false });
+      motivoCtrl?.disable({ emitEvent: false });
+    }
+
+    // El reemplazo depende de FALTO Y de tener un Estado elegido (regla normal).
     this.aplicarBloqueoReemplazo(limpiar);
   }
 
@@ -338,11 +375,23 @@ export class ReporteAsistenciaEditDialogComponent {
       return;
     }
 
+    // Si marca "Hueca", debe elegir un motivo.
+    if (raw.hueca && !(raw.hueca_motivo || '').toString().trim()) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Falta el motivo de la hueca',
+        text: 'Marcaste "Hueca", elige el motivo para que se refleje en Reporte de Guardia.',
+      });
+      return;
+    }
+
     const payload: UpdateReporteAsistenciaPayload = {
       estado: raw.estado || null,
       estado_asistencia: raw.estado_asistencia || null,
       reemplazo_id: raw.reemplazo_id === '' ? null : raw.reemplazo_id,
       descripcion: raw.descripcion === '' ? null : raw.descripcion,
+      hueca: !!raw.hueca,
+      hueca_motivo: raw.hueca ? (raw.hueca_motivo || null) : null,
       fecha: this.data?.fecha || null
     };
 
