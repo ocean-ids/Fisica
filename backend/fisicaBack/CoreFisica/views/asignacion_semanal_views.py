@@ -1227,7 +1227,14 @@ def listar_asignacion_semanal_mes(request):
         weeks_map[ws_key]['asignaciones'].append(row)
 
     if include_sacafranco and weeks:
-        sac_qs = SacafrancoFilaSemanal.objects.filter(week_start__in=weeks)
+        # Solo filas de sacafranco DEL MES que se esta viendo. Evita que filas de otros
+        # meses con semanas mal ancladas (data vieja) aparezcan duplicadas en este mes.
+        _mes_vista, _anio_vista = weeks[0].month, weeks[0].year
+        sac_qs = SacafrancoFilaSemanal.objects.filter(
+            week_start__in=weeks,
+            sacafranco_fila__mes=_mes_vista,
+            sacafranco_fila__anio=_anio_vista,
+        )
         sac_rows = list(SacafrancoFilaSemanalSerializer(sac_qs, many=True).data)
         for row in sac_rows:
             ws_key = str(row.get('week_start'))
