@@ -1491,10 +1491,12 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                            or _cliente_coincide(_cli_excel, getattr(_cli_inst, 'razon_social', ''))
                            or _cliente_coincide(_cli_excel, getattr(instalacion, 'nombre', '')))
                     if not _ok:
+                        _nom_persona = norm(g('nombre'))
+                        _quien = f"{cedula} {_nom_persona}".strip() or 'sin persona'
                         resumen['errores'].append(
-                            f"Hoja {ws.title}, Fila {i}: el nominativo '{carry['nominativo']}' es del "
-                            f"cliente '{getattr(_cli_inst, 'nombre_comercial', '')}', no coincide con "
-                            f"'{_cli_excel}' del archivo — no se importa"
+                            f"Hoja {ws.title}, Fila {i}: [{_quien}] nominativo '{carry['nominativo']}' "
+                            f"es del cliente '{getattr(_cli_inst, 'nombre_comercial', '')}', "
+                            f"no coincide con '{_cli_excel}' del archivo — no se importa"
                         )
                         continue
 

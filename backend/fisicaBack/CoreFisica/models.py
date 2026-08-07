@@ -208,6 +208,60 @@ class Instalacion(models.Model):
         canton_nombre = getattr(self.canton, 'nombre', '') if self.canton else ''
         return f"{self.cliente.nombre_comercial} - {prov}, {canton_nombre}".strip(' - ,')
 
+
+class ZonaOperativa(models.Model):
+    """Zona operativa para NOMINATIVOS (letra + numero). Es DISTINTA del modelo
+    `Zona` (sub-zona por instalacion, Zona 1/2/3 de Puesto.zona) — no lo reemplaza.
+    Cambio ADITIVO: convive con lo existente."""
+    numero = models.PositiveIntegerField(unique=True)          # Zona 1, 2, 3, 4...
+    nombre = models.CharField(max_length=100)                  # GAMMA, DELTA... (para filtro)
+    letra = models.CharField(max_length=3, unique=True)        # 1-3 letras (G, AR, AND) UNICA
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['numero']
+        verbose_name = 'Zona operativa'
+        verbose_name_plural = 'Zonas operativas'
+
+    def save(self, *args, **kwargs):
+        if self.letra:
+            self.letra = self.letra.strip().upper()
+        if self.nombre:
+            self.nombre = self.nombre.strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Zona {self.numero} - {self.nombre} ({self.letra})"
+
+
+class Nominativo(models.Model):
+    """Codigo unico letra+numero (ej. K1) por zona, asignable a UNA instalacion.
+    instalacion NULL = libre (hueco reutilizable). unique(zona, numero) + letra unica
+    de la zona => el codigo (letra+numero) es unico en todo el sistema."""
+    zona = models.ForeignKey(ZonaOperativa, on_delete=models.PROTECT, related_name='nominativos')
+    numero = models.PositiveIntegerField()                     # secuencial POR zona
+    instalacion = models.OneToOneField(
+        'Instalacion', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='nominativo'
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['zona', 'numero']
+        constraints = [
+            models.UniqueConstraint(fields=['zona', 'numero'], name='uniq_nominativo_zona_numero'),
+        ]
+        verbose_name = 'Nominativo'
+        verbose_name_plural = 'Nominativos'
+
+    @property
+    def codigo(self):
+        return f"{self.zona.letra}{self.numero}" if self.zona_id else str(self.numero)
+
+    def __str__(self):
+        return self.codigo
+
+
 def _fmt_horas(h):
     """Formatea las horas para el resumen: 12 -> '12', 10.5 -> '10.5' (sin ceros sobrantes)."""
     try:
