@@ -361,6 +361,7 @@ export class PuestosComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const file = input.files && input.files[0];
     if (!file) return;
+    input.value = '';
 
     // El import corre en SEGUNDO PLANO (async): responde al instante y luego
     // consultamos el estado. Asi no choca con el timeout 524 de Cloudflare.
@@ -372,7 +373,11 @@ export class PuestosComponent implements OnInit {
       didOpen: () => Swal.showLoading(),
     });
 
-    this.puestoService.importPuestosAsignacionesAsync(file, this.clienteSeleccionado || undefined).subscribe({
+    // Siempre REEMPLAZA personal: quita del puesto a quien ya no viene en el archivo
+    // (desactivar_sobrantes=1). El horario que se importa es el completo del mes.
+    this.puestoService.importPuestosAsignacionesAsync(
+      file, this.clienteSeleccionado || undefined, undefined, true
+    ).subscribe({
       next: (res) => {
         if (!res?.job_id) {
           Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo iniciar la importación.' });
@@ -385,8 +390,6 @@ export class PuestosComponent implements OnInit {
         Swal.fire({ icon: 'error', title: 'Error', text: msg });
       }
     });
-
-    input.value = '';
   }
 
   // Consulta el estado del import en segundo plano cada 3s hasta que termina.
@@ -422,31 +425,74 @@ export class PuestosComponent implements OnInit {
       + `, Asignaciones actualizadas: ${res?.asignaciones_actualizadas || 0}`;
     const errores = Array.isArray(res?.errores) ? res.errores : [];
     let erroresHtml = '';
+    let textoCopia = resumen;
     if (errores.length) {
       const grupos: Record<string, number> = {};
+      const otrosMsgs: string[] = [];
       for (const e of errores) {
         const m1 = /codigo '([^']*)' no existe/.exec(e);
         let key: string;
         if (m1) { key = `Instalación no existe (código ${m1[1]})`; }
+        else if (/sacafranco/.test(e)) { key = 'Sacafranco sin cobertura'; }
+        else if (/no coincide con/.test(e)) { key = 'Cliente del nominativo no coincide'; }
         else if (/sin nominativo/.test(e)) { key = 'Fila sin código de instalación'; }
         else if (/hora ingreso\/salida/.test(e)) { key = 'Hora ingreso/salida inválida'; }
         else if (/nombre incompleto|apellidos\/nombres/.test(e)) { key = 'Persona nueva sin nombre completo'; }
-        else { key = 'Otros'; }
+        else if (/contiene.*meses/.test(e)) { key = 'Aviso: hoja con varios meses'; }
+        else { key = 'Otros'; otrosMsgs.push(e); }
         grupos[key] = (grupos[key] || 0) + 1;
       }
-      const resumenErrores = Object.entries(grupos)
-        .sort((a, b) => b[1] - a[1])
-        .map(([k, n]) => `<li><b>${n}</b> — ${k}</li>`)
+      const gruposOrden = Object.entries(grupos).sort((a, b) => b[1] - a[1]);
+      const resumenErrores = gruposOrden
+        .map(([k, n]) => {
+          // "Otros" muestra los mensajes reales (distintos) para que no sea ambiguo.
+          if (k === 'Otros') {
+            const distintos = Array.from(new Set(otrosMsgs)).slice(0, 5);
+            const extra = otrosMsgs.length > distintos.length ? ' …' : '';
+            return `<li><b>${n}</b> — Otros: ${distintos.join(' | ')}${extra}</li>`;
+          }
+          return `<li><b>${n}</b> — ${k}</li>`;
+        })
         .join('');
       erroresHtml = `<div style="text-align:left;margin-top:10px;">
-            <strong>No se importaron ${errores.length} filas:</strong>
+            <strong>Avisos (${errores.length}):</strong>
             <ul style="margin:6px 0 0 18px;">${resumenErrores}</ul>
             <details style="margin-top:6px;"><summary style="cursor:pointer;">Ver detalle por fila</summary>
               <ul style="margin:6px 0 0 18px;max-height:200px;overflow:auto;">${errores.map((e: string) => `<li>${e}</li>`).join('')}</ul>
             </details>
          </div>`;
+      // Texto plano para copiar: resumen + grupos + detalle por fila.
+      textoCopia = resumen + '\n\nAvisos (' + errores.length + '):\n'
+        + gruposOrden.map(([k, n]) => `  ${n} — ${k}`).join('\n')
+        + '\n\nDetalle:\n' + errores.join('\n');
     }
-    Swal.fire({ icon: 'success', title: 'Importación', html: `${resumen}${erroresHtml}` });
+    Swal.fire({
+      icon: 'success',
+      title: 'Importación',
+      html: `${resumen}${erroresHtml}`
+        + (errores.length ? `<div style="margin-top:10px;"><button id="btnCopiarImport" type="button"
+             style="cursor:pointer;border:1px solid #6d28d9;background:#f5f3ff;color:#6d28d9;
+             border-radius:6px;padding:6px 14px;font-weight:600;">📋 Copiar avisos</button></div>` : ''),
+      didOpen: () => {
+        const btn = document.getElementById('btnCopiarImport');
+        if (!btn) { return; }
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(textoCopia).then(() => {
+            btn.textContent = '✅ Copiado';
+            setTimeout(() => { btn.textContent = '📋 Copiar avisos'; }, 1500);
+          }).catch(() => {
+            // Fallback si el navegador bloquea el portapapeles.
+            const ta = document.createElement('textarea');
+            ta.value = textoCopia;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); btn.textContent = '✅ Copiado'; } catch { /* noop */ }
+            document.body.removeChild(ta);
+            setTimeout(() => { btn.textContent = '📋 Copiar avisos'; }, 1500);
+          });
+        });
+      }
+    });
   }
 
   abrirNovedad(): void {

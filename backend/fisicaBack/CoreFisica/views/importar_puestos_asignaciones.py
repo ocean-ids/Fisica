@@ -396,6 +396,58 @@ def _norm_puesto(s):
     return re.sub(r'\s+', ' ', t)
 
 
+_CLI_STOPWORDS = {'DE', 'DEL', 'LA', 'LAS', 'LOS', 'EL', 'Y', 'SA', 'CIA', 'SAC', 'EP', 'CIA.'}
+
+
+def _cli_norm_alnum(s):
+    """Cliente normalizado a solo alfanumerico (sin espacios/acentos/simbolos)."""
+    import unicodedata
+    t = str(s or '').strip().upper()
+    t = ''.join(c for c in unicodedata.normalize('NFKD', t) if not unicodedata.combining(c))
+    return re.sub(r'[^A-Z0-9]', '', t)
+
+
+def _cli_tokens(s):
+    import unicodedata
+    t = str(s or '').strip().upper()
+    t = ''.join(c for c in unicodedata.normalize('NFKD', t) if not unicodedata.combining(c))
+    return [w for w in re.split(r'[^A-Z0-9]+', t) if w and w not in _CLI_STOPWORDS]
+
+
+def _cliente_coincide(excel_cli, db_cli):
+    """Compara el cliente del Excel contra el de la instalacion de forma TOLERANTE
+    para no dar falsos positivos por variaciones de nombre. Coincide si:
+    uno contiene al otro, o son muy similares (typos), o comparten un token fuerte,
+    o uno es la SIGLA del otro (ej. ATD = Agencia Transito Duran). Solo devuelve
+    False cuando son clientes realmente distintos."""
+    import difflib
+    a, b = _cli_norm_alnum(excel_cli), _cli_norm_alnum(db_cli)
+    if not a or not b:
+        return True  # sin dato para comparar -> no bloquea
+    if a in b or b in a:
+        return True
+    if difflib.SequenceMatcher(None, a, b).ratio() >= 0.62:
+        return True
+    ta, tb = _cli_tokens(excel_cli), _cli_tokens(db_cli)
+    for x in ta:
+        for y in tb:
+            if x == y or (len(x) >= 4 and len(y) >= 4
+                          and difflib.SequenceMatcher(None, x, y).ratio() >= 0.8):
+                return True
+    # sigla: una cadena = iniciales de las palabras de la otra (ej. UPS = Universidad
+    # Politecnica Salesiana). Se prueba con el texto completo Y con cada token (por si
+    # viene la sigla junto al nombre de la instalacion, ej. "UPS CENTENARIO").
+    ini_a = ''.join(w[0] for w in ta if w)
+    ini_b = ''.join(w[0] for w in tb if w)
+    cands_a = [_cli_norm_alnum(excel_cli)] + ta
+    cands_b = [_cli_norm_alnum(db_cli)] + tb
+    if ini_b and any(c == ini_b for c in cands_a):
+        return True
+    if ini_a and any(c == ini_a for c in cands_b):
+        return True
+    return False
+
+
 def _get_or_create_puesto(instalacion, nombre, defaults=None):
     """get_or_create seguro para Puesto: empareja por nombre normalizado
     (ignora mayus/espacios/acentos) para NO crear duplicados, y tolera duplicados
@@ -1282,7 +1334,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 # la fila con mas calendario; las demas se saltan (no mezclar calendarios).
                 if cedula and best_row_idx.get(cedula, (i, 0))[0] != i:
                     resumen['errores'].append(
-                        f'Fila {i}: cedula {cedula} repetida en la hoja; se usa la fila con calendario mas completo'
+                        f'Hoja {ws.title}, Fila {i}: cedula {cedula} repetida en la hoja; se usa la fila con calendario mas completo'
                     )
                     continue
 
@@ -1343,6 +1395,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         sem, _ = SacafrancoFilaSemanal.objects.get_or_create(sacafranco_fila=fila, week_start=ws_start)
                         setattr(sem, day_field, (val or '').upper())
                         sem.save()
+                    _saca_errs = set()
                     for wk in range(((days_in_month - 1) // 7) + 1):
                         ws_start = month_start + timedelta(days=wk * 7)
                         sem = SacafrancoFilaSemanal.objects.filter(sacafranco_fila=fila, week_start=ws_start).first()
@@ -1353,8 +1406,14 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                             err, resolved = _validate_sacafranco_tokens(payload, ws_start)
                             if not err:
                                 _sync_sacafranco_to_reporte_y_consolidado(fila.id, ws_start, payload, resolved)
+                            else:
+                                # Token de sacafranco que NO resuelve (nominativo/turno mal):
+                                # se reporta para que se revise (validacion por codigo, confiable).
+                                _saca_errs.add(err)
                         except Exception:
                             pass
+                    for _e in _saca_errs:
+                        resumen['errores'].append(f"Hoja {ws.title}, Fila {i}: sacafranco — {_e}")
 
                     # Continuar el patrón del sacafranco en los próximos 36 meses
                     sf_vals = [(v or '').upper() for v in cal]
@@ -1413,14 +1472,31 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 if not cedula:
                     continue
                 if not carry['nominativo']:
-                    resumen['errores'].append(f'Fila {i}: sin nominativo (codigo de instalacion)')
+                    resumen['errores'].append(f'Hoja {ws.title}, Fila {i}: sin nominativo (codigo de instalacion)')
                     continue
                 instalacion = Instalacion.objects.filter(codigo__iexact=carry['nominativo']).first()
                 if not instalacion:
-                    resumen['errores'].append(f"Fila {i}: instalacion con codigo '{carry['nominativo']}' no existe")
+                    resumen['errores'].append(f"Hoja {ws.title}, Fila {i}: instalacion con codigo '{carry['nominativo']}' no existe")
                     continue
                 if cliente_id_filter and instalacion.cliente_id != cliente_id_filter:
                     continue
+
+                # Validacion: el nominativo (codigo) debe ser del cliente/instalacion que
+                # dice la fila. Comparacion TOLERANTE (typos/siglas) para no botar validos;
+                # si el cliente es realmente distinto -> alerta y NO se importa.
+                _cli_inst = getattr(instalacion, 'cliente', None)
+                _cli_excel = carry.get('cli') or ''
+                if _cli_excel and _cli_inst:
+                    _ok = (_cliente_coincide(_cli_excel, getattr(_cli_inst, 'nombre_comercial', ''))
+                           or _cliente_coincide(_cli_excel, getattr(_cli_inst, 'razon_social', ''))
+                           or _cliente_coincide(_cli_excel, getattr(instalacion, 'nombre', '')))
+                    if not _ok:
+                        resumen['errores'].append(
+                            f"Hoja {ws.title}, Fila {i}: el nominativo '{carry['nominativo']}' es del "
+                            f"cliente '{getattr(_cli_inst, 'nombre_comercial', '')}', no coincide con "
+                            f"'{_cli_excel}' del archivo — no se importa"
+                        )
+                        continue
 
                 # arrastrar hora ingreso/salida de celdas combinadas (mismo puesto)
                 raw_ing = g('ing')
@@ -1432,7 +1508,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 hora_ingreso = parse_excel_time(raw_ing if (raw_ing is not None and str(raw_ing).strip()) else carry_time['ing'])
                 hora_salida = parse_excel_time(raw_sal if (raw_sal is not None and str(raw_sal).strip()) else carry_time['sal'])
                 if not hora_ingreso or not hora_salida:
-                    resumen['errores'].append(f'Fila {i}: hora ingreso/salida invalida')
+                    resumen['errores'].append(f'Hoja {ws.title}, Fila {i}: hora ingreso/salida invalida')
                     continue
 
                 resumen_txt = carry['resumen'] or ''
@@ -1445,7 +1521,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 if not persona:
                     toks = [t for t in re.split(r'\s+', norm(g('nombre'))) if t]
                     if len(toks) < 2:
-                        resumen['errores'].append(f'Fila {i}: nombre incompleto')
+                        resumen['errores'].append(f'Hoja {ws.title}, Fila {i}: nombre incompleto')
                         continue
                     ap = ' '.join(toks[:2])
                     no = ' '.join(toks[2:]) or toks[1]
@@ -1461,6 +1537,12 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 )
                 if p_created:
                     resumen['puestos_creados'] += 1
+                    # Aviso: puesto NUEVO creado, para que el usuario revise que no sea
+                    # un typo o basura (no se crea a ciegas: queda reportado).
+                    resumen['errores'].append(
+                        f"Hoja {ws.title}, Fila {i}: PUESTO NUEVO creado '{puesto_nombre}' "
+                        f"(instalacion {carry['nominativo']}) — verifique que sea correcto"
+                    )
                 if not puesto.horario_id:
                     puesto.horario = horario
                     puesto.save(update_fields=['horario'])
