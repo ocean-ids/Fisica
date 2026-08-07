@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
-from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, Consolidado, UserProfile, AsignacionCalendarioLog, AuditLog, MODULOS_MENU
+from .models import Cliente, Canton,Provincia, Zona, Instalacion, Puesto, Persona, Horario, Asignacion, AsignacionSemanal, PuestoHorario, PatronAsignacion, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, ReporteAsistenciaHistorial, Consolidado, UserProfile, AsignacionCalendarioLog, AuditLog, ZonaOperativa, Nominativo, MODULOS_MENU
 
 admin.site.site_header = 'Seguridad Física'
 admin.site.site_title = 'Seguridad Física'
@@ -34,6 +34,39 @@ class ZonaAdmin(admin.ModelAdmin):
 class InstalacionAdmin(admin.ModelAdmin):
 	list_display = ('codigo', 'nombre', 'cliente')
 	search_fields = ('codigo', 'nombre', 'cliente__nombre_comercial', 'canton__provincia__nombre', 'canton__nombre')
+
+
+# --- Zonas operativas y Nominativos (letra + numero) ---
+class NominativoInline(admin.TabularInline):
+	model = Nominativo
+	extra = 0
+	fields = ('numero', 'instalacion')
+	autocomplete_fields = ('instalacion',)
+	ordering = ('numero',)
+
+
+@admin.register(ZonaOperativa)
+class ZonaOperativaAdmin(admin.ModelAdmin):
+	list_display = ('numero', 'nombre', 'letra', 'get_noms')
+	search_fields = ('nombre', 'letra')
+	ordering = ('numero',)
+	inlines = (NominativoInline,)
+
+	def get_noms(self, obj):
+		return obj.nominativos.count()
+	get_noms.short_description = 'Nominativos'
+
+
+@admin.register(Nominativo)
+class NominativoAdmin(admin.ModelAdmin):
+	list_display = ('codigo', 'zona', 'numero', 'instalacion')
+	search_fields = ('zona__letra', 'zona__nombre', 'instalacion__nombre', 'instalacion__codigo')
+	list_filter = ('zona',)
+	autocomplete_fields = ('instalacion',)
+
+	def codigo(self, obj):
+		return obj.codigo
+	codigo.short_description = 'Nominativo'
 
 class PuestoHorarioInline(admin.TabularInline):
 	model = PuestoHorario
