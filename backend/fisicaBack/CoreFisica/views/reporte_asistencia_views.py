@@ -942,6 +942,28 @@ def _build_reporte_asistencia_data(
                 filtered.append(item)
         data = filtered
 
+    # Ordenar dentro de cada provincia por el NOMINATIVO (codigo): agrupado por letra
+    # y de menor a mayor por numero (K1, K2, K3, luego S1, S2...). Se conserva el orden
+    # de aparicion de las provincias. Solo cuando esta todo en memoria (vista por fecha).
+    if not use_db_pagination:
+        import re as _re
+        _prov_order = {}
+        for _it in data:
+            _p = str(_it.get('provincia') or '')
+            if _p not in _prov_order:
+                _prov_order[_p] = len(_prov_order)
+
+        def _cod_key(item):
+            p = str(item.get('provincia') or '')
+            cod = str(item.get('codigo') or '').strip().upper()
+            m = _re.match(r'([A-Z]+)\s*0*(\d+)', cod)
+            if m:
+                return (_prov_order.get(p, 9999), 0, m.group(1), int(m.group(2)), cod)
+            # codigos sin patron letra+numero: al final de su provincia
+            return (_prov_order.get(p, 9999), 1, cod, 0, cod)
+
+        data.sort(key=_cod_key)
+
     if include_total:
         if use_db_pagination:
             return data, int(total or 0), True
