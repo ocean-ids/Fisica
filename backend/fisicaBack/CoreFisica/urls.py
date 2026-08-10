@@ -14,6 +14,10 @@ from .views.importar_puestos_asignaciones import (
 )
 from .views.ubicacion_views import obtener_provincias, obtener_cantones, obtener_zonas, obtener_parroquias
 from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
+from .views.nominativo_views import (
+    listar_zonas_operativas, crear_zona_operativa, actualizar_zona_operativa, eliminar_zona_operativa,
+    listar_nominativos, crear_nominativo, actualizar_nominativo, eliminar_nominativo,
+)
 from .views.persona_views import obtener_personas, actualizar_persona, crear_persona, eliminar_persona, disable_persona, enable_persona, importar_personas, exportar_personas_excel, SacafrancoListView, asignar_sacafranco, desasignar_sacafranco, subir_foto_persona, obtener_nomina, guardar_nomina, obtener_otros_datos, guardar_otros_datos, obtener_referencias, guardar_referencias, obtener_documentos, guardar_documentos, obtener_mas_referencias, guardar_mas_referencias, obtener_certificados, guardar_certificados, crear_tipo_certificado, subir_archivo_certificado, catalogo_certificados, eliminar_archivo_certificado
 from .views.puesto_views import crear_puesto, obtener_puestos, obtener_puestos_por_instalacion, obtener_puestos_por_cliente, actualizar_puesto, eliminar_puesto, secuencia_horario_puesto
 from .views.horario_views import obtener_horarios, crear_horario, actualizar_horario, eliminar_horario
@@ -101,6 +105,15 @@ urlpatterns = [
     path('crear-instalacion/', crear_instalacion),
     path('actualizar-instalacion/<int:id>/', actualizar_instalacion),
     path('eliminar-instalacion/<int:id>/', eliminar_instalacion),
+    # Zonas operativas y Nominativos (letra + numero)
+    path('zonas-operativas/', listar_zonas_operativas),
+    path('zonas-operativas/crear/', crear_zona_operativa),
+    path('zonas-operativas/<int:id>/', actualizar_zona_operativa),
+    path('zonas-operativas/<int:id>/eliminar/', eliminar_zona_operativa),
+    path('nominativos/', listar_nominativos),
+    path('nominativos/crear/', crear_nominativo),
+    path('nominativos/<int:id>/', actualizar_nominativo),
+    path('nominativos/<int:id>/eliminar/', eliminar_nominativo),
     path('horarios/', obtener_horarios),
     path('crear-horario/', crear_horario),
     path('actualizar-horario/<int:id>/', actualizar_horario),

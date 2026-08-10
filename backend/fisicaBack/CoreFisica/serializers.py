@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.db import transaction
 from django.core.validators import RegexValidator
 from .utils import parse_input
-from .models import Asignacion, AsignacionSemanal, Instalacion, Persona, Provincia, Puesto, PuestoHorario, PatronAsignacion, SacafrancoFila, SacafrancoFilaSemanal, ReporteGuardia, ReporteVacaciones, TarifaPago, ReportePago
+from .models import Asignacion, AsignacionSemanal, Instalacion, Persona, Provincia, Puesto, PuestoHorario, PatronAsignacion, SacafrancoFila, SacafrancoFilaSemanal, ReporteGuardia, ReporteVacaciones, TarifaPago, ReportePago, ZonaOperativa, Nominativo
 
 
 class PatronAsignacionSerializer(serializers.ModelSerializer):
@@ -409,4 +409,30 @@ class ReportePagoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReportePago
         fields = '__all__'
+
+
+class ZonaOperativaSerializer(serializers.ModelSerializer):
+    nominativos_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ZonaOperativa
+        fields = ['id', 'numero', 'nombre', 'nominativos_count']
+        read_only_fields = ['id']
+
+    def get_nominativos_count(self, obj):
+        return obj.nominativos.count()
+
+
+class NominativoSerializer(serializers.ModelSerializer):
+    codigo = serializers.CharField(read_only=True)
+    zona_numero = serializers.IntegerField(source='zona.numero', read_only=True)
+    zona_nombre = serializers.CharField(source='zona.nombre', read_only=True)
+    instalacion_nombre = serializers.CharField(source='instalacion.nombre', read_only=True, default='')
+    cliente_nombre = serializers.CharField(source='instalacion.cliente.nombre_comercial', read_only=True, default='')
+
+    class Meta:
+        model = Nominativo
+        fields = ['id', 'zona', 'zona_numero', 'zona_nombre', 'letra', 'numero',
+                  'codigo', 'instalacion', 'instalacion_nombre', 'cliente_nombre']
+        read_only_fields = ['id']
         read_only_fields = ('created_at', 'updated_at', 'valor_calculado')

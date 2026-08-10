@@ -64,8 +64,14 @@
                 class="form-select form-select-sm w-auto"
                 [ngModel]="filtroZona"
                 (change)="onZonaChange($event)">
-                <option *ngFor="let z of zonaOpciones" [value]="z">{{ z || 'Todas las zonas' }}</option>
+                <option [value]="''">Todas las zonas</option>
+                <option *ngFor="let z of zonas" [value]="z.nombre">{{ z.nombre }}</option>
             </select>
+
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                    (click)="abrirZonasNominativos()" title="Administrar zonas y nominativos">
+                ⚙ Zonas y Nominativos
+            </button>
 
             <div class="d-flex align-items-center gap-2">
                 <label class="small text-muted mb-0">Filas</label>

@@ -1,0 +1,109 @@
+<h2 mat-dialog-title>Zonas y Nominativos</h2>
+
+<div mat-dialog-content class="zn-content">
+  <div class="zn-grid">
+
+    <!-- ================= ZONAS ================= -->
+    <div class="zn-col">
+      <h5>Zonas</h5>
+      <table class="table table-sm table-bordered align-middle">
+        <thead class="table-light">
+          <tr><th>#</th><th>Nombre</th><th>Nomin.</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let z of zonas">
+            <ng-container *ngIf="zonaEditId === z.id; else zonaView">
+              <td><input type="number" class="form-control form-control-sm" [(ngModel)]="zonaEditNumero" style="width:60px"></td>
+              <td><input class="form-control form-control-sm" [(ngModel)]="zonaEditNombre"></td>
+              <td class="text-center">{{ z.nominativos_count }}</td>
+              <td class="text-nowrap">
+                <button class="btn btn-success btn-sm" (click)="guardarZona()">✓</button>
+                <button class="btn btn-secondary btn-sm ms-1" (click)="cancelarEditZona()">✕</button>
+              </td>
+            </ng-container>
+            <ng-template #zonaView>
+              <td>{{ z.numero }}</td>
+              <td>{{ z.nombre }}</td>
+              <td class="text-center">{{ z.nominativos_count }}</td>
+              <td class="text-nowrap">
+                <button class="btn btn-outline-primary btn-sm" (click)="editarZona(z)">✎</button>
+                <button class="btn btn-outline-danger btn-sm ms-1" (click)="borrarZona(z)">🗑</button>
+              </td>
+            </ng-template>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="zn-newzona">
+        <input type="number" class="form-control form-control-sm" placeholder="N°" [(ngModel)]="nuevaZonaNumero" style="width:70px">
+        <input class="form-control form-control-sm" placeholder="Nombre (opcional)" [(ngModel)]="nuevaZonaNombre">
+        <button class="btn btn-primary btn-sm text-nowrap" (click)="crearZona()">+ Zona</button>
+      </div>
+    </div>
+
+    <!-- ============== NOMINATIVOS ============== -->
+    <div class="zn-col">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">Nominativos</h5>
+        <button class="btn btn-primary btn-sm" (click)="nuevoNominativo()">+ Nuevo</button>
+      </div>
+
+      <div class="input-group input-group-sm mb-2">
+        <input class="form-control" placeholder="Buscar (código, instalación, cliente)…"
+               [(ngModel)]="busqueda" (keyup.enter)="buscar()">
+        <button class="btn btn-outline-secondary" (click)="buscar()">Buscar</button>
+      </div>
+
+      <!-- formulario crear/editar nominativo -->
+      <div class="zn-nomform" *ngIf="nomZona !== null || nomEditId !== null">
+        <div class="fw-bold small mb-1">{{ nomEditId ? 'Editar nominativo' : 'Nuevo nominativo' }}</div>
+        <div class="zn-nomform-row">
+          <select class="form-select form-select-sm" [(ngModel)]="nomZona">
+            <option [ngValue]="null">Zona…</option>
+            <option *ngFor="let z of zonas" [ngValue]="z.id">{{ z.nombre }}</option>
+          </select>
+          <input class="form-control form-control-sm" placeholder="Letra" [(ngModel)]="nomLetra" style="width:70px; text-transform:uppercase">
+          <input type="number" class="form-control form-control-sm" placeholder="N°" [(ngModel)]="nomNumero" style="width:80px">
+        </div>
+        <select class="form-select form-select-sm mt-1" [(ngModel)]="nomInstalacion">
+          <option [ngValue]="null">— Sin instalación (libre) —</option>
+          <option *ngFor="let i of instalaciones" [ngValue]="i.id">
+            {{ i.codigo }} · {{ i.nombre }} ({{ i.cliente_nombre }})
+          </option>
+        </select>
+        <div class="mt-2">
+          <button class="btn btn-success btn-sm" (click)="guardarNominativo()">Guardar</button>
+          <button class="btn btn-secondary btn-sm ms-1" (click)="cancelarNominativo()">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="zn-nomlist">
+        <table class="table table-sm table-bordered align-middle">
+          <thead class="table-light">
+            <tr><th>Código</th><th>Zona</th><th>Instalación</th><th>Cliente</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let n of nominativos">
+              <td class="fw-bold">{{ n.codigo }}</td>
+              <td>{{ n.zona_nombre }}</td>
+              <td>{{ n.instalacion_nombre || '—' }}</td>
+              <td>{{ n.cliente_nombre || '—' }}</td>
+              <td class="text-nowrap">
+                <button class="btn btn-outline-primary btn-sm" (click)="editarNominativo(n)">✎</button>
+                <button class="btn btn-outline-danger btn-sm ms-1" (click)="borrarNominativo(n)">🗑</button>
+              </td>
+            </tr>
+            <tr *ngIf="!nominativos.length">
+              <td colspan="5" class="text-center text-muted">Sin nominativos</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div mat-dialog-actions align="end">
+  <button class="btn btn-secondary btn-sm" (click)="cerrar()">Cerrar</button>
+</div>

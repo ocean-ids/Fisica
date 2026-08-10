@@ -18,6 +18,8 @@ import Swal from 'sweetalert2';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { Router } from '@angular/router';
 import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
+import { NominativoService, ZonaOperativa } from '../../services/nominativo.service';
+import { ZonasNominativosDialogComponent } from './dialogs/zonas-nominativos-dialog.component';
 
 interface ReporteAsistenciaGrupoProvincia {
   provincia: string;
@@ -48,7 +50,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   filtroTurno = '';
   filtroZona = '';
 
-  readonly zonaOpciones = ['', 'Zona 1', 'Zona 2', 'Zona 3'];
+  zonas: ZonaOperativa[] = [];
   readonly pageSizeOptions = [25, 50, 100];
   currentPage = 1;
   pageSize = 50;
@@ -88,9 +90,30 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     private asignacionService: AsignacionService,
     private bottomSheet: MatBottomSheet,
     private globalFilter: GlobalFilterStateService,
-    private router: Router
-    
+    private router: Router,
+    private nominativoSvc: NominativoService
   ) {}
+
+  cargarZonas(): void {
+    this.nominativoSvc.getZonas().subscribe({
+      next: (zs) => { this.zonas = zs || []; },
+      error: () => { this.zonas = []; }
+    });
+  }
+
+  abrirZonasNominativos(): void {
+    const ref = this.dialog.open(ZonasNominativosDialogComponent, {
+      width: '900px',
+      maxWidth: '95vw',
+      maxHeight: '90vh',
+      autoFocus: false,
+    });
+    ref.afterClosed().subscribe(() => {
+      // Al cerrar, recargar zonas (por si se crearon/renombraron) y el reporte.
+      this.cargarZonas();
+      this.cargarReporte(true, false);
+    });
+  }
 
   _saveFilters(): void {
     localStorage.setItem('reporte_filtros', JSON.stringify({
@@ -104,6 +127,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.setHoy();
     this.filtroTurno = 'Diurno';
+    this.cargarZonas();
 
     const saved = localStorage.getItem('reporte_filtros');
     if (saved) {
@@ -142,18 +166,14 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   }
 
   private getZonaOrden(zona: string): number {
-    const z = (zona || '').trim().toLowerCase();
-    if (z === 'zona 1') return 0;
-    if (z === 'zona 2') return 1;
-    if (z === 'zona 3') return 2;
-    return 99;
+    // Ordena por el número que aparezca en el nombre de la zona (Zona 1, 2, 3, 4...).
+    const m = (zona || '').match(/\d+/);
+    if (m) return parseInt(m[0], 10);
+    return 9999;
   }
 
   getZonaTitulo(zona: string): string {
-    const normalized = (zona || '').trim().toLowerCase();
-    if (normalized === 'zona 1') return 'ZONA 1 / DAULE - SAMBORONDON';
-    if (normalized === 'zona 2') return 'ZONA 2 / SUR - CENTRO';
-    if (normalized === 'zona 3') return 'ZONA 3 / DAULE - NORTE';
+    // El nombre de la zona lo administra el usuario (panel Zonas y Nominativos).
     return (zona || '').toUpperCase();
   }
 
