@@ -210,12 +210,12 @@ class Instalacion(models.Model):
 
 
 class ZonaOperativa(models.Model):
-    """Zona operativa para NOMINATIVOS (letra + numero). Es DISTINTA del modelo
-    `Zona` (sub-zona por instalacion, Zona 1/2/3 de Puesto.zona) — no lo reemplaza.
-    Cambio ADITIVO: convive con lo existente."""
+    """Zona operativa para NOMINATIVOS. Es solo un numero + nombre (Zona 1, 2, 3, 4...).
+    Una zona agrupa VARIAS letras (la letra vive en el Nominativo, no aqui). Es DISTINTA
+    del modelo `Zona` (sub-zona por instalacion, Zona 1/2/3 de Puesto.zona) — no lo
+    reemplaza. Cambio ADITIVO: convive con lo existente."""
     numero = models.PositiveIntegerField(unique=True)          # Zona 1, 2, 3, 4...
-    nombre = models.CharField(max_length=100)                  # GAMMA, DELTA... (para filtro)
-    letra = models.CharField(max_length=3, unique=True)        # 1-3 letras (G, AR, AND) UNICA
+    nombre = models.CharField(max_length=100)                  # nombre de la zona (para filtro)
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -224,22 +224,23 @@ class ZonaOperativa(models.Model):
         verbose_name_plural = 'Zonas operativas'
 
     def save(self, *args, **kwargs):
-        if self.letra:
-            self.letra = self.letra.strip().upper()
         if self.nombre:
             self.nombre = self.nombre.strip().upper()
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Zona {self.numero} - {self.nombre} ({self.letra})"
+        return f"Zona {self.numero} - {self.nombre}"
 
 
 class Nominativo(models.Model):
-    """Codigo unico letra+numero (ej. K1) por zona, asignable a UNA instalacion.
-    instalacion NULL = libre (hueco reutilizable). unique(zona, numero) + letra unica
-    de la zona => el codigo (letra+numero) es unico en todo el sistema."""
+    """Codigo letra+numero (ej. G15) asignable a UNA instalacion, dentro de una zona.
+    La letra vive AQUI (no en la zona), asi una zona puede tener varias letras (G, P, Q...).
+    instalacion NULL = libre (hueco reutilizable). El mismo codigo PUEDE repetirse en varias
+    instalaciones SIEMPRE que sean del MISMO cliente (p.ej. 2 locales del cliente); repetirlo
+    en clientes distintos es conflicto. Por eso no hay unique(letra, numero) global."""
     zona = models.ForeignKey(ZonaOperativa, on_delete=models.PROTECT, related_name='nominativos')
-    numero = models.PositiveIntegerField()                     # secuencial POR zona
+    letra = models.CharField(max_length=3)                     # 1-3 letras (G, U, AR...)
+    numero = models.PositiveIntegerField()                     # numero del codigo
     instalacion = models.OneToOneField(
         'Instalacion', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='nominativo'
@@ -247,16 +248,18 @@ class Nominativo(models.Model):
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['zona', 'numero']
-        constraints = [
-            models.UniqueConstraint(fields=['zona', 'numero'], name='uniq_nominativo_zona_numero'),
-        ]
+        ordering = ['letra', 'numero']
         verbose_name = 'Nominativo'
         verbose_name_plural = 'Nominativos'
 
+    def save(self, *args, **kwargs):
+        if self.letra:
+            self.letra = self.letra.strip().upper()
+        super().save(*args, **kwargs)
+
     @property
     def codigo(self):
-        return f"{self.zona.letra}{self.numero}" if self.zona_id else str(self.numero)
+        return f"{self.letra}{self.numero}"
 
     def __str__(self):
         return self.codigo
