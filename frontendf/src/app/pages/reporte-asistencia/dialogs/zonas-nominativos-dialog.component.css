@@ -1,0 +1,46 @@
+.zn-content { min-width: 320px; }
+
+.zn-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 720px) {
+  .zn-grid { grid-template-columns: 1fr; }
+}
+
+.zn-col h5 { font-size: 1rem; margin-bottom: .5rem; }
+
+.zn-newzona {
+  display: flex;
+  gap: .4rem;
+  align-items: center;
+  margin-top: .25rem;
+}
+
+.zn-nomform {
+  border: 1px solid #dee2e6;
+  border-radius: .4rem;
+  padding: .6rem;
+  margin-bottom: .75rem;
+  background: #f8f9fa;
+}
+
+.zn-nomform-row {
+  display: flex;
+  gap: .4rem;
+}
+
+.zn-nomlist {
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.zn-nomlist th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+table td, table th { font-size: .85rem; }

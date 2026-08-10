@@ -34,17 +34,26 @@ DIAS_SEMANA_ES = [
     'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO', 'DOMINGO'
 ]
 
-ZONAS_VALIDAS = {'ZONA 1', 'ZONA 2', 'ZONA 3'}
-
-
 def _normalize_zona_filter(zona_param):
+    """Resuelve el filtro de zona contra ZonaOperativa (por numero o por nombre) y
+    devuelve el NOMBRE canonico de la zona (ej. 'ZONA 1'); '' = todas. Soporta crear
+    Zona 4 y nombres personalizados sin tocar codigo."""
+    import re as _re
+    from ..models import ZonaOperativa
     zona_raw = str(zona_param or '').strip()
     if not zona_raw:
         return ''
-    zona_upper = zona_raw.upper()
-    if zona_upper in ZONAS_VALIDAS:
-        return f"Zona {zona_upper.split()[-1]}"
-    return ''
+    z = None
+    if zona_raw.isdigit():
+        z = ZonaOperativa.objects.filter(numero=int(zona_raw)).first()
+    if not z:
+        z = ZonaOperativa.objects.filter(nombre__iexact=zona_raw).first()
+    if not z:
+        # compatibilidad: 'Zona 1' -> numero 1
+        m = _re.search(r'\d+', zona_raw)
+        if m:
+            z = ZonaOperativa.objects.filter(numero=int(m.group())).first()
+    return z.nombre if z else ''
 
 
 def _parse_fecha_reporte(fecha_param):
@@ -342,24 +351,18 @@ def _is_falto(item):
 
 
 def _zona_sort_key(zona_titulo):
-    z = str(zona_titulo or '').strip().lower()
-    if z == 'zona 1':
-        return (0, z)
-    if z == 'zona 2':
-        return (1, z)
-    if z == 'zona 3':
-        return (2, z)
-    return (99, z)
+    """Ordena por el numero que aparece en el nombre de la zona (Zona 1, 2, 3, 4...).
+    Las que no tienen numero (SIN ZONA, SIN ASIGNACION) van al final."""
+    import re as _re
+    z = str(zona_titulo or '').strip()
+    m = _re.search(r'\d+', z)
+    if m:
+        return (int(m.group()), z.lower())
+    return (9999, z.lower())
 
 
 def _normalize_zona_label(zona_titulo):
-    z = str(zona_titulo or '').strip().lower()
-    if z == 'zona 1':
-        return 'Zona 1'
-    if z == 'zona 2':
-        return 'Zona 2'
-    if z == 'zona 3':
-        return 'Zona 3'
+    # Conserva el nombre real de la zona (ej. 'ZONA 1'); solo limpia espacios.
     return str(zona_titulo or '').strip()
 
 
@@ -591,8 +594,9 @@ def _build_reporte_asistencia_data(
 
     asig_qs = Asignacion.objects.select_related(
         'cliente', 'instalacion', 'instalacion__canton', 'instalacion__canton__provincia',
-        'puesto', 'horario', 'persona'
-    ).prefetch_related('instalacion__zonas').filter(
+        'puesto', 'horario', 'persona',
+        'instalacion__nominativo', 'instalacion__nominativo__zona',
+    ).filter(
         persona__isnull=False,
         persona__is_active=True,
         estado='ACTIVO'
@@ -627,7 +631,7 @@ def _build_reporte_asistencia_data(
     if cliente_id:
         asig_qs = asig_qs.filter(cliente_id=cliente_id)
     if zona:
-        asig_qs = asig_qs.filter(instalacion__zonas__titulo__iexact=zona).distinct()
+        asig_qs = asig_qs.filter(instalacion__nominativo__zona__nombre__iexact=zona).distinct()
 
     # Corte exacto al día: una asignación con end_date NO debe mostrarse en fechas
     # POSTERIORES a su end_date. Esto hace efectivo el cierre de puesto al día
@@ -767,10 +771,11 @@ def _build_reporte_asistencia_data(
         zona_titulo = ''
         provincia_nombre = ''
         if asig and asig.instalacion:
-            # Use prefetched zones to avoid one DB hit per row.
-            zona_obj = next(iter(asig.instalacion.zonas.all()), None)
-            if zona_obj:
-                zona_titulo = zona_obj.titulo
+            # La zona sale del NOMINATIVO de la instalacion (letra+numero -> zona 1/2/3).
+            # getattr con default: si la instalacion no tiene nominativo, queda 'SIN ZONA'.
+            nom_obj = getattr(asig.instalacion, 'nominativo', None)
+            if nom_obj and nom_obj.zona_id:
+                zona_titulo = nom_obj.zona.nombre
         if asig and asig.instalacion and asig.instalacion.canton and asig.instalacion.canton.provincia:
             provincia_nombre = asig.instalacion.canton.provincia.nombre
         reemplazo_nombre = ''
