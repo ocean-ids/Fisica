@@ -55,10 +55,15 @@ export class ZonasNominativosDialogComponent implements OnInit {
       String(a.codigo || '').localeCompare(String(b.codigo || '')));
   }
 
+  private siguienteNumeroZona(): number {
+    const max = this.zonas.reduce((m, z) => Math.max(m, z.numero || 0), 0);
+    return max + 1;
+  }
+
   cargarTodo(): void {
     this.loading = true;
     this.svc.getZonas().subscribe({
-      next: (zs) => { this.zonas = zs || []; },
+      next: (zs) => { this.zonas = zs || []; this.nuevaZonaNumero = this.siguienteNumeroZona(); },
       error: () => { this.zonas = []; },
     });
     this.svc.getNominativos({ q: this.busqueda || undefined }).subscribe({
@@ -83,7 +88,7 @@ export class ZonasNominativosDialogComponent implements OnInit {
   crearZona(): void {
     if (this.nuevaZonaNumero == null) { Swal.fire('Falta', 'Indica el número de zona', 'info'); return; }
     this.svc.crearZona({ numero: this.nuevaZonaNumero, nombre: this.nuevaZonaNombre }).subscribe({
-      next: () => { this.nuevaZonaNumero = null; this.nuevaZonaNombre = ''; this.cargarTodo(); },
+      next: () => { this.nuevaZonaNombre = ''; this.cargarTodo(); },
       error: (e) => this.err(e),
     });
   }

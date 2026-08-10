@@ -35,7 +35,7 @@
       </table>
 
       <div class="zn-newzona">
-        <input type="number" class="form-control form-control-sm" placeholder="N°" [(ngModel)]="nuevaZonaNumero" style="width:70px">
+        <input type="number" class="form-control form-control-sm" title="Número automático" [ngModel]="nuevaZonaNumero" readonly style="width:70px; background:#e9ecef">
         <input class="form-control form-control-sm" placeholder="Nombre (opcional)" [(ngModel)]="nuevaZonaNombre">
         <button class="btn btn-primary btn-sm text-nowrap" (click)="crearZona()">+ Zona</button>
       </div>
