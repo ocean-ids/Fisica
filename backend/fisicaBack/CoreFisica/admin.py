@@ -40,15 +40,15 @@ class InstalacionAdmin(admin.ModelAdmin):
 class NominativoInline(admin.TabularInline):
 	model = Nominativo
 	extra = 0
-	fields = ('numero', 'instalacion')
+	fields = ('letra', 'numero', 'instalacion')
 	autocomplete_fields = ('instalacion',)
-	ordering = ('numero',)
+	ordering = ('letra', 'numero')
 
 
 @admin.register(ZonaOperativa)
 class ZonaOperativaAdmin(admin.ModelAdmin):
-	list_display = ('numero', 'nombre', 'letra', 'get_noms')
-	search_fields = ('nombre', 'letra')
+	list_display = ('numero', 'nombre', 'get_noms')
+	search_fields = ('nombre',)
 	ordering = ('numero',)
 	inlines = (NominativoInline,)
 
@@ -59,9 +59,9 @@ class ZonaOperativaAdmin(admin.ModelAdmin):
 
 @admin.register(Nominativo)
 class NominativoAdmin(admin.ModelAdmin):
-	list_display = ('codigo', 'zona', 'numero', 'instalacion')
-	search_fields = ('zona__letra', 'zona__nombre', 'instalacion__nombre', 'instalacion__codigo')
-	list_filter = ('zona',)
+	list_display = ('codigo', 'zona', 'letra', 'numero', 'instalacion')
+	search_fields = ('letra', 'zona__nombre', 'instalacion__nombre', 'instalacion__codigo')
+	list_filter = ('zona', 'letra')
 	autocomplete_fields = ('instalacion',)
 
 	def codigo(self, obj):
