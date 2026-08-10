@@ -35,9 +35,9 @@
       </table>
 
       <div class="zn-newzona">
-        <input type="number" class="form-control form-control-sm" title="Número automático" [ngModel]="nuevaZonaNumero" readonly style="width:70px; background:#e9ecef">
-        <input class="form-control form-control-sm" placeholder="Nombre (opcional)" [(ngModel)]="nuevaZonaNombre">
-        <button class="btn btn-primary btn-sm text-nowrap" (click)="crearZona()">+ Zona</button>
+        <button class="btn btn-primary btn-sm text-nowrap" (click)="crearZona()">
+          + Crear Zona {{ nuevaZonaNumero }}
+        </button>
       </div>
     </div>
 
@@ -58,12 +58,16 @@
       <div class="zn-nomform" *ngIf="nomZona !== null || nomEditId !== null">
         <div class="fw-bold small mb-1">{{ nomEditId ? 'Editar nominativo' : 'Nuevo nominativo' }}</div>
         <div class="zn-nomform-row">
-          <select class="form-select form-select-sm" [(ngModel)]="nomZona">
+          <input class="form-control form-control-sm" placeholder="Letra" [(ngModel)]="nomLetra"
+                 (ngModelChange)="onLetraChange()" style="width:70px; text-transform:uppercase">
+          <input type="number" class="form-control form-control-sm" placeholder="N°" [(ngModel)]="nomNumero" style="width:80px">
+          <select class="form-select form-select-sm" [(ngModel)]="nomZona" [disabled]="zonaAuto">
             <option [ngValue]="null">Zona…</option>
             <option *ngFor="let z of zonas" [ngValue]="z.id">{{ z.nombre }}</option>
           </select>
-          <input class="form-control form-control-sm" placeholder="Letra" [(ngModel)]="nomLetra" style="width:70px; text-transform:uppercase">
-          <input type="number" class="form-control form-control-sm" placeholder="N°" [(ngModel)]="nomNumero" style="width:80px">
+        </div>
+        <div class="small text-muted mt-1" *ngIf="zonaAuto">
+          La letra <b>{{ nomLetra }}</b> ya pertenece a esa zona (asignada automáticamente).
         </div>
         <select class="form-select form-select-sm mt-1" [(ngModel)]="nomInstalacion">
           <option [ngValue]="null">— Sin instalación (libre) —</option>

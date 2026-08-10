@@ -20,9 +20,8 @@ export class ZonasNominativosDialogComponent implements OnInit {
   loading = false;
   busqueda = '';
 
-  // form zona nueva
+  // numero sugerido para la proxima zona (max + 1)
   nuevaZonaNumero: number | null = null;
-  nuevaZonaNombre = '';
 
   // edicion de zona
   zonaEditId: number | null = null;
@@ -35,6 +34,10 @@ export class ZonasNominativosDialogComponent implements OnInit {
   nomLetra = '';
   nomNumero: number | null = null;
   nomInstalacion: number | null = null;
+  zonaAuto = false;            // true cuando la zona se fijo sola por la letra
+
+  // mapa letra -> zona (una letra vive en una sola zona)
+  private letraZona: Record<string, { zonaId: number; zonaNombre: string }> = {};
 
   constructor(
     private ref: MatDialogRef<ZonasNominativosDialogComponent>,
@@ -67,7 +70,12 @@ export class ZonasNominativosDialogComponent implements OnInit {
       error: () => { this.zonas = []; },
     });
     this.svc.getNominativos({ q: this.busqueda || undefined }).subscribe({
-      next: (ns) => { this.nominativos = ns || []; this.loading = false; },
+      next: (ns) => {
+        this.nominativos = ns || [];
+        this.loading = false;
+        // El mapa letra->zona se arma con la lista COMPLETA (sin búsqueda).
+        if (!this.busqueda) this.armarLetraZona(ns || []);
+      },
       error: () => { this.nominativos = []; this.loading = false; },
     });
   }
@@ -86,9 +94,9 @@ export class ZonasNominativosDialogComponent implements OnInit {
 
   // ---------------- ZONAS ----------------
   crearZona(): void {
-    if (this.nuevaZonaNumero == null) { Swal.fire('Falta', 'Indica el número de zona', 'info'); return; }
-    this.svc.crearZona({ numero: this.nuevaZonaNumero, nombre: this.nuevaZonaNombre }).subscribe({
-      next: () => { this.nuevaZonaNombre = ''; this.cargarTodo(); },
+    const numero = this.siguienteNumeroZona();
+    this.svc.crearZona({ numero, nombre: `ZONA ${numero}` }).subscribe({
+      next: () => { this.cargarTodo(); },
       error: (e) => this.err(e),
     });
   }
@@ -110,15 +118,38 @@ export class ZonasNominativosDialogComponent implements OnInit {
   }
 
   // ------------- NOMINATIVOS -------------
+  private armarLetraZona(ns: Nominativo[]): void {
+    const map: Record<string, { zonaId: number; zonaNombre: string }> = {};
+    for (const n of ns) {
+      const l = (n.letra || '').toUpperCase();
+      if (l && !map[l]) map[l] = { zonaId: n.zona, zonaNombre: n.zona_nombre || '' };
+    }
+    this.letraZona = map;
+  }
+
+  // Al escribir la letra: la pasa a mayúscula y, si ya existe, fija su zona sola.
+  onLetraChange(): void {
+    this.nomLetra = (this.nomLetra || '').toUpperCase();
+    const hit = this.letraZona[this.nomLetra];
+    if (hit) {
+      this.nomZona = hit.zonaId;
+      this.zonaAuto = true;
+    } else {
+      this.zonaAuto = false;
+    }
+  }
+
   nuevoNominativo(): void {
     this.nomEditId = null; this.nomZona = this.zonas[0]?.id ?? null;
     this.nomLetra = ''; this.nomNumero = null; this.nomInstalacion = null;
+    this.zonaAuto = false;
   }
   editarNominativo(n: Nominativo): void {
     this.nomEditId = n.id; this.nomZona = n.zona; this.nomLetra = n.letra;
     this.nomNumero = n.numero; this.nomInstalacion = n.instalacion;
+    this.zonaAuto = false;
   }
-  cancelarNominativo(): void { this.nomEditId = null; this.nomZona = null; }
+  cancelarNominativo(): void { this.nomEditId = null; this.nomZona = null; this.zonaAuto = false; }
 
   guardarNominativo(): void {
     if (!this.nomZona || !this.nomLetra || this.nomNumero == null) {
