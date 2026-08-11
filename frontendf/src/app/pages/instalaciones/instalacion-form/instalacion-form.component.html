@@ -15,7 +15,7 @@
     </mat-form-field>
     <mat-form-field class="w-100">
       <mat-label>Nominativo</mat-label>
-      <input matInput formControlName="codigo" placeholder="Nominativo">
+      <input matInput formControlName="codigo" placeholder="—" readonly>
     </mat-form-field>
     <mat-form-field class="w-100">
       <mat-label>Nombre</mat-label>
@@ -49,12 +49,11 @@
     </mat-form-field>
 
     <mat-form-field class="w-100" *ngIf="zonaOptions.length">
-      <mat-label>Zonas registradas</mat-label>
+      <mat-label>Zona</mat-label>
       <mat-select formControlName="zona_id">
         <mat-option [value]="null">Ninguna</mat-option>
         <mat-option *ngFor="let z of zonaOptions" [value]="z.id">{{ z.label }}</mat-option>
       </mat-select>
-      <mat-hint *ngIf="!data.instalacion?.id">Se creará solo la zona seleccionada</mat-hint>
     </mat-form-field>
   </form>
 </mat-dialog-content>

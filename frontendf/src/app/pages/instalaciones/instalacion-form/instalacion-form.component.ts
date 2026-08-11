@@ -60,6 +60,9 @@ export class InstalacionFormComponent implements OnInit {
       sector: [instalacion.sector || ''],
       zona_id: [initialZonaId]
     });
+    // Zona y código son SOLO LECTURA: se administran en "Zonas y Nominativos".
+    // (el código usa readonly en el template; la zona se deshabilita aquí)
+    this.instalacionForm.get('zona_id')?.disable();
 
     if (instalacion.zonas && Array.isArray(instalacion.zonas) && instalacion.zonas.length) {
       this.zonaOptions = this.withDefaultZonaTitles(this.buildZonaOptions(instalacion.zonas));
