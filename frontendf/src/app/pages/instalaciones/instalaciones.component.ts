@@ -119,13 +119,17 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
     };
 
     this.instalacionService.createInstalacion(payload).subscribe({
-      next: () => {
+      next: (resp: any) => {
         this.cargarInstalaciones();
-        Swal.fire({ icon: 'success', title: 'Creada', timer: 1200, showConfirmButton: false });
+        if (resp?.nominativo_aviso) {
+          Swal.fire({ icon: 'info', title: 'Instalación creada', text: 'Nominativo pendiente: ' + resp.nominativo_aviso });
+        } else {
+          Swal.fire({ icon: 'success', title: 'Creada', timer: 1200, showConfirmButton: false });
+        }
       },
       error: (error: any) => {
         console.error('Error al crear instalación:', error);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo crear' });
+        Swal.fire({ icon: 'error', title: 'No se pudo crear', text: error?.error?.error || 'No se pudo crear' });
       }
     });
   }
@@ -143,13 +147,17 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
     };
 
     this.instalacionService.updateInstalacion(id, payload).subscribe({
-      next: () => {
+      next: (resp: any) => {
         this.cargarInstalaciones();
-        Swal.fire({ icon: 'success', title: 'Actualizada', timer: 1200, showConfirmButton: false });
+        if (resp?.nominativo_aviso) {
+          Swal.fire({ icon: 'info', title: 'Instalación actualizada', text: 'Nominativo pendiente: ' + resp.nominativo_aviso });
+        } else {
+          Swal.fire({ icon: 'success', title: 'Actualizada', timer: 1200, showConfirmButton: false });
+        }
       },
       error: (error: any) => {
         console.error('Error al actualizar instalación:', error);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar' });
+        Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: error?.error?.error || 'No se pudo actualizar' });
       }
     });
   }

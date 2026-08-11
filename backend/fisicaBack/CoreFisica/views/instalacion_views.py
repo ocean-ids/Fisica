@@ -1,4 +1,5 @@
 """Vistas de Instalaciones: CRUD, resolución de provincia/cantón y zonas por instalación."""
+import re
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -7,6 +8,87 @@ from django.db.models import Q
 from ..models import Instalacion, Provincia, Canton, Zona
 from ..serializers import InstalacionSerializer
 from ..utils import _strip_accents
+
+_NOM_COD_RE = re.compile(r'^([A-Z]{1,3})\s*0*(\d+)$')
+
+
+def codigo_conflicto_cliente(codigo, cliente_id, excluir_instalacion_id=None):
+    """Devuelve un mensaje si el codigo (letra+numero) ya pertenece a un nominativo de
+    OTRO cliente. Sirve para BLOQUEAR el guardado de la instalacion (no se debe poner el
+    codigo de un cliente en una instalacion de otro cliente). Si no hay conflicto, None.
+    """
+    from ..models import Nominativo
+    m = _NOM_COD_RE.match(str(codigo or '').strip().upper())
+    if not m or not cliente_id:
+        return None
+    letra, numero = m.group(1), int(m.group(2))
+    qs = Nominativo.objects.filter(letra=letra, numero=numero).select_related('instalacion', 'instalacion__cliente', 'zona')
+    if excluir_instalacion_id:
+        qs = qs.exclude(instalacion_id=excluir_instalacion_id)
+    for o in qs:
+        o_cli = getattr(o.instalacion, 'cliente_id', None) if o.instalacion_id else None
+        if o_cli and int(o_cli) != int(cliente_id):
+            cli_nom = getattr(o.instalacion.cliente, 'nombre_comercial', '') if o.instalacion.cliente else ''
+            zona_nom = getattr(o.zona, 'nombre', '') if o.zona_id else ''
+            return (f"El código {letra}{numero} ya pertenece al cliente '{cli_nom}' ({zona_nom}). "
+                    "No se puede asignar a una instalación de otro cliente.")
+    return None
+
+
+def sync_nominativo_desde_codigo(instalacion):
+    """Best-effort: crea/actualiza el Nominativo de la instalacion a partir de su codigo
+    (letra+numero). La letra determina la zona (una letra vive en una sola zona).
+
+    NUNCA lanza excepcion ni bloquea el guardado de la instalacion: si no se puede
+    (codigo invalido, letra nueva sin zona, o conflicto de codigo con otro cliente),
+    devuelve un mensaje de aviso (str) para mostrar al usuario. Si quedo ok, devuelve None.
+    """
+    try:
+        from ..models import Nominativo
+        from .nominativo_views import _validar_nominativo
+
+        cod = str(getattr(instalacion, 'codigo', '') or '').strip().upper()
+        nom_existente = Nominativo.objects.filter(instalacion=instalacion).first()
+
+        m = _NOM_COD_RE.match(cod)
+        if not m:
+            return 'La instalación no tiene un código válido (letra+número); no se creó su nominativo.'
+        letra, numero = m.group(1), int(m.group(2))
+
+        # La zona sale de la letra (una letra = una zona). Si la letra ya existe, se usa esa zona.
+        zona = None
+        otro_de_letra = Nominativo.objects.filter(letra=letra).exclude(
+            id=nom_existente.id if nom_existente else 0
+        ).select_related('zona').first()
+        if otro_de_letra:
+            zona = otro_de_letra.zona
+        elif nom_existente:
+            zona = nom_existente.zona
+        if not zona:
+            return (f'La letra {letra} es nueva (aún no tiene zona). Asígnala en el panel '
+                    '"Zonas y Nominativos" para que la instalación entre en una zona.')
+
+        err = _validar_nominativo(letra, numero, zona.id, instalacion,
+                                  excluir_id=nom_existente.id if nom_existente else None)
+        if err:
+            return err  # queda pendiente; no se crea/actualiza, pero la instalacion SI se guarda
+
+        if nom_existente:
+            changed = False
+            if (nom_existente.letra, nom_existente.numero) != (letra, numero):
+                nom_existente.letra, nom_existente.numero = letra, numero
+                changed = True
+            if nom_existente.zona_id != zona.id:
+                nom_existente.zona = zona
+                changed = True
+            if changed:
+                nom_existente.save()
+        else:
+            Nominativo.objects.create(zona=zona, letra=letra, numero=numero, instalacion=instalacion)
+        return None
+    except Exception:
+        # Nunca romper el guardado de la instalacion por el nominativo.
+        return 'No se pudo crear el nominativo automáticamente; revísalo en el panel "Zonas y Nominativos".'
 
 
 def resolve_canton_id(canton_token, provincia_token=None):
@@ -234,11 +316,17 @@ def crear_instalacion(request):
     data.pop('zona_id', None)
     data.pop('zona_titulo', None)
 
+    # BLOQUEO: no permitir el codigo (nominativo) de otro cliente.
+    _conf = codigo_conflicto_cliente(data.get('codigo'), data.get('cliente'))
+    if _conf:
+        return JsonResponse({'error': _conf}, status=400)
+
     serializer = InstalacionSerializer(data=data)
     if serializer.is_valid():
         instalacion = serializer.save()
         set_instalacion_zona(instalacion, zona_token)
-        return JsonResponse({'message': 'Instalación creada', 'id': instalacion.id})
+        aviso = sync_nominativo_desde_codigo(instalacion)
+        return JsonResponse({'message': 'Instalación creada', 'id': instalacion.id, 'nominativo_aviso': aviso})
     else:
         return JsonResponse({'error': 'Datos inválidos', 'details': serializer.errors}, status=400)
 
@@ -289,11 +377,19 @@ def actualizar_instalacion(request, id):
         data.pop('zona_id', None)
         data.pop('zona_titulo', None)
 
+        # BLOQUEO: no permitir el codigo (nominativo) de otro cliente.
+        _cli = data.get('cliente') or instalacion.cliente_id
+        _cod = data.get('codigo', instalacion.codigo)
+        _conf = codigo_conflicto_cliente(_cod, _cli, excluir_instalacion_id=instalacion.id)
+        if _conf:
+            return JsonResponse({'error': _conf}, status=400)
+
         serializer = InstalacionSerializer(instalacion, data=data, partial=True)
         if serializer.is_valid():
             instalacion = serializer.save()
             set_instalacion_zona(instalacion, zona_token)
-            return JsonResponse({'message': 'Instalación actualizada', 'id': instalacion.id})
+            aviso = sync_nominativo_desde_codigo(instalacion)
+            return JsonResponse({'message': 'Instalación actualizada', 'id': instalacion.id, 'nominativo_aviso': aviso})
         else:
             return JsonResponse({'error': 'Datos inválidos', 'details': serializer.errors}, status=400)
 
