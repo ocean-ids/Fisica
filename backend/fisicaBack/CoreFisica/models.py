@@ -202,6 +202,7 @@ class Instalacion(models.Model):
     nombre = models.CharField(max_length=150, blank=True, null=True)
     direccion = models.CharField(max_length=200, blank=True, null=True)
     sector = models.CharField(max_length=150, blank=True, null=True)
+    activo = models.BooleanField(default=True, db_index=True, verbose_name='Activa')
 
     def __str__(self):
         prov = getattr(self.canton.provincia, 'nombre', '') if self.canton else ''
