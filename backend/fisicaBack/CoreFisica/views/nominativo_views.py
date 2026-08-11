@@ -15,6 +15,17 @@ from ..models import ZonaOperativa, Nominativo, Instalacion
 from ..serializers import ZonaOperativaSerializer, NominativoSerializer
 
 
+def _set_codigo_instalacion(instalacion, codigo):
+    """Escribe (o limpia con '') el codigo de la instalacion para mantenerlo sincronizado
+    con su nominativo. El codigo de la instalacion es lo que usan import/sacafranco/reportes."""
+    if not instalacion:
+        return
+    nuevo = codigo or ''
+    if (instalacion.codigo or '') != nuevo:
+        instalacion.codigo = nuevo
+        instalacion.save(update_fields=['codigo'])
+
+
 # ----------------------------- ZONAS -----------------------------
 
 @api_view(['GET'])
@@ -198,6 +209,8 @@ def crear_nominativo(request):
         return JsonResponse({'error': err}, status=400)
 
     nom = Nominativo.objects.create(zona=zona, letra=letra, numero=numero, instalacion=instalacion)
+    # Escribir el codigo en la instalacion (fuente de verdad para import/sacafranco/reportes).
+    _set_codigo_instalacion(instalacion, f"{letra}{numero}")
     nom = Nominativo.objects.select_related('zona', 'instalacion', 'instalacion__cliente').get(id=nom.id)
     return JsonResponse(NominativoSerializer(nom).data, status=201)
 
@@ -214,6 +227,8 @@ def actualizar_nominativo(request, id):
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    old_inst = nom.instalacion  # para limpiar su codigo si el nominativo se mueve de instalacion
 
     if 'zona' in data and data.get('zona'):
         zona = ZonaOperativa.objects.filter(id=data.get('zona')).first()
@@ -246,6 +261,12 @@ def actualizar_nominativo(request, id):
         return JsonResponse({'error': err}, status=400)
 
     nom.save()
+    # Sincronizar codigos de instalacion: si el nominativo se movio de instalacion,
+    # la vieja pierde su codigo; la actual queda con letra+numero.
+    if old_inst and (not nom.instalacion_id or nom.instalacion_id != old_inst.id):
+        _set_codigo_instalacion(old_inst, '')
+    if nom.instalacion:
+        _set_codigo_instalacion(nom.instalacion, f"{nom.letra}{nom.numero}")
     nom = Nominativo.objects.select_related('zona', 'instalacion', 'instalacion__cliente').get(id=nom.id)
     return JsonResponse(NominativoSerializer(nom).data)
 
@@ -258,5 +279,8 @@ def eliminar_nominativo(request, id):
     nom = Nominativo.objects.filter(id=id).first()
     if not nom:
         return JsonResponse({'error': 'Nominativo no encontrado'}, status=404)
+    inst = nom.instalacion
     nom.delete()
+    # Al borrar el nominativo, la instalacion queda sin codigo (SIN ZONA).
+    _set_codigo_instalacion(inst, '')
     return JsonResponse({'message': 'Nominativo eliminado'})
