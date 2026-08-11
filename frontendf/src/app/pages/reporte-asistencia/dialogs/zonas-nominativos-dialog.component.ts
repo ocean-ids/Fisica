@@ -170,13 +170,18 @@ export class ZonasNominativosDialogComponent implements OnInit {
   }
   cancelarNominativo(): void { this.nomEditId = null; this.nomZona = null; this.zonaAuto = false; }
 
+  // Habilita Guardar solo cuando TODOS los campos están completos (incluida instalación).
+  puedeGuardarNominativo(): boolean {
+    return !!(this.nomZona && this.nomLetra && this.nomNumero != null && this.nomInstalacion);
+  }
+
   guardarNominativo(): void {
-    if (!this.nomZona || !this.nomLetra || this.nomNumero == null) {
-      Swal.fire('Faltan datos', 'Zona, letra y número son obligatorios', 'info'); return;
+    if (!this.puedeGuardarNominativo()) {
+      Swal.fire('Faltan datos', 'Completa zona, letra, número e instalación', 'info'); return;
     }
     const payload = {
-      zona: this.nomZona, letra: this.nomLetra, numero: this.nomNumero,
-      instalacion: this.nomInstalacion || null,
+      zona: this.nomZona!, letra: this.nomLetra, numero: this.nomNumero!,
+      instalacion: this.nomInstalacion!,
     };
     const obs = this.nomEditId
       ? this.svc.actualizarNominativo(this.nomEditId, payload)
