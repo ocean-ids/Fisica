@@ -13,7 +13,7 @@ from .views.importar_puestos_asignaciones import (
     estado_import,
 )
 from .views.ubicacion_views import obtener_provincias, obtener_cantones, obtener_zonas, obtener_parroquias
-from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion
+from .views.instalacion_views import obtener_instalaciones, crear_instalacion, actualizar_instalacion, eliminar_instalacion, cerrar_instalacion, reabrir_instalacion
 from .views.nominativo_views import (
     listar_zonas_operativas, crear_zona_operativa, actualizar_zona_operativa, eliminar_zona_operativa,
     listar_nominativos, crear_nominativo, actualizar_nominativo, eliminar_nominativo,
@@ -105,6 +105,8 @@ urlpatterns = [
     path('crear-instalacion/', crear_instalacion),
     path('actualizar-instalacion/<int:id>/', actualizar_instalacion),
     path('eliminar-instalacion/<int:id>/', eliminar_instalacion),
+    path('cerrar-instalacion/<int:id>/', cerrar_instalacion),
+    path('reabrir-instalacion/<int:id>/', reabrir_instalacion),
     # Zonas operativas y Nominativos (letra + numero)
     path('zonas-operativas/', listar_zonas_operativas),
     path('zonas-operativas/crear/', crear_zona_operativa),

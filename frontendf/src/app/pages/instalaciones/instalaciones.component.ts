@@ -162,6 +162,56 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
     });
   }
 
+  async confirmarCerrar(instalacion: any): Promise<void> {
+    const res = await Swal.fire({
+      title: '¿Cerrar instalación?',
+      html: `Se cerrará <b>${instalacion.nombre || ''}</b>.<br><br>` +
+            'Se desactivarán sus puestos y asignaciones (las personas quedan libres) y se ' +
+            'liberará su código. <b>No se borra nada</b> y se puede reabrir.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, cerrar',
+      cancelButtonText: 'Cancelar'
+    });
+    if (!res.isConfirmed) return;
+    try {
+      const r: any = await firstValueFrom(this.instalacionService.cerrarInstalacion(instalacion.id));
+      await Swal.fire({
+        icon: 'success', title: 'Instalación cerrada',
+        text: `Puestos desactivados: ${r?.puestos_desactivados ?? 0} · Asignaciones: ${r?.asignaciones_desactivadas ?? 0}`,
+      });
+      this.cargarInstalaciones();
+    } catch (error: any) {
+      console.error('Error al cerrar instalación:', error);
+      Swal.fire({ icon: 'error', title: 'No se pudo cerrar', text: error?.error?.error || 'No se pudo cerrar' });
+    }
+  }
+
+  async confirmarReabrir(instalacion: any): Promise<void> {
+    const res = await Swal.fire({
+      title: '¿Reabrir instalación?',
+      html: `Se reactivará <b>${instalacion.nombre || ''}</b> y sus puestos. ` +
+            'Las asignaciones de personal se vuelven a asignar (o se re-importan).',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, reabrir',
+      cancelButtonText: 'Cancelar'
+    });
+    if (!res.isConfirmed) return;
+    try {
+      const r: any = await firstValueFrom(this.instalacionService.reabrirInstalacion(instalacion.id));
+      if (r?.nominativo_aviso) {
+        await Swal.fire({ icon: 'info', title: 'Instalación reabierta', text: 'Nominativo pendiente: ' + r.nominativo_aviso });
+      } else {
+        await Swal.fire({ icon: 'success', title: 'Instalación reabierta', timer: 1400, showConfirmButton: false });
+      }
+      this.cargarInstalaciones();
+    } catch (error: any) {
+      console.error('Error al reabrir instalación:', error);
+      Swal.fire({ icon: 'error', title: 'No se pudo reabrir', text: error?.error?.error || 'No se pudo reabrir' });
+    }
+  }
+
   async confirmarEliminar(instalacion: any): Promise<void> {
     const res = await Swal.fire({
       title: '¿Eliminar instalación?',

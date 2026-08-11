@@ -259,6 +259,7 @@ def obtener_instalaciones(request):
             'provincia_nombre': getattr(getattr(inst.canton, 'provincia', None), 'nombre', ''),
             'direccion': inst.direccion or '',
             'sector': inst.sector or '',
+            'activo': inst.activo,
             'zonas': [
                 {
                     'id': z.id,
@@ -395,6 +396,66 @@ def actualizar_instalacion(request, id):
 
     except json.JSONDecodeError:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cerrar_instalacion(request, id):
+    """Cierra (deshabilita) una instalacion en cascada, SIN borrar nada:
+      - instalacion.activo = False
+      - sus puestos.activo = False
+      - sus asignaciones ACTIVO -> INACTIVO (las personas quedan libres)
+      - libera su nominativo (se borra -> el codigo queda reutilizable)
+    Es reversible con reabrir_instalacion. Conserva historial (reportes/meses pasados)."""
+    if not request.user.has_perm('CoreFisica.change_instalacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    from ..models import Puesto, Asignacion, Nominativo
+    from django.db import transaction
+
+    inst = Instalacion.objects.filter(id=id).first()
+    if not inst:
+        return JsonResponse({'error': 'Instalación no encontrada'}, status=404)
+
+    with transaction.atomic():
+        inst.activo = False
+        inst.save(update_fields=['activo'])
+        puestos = Puesto.objects.filter(instalacion=inst, activo=True).count()
+        Puesto.objects.filter(instalacion=inst).update(activo=False)
+        asigs = Asignacion.objects.filter(instalacion=inst, estado='ACTIVO').count()
+        Asignacion.objects.filter(instalacion=inst, estado='ACTIVO').update(estado='INACTIVO')
+        libre = Nominativo.objects.filter(instalacion=inst).delete()[0]
+
+    return JsonResponse({
+        'message': 'Instalación cerrada',
+        'puestos_desactivados': puestos,
+        'asignaciones_desactivadas': asigs,
+        'nominativo_liberado': bool(libre),
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reabrir_instalacion(request, id):
+    """Reabre una instalacion: la reactiva, reactiva sus puestos y vuelve a crear su
+    nominativo desde el codigo (si el codigo sigue libre). NO reactiva las asignaciones
+    (las personas se reasignan o se re-importan)."""
+    if not request.user.has_perm('CoreFisica.change_instalacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    from ..models import Puesto
+    from django.db import transaction
+
+    inst = Instalacion.objects.filter(id=id).first()
+    if not inst:
+        return JsonResponse({'error': 'Instalación no encontrada'}, status=404)
+
+    aviso = None
+    with transaction.atomic():
+        inst.activo = True
+        inst.save(update_fields=['activo'])
+        Puesto.objects.filter(instalacion=inst).update(activo=True)
+        aviso = sync_nominativo_desde_codigo(inst)
+
+    return JsonResponse({'message': 'Instalación reabierta', 'nominativo_aviso': aviso})
+
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])

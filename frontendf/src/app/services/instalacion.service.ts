@@ -28,5 +28,13 @@ export class InstalacionService {
   deleteInstalacion(id: number): Observable<any>{
     return this.apiService.delete(`/eliminar-instalacion/${id}/`);
   }
-  
+
+  cerrarInstalacion(id: number): Observable<any>{
+    return this.apiService.post(`/cerrar-instalacion/${id}/`, {});
+  }
+
+  reabrirInstalacion(id: number): Observable<any>{
+    return this.apiService.post(`/reabrir-instalacion/${id}/`, {});
+  }
+
 }

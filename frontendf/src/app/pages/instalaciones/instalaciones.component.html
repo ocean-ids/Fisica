@@ -39,10 +39,14 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="text-center align-middle" *ngFor="let instalacion of instalaciones">
+            <tr class="text-center align-middle" *ngFor="let instalacion of instalaciones"
+                [class.table-secondary]="instalacion.activo === false">
               <td class="d-none d-lg-table-cell">{{ instalacion.codigo || '-' }}</td>
               <td>{{ getNombreCliente(instalacion.cliente_id) }}</td>
-              <td>{{ instalacion.nombre || '-' }}</td>
+              <td>
+                {{ instalacion.nombre || '-' }}
+                <span *ngIf="instalacion.activo === false" class="badge bg-secondary ms-1">Cerrada</span>
+              </td>
               <td>{{ instalacion.provincia_nombre || '-' }}</td>
               <td>{{ instalacion.canton_nombre || '-' }}</td>
               <td class="d-none d-lg-table-cell">{{ instalacion.direccion || '-' }}</td>
@@ -58,6 +62,14 @@
                 <div class="d-flex justify-content-center gap-2">
                   <button class="btn btn-sm btn-outline-primary" (click)="abrirModal(instalacion)">
                     <i class="bi bi-pencil"></i> <span class="d-none d-lg-inline">Editar</span>
+                  </button>
+                  <button *ngIf="instalacion.activo !== false" class="btn btn-sm btn-outline-warning"
+                          (click)="confirmarCerrar(instalacion)">
+                    <i class="bi bi-lock"></i> <span class="d-none d-lg-inline">Cerrar</span>
+                  </button>
+                  <button *ngIf="instalacion.activo === false" class="btn btn-sm btn-outline-success"
+                          (click)="confirmarReabrir(instalacion)">
+                    <i class="bi bi-unlock"></i> <span class="d-none d-lg-inline">Reabrir</span>
                   </button>
                   <button class="btn btn-sm btn-outline-danger" (click)="confirmarEliminar(instalacion)">
                     <i class="bi bi-trash"></i> <span class="d-none d-lg-inline">Eliminar</span>
