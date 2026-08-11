@@ -162,15 +162,16 @@
         </table>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mt-2" *ngIf="!loading">
-        <div class="small text-muted">
+    <div class="d-flex align-items-center mt-2" *ngIf="!loading">
+        <div class="small text-muted flex-fill">
             Mostrando {{ reporte.length }} de {{ totalItems }} registros
             <span *ngIf="filtroZona">( {{ filtroZona }} )</span>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-fill justify-content-center">
             <button type="button" class="btn btn-sm btn-outline-secondary" (click)="prevPage()" [disabled]="currentPage <= 1">Anterior</button>
             <span class="small">Página {{ currentPage }} / {{ totalPages }}</span>
             <button type="button" class="btn btn-sm btn-outline-secondary" (click)="nextPage()" [disabled]="currentPage >= totalPages">Siguiente</button>
         </div>
+        <div class="flex-fill"></div>
     </div>
 </div>
