@@ -41,7 +41,12 @@ export class NominativoService {
 
   // --- Nominativos ---
   getNominativos(params?: { zona_id?: number; q?: string }) {
-    return this.api.get<Nominativo[]>('/nominativos/', params);
+    // Construir params limpio: NO enviar claves vacías/undefined (si no, el backend
+    // recibiría q=undefined y buscaría el texto "undefined" -> lista vacía).
+    const p: any = {};
+    if (params?.zona_id != null) p.zona_id = params.zona_id;
+    if (params?.q) p.q = params.q;
+    return this.api.get<Nominativo[]>('/nominativos/', p);
   }
   crearNominativo(data: { zona: number; letra: string; numero: number; instalacion?: number | null }) {
     return this.api.post<Nominativo>('/nominativos/crear/', data);

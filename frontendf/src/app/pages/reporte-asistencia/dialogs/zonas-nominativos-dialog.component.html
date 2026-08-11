@@ -72,13 +72,14 @@
           La letra <b>{{ nomLetra }}</b> ya pertenece a esa zona (asignada automáticamente).
         </div>
         <select class="form-select form-select-sm mt-1" [(ngModel)]="nomInstalacion">
-          <option [ngValue]="null">— Sin instalación (libre) —</option>
+          <option [ngValue]="null">— Selecciona la instalación —</option>
           <option *ngFor="let i of instalaciones" [ngValue]="i.id">
             {{ i.codigo }} · {{ i.nombre }} ({{ i.cliente_nombre }})
           </option>
         </select>
         <div class="mt-2">
-          <button class="btn btn-success btn-sm" (click)="guardarNominativo()">Guardar</button>
+          <button class="btn btn-success btn-sm" (click)="guardarNominativo()"
+                  [disabled]="!puedeGuardarNominativo()">Guardar</button>
           <button class="btn btn-secondary btn-sm ms-1" (click)="cancelarNominativo()">Cancelar</button>
         </div>
       </div>
