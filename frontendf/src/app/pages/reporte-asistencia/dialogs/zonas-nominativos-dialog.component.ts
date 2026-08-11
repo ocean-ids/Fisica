@@ -38,6 +38,8 @@ export class ZonasNominativosDialogComponent implements OnInit {
 
   // mapa letra -> zona (una letra vive en una sola zona)
   private letraZona: Record<string, { zonaId: number; zonaNombre: string }> = {};
+  // mapa letra -> numeros ya usados (para sugerir el hueco más bajo)
+  private letraNumeros: Record<string, number[]> = {};
 
   constructor(
     private ref: MatDialogRef<ZonasNominativosDialogComponent>,
@@ -119,15 +121,29 @@ export class ZonasNominativosDialogComponent implements OnInit {
 
   // ------------- NOMINATIVOS -------------
   private armarLetraZona(ns: Nominativo[]): void {
-    const map: Record<string, { zonaId: number; zonaNombre: string }> = {};
+    const mapZ: Record<string, { zonaId: number; zonaNombre: string }> = {};
+    const mapN: Record<string, number[]> = {};
     for (const n of ns) {
       const l = (n.letra || '').toUpperCase();
-      if (l && !map[l]) map[l] = { zonaId: n.zona, zonaNombre: n.zona_nombre || '' };
+      if (!l) continue;
+      if (!mapZ[l]) mapZ[l] = { zonaId: n.zona, zonaNombre: n.zona_nombre || '' };
+      (mapN[l] = mapN[l] || []).push(n.numero);
     }
-    this.letraZona = map;
+    this.letraZona = mapZ;
+    this.letraNumeros = mapN;
   }
 
-  // Al escribir la letra: la pasa a mayúscula y, si ya existe, fija su zona sola.
+  // Devuelve el numero más bajo disponible para la letra (rellena huecos: si borraste
+  // el 15, vuelve a proponer 15; si no hay huecos, el siguiente).
+  private siguienteNumeroLetra(letra: string): number {
+    const usados = new Set(this.letraNumeros[letra] || []);
+    let n = 1;
+    while (usados.has(n)) n++;
+    return n;
+  }
+
+  // Al escribir la letra: la pasa a mayúscula, fija la zona (si existe) y sugiere el
+  // número automático (hueco más bajo). Solo autocompleta el número al CREAR.
   onLetraChange(): void {
     this.nomLetra = (this.nomLetra || '').toUpperCase();
     const hit = this.letraZona[this.nomLetra];
@@ -136,6 +152,9 @@ export class ZonasNominativosDialogComponent implements OnInit {
       this.zonaAuto = true;
     } else {
       this.zonaAuto = false;
+    }
+    if (!this.nomEditId) {
+      this.nomNumero = this.nomLetra ? this.siguienteNumeroLetra(this.nomLetra) : null;
     }
   }
 
