@@ -180,6 +180,10 @@ def importar_clientes(request):
     created_inst = updated_inst = 0
     created_puestos = updated_puestos = 0
     errors = []
+    # Detalle de lo que se creo (nombres), para mostrarlo en el resumen.
+    nuevos_clientes = []
+    nuevas_instalaciones = []
+    nuevos_puestos = []
 
     start_row = (header_row_num or 0) + 1
 
@@ -210,28 +214,24 @@ def importar_clientes(request):
                 continue
 
             
+            # filter().first() (no get_or_create) para tolerar clientes duplicados existentes.
             if ruc:
-                cliente, created = Cliente.objects.get_or_create(
-                    ruc=ruc,
-                    defaults={
-                        'razon_social': razon_social or nombre_comercial,
-                        'nombre_comercial': nombre_comercial,
-                        'size': clasif or 'MEDIANO',
-                        'fecha_ingreso': fecha_ingreso,
-                    },
-                )
+                cliente = Cliente.objects.filter(ruc=ruc).first()
             else:
-                cliente, created = Cliente.objects.get_or_create(
+                cliente = Cliente.objects.filter(nombre_comercial=nombre_comercial).first()
+            created = False
+            if not cliente:
+                cliente = Cliente.objects.create(
+                    ruc=ruc or None,
+                    razon_social=razon_social or nombre_comercial,
                     nombre_comercial=nombre_comercial,
-                    defaults={
-                        'razon_social': razon_social or nombre_comercial,
-                        'ruc': None,
-                        'size': clasif or 'MEDIANO',
-                        'fecha_ingreso': fecha_ingreso,
-                    },
+                    size=clasif or 'MEDIANO',
+                    fecha_ingreso=fecha_ingreso,
                 )
+                created = True
             if created:
                 created_clientes += 1
+                nuevos_clientes.append(nombre_comercial)
             else:
                 updated = False
                 if fecha_ingreso and cliente.fecha_ingreso != fecha_ingreso:
@@ -241,28 +241,31 @@ def importar_clientes(request):
                     cliente.save(update_fields=['fecha_ingreso'])
                     updated_clientes += 1
 
-            # Instalación por cliente + nombre, resolviendo provincia/cantón
+            # Instalación por cliente + nombre, resolviendo provincia/cantón.
+            # Usamos filter().first() (no get_or_create) para tolerar duplicados ya
+            # existentes en la base (si no, get_or_create revienta con MultipleObjectsReturned).
             canton_obj = get_or_create_canton_token(ciudad, provincia)
-            instalacion, inst_created = Instalacion.objects.get_or_create(
-                cliente=cliente,
-                nombre=inst_nombre,
-                defaults={'canton': canton_obj} if canton_obj else {},
-            )
-            if inst_created:
-                created_inst += 1
-
-            # Puesto por instalación + nombre
-            if puesto_nombre:
-                puesto_defaults = {'cantidad_puestos': 1}
-                if puesto_tipo:
-                    puesto_defaults['tipo'] = puesto_tipo
-                puesto, puesto_created = Puesto.objects.get_or_create(
-                    instalacion=instalacion,
-                    nombre=puesto_nombre,
-                    defaults=puesto_defaults,
+            instalacion = Instalacion.objects.filter(cliente=cliente, nombre=inst_nombre).first()
+            if not instalacion:
+                instalacion = Instalacion.objects.create(
+                    cliente=cliente, nombre=inst_nombre,
+                    **({'canton': canton_obj} if canton_obj else {}),
                 )
-                if puesto_created:
+                created_inst += 1
+                nuevas_instalaciones.append(f"{nombre_comercial} - {inst_nombre}")
+
+            # Puesto por instalación + nombre (tolerante a duplicados existentes).
+            if puesto_nombre:
+                puesto = Puesto.objects.filter(instalacion=instalacion, nombre=puesto_nombre).first()
+                if not puesto:
+                    puesto_defaults = {'cantidad_puestos': 1}
+                    if puesto_tipo:
+                        puesto_defaults['tipo'] = puesto_tipo
+                    puesto = Puesto.objects.create(
+                        instalacion=instalacion, nombre=puesto_nombre, **puesto_defaults,
+                    )
                     created_puestos += 1
+                    nuevos_puestos.append(f"{inst_nombre} - {puesto_nombre}")
 
     summary = {
         'clientes_creados': created_clientes,
@@ -273,5 +276,9 @@ def importar_clientes(request):
         'puestos_actualizados': updated_puestos,
         'errores': errors,
         'errores_total': len(errors),
+        # Detalle de lo creado (nombres) para mostrar en el resumen.
+        'nuevos_clientes': nuevos_clientes,
+        'nuevas_instalaciones': nuevas_instalaciones,
+        'nuevos_puestos': nuevos_puestos,
     }
     return JsonResponse(summary, status=200)
