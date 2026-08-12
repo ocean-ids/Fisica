@@ -204,6 +204,10 @@ def crear_nominativo(request):
         if hasattr(instalacion, 'nominativo'):
             return JsonResponse({'error': 'Esa instalación ya tiene un nominativo asignado'}, status=400)
 
+    # Reclamar huerfanos: nominativos LIBRES (sin instalacion) con ese mismo codigo no
+    # aportan nada y solo tapan el numero. Se borran para que el codigo quede disponible.
+    Nominativo.objects.filter(letra=letra, numero=numero, instalacion__isnull=True).delete()
+
     err = _validar_nominativo(letra, numero, zona.id, instalacion)
     if err:
         return JsonResponse({'error': err}, status=400)

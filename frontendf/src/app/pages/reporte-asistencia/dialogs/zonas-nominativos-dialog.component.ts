@@ -40,6 +40,8 @@ export class ZonasNominativosDialogComponent implements OnInit {
   private letraZona: Record<string, { zonaId: number; zonaNombre: string }> = {};
   // mapa letra -> numeros ya usados (para sugerir el hueco más bajo)
   private letraNumeros: Record<string, number[]> = {};
+  // ids de instalaciones que YA tienen nominativo (para no ofrecerlas al crear)
+  private instalacionesConNom = new Set<number>();
 
   constructor(
     private ref: MatDialogRef<ZonasNominativosDialogComponent>,
@@ -71,14 +73,16 @@ export class ZonasNominativosDialogComponent implements OnInit {
       next: (zs) => { this.zonas = zs || []; this.nuevaZonaNumero = this.siguienteNumeroZona(); },
       error: () => { this.zonas = []; },
     });
+    // Lista que se muestra (respeta la búsqueda).
     this.svc.getNominativos({ q: this.busqueda || undefined }).subscribe({
-      next: (ns) => {
-        this.nominativos = ns || [];
-        this.loading = false;
-        // El mapa letra->zona se arma con la lista COMPLETA (sin búsqueda).
-        if (!this.busqueda) this.armarLetraZona(ns || []);
-      },
+      next: (ns) => { this.nominativos = ns || []; this.loading = false; },
       error: () => { this.nominativos = []; this.loading = false; },
+    });
+    // Mapa letra->zona y números usados: SIEMPRE con la lista COMPLETA (sin búsqueda),
+    // para que al borrar un nominativo el número quede realmente libre (reutilizable).
+    this.svc.getNominativos().subscribe({
+      next: (all) => this.armarLetraZona(all || []),
+      error: () => {},
     });
   }
 
@@ -123,14 +127,28 @@ export class ZonasNominativosDialogComponent implements OnInit {
   private armarLetraZona(ns: Nominativo[]): void {
     const mapZ: Record<string, { zonaId: number; zonaNombre: string }> = {};
     const mapN: Record<string, number[]> = {};
+    const conNom = new Set<number>();
     for (const n of ns) {
       const l = (n.letra || '').toUpperCase();
-      if (!l) continue;
-      if (!mapZ[l]) mapZ[l] = { zonaId: n.zona, zonaNombre: n.zona_nombre || '' };
-      (mapN[l] = mapN[l] || []).push(n.numero);
+      // Solo cuentan como "usados" los nominativos ligados a una instalación.
+      // Un nominativo libre (sin instalación) NO tapa el número -> queda reutilizable.
+      if (l && n.instalacion != null) {
+        if (!mapZ[l]) mapZ[l] = { zonaId: n.zona, zonaNombre: n.zona_nombre || '' };
+        (mapN[l] = mapN[l] || []).push(n.numero);
+      }
+      if (n.instalacion != null) conNom.add(n.instalacion);
     }
     this.letraZona = mapZ;
     this.letraNumeros = mapN;
+    this.instalacionesConNom = conNom;
+  }
+
+  // Solo instalaciones SIN nominativo (libres). Al editar, incluye también la que ya
+  // tiene este nominativo para que quede seleccionada.
+  get instalacionesLibres(): any[] {
+    return this.instalaciones.filter(
+      (i) => !this.instalacionesConNom.has(i.id) || i.id === this.nomInstalacion
+    );
   }
 
   // Devuelve el numero más bajo disponible para la letra (rellena huecos: si borraste

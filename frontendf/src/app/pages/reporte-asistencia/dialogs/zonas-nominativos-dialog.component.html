@@ -61,8 +61,7 @@
           <input class="form-control form-control-sm" placeholder="Letra" [(ngModel)]="nomLetra"
                  (ngModelChange)="onLetraChange()" style="width:70px; text-transform:uppercase">
           <input type="number" class="form-control form-control-sm" placeholder="N°" [(ngModel)]="nomNumero"
-                 [disabled]="!nomEditId" [title]="!nomEditId ? 'Número automático (reutiliza huecos)' : 'Número'"
-                 style="width:80px">
+                 title="Número (sugiere el hueco más bajo; puedes cambiarlo)" style="width:80px">
           <select class="form-select form-select-sm" [(ngModel)]="nomZona" [disabled]="zonaAuto">
             <option [ngValue]="null">Zona…</option>
             <option *ngFor="let z of zonas" [ngValue]="z.id">{{ z.nombre }}</option>
@@ -73,8 +72,8 @@
         </div>
         <select class="form-select form-select-sm mt-1" [(ngModel)]="nomInstalacion">
           <option [ngValue]="null">— Selecciona la instalación —</option>
-          <option *ngFor="let i of instalaciones" [ngValue]="i.id">
-            {{ i.codigo }} · {{ i.nombre }} ({{ i.cliente_nombre }})
+          <option *ngFor="let i of instalacionesLibres" [ngValue]="i.id">
+            {{ i.nombre }} ({{ i.cliente_nombre }})
           </option>
         </select>
         <div class="mt-2">
