@@ -466,6 +466,10 @@ def eliminar_instalacion(request, id):
     # intentar eliminar la instalacion con el id dado, si no existe devolver error 404
     try:
         instalacion = Instalacion.objects.get(id=id)
+        # Borrar su nominativo primero (si no, con SET_NULL quedaria "libre" huerfano
+        # tapando el codigo). Asi el codigo queda realmente disponible.
+        from ..models import Nominativo
+        Nominativo.objects.filter(instalacion=instalacion).delete()
         instalacion.delete()
         return JsonResponse({'message':'Instalación eliminada correctamente'}, status=200)
     except Instalacion.DoesNotExist:
