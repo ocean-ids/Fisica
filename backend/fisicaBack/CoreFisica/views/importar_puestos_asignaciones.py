@@ -332,6 +332,25 @@ def parse_calendar_value(val):
     return str(val).strip().upper()
 
 
+def _cal_valor_ok(v, es_saca):
+    """True si el valor del calendario es RECONOCIDO. Solo lo establecido:
+      - Normal: D, N, F (y vacio).
+      - Sacafranco: ademas cualquier token valido (D/N+codigo, DB, NB, F...).
+    Todo lo demas (T, numeros, #REF!, M, V, S, L, J...) => NO reconocido (se ignora)."""
+    v = (v or '').strip().upper()
+    if not v:
+        return True
+    if v in ('D', 'N', 'F'):
+        return True
+    if es_saca:
+        try:
+            from .asignacion_semanal_views import _parse_sacafranco_token
+            return _parse_sacafranco_token(v)[0] != 'invalid'
+        except Exception:
+            return False
+    return False
+
+
 def _detect_month_year_from_sheet(rows):
     month_map = {
         'ENERO': 1,
@@ -461,6 +480,20 @@ def _get_or_create_puesto(instalacion, nombre, defaults=None):
         if _norm_puesto(cand.nombre) == target:
             return cand, False
     return Puesto.objects.create(instalacion=instalacion, nombre=nombre, **(defaults or {})), True
+
+
+def _get_puesto(instalacion, nombre):
+    """Busca un Puesto por nombre (normalizado, ignora mayus/espacios/acentos).
+    NO crea. Devuelve el puesto o None. (Regla: el import no crea puestos.)"""
+    nombre = (nombre or '').strip()
+    p = Puesto.objects.filter(instalacion=instalacion, nombre=nombre).order_by('id').first()
+    if p:
+        return p
+    target = _norm_puesto(nombre)
+    for cand in Puesto.objects.filter(instalacion=instalacion).order_by('id'):
+        if _norm_puesto(cand.nombre) == target:
+            return cand
+    return None
 
 
 def _get_or_create_sacafranco_fila(persona, mes, anio, orden):
@@ -752,21 +785,11 @@ def importar_puestos_asignaciones(request):
                     if not instalacion:
                         resumen['errores'].append(f'Fila {i}: instalacion no encontrada')
                         continue
-                # persona se busca o crea una persona usando la cedula, si no se encuentra una persona con esa cedula.
+                # REGLA: el import NO crea personas. Solo referencia por cedula.
                 persona = Persona.objects.filter(cedula=cedula).first()
-                # si no se encuentra una persona 
                 if not persona:
-                    if not apellidos or not nombres:
-                        resumen['errores'].append(f'Fila {i}: apellidos/nombres requeridos para nueva persona')
-                        continue
-                    #persona se crea una persona nueva con los datos de nombres, apellidos, cedula, tipo
-                    persona = Persona.objects.create(
-                        nombres=str(nombres).strip().upper(),
-                        apellidos=str(apellidos).strip().upper(),
-                        cedula=cedula,
-                        tipo=persona_tipo or None,
-                    )
-                    resumen['personas_creadas'] += 1
+                    resumen['errores'].append(f'Fila {i}: persona con cedula {cedula} no esta registrada — no se importa')
+                    continue
                 # se obtiene o crea un horario usando la hora_ingreso y hora_salida
                 horario, created_horario = _get_or_create_horario(hora_ingreso, hora_salida)
                 # si se creo un nuevo horario, se incrementa el contador de horarios_creados en el resumen
@@ -780,23 +803,14 @@ def importar_puestos_asignaciones(request):
                     cantidad_int = 1
                 if cantidad_int < 1:
                     cantidad_int = 1
-                # se obtiene o crea un puesto usando el nombre del puesto y la instalacion
-                puesto, puesto_created = _get_or_create_puesto(
-                    instalacion, puesto_nombre,
-                    {'cantidad_puestos': cantidad_int, 'tipo': puesto_tipo or None}
-                )
-                #si se creo un nuevo puesto, se incrementa el cantador de puestos_ creados en el resumen
-                if puesto_created:
-                    resumen['puestos_creados'] += 1
-                # si no se creo un nuevo puesto
-                else:
-                    #si se proporciono la cantidad de puestos y es diferente a la cantidad de puestos actual del puesto, se actualiza la cantidad de puestos del puesto con el valor proporcionado, ya que la cantidad de puestos es un campo opcional para crear o actualizar un puesto y asignacion, pero si se proporciona debe ser un numero entero positivo y se asume que el valor proporcionado es el correcto para ese puesto
-                    if cantidad_int and puesto.cantidad_puestos != cantidad_int:
-                        puesto.cantidad_puestos = cantidad_int
-                        puesto.save(update_fields=['cantidad_puestos'])
-                    if puesto_tipo and puesto.tipo != puesto_tipo:
-                        puesto.tipo = puesto_tipo
-                        puesto.save(update_fields=['tipo'])
+                # REGLA: el import NO crea puestos. Debe existir (configurado antes con
+                # su cantidad de guardias). Si no existe -> avisa y salta.
+                puesto = _get_puesto(instalacion, puesto_nombre)
+                if not puesto:
+                    resumen['errores'].append(
+                        f"Fila {i}: el puesto '{puesto_nombre}' no existe en la instalacion — no se importa"
+                    )
+                    continue
                 # se actualizan o crean los puestos horarios para el puesto usando la lista de dias, hora_ingreso, hora_salida y turno proporcionados, ya que los puestos horarios son necesarios para crear o actualizar una asignacion y se asume que el horario y turno proporcionados aplican para todos los dias indicados
                 horas_groups = parse_hours_groups(horas_raw)
                 turnos_groups = parse_turno_groups(col('turno'))
@@ -1211,7 +1225,7 @@ def es_formato_reporte(wb):
 
 def importar_formato_reporte(request, wb, cliente_id_filter=None):
     from .asignacion_semanal_views import _sync_sacafranco_to_reporte_y_consolidado, _validate_sacafranco_tokens
-    from ..models import SacafrancoFilaSemanal
+    from ..models import SacafrancoFilaSemanal, SacafrancoFila
     from ..audit import suppress_audit
 
     resumen = {
@@ -1236,6 +1250,8 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
     touched_asig_ids = set()
     touched_dates = set()
     puesto_personas = {}
+    touched_saca_ids = set()   # SacafrancoFila que SI vinieron en este Excel
+    touched_periodos = set()   # (mes, anio) que trajo el Excel
     orden_counter = 0  # orden de presentación según el orden del Excel (igual en todos los meses)
     WEEK_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
@@ -1367,24 +1383,39 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 es_saca = _rep_norm(puesto_nombre) == 'SACAFRANCO'
 
                 cal = []
+                _cal_ignorados = []
                 for d_i, dj in enumerate(dias_cols):
                     if d_i >= days_in_month:
                         break
-                    cal.append(parse_calendar_value(row[dj]) if dj < len(row) else '')
+                    v = (parse_calendar_value(row[dj]) if dj < len(row) else '') or ''
+                    # REGLA (opcion B): valores no reconocidos se IGNORAN (casilla vacia),
+                    # el resto de la fila SI se importa. Solo D/N/F y tokens de sacafranco.
+                    if v and not _cal_valor_ok(v, es_saca):
+                        _cal_ignorados.append(v)
+                        v = ''
+                    cal.append(v)
+                if _cal_ignorados:
+                    from collections import Counter as _Cnt
+                    _det = ', '.join(f"{k}(x{n})" for k, n in _Cnt(_cal_ignorados).items())
+                    resumen['errores'].append(
+                        f'Hoja {ws.title}, Fila {i}: valores ignorados en calendario (no reconocidos): {_det}'
+                    )
 
                 if es_saca:
                     if not cedula:
                         continue
+                    # REGLA: no crear personas. Sacafranco tambien debe estar registrado.
                     persona = Persona.objects.filter(cedula=cedula).first()
                     if not persona:
-                        toks = [t for t in re.split(r'\s+', norm(g('nombre'))) if t]
-                        ap = ' '.join(toks[:2]) if len(toks) >= 2 else (toks[0] if toks else 'SF')
-                        no = ' '.join(toks[2:]) if len(toks) > 2 else (toks[1] if len(toks) > 1 else ap)
-                        persona = Persona.objects.create(nombres=no.upper(), apellidos=ap.upper(), cedula=cedula, tipo='SACAFRANCO')
-                        resumen['personas_creadas'] += 1
+                        resumen['errores'].append(
+                            f'Hoja {ws.title}, Fila {i}: sacafranco con cedula {cedula} no esta registrado — no se importa'
+                        )
+                        continue
                     orden_counter += 1
                     row_orden = orden_counter
                     fila, _ = _get_or_create_sacafranco_fila(persona, mes, anio, row_orden)
+                    touched_saca_ids.add(fila.id)
+                    touched_periodos.add((mes, anio))
                     if fila.orden != row_orden:
                         fila.orden = row_orden
                         fila.save(update_fields=['orden'])
@@ -1519,32 +1550,28 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 resto = m.group(2) if m else resumen_txt
                 grupos = parse_compact_horas_turno_dias(resto) or []
 
+                # REGLA: el import NO crea personas. Solo referencia por cedula.
+                # Si la persona no esta registrada -> avisa y salta (no se importa esa fila).
                 persona = Persona.objects.filter(cedula=cedula).first()
                 if not persona:
-                    toks = [t for t in re.split(r'\s+', norm(g('nombre'))) if t]
-                    if len(toks) < 2:
-                        resumen['errores'].append(f'Hoja {ws.title}, Fila {i}: nombre incompleto')
-                        continue
-                    ap = ' '.join(toks[:2])
-                    no = ' '.join(toks[2:]) or toks[1]
-                    persona = Persona.objects.create(nombres=no.upper(), apellidos=ap.upper(), cedula=cedula, tipo='FIJOS')
-                    resumen['personas_creadas'] += 1
+                    resumen['errores'].append(
+                        f'Hoja {ws.title}, Fila {i}: persona con cedula {cedula} no esta registrada — no se importa'
+                    )
+                    continue
 
                 horario, h_created = _get_or_create_horario(hora_ingreso, hora_salida)
                 if h_created:
                     resumen['horarios_creados'] += 1
 
-                puesto, p_created = _get_or_create_puesto(
-                    instalacion, puesto_nombre, {'cantidad_puestos': cantidad}
-                )
-                if p_created:
-                    resumen['puestos_creados'] += 1
-                    # Aviso: puesto NUEVO creado, para que el usuario revise que no sea
-                    # un typo o basura (no se crea a ciegas: queda reportado).
+                # REGLA: el import NO crea puestos. Deben estar configurados antes
+                # (con su cantidad de guardias). Si no existe -> avisa y salta.
+                puesto = _get_puesto(instalacion, puesto_nombre)
+                if not puesto:
                     resumen['errores'].append(
-                        f"Hoja {ws.title}, Fila {i}: PUESTO NUEVO creado '{puesto_nombre}' "
-                        f"(instalacion {carry['nominativo']}) — verifique que sea correcto"
+                        f"Hoja {ws.title}, Fila {i}: el puesto '{puesto_nombre}' no existe en la "
+                        f"instalacion {carry['nominativo']} — no se importa"
                     )
+                    continue
                 if not puesto.horario_id:
                     puesto.horario = horario
                     puesto.save(update_fields=['horario'])
@@ -1562,9 +1589,8 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
 
                 orden_counter += 1
                 row_orden = orden_counter
-                # No reordenar lo existente: si la asignacion ya tiene un orden, se conserva.
-                _prev = Asignacion.objects.filter(persona=persona, mes=mes, anio=anio).first()
-                _orden_val = _prev.orden if (_prev and _prev.orden) else row_orden
+                # RE-ORDENAR SIEMPRE segun el Excel: el orden refleja el ultimo import
+                # (fila por fila, pestaña por pestaña). Asi el grid sigue el orden del Excel.
                 asig, created = Asignacion.objects.update_or_create(
                     persona=persona, mes=mes, anio=anio,
                     defaults={
@@ -1573,11 +1599,12 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         'patronAsignacion': None, 'estado': 'ACTIVO',
                         'publicada_calendario': True, 'recurring': True,
                         'start_date': month_start, 'end_date': None,
-                        'orden': _orden_val,
+                        'orden': row_orden,
                     }
                 )
                 touched_asig_ids.add(asig.id)
                 touched_dates.add(month_start)
+                touched_periodos.add((mes, anio))
                 puesto_personas.setdefault((puesto.id, mes, anio), set()).add(persona.id)
                 resumen['asignaciones_creadas' if created else 'asignaciones_actualizadas'] += 1
 
@@ -1701,13 +1728,40 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 resumen['filas_validas'] += 1
 
         if _quiere_desactivar_sobrantes(request):
-            for (pid, pmes, panio), pers_ids in puesto_personas.items():
-                for o in Asignacion.objects.filter(puesto_id=pid, mes=pmes, anio=panio, estado='ACTIVO').exclude(persona_id__in=pers_ids):
+            def _desactivar(asig_qs):
+                for o in asig_qs:
                     o.estado = 'INACTIVO'
                     o.save(update_fields=['estado'])
                     ReporteAsistencia.objects.filter(asignacion=o).update(
                         estado='TURNO', estado_asistencia='', reemplazo=None, descripcion=None, row_color=None
                     )
+
+            # (a) Guardias que ya no vienen, DENTRO de puestos que SI vinieron en el Excel.
+            for (pid, pmes, panio), pers_ids in puesto_personas.items():
+                _desactivar(Asignacion.objects.filter(
+                    puesto_id=pid, mes=pmes, anio=panio, estado='ACTIVO'
+                ).exclude(persona_id__in=pers_ids))
+
+            # (b) Puestos COMPLETOS que ya no vienen, acotado a las instalaciones y periodos
+            #     que trajo el Excel (resuelve el caso de puestos que desaparecen del Excel).
+            touched_pids = {pid for (pid, _m, _a) in puesto_personas.keys()}
+            touched_inst_ids = set(
+                Asignacion.objects.filter(id__in=touched_asig_ids).values_list('instalacion_id', flat=True)
+            )
+            for (pmes, panio) in touched_periodos:
+                _desactivar(Asignacion.objects.filter(
+                    instalacion_id__in=touched_inst_ids, mes=pmes, anio=panio, estado='ACTIVO'
+                ).exclude(puesto_id__in=touched_pids).exclude(persona__tipo='SACAFRANCO'))
+
+            # (c) Sacafranco sobrantes -> BORRAR. Solo en import COMPLETO (sin filtro de cliente),
+            #     acotado a los periodos que trajo el Excel.
+            if cliente_id_filter is None:
+                for (pmes, panio) in touched_periodos:
+                    ids = list(SacafrancoFila.objects.filter(mes=pmes, anio=panio)
+                               .exclude(id__in=touched_saca_ids).values_list('id', flat=True))
+                    if ids:
+                        SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id__in=ids).delete()
+                        SacafrancoFila.objects.filter(id__in=ids).delete()
 
         for asig in Asignacion.objects.select_related('persona', 'cliente', 'instalacion', 'puesto', 'horario').filter(id__in=touched_asig_ids):
             rep, _ = ReporteAsistencia.objects.get_or_create(asignacion=asig)
