@@ -1031,8 +1031,9 @@ def listar_asignacion_semanal(request):
         if q.isdigit():
             filtros = filtros | Q(id=int(q)) | Q(asignacion_id=int(q))
         qs = qs.filter(filtros).distinct()
-    # ordena por asignacion_id para matener un orden consistente, especialmente al aplicar filtros
-    qs = qs.order_by('asignacion_id')
+    # ordena por el ORDEN del Excel (asignacion.orden), fila por fila; asignacion_id de desempate.
+    from django.db.models import F
+    qs = qs.order_by(F('asignacion__orden').asc(nulls_last=True), 'asignacion_id')
     # si se proporciona filtro de turno, aplicarlo al queryset para mostrar solo filas semanales cuyos puestos tengan ese turno. Esto se hace al final para no afectar la creación automática de filas semanales basada en asignaciones activas.
     if turno in ['Diurno', 'Nocturno']:
         qs = qs.filter(puesto__horarios__turno=turno).distinct()
@@ -1173,7 +1174,8 @@ def listar_asignacion_semanal_mes(request):
         qs = qs.filter(filtros).distinct()
     if turno in ['Diurno', 'Nocturno']:
         qs = qs.filter(puesto__horarios__turno=turno).distinct()
-    qs = qs.order_by('asignacion_id', 'week_start')
+    from django.db.models import F
+    qs = qs.order_by(F('asignacion__orden').asc(nulls_last=True), 'asignacion_id', 'week_start')
 
     if lite:
         rows = list(qs.values(

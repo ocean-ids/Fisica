@@ -81,20 +81,13 @@ class Command(BaseCommand):
         por_codigo = {}
         for inst, letra, numero, _zn, _znm in parsed:
             por_codigo.setdefault((letra, numero), []).append(inst)
-        repes_mismo, conflictos_sim = [], []
+        # CODIGO UNICO: cualquier codigo en 2+ instalaciones es un repetido a resolver.
+        repetidos = []
         for (letra, numero), lst in por_codigo.items():
-            if len(lst) < 2:
-                continue
-            clientes = {i.cliente_id for i in lst}
-            if len(clientes) == 1:
-                repes_mismo.append((f"{letra}{numero}", len(lst)))
-            else:
-                conflictos_sim.append((f"{letra}{numero}", [i.id for i in lst]))
-        self.stdout.write(f"Codigos repetidos MISMO cliente (permitidos): {len(repes_mismo)}")
-        for cod, n in repes_mismo[:15]:
-            self.stdout.write(f"    - {cod}: {n} instalaciones")
-        self.stdout.write(f"Conflictos (mismo codigo, cliente DISTINTO): {len(conflictos_sim)}")
-        for cod, ids in conflictos_sim[:15]:
+            if len(lst) >= 2:
+                repetidos.append((f"{letra}{numero}", [i.id for i in lst]))
+        self.stdout.write(f"Codigos repetidos (se creara solo 1, el resto queda sin nominativo): {len(repetidos)}")
+        for cod, ids in repetidos[:20]:
             self.stdout.write(f"    - {cod}: instalaciones {ids}")
 
         if dry:
@@ -134,22 +127,14 @@ class Command(BaseCommand):
                     if changed:
                         nom.save()
                     continue
-                # ¿el codigo ya existe en otra(s) instalacion(es)?
-                otros = list(Nominativo.objects.filter(letra=letra, numero=numero).select_related('instalacion'))
-                if otros:
-                    otros_cli = {o.instalacion.cliente_id for o in otros if o.instalacion_id}
-                    if otros_cli and inst.cliente_id not in otros_cli:
-                        conflictos += 1  # codigo en cliente DISTINTO -> no se crea
-                        continue
-                    # mismo cliente -> se PERMITE repetir el codigo
-                    Nominativo.objects.create(zona=z, letra=letra, numero=numero, instalacion=inst)
-                    repetidos_ok += 1
+                # CODIGO UNICO: si ya existe ese letra+numero, NO se crea repetido.
+                if Nominativo.objects.filter(letra=letra, numero=numero).exists():
+                    conflictos += 1
                     continue
                 Nominativo.objects.create(zona=z, letra=letra, numero=numero, instalacion=inst)
                 creados_n += 1
 
         self.stdout.write(self.style.SUCCESS(
             f"Zonas creadas: {creadas_z} | Nominativos creados: {creados_n} | "
-            f"repetidos mismo cliente: {repetidos_ok} | movidos de zona: {movidos} | "
-            f"conflictos (cliente distinto) omitidos: {conflictos}"
+            f"movidos de zona: {movidos} | repetidos omitidos (codigo unico): {conflictos}"
         ))

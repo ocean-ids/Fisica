@@ -113,9 +113,8 @@ def _validar_nominativo(letra, numero, zona_id, instalacion, excluir_id=None):
     """Valida las reglas del nominativo. Devuelve un mensaje de error o None.
 
     1) Una LETRA solo puede estar en UNA zona (si la letra ya existe en otra zona, error).
-    2) El CODIGO (letra+numero) solo se puede repetir en instalaciones del MISMO cliente
-       (ambas con instalacion). En cualquier otro caso (cliente distinto, o alguna sin
-       instalacion) => ya existe / conflicto.
+    2) El CODIGO (letra+numero) debe ser UNICO por instalacion: NO se permite repetir,
+       ni siquiera en el mismo cliente. Si ya existe otro nominativo con ese codigo => error.
     """
     # 1) La letra no puede estar en otra zona.
     otra_zona = Nominativo.objects.filter(letra=letra).exclude(zona_id=zona_id).select_related('zona')
@@ -126,21 +125,17 @@ def _validar_nominativo(letra, numero, zona_id, instalacion, excluir_id=None):
         return (f"La letra {letra} ya pertenece a la {z.zona.nombre}. "
                 "Una letra solo puede estar en una zona.")
 
-    # 2) Codigo duplicado / cliente.
-    mismos = Nominativo.objects.filter(letra=letra, numero=numero).select_related('instalacion', 'instalacion__cliente')
+    # 2) Codigo UNICO: no se permite ningun otro nominativo con el mismo letra+numero.
+    dup = Nominativo.objects.filter(letra=letra, numero=numero).select_related('instalacion', 'instalacion__cliente')
     if excluir_id:
-        mismos = mismos.exclude(id=excluir_id)
-    new_cli = getattr(instalacion, 'cliente_id', None) if instalacion else None
-    for o in mismos:
-        o_cli = getattr(o.instalacion, 'cliente_id', None) if o.instalacion_id else None
-        if o_cli and new_cli and o_cli == new_cli:
-            continue  # mismo cliente, distinta instalacion -> permitido
-        if o_cli and new_cli and o_cli != new_cli:
-            return (f"El código {letra}{numero} ya pertenece a otro cliente "
-                    f"({getattr(o.instalacion.cliente, 'nombre_comercial', '')}). "
-                    "Solo se puede repetir en instalaciones del mismo cliente.")
-        # alguno sin instalacion (libre) o el nuevo sin instalacion -> ya existe
-        return f"El código {letra}{numero} ya existe."
+        dup = dup.exclude(id=excluir_id)
+    o = dup.first()
+    if o:
+        detalle = ''
+        if o.instalacion_id:
+            cli = getattr(o.instalacion, 'cliente', None)
+            detalle = f" (ya lo usa {o.instalacion.nombre} - {getattr(cli, 'nombre_comercial', '')})"
+        return f"El código {letra}{numero} ya existe{detalle}. El código debe ser único por instalación."
     return None
 
 
