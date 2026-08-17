@@ -8,4 +8,6 @@ export interface Instalacion {
   nombre?: string;
   direccion?: string;
   nombre_cliente?: string;
+  zonas?: { id: number; titulo: string }[];
+  nominativo_zona?: string;
 }
