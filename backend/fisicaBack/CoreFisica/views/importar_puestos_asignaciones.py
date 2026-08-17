@@ -1320,6 +1320,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
             _sheet_saca_ids = []
             _sheet_cantones = set()
             _sheet_clientes = set()
+            _sheet_inst_ids = set()
 
             # Anti-mezcla: si una persona aparece en VARIAS filas de la hoja (p.ej. GARITA
             # y RETEN), se procesa SOLO la fila con mas dias de calendario (su asignacion
@@ -1614,6 +1615,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 touched_asig_ids.add(asig.id)
                 _sheet_cantones.add(getattr(instalacion, 'canton_id', None))
                 _sheet_clientes.add(getattr(instalacion, 'cliente_id', None))
+                _sheet_inst_ids.add(instalacion.id)
                 touched_dates.add(month_start)
                 touched_periodos.add((mes, anio))
                 puesto_personas.setdefault((puesto.id, mes, anio), set()).add(persona.id)
@@ -1741,13 +1743,36 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
 
                 resumen['filas_validas'] += 1
 
-            # Fin de la hoja: sellar la VISTA (cantones/clientes de esta hoja) en sus
-            # sacafranco, para que queden POR VISTA (solo se ven/limpian en ella).
+            # Fin de la hoja: sellar la VISTA en sus sacafranco. Se elige la vista que
+            # MEJOR representa la hoja (por sus datos) y se estampa segun su TIPO:
+            #   - vista de CANTON  -> solo cantones (clientes vacio)
+            #   - vista de CLIENTE -> solo clientes (cantones vacio)
+            # Asi una hoja de canton (que abarca muchos clientes) NO se filtra a las
+            # vistas de cliente, y viceversa. Sin match claro: cantones de la hoja.
             if _sheet_saca_ids:
-                _cant = sorted({c for c in _sheet_cantones if c is not None})
-                _cli = sorted({c for c in _sheet_clientes if c is not None})
+                from ..models import VistaCanton
+                cant_set = {c for c in _sheet_cantones if c is not None}
+                cli_set = {c for c in _sheet_clientes if c is not None}
+                inst_set = set(_sheet_inst_ids)
+                best, best_score = None, 0
+                for v in VistaCanton.objects.all():
+                    if v.tipo == 'canton':
+                        score = len(cant_set & set(v.cantones or []))
+                    elif v.tipo == 'cliente':
+                        vin = set(v.instalaciones or [])
+                        score = len(inst_set & vin) if vin else len(cli_set & set(v.clientes or []))
+                    else:
+                        score = 0
+                    if score > best_score:
+                        best, best_score = v, score
+                if best is not None and best.tipo == 'canton':
+                    stamp_cant, stamp_cli = sorted(set(best.cantones or [])), []
+                elif best is not None and best.tipo == 'cliente':
+                    stamp_cant, stamp_cli = [], sorted(set(best.clientes or []))
+                else:
+                    stamp_cant, stamp_cli = sorted(cant_set), []
                 SacafrancoFila.objects.filter(id__in=set(_sheet_saca_ids)).update(
-                    cantones=_cant, clientes=_cli,
+                    cantones=stamp_cant, clientes=stamp_cli,
                 )
 
         if _quiere_desactivar_sobrantes(request):
