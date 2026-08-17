@@ -51,6 +51,10 @@
       <button class="btn btn-outline-primary" type="button" (click)="abrirModalVistasCantones()">
         <i class="bi bi-layout-text-window-reverse"></i> Nueva vista
       </button>
+      <input type="file" #impFile class="d-none" accept=".xlsx" (change)="onFileSelected($event)">
+      <button class="btn btn-outline-secondary" (click)="impFile.click()" title="Importar horario (Excel)">
+        <i class="bi bi-upload"></i> Importar
+      </button>
       <button class="btn btn-outline-success" (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel">
         <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
         Descargar
