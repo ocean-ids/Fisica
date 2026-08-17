@@ -51,12 +51,17 @@
               <td>{{ instalacion.canton_nombre || '-' }}</td>
               <td class="d-none d-lg-table-cell">{{ instalacion.direccion || '-' }}</td>
               <td class="d-none d-lg-table-cell">
-                <ng-container *ngIf="instalacion.zonas?.length; else sinZonas">
-                  <div *ngFor="let z of instalacion.zonas">
-                    {{ z.titulo || '-' }}
-                  </div>
+                <!-- Zona del NOMINATIVO (modelo nuevo, el que maneja el panel). Si no
+                     tiene, se cae al modelo viejo (zonas) por compatibilidad. -->
+                <ng-container *ngIf="instalacion.nominativo_zona; else zonasViejas">
+                  {{ instalacion.nominativo_zona }}
                 </ng-container>
-                <ng-template #sinZonas>-</ng-template>
+                <ng-template #zonasViejas>
+                  <ng-container *ngIf="instalacion.zonas?.length; else sinZonas">
+                    <div *ngFor="let z of instalacion.zonas">{{ z.titulo || '-' }}</div>
+                  </ng-container>
+                  <ng-template #sinZonas>-</ng-template>
+                </ng-template>
               </td>
               <td class="align-middle">
                 <div class="d-flex justify-content-center gap-2">

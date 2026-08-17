@@ -206,7 +206,9 @@ def obtener_instalaciones(request):
     canton_id = request.GET.get('canton_id')
     zona_token = request.GET.get('zona_id') or request.GET.get('zona_titulo')
 
-    qs = Instalacion.objects.select_related('cliente', 'canton', 'canton__provincia').prefetch_related('zonas').all()
+    qs = Instalacion.objects.select_related(
+        'cliente', 'canton', 'canton__provincia', 'nominativo', 'nominativo__zona'
+    ).prefetch_related('zonas').all()
 
     if cliente_id:
         qs = qs.filter(cliente_id=cliente_id)
@@ -247,9 +249,12 @@ def obtener_instalaciones(request):
 
     instalaciones = []
     for inst in qs:
+        _nom = getattr(inst, 'nominativo', None)
+        _nom_zona = getattr(getattr(_nom, 'zona', None), 'nombre', '') if _nom else ''
         instalaciones.append({
             'id': inst.id,
             'codigo': inst.codigo or '',
+            'nominativo_zona': _nom_zona,
             'nombre': inst.nombre or '',
             'cliente_id': inst.cliente_id,
             'cliente_nombre': getattr(inst.cliente, 'nombre_comercial', ''),
