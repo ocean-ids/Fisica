@@ -24,7 +24,11 @@ import re
 
 DAY_INDEX_TO_KEY = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 DAY_KEY_TO_INDEX = {k: i for i, k in enumerate(DAY_INDEX_TO_KEY)}
-SACAFRANCO_TOKEN_REGEX = re.compile(r'^(?P<prefix>[DN])(?P<code>[A-Z0-9]+)(?:#(?P<index>\d+))?$')
+# Token: turno(D/N) + nominativo(letra+numero) + puesto opcional(letra+numero) + #indice opcional.
+# Ej: DG15 (turno D, instalacion G15) | DG15G2 (ademas puesto G2=Garita 2) | NG15R1#2.
+SACAFRANCO_TOKEN_REGEX = re.compile(
+    r'^(?P<prefix>[DN])(?P<code>[A-Z]{1,3}\d+)(?P<puesto>[A-Z]{1,3}\d+)?(?:#(?P<index>\d+))?$'
+)
 
 
 def _puesto_detalle_dict(puesto):
@@ -71,23 +75,26 @@ def _overlay_coberturas_sacafranco(rows, week_start_date):
 
 
 def _parse_sacafranco_token(value):
+    """Devuelve (tipo, turno, codigo_instalacion, indice, codigo_puesto).
+    codigo_puesto = None si el token no lo trae (ej. DG15) o lo trae (ej. DG15G2)."""
     raw = str(value or '').strip().upper()
     if not raw:
-        return 'empty', None, None, None
+        return 'empty', None, None, None, None
     if raw == 'F':
-        return 'free', None, None, None
+        return 'free', None, None, None, None
     if raw == 'DB':
-        return 'base_free', 'Diurno', 'BASE', None
+        return 'base_free', 'Diurno', 'BASE', None, None
     if raw == 'NB':
-        return 'base_free', 'Nocturno', 'BASE', None
+        return 'base_free', 'Nocturno', 'BASE', None, None
     match = SACAFRANCO_TOKEN_REGEX.fullmatch(raw)
     if match:
         prefix = match.group('prefix')
         code = match.group('code')
+        puesto_cod = match.group('puesto')
         index_raw = match.group('index')
         index_val = int(index_raw) if index_raw else None
-        return 'coverage', ('Diurno' if prefix == 'D' else 'Nocturno'), code, index_val
-    return 'invalid', None, None, None
+        return 'coverage', ('Diurno' if prefix == 'D' else 'Nocturno'), code, index_val, puesto_cod
+    return 'invalid', None, None, None, None
 
 
 def _get_calendar_day_date(week_start_date, day_key):
@@ -159,7 +166,7 @@ def _validate_sacafranco_tokens(data, week_start_date):
         if day_key not in data:
             continue
         raw_value = str(data.get(day_key) or '').strip().upper()
-        token_type, token_turno, token_code, token_index = _parse_sacafranco_token(raw_value)
+        token_type, token_turno, token_code, token_index, token_puesto = _parse_sacafranco_token(raw_value)
 
         if token_type == 'empty' or token_type == 'free':
             resolved[day_key] = None
@@ -197,6 +204,11 @@ def _validate_sacafranco_tokens(data, week_start_date):
         for asig in qs:
             if not _is_asignacion_active_on_date(asig, target_date):
                 continue
+            # Si el token trae codigo de puesto (ej. DG15G2 -> G2), filtrar al puesto exacto.
+            if token_puesto:
+                pcod = str(getattr(asig.puesto, 'codigo', '') or '').strip().upper()
+                if pcod != token_puesto:
+                    continue
             asig_turno = _resolve_asignacion_turno(asig)
             if asig_turno == token_turno or asig_turno == 'Ambos':
                 matches.append(asig)
@@ -204,9 +216,12 @@ def _validate_sacafranco_tokens(data, week_start_date):
         matches = sorted(matches, key=lambda a: ((a.orden if getattr(a, 'orden', None) is not None else 999999), a.id))
 
         if not matches:
+            _turno_txt = 'Noche' if token_turno == 'Nocturno' else ('Día' if token_turno == 'Diurno' else str(token_turno or ''))
+            _nom = token_code or raw_value
             return (
-                f"No existe cobertura para {raw_value} en {day_key.upper()} "
-                f"({target_date.isoformat()}). Verifique nominativo y turno."
+                f"Este sacafranco iba a cubrir el nominativo {_nom} en turno {_turno_txt} "
+                f"el {target_date.strftime('%d/%m/%Y')}, pero no hay ninguna asignación activa "
+                f"en {_nom} ({_turno_txt}) ese día a quién cubrir. Revise el nominativo y el turno."
             ), None
 
         selected = None
@@ -440,7 +455,7 @@ def _cleanup_auto_sacafranco_from_token_map(sacafranco_fila_id, week_start_date,
     persona_full_name = f"{persona.nombres} {persona.apellidos}".strip() or 'Libre en base'
 
     for day_key, token_value in (token_map or {}).items():
-        token_type, token_turno, token_code, token_index = _parse_sacafranco_token(token_value)
+        token_type, token_turno, token_code, token_index, token_puesto = _parse_sacafranco_token(token_value)
         target_date = _get_calendar_day_date(week_start_date, day_key)
         if not target_date:
             continue

@@ -3,13 +3,58 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import  IsAuthenticated
 import json
-from ..models import Instalacion, Puesto, PuestoHorario, Zona, AsignacionSemanal
+from ..models import Instalacion, Puesto, PuestoHorario, Zona, AsignacionSemanal, SacafrancoFilaSemanal
 from ..utils import parse_input
 import logging
 
 logger = logging.getLogger(__name__)
 
 _DOW_FIELDS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+_SACA_DOW_FIELDS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+
+
+def _reescribir_codigo_puesto_sacafranco(inst_cod, old_cod, new_cod):
+    """Regla 7: al cambiar el codigo corto de un puesto (ej. R1 -> G1), reescribe
+    los tokens de sacafranco que lo referencian.
+
+    El token del sacafranco es: turno(D/N) + nominativo(codigo instalacion) +
+    codigo_puesto (+ opcional #indice). Ej. `DG15R1` -> `DG15G1`, `NG15R1#2` -> `NG15G1#2`.
+
+    Se ancla en el codigo de la instalacion (nominativo) para separar sin ambiguedad
+    el nominativo del codigo del puesto. Devuelve el numero de celdas modificadas.
+    """
+    inst_cod = str(inst_cod or '').strip().upper()
+    old_cod = str(old_cod or '').strip().upper()
+    new_cod = str(new_cod or '').strip().upper()
+    if not (inst_cod and old_cod and new_cod) or old_cod == new_cod:
+        return 0
+
+    prefijo_viejo = inst_cod + old_cod  # ej. "G15R1"
+    cambios = 0
+    filas = SacafrancoFilaSemanal.objects.all()
+    for fila in filas.iterator():
+        dirty = False
+        for campo in _SACA_DOW_FIELDS:
+            cel = (getattr(fila, campo, '') or '').strip()
+            if not cel:
+                continue
+            cu = cel.upper()
+            turno = cu[0] if cu[:1] in ('D', 'N') else ''
+            if not turno:
+                continue
+            resto = cu[1:]  # sin el turno
+            if not resto.startswith(prefijo_viejo):
+                continue
+            cola = resto[len(prefijo_viejo):]  # '' o '#idx'
+            if cola and not cola.startswith('#'):
+                continue  # el codigo viejo era prefijo de otro codigo (ej. R1 vs R12): no tocar
+            nuevo = f"{turno}{inst_cod}{new_cod}{cola}"
+            setattr(fila, campo, nuevo)
+            dirty = True
+            cambios += 1
+        if dirty:
+            fila.save(update_fields=[c for c in _SACA_DOW_FIELDS] + ['updated_at'])
+    return cambios
 
 
 def _norm_dnf_token(value):
@@ -135,6 +180,7 @@ def crear_puesto(request):
     zona_id = data.get('zona_id') or data.get('zona')
     cantidad_puestos = data.get('cantidad_puestos', 1)
     tipo = data.get('tipo')
+    codigo = (str(data.get('codigo') or '').strip().upper()) or None
     horarios = data.get('horarios')
     horarios_text = data.get('horarios_text')
     horario_raw = data.get('horario')
@@ -192,6 +238,7 @@ def crear_puesto(request):
     for _ in range(1):
         puesto = Puesto.objects.create(
             nombre=data.get('nombre'),
+            codigo=codigo,
             tipo=tipo,
             cantidad_puestos=cantidad_puestos,
             instalacion_id=instalacion.id,
@@ -219,6 +266,7 @@ def crear_puesto(request):
         puestos_creados.append({
             'id': puesto.id,
             'nombre': puesto.nombre,
+            'codigo': puesto.codigo,
             'tipo': puesto.tipo,
             'cantidad_puestos': puesto.cantidad_puestos,
             'turno': puesto.get_turno(),
@@ -251,6 +299,7 @@ def obtener_puestos(request):
         resultado.append({
             'id': p.id,
             'nombre': p.nombre,
+            'codigo': p.codigo,
             'tipo': p.tipo,
             'activo': p.activo,
             'cantidad_puestos': p.cantidad_puestos,
@@ -285,6 +334,7 @@ def obtener_puestos_por_instalacion(request, instalacion_id):
         resultado.append({
             'id': p.id,
             'nombre': p.nombre,
+            'codigo': p.codigo,
             'tipo': p.tipo,
             'activo': p.activo,
             'cantidad_puestos': p.cantidad_puestos,
@@ -320,6 +370,7 @@ def obtener_puestos_por_cliente(request, cliente_id):
         resultado.append({
             'id': p.id,
             'nombre': p.nombre,
+            'codigo': p.codigo,
             'tipo': p.tipo,
             'activo': p.activo,
             'cantidad_puestos': p.cantidad_puestos,
@@ -355,8 +406,9 @@ def actualizar_puesto(request, id):
 
     try:
         data = json.loads(request.body)
-        print('Payload recibido:', data)  
+        print('Payload recibido:', data)
         puesto = Puesto.objects.get(id=id)
+        old_codigo = (str(puesto.codigo or '').strip().upper()) or None
 
         instalacion_id = data.get('instalacion_id')
         zona_id = data.get('zona_id') or data.get('zona')
@@ -377,6 +429,8 @@ def actualizar_puesto(request, id):
             puesto.zona = zona
 
         puesto.nombre = data.get('nombre', puesto.nombre)
+        if 'codigo' in data:
+            puesto.codigo = (str(data.get('codigo') or '').strip().upper()) or None
         puesto.tipo = data.get('tipo', puesto.tipo)
         if 'horario' in data:
             horario_val = data.get('horario')
@@ -396,6 +450,23 @@ def actualizar_puesto(request, id):
 
         # aplicar cambios básicos
         puesto.save()
+
+        # Regla 7: si cambió el código corto del puesto, reescribir los tokens
+        # de sacafranco que lo referencian (ej. DG15R1 -> DG15G1).
+        saca_actualizados = 0
+        try:
+            nuevo_codigo = (str(puesto.codigo or '').strip().upper()) or None
+            if old_codigo and nuevo_codigo and old_codigo != nuevo_codigo and puesto.instalacion_id:
+                inst_cod = str(getattr(puesto.instalacion, 'codigo', '') or '').strip().upper()
+                if inst_cod:
+                    saca_actualizados = _reescribir_codigo_puesto_sacafranco(
+                        inst_cod, old_codigo, nuevo_codigo
+                    )
+        except Exception as e:
+            logging.getLogger('puestos').warning(
+                'Error reescribiendo tokens sacafranco del puesto %s: %s', id, e
+            )
+
         horarios_payload = []
         try:
             if horarios_text:
@@ -445,9 +516,11 @@ def actualizar_puesto(request, id):
         # de este único registro y se respeta al crear asignaciones.
         return JsonResponse({
             'message': 'Puesto actualizado correctamente',
+            'sacafranco_actualizados': saca_actualizados,
             'puesto': {
                 'id': puesto.id,
                 'nombre': puesto.nombre,
+                'codigo': puesto.codigo,
                 'tipo': puesto.tipo,
                 'cantidad_puestos': puesto.cantidad_puestos,
                 'turno': puesto.get_turno(),
