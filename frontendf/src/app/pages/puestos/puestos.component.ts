@@ -376,7 +376,7 @@ export class PuestosComponent implements OnInit {
     // Siempre REEMPLAZA personal: quita del puesto a quien ya no viene en el archivo
     // (desactivar_sobrantes=1). El horario que se importa es el completo del mes.
     this.puestoService.importPuestosAsignacionesAsync(
-      file, this.clienteSeleccionado || undefined, undefined, true
+      file, this.clienteSeleccionado || undefined, 12, true
     ).subscribe({
       next: (res) => {
         if (!res?.job_id) {

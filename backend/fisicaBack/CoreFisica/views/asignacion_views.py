@@ -65,8 +65,8 @@ def _rebuild_asignacion_semanal(asignacion, force_all: bool = False):
 
     puesto_obj = None
     try:
-        puesto_obj = getattr(asignacion, 'puesto')
-        if isinstance(puesto_obj, int) or isinstance(puesto_obj, str):
+        puesto_obj = asignacion.puesto
+        if isinstance(puesto_obj, (int, str)):
             puesto_obj = Puesto.objects.get(id=int(puesto_obj))
     except Exception:
         try:
@@ -77,7 +77,7 @@ def _rebuild_asignacion_semanal(asignacion, force_all: bool = False):
     dias_puesto = []
     if puesto_obj:
         try:
-            if hasattr(puesto_obj, 'dias') and getattr(puesto_obj, 'dias'):
+            if hasattr(puesto_obj, 'dias') and puesto_obj.dias:
                 dias_puesto = puesto_obj.dias or []
             else:
                 horarios_qs = getattr(puesto_obj, 'horarios', None)
@@ -672,8 +672,6 @@ def asignar_servicio(request):
     #si el usuario no tiene permiso para agregar asignaciones, devolver error 403 antes de procesar la solicitud
     if not request.user.has_perm('CoreFisica.add_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
-    # global datetime se declara para asegurar que se utiliza el módulo datetime importado en lugar de cualquier variable local con el mismo nombre, ya que se realizan operaciones con fechas dentro de esta función y es crucial que se utilice el módulo correcto para evitar errores.
-    global datetime
 
     data = request.data.copy()
     data['recurring'] = True
@@ -848,8 +846,8 @@ def asignar_servicio(request):
                 # Obtener instancia de Puesto (por si asignacion.puesto es id)
                 puesto_obj = None
                 try:
-                    puesto_obj = getattr(asignacion, 'puesto')
-                    if isinstance(puesto_obj, int) or isinstance(puesto_obj, str):
+                    puesto_obj = asignacion.puesto
+                    if isinstance(puesto_obj, (int, str)):
                         puesto_obj = Puesto.objects.get(id=int(puesto_obj))
                 except Exception:
                     try:
@@ -860,7 +858,7 @@ def asignar_servicio(request):
                 dias_puesto = []
                 if puesto_obj:
                     try:
-                        if hasattr(puesto_obj, 'dias') and getattr(puesto_obj, 'dias'):
+                        if hasattr(puesto_obj, 'dias') and puesto_obj.dias:
                             dias_puesto = puesto_obj.dias or []
                         else:
                             horarios_qs = getattr(puesto_obj, 'horarios', None)
@@ -1035,7 +1033,7 @@ def asignar_servicio(request):
                                 setattr(obj, k, v)
                             obj.save()
                     except Exception as e:
-                        raise Exception(f"Error creando/asegurando AsignacionSemanal en asignar_servicio (puesto {getattr(puesto_obj,'id',None)} week_start {current}): {e}")
+                        raise RuntimeError(f"Error creando/asegurando AsignacionSemanal en asignar_servicio (puesto {getattr(puesto_obj,'id',None)} week_start {current}): {e}")
                     current += datetime.timedelta(days=7)
             except Exception as e:
                 try:
@@ -1084,8 +1082,8 @@ def asignar_servicio(request):
                                 # Obtener puesto_obj
                                 puesto_obj = None
                                 try:
-                                    puesto_obj = getattr(asignacion, 'puesto')
-                                    if isinstance(puesto_obj, int) or isinstance(puesto_obj, str):
+                                    puesto_obj = asignacion.puesto
+                                    if isinstance(puesto_obj, (int, str)):
                                         puesto_obj = Puesto.objects.get(id=int(puesto_obj))
                                 except Exception:
                                     try:
@@ -1096,7 +1094,7 @@ def asignar_servicio(request):
                                 dias_puesto = []
                                 if puesto_obj:
                                     try:
-                                        if hasattr(puesto_obj, 'dias') and getattr(puesto_obj, 'dias'):
+                                        if hasattr(puesto_obj, 'dias') and puesto_obj.dias:
                                             dias_puesto = puesto_obj.dias or []
                                         else:
                                             horarios_qs = getattr(puesto_obj, 'horarios', None)
@@ -1278,7 +1276,7 @@ def asignar_servicio(request):
                                                 setattr(obj, k, v)
                                             obj.save()
                                     except Exception as e:
-                                        raise Exception(f"Error creando/asegurando AsignacionSemanal al actualizar: {e}")
+                                        raise RuntimeError(f"Error creando/asegurando AsignacionSemanal al actualizar: {e}")
                                     current += datetime.timedelta(days=7)
                             except Exception as e:
                                 return Response({'error': f'No se pudo actualizar el calendario semanal: {e}'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1673,8 +1671,10 @@ def sacafranco_filas(request):
             try:
                 mes_val = int(mes)
                 anio_val = int(anio)
-                qs = qs.filter(Q(anio__lt=anio_val) | Q(anio=anio_val, mes__lte=mes_val))
-                # Mostrar todas las filas del mes (no filtrar por semanales).
+                # Solo las filas del MES EXACTO. Cada sacafranco tiene una fila por mes
+                # (el import las proyecta), asi que usar mes<=actual mostraba tambien las
+                # de meses anteriores -> la misma persona salia DUPLICADA (una vacia).
+                qs = qs.filter(mes=mes_val, anio=anio_val)
             except (TypeError, ValueError):
                 pass
 

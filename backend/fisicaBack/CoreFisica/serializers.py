@@ -299,7 +299,7 @@ class PuestoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Puesto
         fields = (
-            'id', 'instalacion', 'zona', 'nombre', 'tipo', 'cantidad_puestos',
+            'id', 'instalacion', 'zona', 'nombre', 'codigo', 'tipo', 'cantidad_puestos',
             'resumen', 'horarios', 'horarios_text', 'horario', 'horario_detalle'
         )
 

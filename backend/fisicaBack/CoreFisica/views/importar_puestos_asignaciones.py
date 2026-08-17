@@ -7,6 +7,7 @@ import tempfile
 import threading
 
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
@@ -1255,6 +1256,8 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
     orden_counter = 0  # orden de presentación según el orden del Excel (igual en todos los meses)
     WEEK_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
+    objetivo_mes = req_month or date.today().month
+
     with suppress_audit(), transaction.atomic():
         for ws in wb.worksheets:
             rows = list(ws.iter_rows(values_only=True))
@@ -1267,16 +1270,14 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
             proyectar = not str(ws.title or '').strip().upper().startswith('DATOS')
 
             # Elegir el BLOQUE de mes a importar. Si la hoja trae varios meses
-            # pegados (JULIO+AGOSTO), se usa el mes objetivo: el que pida la UI
-            # (req_month), o si no, el ULTIMO bloque (los previos son referencia).
-            # Asi se toman las columnas correctas y NO se importa el mes anterior.
+            # pegados (AGOSTO..DICIEMBRE), se usa: el mes que pida la UI (req_month);
+            # si no, el MES ACTUAL si esta entre los bloques; y como ultimo recurso,
+            # el ultimo bloque. Asi por defecto se importa el mes en curso, no diciembre.
             bloques = col.get('bloques') or []
             mes_bloque = None
             dias_cols = col['dias']
             if bloques:
-                elegido = None
-                if req_month:
-                    elegido = next((b for b in bloques if b['mes'] == req_month), None)
+                elegido = next((b for b in bloques if b['mes'] == objetivo_mes), None)
                 if elegido is None:
                     elegido = bloques[-1]
                 dias_cols = elegido['dias']
@@ -1313,6 +1314,12 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
             days_in_month = (date(anio, mes + 1, 1) - timedelta(days=1)).day if mes < 12 else 31
             carry = {'nominativo': '', 'cli': '', 'pue': '', 'resumen': ''}
             carry_time = {'ing': None, 'sal': None}
+            # Vista de ESTA hoja: cantones/clientes de sus asignaciones y los sacafranco
+            # que aparecen en ella. Al final de la hoja, a esos sacafranco se les "sella"
+            # esta vista (cantones/clientes) para que queden por vista, no globales.
+            _sheet_saca_ids = []
+            _sheet_cantones = set()
+            _sheet_clientes = set()
 
             # Anti-mezcla: si una persona aparece en VARIAS filas de la hoja (p.ej. GARITA
             # y RETEN), se procesa SOLO la fila con mas dias de calendario (su asignacion
@@ -1415,6 +1422,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     row_orden = orden_counter
                     fila, _ = _get_or_create_sacafranco_fila(persona, mes, anio, row_orden)
                     touched_saca_ids.add(fila.id)
+                    _sheet_saca_ids.append(fila.id)
                     touched_periodos.add((mes, anio))
                     if fila.orden != row_orden:
                         fila.orden = row_orden
@@ -1461,6 +1469,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                             t_start = date(ty, tm, 1)
                             t_days = (date(ty, tm + 1, 1) - timedelta(days=1)).day if tm < 12 else 31
                             t_fila, _ = _get_or_create_sacafranco_fila(persona, tm, ty, row_orden)
+                            _sheet_saca_ids.append(t_fila.id)
                             if t_fila.orden != row_orden:
                                 t_fila.orden = row_orden
                                 t_fila.save(update_fields=['orden'])
@@ -1603,6 +1612,8 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     }
                 )
                 touched_asig_ids.add(asig.id)
+                _sheet_cantones.add(getattr(instalacion, 'canton_id', None))
+                _sheet_clientes.add(getattr(instalacion, 'cliente_id', None))
                 touched_dates.add(month_start)
                 touched_periodos.add((mes, anio))
                 puesto_personas.setdefault((puesto.id, mes, anio), set()).add(persona.id)
@@ -1704,6 +1715,9 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         asig_by_month[(a.mes, a.anio)] = a.id
                     for a in created_objs:
                         asig_by_month[(a.mes, a.anio)] = a.id
+                    # Registrar TODAS las asignaciones proyectadas como "tocadas" para que
+                    # la desactivacion de sobrantes (mas abajo) no las marque como sobrantes.
+                    touched_asig_ids.update(asig_by_month.values())
 
                     # 3) Calendario semanal de todos los meses objetivo en BLOQUE:
                     #    borrar de una y recrear de una (2 queries en total).
@@ -1727,31 +1741,67 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
 
                 resumen['filas_validas'] += 1
 
+            # Fin de la hoja: sellar la VISTA (cantones/clientes de esta hoja) en sus
+            # sacafranco, para que queden POR VISTA (solo se ven/limpian en ella).
+            if _sheet_saca_ids:
+                _cant = sorted({c for c in _sheet_cantones if c is not None})
+                _cli = sorted({c for c in _sheet_clientes if c is not None})
+                SacafrancoFila.objects.filter(id__in=set(_sheet_saca_ids)).update(
+                    cantones=_cant, clientes=_cli,
+                )
+
         if _quiere_desactivar_sobrantes(request):
-            def _desactivar(asig_qs):
-                for o in asig_qs:
-                    o.estado = 'INACTIVO'
-                    o.save(update_fields=['estado'])
-                    ReporteAsistencia.objects.filter(asignacion=o).update(
-                        estado='TURNO', estado_asistencia='', reemplazo=None, descripcion=None, row_color=None
+            # (a+b) Sobrantes EN BLOQUE: toda asignacion ACTIVA en los periodos tocados
+            #       (mes base + proyectados) que NO fue creada/actualizada por este import
+            #       se desactiva. `touched_asig_ids` ya incluye base + proyeccion, asi que
+            #       "lo que no esta ahi" = lo que ya no vino en el Excel (guardias sobrantes
+            #       de puestos que si vinieron + puestos/instalaciones que desaparecieron).
+            #       Antes esto era un bucle por (puesto x mes) con save() fila por fila
+            #       (miles de queries); ahora son 3 queries en bloque.
+            #       Import COMPLETO (sin cliente) = verdad total del mes; por cliente se acota.
+            #       No toca meses ANTERIORES al import (se conserva el historial).
+            all_periods = {(pm, pa) for (_pid, pm, pa) in puesto_personas.keys()}
+            if all_periods:
+                period_q = Q()
+                for (pm, pa) in all_periods:
+                    period_q |= Q(mes=pm, anio=pa)
+                sob = (Asignacion.objects.filter(period_q, estado='ACTIVO')
+                       .exclude(id__in=touched_asig_ids)
+                       .exclude(persona__tipo='SACAFRANCO'))
+                if cliente_id_filter is not None:
+                    sob = sob.filter(cliente_id=cliente_id_filter)
+                sob_ids = list(sob.values_list('id', flat=True))
+                if sob_ids:
+                    Asignacion.objects.filter(id__in=sob_ids).update(estado='INACTIVO')
+                    ReporteAsistencia.objects.filter(asignacion_id__in=sob_ids).update(
+                        estado='TURNO', estado_asistencia='', reemplazo=None,
+                        descripcion=None, row_color=None,
                     )
 
-            # (a) Guardias que ya no vienen, DENTRO de puestos que SI vinieron en el Excel.
-            for (pid, pmes, panio), pers_ids in puesto_personas.items():
-                _desactivar(Asignacion.objects.filter(
-                    puesto_id=pid, mes=pmes, anio=panio, estado='ACTIVO'
-                ).exclude(persona_id__in=pers_ids))
-
-            # (b) Puestos COMPLETOS que ya no vienen, acotado a las instalaciones y periodos
-            #     que trajo el Excel (resuelve el caso de puestos que desaparecen del Excel).
-            touched_pids = {pid for (pid, _m, _a) in puesto_personas.keys()}
-            touched_inst_ids = set(
-                Asignacion.objects.filter(id__in=touched_asig_ids).values_list('instalacion_id', flat=True)
-            )
-            for (pmes, panio) in touched_periodos:
-                _desactivar(Asignacion.objects.filter(
-                    instalacion_id__in=touched_inst_ids, mes=pmes, anio=panio, estado='ACTIVO'
-                ).exclude(puesto_id__in=touched_pids).exclude(persona__tipo='SACAFRANCO'))
+            # (b2) Cortar la PROYECCION de quien ya no viene en el Excel.
+            #      Cada fila es recurring con end_date=None y se proyecta hacia adelante
+            #      para siempre. Desactivar la fila del mes no basta: sus filas de meses
+            #      PREVIOS se siguen proyectando al mes importado. A esas personas (que no
+            #      vinieron) se les pone end_date al dia previo al mes MAS ANTIGUO importado:
+            #      dejan de proyectarse de ahi en adelante y se CONSERVA su historial
+            #      (los meses anteriores siguen visibles). Solo aplica al import COMPLETO
+            #      del mes; por cliente se acota a ese cliente.
+            if all_periods:
+                min_anio, min_mes = min((pa, pm) for (pm, pa) in all_periods)
+                cutoff_start = date(min_anio, min_mes, 1)
+                prev_day = cutoff_start - timedelta(days=1)
+                imported_personas = set(
+                    Asignacion.objects.filter(id__in=touched_asig_ids, persona_id__isnull=False)
+                    .values_list('persona_id', flat=True)
+                )
+                fuga_qs = Asignacion.objects.filter(
+                    estado='ACTIVO', recurring=True, start_date__lt=cutoff_start
+                ).filter(
+                    Q(end_date__isnull=True) | Q(end_date__gte=cutoff_start)
+                ).exclude(persona_id__in=imported_personas).exclude(persona__tipo='SACAFRANCO')
+                if cliente_id_filter is not None:
+                    fuga_qs = fuga_qs.filter(cliente_id=cliente_id_filter)
+                fuga_qs.update(end_date=prev_day)
 
             # (c) Sacafranco sobrantes -> BORRAR. Solo en import COMPLETO (sin filtro de cliente),
             #     acotado a los periodos que trajo el Excel.

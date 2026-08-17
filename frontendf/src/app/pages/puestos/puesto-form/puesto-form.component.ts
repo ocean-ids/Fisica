@@ -53,6 +53,7 @@ export class PuestoFormComponent implements OnInit {
 
     this.puestoForm = this.fb.group({
       nombre: [puesto?.nombre || '', Validators.required],
+      codigo: [puesto?.codigo || ''],
       tipo: [puesto?.tipo || ''],
       instalacion_id: [puesto?.instalacion_id || '', Validators.required],
       cantidad_puestos: [puesto?.cantidad_puestos ?? 0, Validators.required],
@@ -141,6 +142,7 @@ export class PuestoFormComponent implements OnInit {
 
       const payload: any = {
         ...formValue,
+        codigo: (formValue.codigo || '').toString().trim().toUpperCase() || null,
         horarios: horariosPayload,
         instalacion_nombre: selectedInstalacion?.nombre || null
       };

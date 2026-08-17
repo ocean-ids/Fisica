@@ -278,6 +278,10 @@ class Puesto(models.Model):
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='puestos')
     zona = models.ForeignKey(Zona, on_delete=models.PROTECT, related_name='puestos', null=True, blank=True)
     nombre = models.CharField(max_length=100)
+    # Codigo corto del puesto (ej. G1=Garita 1, R2=Ronda 2). Sirve para que el token de
+    # sacafranco apunte al puesto exacto: turno + nominativo + codigo (ej. DG15G2). Empieza
+    # con letra (tipo) + numero. Opcional; unico dentro de la instalacion.
+    codigo = models.CharField(max_length=10, blank=True, null=True)
     tipo = models.CharField(max_length=50, blank=True, null=True)
     cantidad_puestos = models.IntegerField(default=1)
     horario = models.ForeignKey('Horario', null=True, blank=True, on_delete=models.SET_NULL, related_name='puestos')
