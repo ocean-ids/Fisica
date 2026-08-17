@@ -416,7 +416,7 @@ class ZonaOperativaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ZonaOperativa
-        fields = ['id', 'numero', 'nombre', 'nominativos_count']
+        fields = ['id', 'numero', 'nombre', 'es_agrupacion', 'nominativos_count']
         read_only_fields = ['id']
 
     def get_nominativos_count(self, obj):

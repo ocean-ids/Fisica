@@ -23,7 +23,9 @@
             </ng-container>
             <ng-template #zonaView>
               <td>{{ z.numero }}</td>
-              <td>{{ z.nombre }}</td>
+              <td>{{ z.nombre }}
+                <span *ngIf="z.es_agrupacion" class="badge bg-info text-dark" title="Zona de agrupación: al borrarla, los nominativos vuelven a su zona original">agrup.</span>
+              </td>
               <td class="text-center">{{ z.nominativos_count }}</td>
               <td class="text-nowrap">
                 <button class="btn btn-outline-primary btn-sm" (click)="editarZona(z)">✎</button>
@@ -38,6 +40,30 @@
         <button class="btn btn-primary btn-sm text-nowrap" (click)="crearZona()">
           + Crear Zona {{ nuevaZonaNumero }}
         </button>
+        <button class="btn btn-outline-info btn-sm text-nowrap ms-1" (click)="abrirAgrupacion()" *ngIf="!modoAgrupacion">
+          + Agrupación
+        </button>
+      </div>
+
+      <!-- Crear ZONA DE AGRUPACION: agrupa nominativos existentes; al borrarla vuelven -->
+      <div class="zn-agrup mt-2" *ngIf="modoAgrupacion">
+        <div class="fw-bold small mb-1">Nueva zona de agrupación</div>
+        <input class="form-control form-control-sm mb-1" placeholder="Nombre (opcional)" [(ngModel)]="agrupNombre">
+        <div class="small text-muted mb-1">Marca los nominativos a agrupar (volverán a su zona al borrar la agrupación):</div>
+        <div style="max-height:180px; overflow:auto; border:1px solid #eee; padding:4px; border-radius:4px;">
+          <div class="form-check" *ngFor="let n of nominativos">
+            <input class="form-check-input" type="checkbox" [id]="'agr-'+n.id"
+                   [checked]="agrupSel.has(n.id)" (change)="toggleAgrup(n.id)">
+            <label class="form-check-label small" [for]="'agr-'+n.id">
+              <b>{{ n.codigo }}</b> — {{ n.zona_nombre }} ({{ n.instalacion_nombre || '—' }})
+            </label>
+          </div>
+          <div *ngIf="!nominativos.length" class="text-muted small">Sin nominativos (usa el buscador).</div>
+        </div>
+        <div class="mt-2">
+          <button class="btn btn-info btn-sm" (click)="crearAgrupacion()">Crear agrupación ({{ agrupSel.size }})</button>
+          <button class="btn btn-secondary btn-sm ms-1" (click)="cancelarAgrupacion()">Cancelar</button>
+        </div>
       </div>
     </div>
 
