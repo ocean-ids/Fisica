@@ -28,6 +28,11 @@ export class ZonasNominativosDialogComponent implements OnInit {
   zonaEditNumero: number | null = null;
   zonaEditNombre = '';
 
+  // crear ZONA DE AGRUPACION (agrupa nominativos existentes; al borrarla, vuelven)
+  modoAgrupacion = false;
+  agrupNombre = '';
+  agrupSel = new Set<number>();
+
   // form nominativo (crear/editar)
   nomEditId: number | null = null;
   nomZona: number | null = null;
@@ -107,6 +112,33 @@ export class ZonasNominativosDialogComponent implements OnInit {
     });
   }
 
+  // ---- Zona de AGRUPACION ----
+  abrirAgrupacion(): void {
+    this.modoAgrupacion = true; this.agrupNombre = ''; this.agrupSel = new Set<number>();
+  }
+  cancelarAgrupacion(): void {
+    this.modoAgrupacion = false; this.agrupNombre = ''; this.agrupSel = new Set<number>();
+  }
+  toggleAgrup(id: number): void {
+    if (this.agrupSel.has(id)) this.agrupSel.delete(id); else this.agrupSel.add(id);
+  }
+  crearAgrupacion(): void {
+    const ids = Array.from(this.agrupSel);
+    if (!ids.length) { Swal.fire('Selecciona nominativos', 'Elige al menos uno para agrupar', 'info'); return; }
+    const numero = this.siguienteNumeroZona();
+    const nombre = (this.agrupNombre || '').trim() || `AGRUPACION ${numero}`;
+    this.svc.crearZona({ numero, nombre, es_agrupacion: true, nominativo_ids: ids }).subscribe({
+      next: (res: any) => {
+        Swal.fire('Zona de agrupación creada',
+          `${res?.nominativos_movidos ?? ids.length} nominativo(s) agrupados. Al borrar esta zona volverán a su zona original.`,
+          'success');
+        this.cancelarAgrupacion();
+        this.cargarTodo();
+      },
+      error: (e) => this.err(e),
+    });
+  }
+
   editarZona(z: ZonaOperativa): void {
     this.zonaEditId = z.id; this.zonaEditNumero = z.numero; this.zonaEditNombre = z.nombre;
   }
@@ -117,9 +149,17 @@ export class ZonasNominativosDialogComponent implements OnInit {
       .subscribe({ next: () => { this.zonaEditId = null; this.cargarTodo(); }, error: (e) => this.err(e) });
   }
   borrarZona(z: ZonaOperativa): void {
-    Swal.fire({ title: `¿Borrar ${z.nombre}?`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Borrar' })
-      .then(r => { if (r.isConfirmed) {
-        this.svc.eliminarZona(z.id).subscribe({ next: () => this.cargarTodo(), error: (e) => this.err(e) });
+    Swal.fire({
+      title: `¿Borrar ${z.nombre}?`,
+      text: z.es_agrupacion
+        ? 'Es una zona de agrupación: sus nominativos volverán a su zona original.'
+        : undefined,
+      icon: 'warning', showCancelButton: true, confirmButtonText: 'Borrar',
+    }).then(r => { if (r.isConfirmed) {
+        this.svc.eliminarZona(z.id).subscribe({
+          next: (res: any) => { if (res?.message) Swal.fire('Listo', res.message, 'success'); this.cargarTodo(); },
+          error: (e) => this.err(e),
+        });
       }});
   }
 

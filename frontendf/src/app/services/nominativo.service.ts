@@ -5,6 +5,7 @@ export interface ZonaOperativa {
   id: number;
   numero: number;
   nombre: string;
+  es_agrupacion?: boolean;
   nominativos_count?: number;
 }
 
@@ -29,7 +30,7 @@ export class NominativoService {
   getZonas() {
     return this.api.get<ZonaOperativa[]>('/zonas-operativas/');
   }
-  crearZona(data: { numero: number; nombre?: string }) {
+  crearZona(data: { numero: number; nombre?: string; es_agrupacion?: boolean; nominativo_ids?: number[] }) {
     return this.api.post<ZonaOperativa>('/zonas-operativas/crear/', data);
   }
   actualizarZona(id: number, data: { numero?: number; nombre?: string }) {

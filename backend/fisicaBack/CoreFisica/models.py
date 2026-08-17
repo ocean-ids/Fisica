@@ -217,6 +217,10 @@ class ZonaOperativa(models.Model):
     reemplaza. Cambio ADITIVO: convive con lo existente."""
     numero = models.PositiveIntegerField(unique=True)          # Zona 1, 2, 3, 4...
     nombre = models.CharField(max_length=100)                  # nombre de la zona (para filtro)
+    # Zona de AGRUPACION: agrupa nominativos existentes de otras zonas (mezcla letras,
+    # no aplica la regla "una letra = una zona"). Al borrarla, cada nominativo vuelve
+    # a su zona anterior (Nominativo.zona_anterior).
+    es_agrupacion = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -240,6 +244,11 @@ class Nominativo(models.Model):
     instalaciones SIEMPRE que sean del MISMO cliente (p.ej. 2 locales del cliente); repetirlo
     en clientes distintos es conflicto. Por eso no hay unique(letra, numero) global."""
     zona = models.ForeignKey(ZonaOperativa, on_delete=models.PROTECT, related_name='nominativos')
+    # Zona a la que pertenecia ANTES de entrar a una zona de agrupacion. Al borrar la
+    # zona de agrupacion, el nominativo vuelve aqui. NULL si nunca fue agrupado.
+    zona_anterior = models.ForeignKey(
+        ZonaOperativa, null=True, blank=True, on_delete=models.SET_NULL, related_name='+'
+    )
     letra = models.CharField(max_length=3)                     # 1-3 letras (G, U, AR...)
     numero = models.PositiveIntegerField()                     # numero del codigo
     instalacion = models.OneToOneField(

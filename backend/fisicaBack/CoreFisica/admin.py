@@ -39,6 +39,7 @@ class InstalacionAdmin(admin.ModelAdmin):
 # --- Zonas operativas y Nominativos (letra + numero) ---
 class NominativoInline(admin.TabularInline):
 	model = Nominativo
+	fk_name = 'zona'
 	extra = 0
 	fields = ('letra', 'numero', 'instalacion')
 	autocomplete_fields = ('instalacion',)

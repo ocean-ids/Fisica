@@ -58,8 +58,34 @@ def crear_zona_operativa(request):
     if ZonaOperativa.objects.filter(numero=numero).exists():
         return JsonResponse({'error': f'Ya existe la Zona {numero}'}, status=400)
 
-    zona = ZonaOperativa.objects.create(numero=numero, nombre=nombre or f'Zona {numero}')
-    return JsonResponse(ZonaOperativaSerializer(zona).data, status=201)
+    es_agrupacion = bool(data.get('es_agrupacion'))
+    # ids de nominativos EXISTENTES a agrupar en esta zona (solo si es_agrupacion).
+    nominativo_ids = data.get('nominativo_ids') or []
+    if not isinstance(nominativo_ids, list):
+        nominativo_ids = []
+
+    from django.db import transaction
+    with transaction.atomic():
+        zona = ZonaOperativa.objects.create(
+            numero=numero, nombre=nombre or f'Zona {numero}', es_agrupacion=es_agrupacion,
+        )
+        movidos = 0
+        if es_agrupacion and nominativo_ids:
+            # Mover nominativos existentes a esta zona guardando su zona ORIGINAL.
+            # No aplica la regla "una letra = una zona" (es agrupacion) y el codigo no
+            # cambia, asi que no requiere validacion. Al borrar la zona, vuelven.
+            for nom in Nominativo.objects.filter(id__in=nominativo_ids).exclude(zona_id=zona.id):
+                # Solo guardar zona_anterior si viene de una zona NORMAL (no encadenar
+                # agrupaciones): asi al borrar vuelve a su zona real.
+                if not nom.zona.es_agrupacion:
+                    nom.zona_anterior = nom.zona
+                nom.zona = zona
+                nom.save(update_fields=['zona', 'zona_anterior'])
+                movidos += 1
+
+    data_out = ZonaOperativaSerializer(zona).data
+    data_out['nominativos_movidos'] = movidos
+    return JsonResponse(data_out, status=201)
 
 
 @api_view(['PUT'])
@@ -97,6 +123,30 @@ def eliminar_zona_operativa(request, id):
     zona = ZonaOperativa.objects.filter(id=id).first()
     if not zona:
         return JsonResponse({'error': 'Zona no encontrada'}, status=404)
+
+    # Zona de AGRUPACION: al borrarla, cada nominativo vuelve a su zona anterior.
+    if zona.es_agrupacion:
+        from django.db import transaction
+        noms = list(zona.nominativos.select_related('zona_anterior').all())
+        sin_anterior = [nom for nom in noms if not nom.zona_anterior_id]
+        if sin_anterior:
+            return JsonResponse(
+                {'error': f'No se puede borrar: {len(sin_anterior)} nominativo(s) no tienen '
+                          'zona anterior a la cual volver. Muévalos manualmente primero.'},
+                status=400,
+            )
+        with transaction.atomic():
+            for nom in noms:
+                nom.zona = nom.zona_anterior
+                nom.zona_anterior = None
+                nom.save(update_fields=['zona', 'zona_anterior'])
+            zona.delete()
+        return JsonResponse({
+            'message': f'Zona de agrupación eliminada; {len(noms)} nominativo(s) volvieron a su zona.',
+            'restaurados': len(noms),
+        })
+
+    # Zona NORMAL: no se borra si tiene nominativos.
     n = zona.nominativos.count()
     if n:
         return JsonResponse(
@@ -116,14 +166,21 @@ def _validar_nominativo(letra, numero, zona_id, instalacion, excluir_id=None):
     2) El CODIGO (letra+numero) debe ser UNICO por instalacion: NO se permite repetir,
        ni siquiera en el mismo cliente. Si ya existe otro nominativo con ese codigo => error.
     """
-    # 1) La letra no puede estar en otra zona.
-    otra_zona = Nominativo.objects.filter(letra=letra).exclude(zona_id=zona_id).select_related('zona')
-    if excluir_id:
-        otra_zona = otra_zona.exclude(id=excluir_id)
-    z = otra_zona.first()
-    if z:
-        return (f"La letra {letra} ya pertenece a la {z.zona.nombre}. "
-                "Una letra solo puede estar en una zona.")
+    # 1) La letra no puede estar en otra zona. NO aplica si la zona destino es de
+    #    AGRUPACION (mezcla letras a proposito), y se IGNORAN los nominativos que ya
+    #    estan en zonas de agrupacion (son temporales, no definen la zona de la letra).
+    zona_dest = ZonaOperativa.objects.filter(id=zona_id).first()
+    if not (zona_dest and zona_dest.es_agrupacion):
+        otra_zona = (Nominativo.objects.filter(letra=letra)
+                     .exclude(zona_id=zona_id)
+                     .exclude(zona__es_agrupacion=True)
+                     .select_related('zona'))
+        if excluir_id:
+            otra_zona = otra_zona.exclude(id=excluir_id)
+        z = otra_zona.first()
+        if z:
+            return (f"La letra {letra} ya pertenece a la {z.zona.nombre}. "
+                    "Una letra solo puede estar en una zona.")
 
     # 2) Codigo UNICO: no se permite ningun otro nominativo con el mismo letra+numero.
     dup = Nominativo.objects.filter(letra=letra, numero=numero).select_related('instalacion', 'instalacion__cliente')
