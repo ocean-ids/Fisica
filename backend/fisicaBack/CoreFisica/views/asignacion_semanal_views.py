@@ -30,6 +30,23 @@ SACAFRANCO_TOKEN_REGEX = re.compile(
     r'^(?P<prefix>[DN])(?P<code>[A-Z]{1,3}\d+)(?P<puesto>[A-Z]{1,3}\d+)?(?:#(?P<index>\d+))?$'
 )
 
+# Deriva el codigo corto del puesto (G1/R1...) desde su TIPO/NOMBRE, para que el
+# token del sacafranco (G2/R1) coincida con el puesto SIN necesitar el campo codigo:
+#   "GARITA 2" -> G2, "RONDA 1" -> R1, "GARITA" -> G1 (una sola, sin numero).
+_PUESTO_GR_RE = re.compile(r'(GARITA|RONDA)\s*0*(\d+)?', re.I)
+
+
+def _codigo_puesto_desde_tipo(puesto):
+    if not puesto:
+        return ''
+    txt = f"{getattr(puesto, 'tipo', '') or ''} {getattr(puesto, 'nombre', '') or ''}"
+    m = _PUESTO_GR_RE.search(txt)
+    if not m:
+        return ''
+    letra = 'G' if m.group(1).upper().startswith('G') else 'R'
+    num = m.group(2) or '1'
+    return f"{letra}{int(num)}"
+
 
 def _puesto_detalle_dict(puesto):
     return {
@@ -205,9 +222,17 @@ def _validate_sacafranco_tokens(data, week_start_date):
             if not _is_asignacion_active_on_date(asig, target_date):
                 continue
             # Si el token trae codigo de puesto (ej. DG15G2 -> G2), filtrar al puesto exacto.
+            # Coincide contra el campo `codigo` del puesto O el codigo derivado de su
+            # TIPO/NOMBRE ("GARITA 2" -> G2), asi basta con nombrar bien el puesto.
             if token_puesto:
-                pcod = str(getattr(asig.puesto, 'codigo', '') or '').strip().upper()
-                if pcod != token_puesto:
+                _codes = set()
+                _c = str(getattr(asig.puesto, 'codigo', '') or '').strip().upper()
+                if _c:
+                    _codes.add(_c)
+                _d = _codigo_puesto_desde_tipo(asig.puesto)
+                if _d:
+                    _codes.add(_d)
+                if token_puesto not in _codes:
                     continue
             asig_turno = _resolve_asignacion_turno(asig)
             if asig_turno == token_turno or asig_turno == 'Ambos':

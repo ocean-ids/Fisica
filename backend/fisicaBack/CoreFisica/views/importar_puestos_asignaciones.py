@@ -1348,7 +1348,12 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     j = col.get(key)
                     return row[j] if (j is not None and j < len(row)) else None
 
-                for k in ('nominativo', 'cli', 'pue', 'resumen'):
+                # Nominativo: SU propio valor por fila; si va en blanco la fila se salta
+                # ("sin nominativo") y NO se hereda el de arriba (evita que una fila tome el
+                # nominativo de otra y quede con el cliente equivocado).
+                _raw_nom = g('nominativo')
+                carry['nominativo'] = str(_raw_nom).strip() if _raw_nom is not None else ''
+                for k in ('cli', 'pue', 'resumen'):
                     v = g(k)
                     if v is not None and str(v).strip():
                         carry[k] = str(v).strip()
@@ -1511,6 +1516,13 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     continue
 
                 if not cedula:
+                    continue
+                # Solo registros completos: si la fila no tiene NINGUN dia marcado en el
+                # calendario, se salta (registro incompleto, no se importa).
+                if not any((v or '').strip() for v in cal):
+                    resumen['errores'].append(
+                        f'Hoja {ws.title}, Fila {i}: calendario vacio — no se importa (registro incompleto)'
+                    )
                     continue
                 if not carry['nominativo']:
                     resumen['errores'].append(f'Hoja {ws.title}, Fila {i}: sin nominativo (codigo de instalacion)')
