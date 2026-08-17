@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatIconModule } from '@angular/material/icon';
 import { ReporteAsistenciaService } from '../../../services/reporte-asistencia.service';
 import { ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../../../models';
 import { PersonaService } from '../../../services/persona.service';
@@ -27,7 +28,8 @@ import Swal from 'sweetalert2';
     MatInputModule,
     MatButtonModule,
     MatSelectModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatIconModule
   ],
   templateUrl: './reporte-asistencia-edit-dialog.component.html',
   styleUrl: './reporte-asistencia-edit-dialog.component.css'
@@ -57,6 +59,12 @@ export class ReporteAsistenciaEditDialogComponent {
   guardando = false;
   error = '';
   form: FormGroup;
+
+  // Dictado por voz (Web Speech API — nativo del navegador, Chrome/Edge)
+  soportaDictado = !!((window as any).webkitSpeechRecognition || (window as any).SpeechRecognition);
+  dictando = false;
+  private recognition?: any;
+  private descBase = '';
 
   constructor(
     private fb: FormBuilder,
@@ -322,7 +330,45 @@ export class ReporteAsistenciaEditDialogComponent {
 
   cancelar(): void {
     if (this.guardando) return;
+    this.detenerDictado();
     this.dialogRef.close();
+  }
+
+  // Dictado por voz sobre el campo Descripción (Web Speech API, nativo del navegador).
+  // Escribe lo dictado respetando el texto ya tecleado; se detiene al hacer clic de nuevo.
+  toggleDictado(): void {
+    const SR = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    if (!SR) { return; }
+    if (this.dictando) {            // ya está escuchando -> detener
+      this.detenerDictado();
+      return;
+    }
+    if (!this.recognition) {
+      this.recognition = new SR();
+      this.recognition.lang = 'es-EC';
+      this.recognition.continuous = true;
+      this.recognition.interimResults = true;
+      this.recognition.onresult = (e: any) => {
+        let texto = '';
+        for (let i = 0; i < e.results.length; i++) {
+          texto += e.results[i][0].transcript;
+        }
+        const val = (this.descBase ? this.descBase + ' ' : '') + texto;
+        this.form.get('descripcion')?.setValue(val.trim());
+      };
+      this.recognition.onend = () => { this.dictando = false; };
+      this.recognition.onerror = () => { this.dictando = false; };
+    }
+    this.descBase = this.form.get('descripcion')?.value || '';   // conserva lo ya escrito
+    this.dictando = true;
+    this.recognition.start();       // pide permiso de micrófono la 1ª vez
+  }
+
+  private detenerDictado(): void {
+    if (this.recognition && this.dictando) {
+      try { this.recognition.stop(); } catch { /* noop */ }
+    }
+    this.dictando = false;
   }
 
   // Tipo de la persona elegida como reemplazo.
