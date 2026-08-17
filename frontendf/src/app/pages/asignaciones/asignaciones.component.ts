@@ -841,6 +841,136 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ------- IMPORTAR HORARIO (Excel) desde Asignaciones -------
+  // Corre en SEGUNDO PLANO (async) para no chocar con el timeout 524 de Cloudflare.
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files && input.files[0];
+    if (!file) return;
+    input.value = '';
+
+    Swal.fire({
+      title: 'Importando...',
+      html: 'Procesando en segundo plano, no cierres la ventana. Puede tardar unos minutos.',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    // Import COMPLETO del mes (sin cliente): la verdad del mes es el Excel.
+    this.puestoService.importPuestosAsignacionesAsync(file, undefined, 12, true).subscribe({
+      next: (res) => {
+        if (!res?.job_id) {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo iniciar la importación.' });
+          return;
+        }
+        this.esperarImport(res.job_id);
+      },
+      error: (err) => {
+        const msg = err?.error?.error || 'No se pudo importar';
+        Swal.fire({ icon: 'error', title: 'Error', text: msg });
+      }
+    });
+  }
+
+  private esperarImport(jobId: string): void {
+    const intervalo = setInterval(() => {
+      this.puestoService.estadoImport(jobId).subscribe({
+        next: (est) => {
+          if (est?.estado === 'procesando') { return; }
+          clearInterval(intervalo);
+          if (est?.estado === 'ok') {
+            this.mostrarResumenImport(est.resumen || {});
+            this.cargarAsignaciones();
+          } else {
+            const msg = est?.error || est?.resumen?.error || 'No se pudo importar';
+            Swal.fire({ icon: 'error', title: 'Error', text: msg });
+          }
+        },
+        error: () => {
+          clearInterval(intervalo);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo consultar el estado de la importación.' });
+        }
+      });
+    }, 3000);
+  }
+
+  private mostrarResumenImport(res: any): void {
+    const resumen = `Filas: ${res?.filas_validas || 0}/${res?.total_filas || 0}`
+      + `, Personas creadas: ${res?.personas_creadas || 0}`
+      + `, Puestos creados: ${res?.puestos_creados || 0}`
+      + `, Horarios creados: ${res?.horarios_creados || 0}`
+      + `, Asignaciones creadas: ${res?.asignaciones_creadas || 0}`
+      + `, Asignaciones actualizadas: ${res?.asignaciones_actualizadas || 0}`;
+    const errores = Array.isArray(res?.errores) ? res.errores : [];
+    let erroresHtml = '';
+    let textoCopia = resumen;
+    if (errores.length) {
+      const grupos: Record<string, number> = {};
+      const otrosMsgs: string[] = [];
+      for (const e of errores) {
+        const m1 = /codigo '([^']*)' no existe/.exec(e);
+        let key: string;
+        if (m1) { key = `Instalación no existe (código ${m1[1]})`; }
+        else if (/sacafranco/.test(e)) { key = 'Sacafranco sin cobertura'; }
+        else if (/no coincide con/.test(e)) { key = 'Cliente del nominativo no coincide'; }
+        else if (/sin nominativo/.test(e)) { key = 'Fila sin código de instalación'; }
+        else if (/hora ingreso\/salida/.test(e)) { key = 'Hora ingreso/salida inválida'; }
+        else if (/nombre incompleto|apellidos\/nombres/.test(e)) { key = 'Persona nueva sin nombre completo'; }
+        else if (/contiene.*meses/.test(e)) { key = 'Aviso: hoja con varios meses'; }
+        else { key = 'Otros'; otrosMsgs.push(e); }
+        grupos[key] = (grupos[key] || 0) + 1;
+      }
+      const gruposOrden = Object.entries(grupos).sort((a, b) => b[1] - a[1]);
+      const resumenErrores = gruposOrden
+        .map(([k, n]) => {
+          if (k === 'Otros') {
+            const distintos = Array.from(new Set(otrosMsgs)).slice(0, 5);
+            const extra = otrosMsgs.length > distintos.length ? ' …' : '';
+            return `<li><b>${n}</b> — Otros: ${distintos.join(' | ')}${extra}</li>`;
+          }
+          return `<li><b>${n}</b> — ${k}</li>`;
+        })
+        .join('');
+      erroresHtml = `<div style="text-align:left;margin-top:10px;">
+            <strong>Avisos (${errores.length}):</strong>
+            <ul style="margin:6px 0 0 18px;">${resumenErrores}</ul>
+            <details style="margin-top:6px;"><summary style="cursor:pointer;">Ver detalle por fila</summary>
+              <ul style="margin:6px 0 0 18px;max-height:200px;overflow:auto;">${errores.map((e: string) => `<li>${e}</li>`).join('')}</ul>
+            </details>
+         </div>`;
+      textoCopia = resumen + '\n\nAvisos (' + errores.length + '):\n'
+        + gruposOrden.map(([k, n]) => `  ${n} — ${k}`).join('\n')
+        + '\n\nDetalle:\n' + errores.join('\n');
+    }
+    Swal.fire({
+      icon: 'success',
+      title: 'Importación',
+      html: `${resumen}${erroresHtml}`
+        + (errores.length ? `<div style="margin-top:10px;"><button id="btnCopiarImport" type="button"
+             style="cursor:pointer;border:1px solid #6d28d9;background:#f5f3ff;color:#6d28d9;
+             border-radius:6px;padding:6px 14px;font-weight:600;">📋 Copiar avisos</button></div>` : ''),
+      didOpen: () => {
+        const btn = document.getElementById('btnCopiarImport');
+        if (!btn) { return; }
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(textoCopia).then(() => {
+            btn.textContent = '✅ Copiado';
+            setTimeout(() => { btn.textContent = '📋 Copiar avisos'; }, 1500);
+          }).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = textoCopia;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); btn.textContent = '✅ Copiado'; } catch { /* noop */ }
+            document.body.removeChild(ta);
+            setTimeout(() => { btn.textContent = '📋 Copiar avisos'; }, 1500);
+          });
+        });
+      }
+    });
+  }
+
   // cargarAsignaciones se encarga de cargar las asignaciones y filas de sacafranco para el mes y año seleccionados, realizando llamadas a los servicios correspondientes para obtener esta información, aplicando filtros si es necesario, y luego actualizando la vista con los datos obtenidos, además de manejar los errores que puedan ocurrir durante la carga para asegurar que la información mostrada sea precisa y actualizada
   cargarAsignaciones(): void {
     // Mantener actualizada la lista global de personas asignadas (todos los cantones)
