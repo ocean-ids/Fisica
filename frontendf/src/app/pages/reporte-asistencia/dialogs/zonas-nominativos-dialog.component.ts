@@ -165,15 +165,21 @@ export class ZonasNominativosDialogComponent implements OnInit {
 
   // ------------- NOMINATIVOS -------------
   private armarLetraZona(ns: Nominativo[]): void {
+    // Zonas de AGRUPACION: son temporales y NO definen la zona real de una letra.
+    const agrupIds = new Set((this.zonas || []).filter(z => z.es_agrupacion).map(z => z.id));
     const mapZ: Record<string, { zonaId: number; zonaNombre: string }> = {};
     const mapN: Record<string, number[]> = {};
     const conNom = new Set<number>();
     for (const n of ns) {
       const l = (n.letra || '').toUpperCase();
+      const enAgrup = agrupIds.has(n.zona);
       // Solo cuentan como "usados" los nominativos ligados a una instalación.
       // Un nominativo libre (sin instalación) NO tapa el número -> queda reutilizable.
       if (l && n.instalacion != null) {
-        if (!mapZ[l]) mapZ[l] = { zonaId: n.zona, zonaNombre: n.zona_nombre || '' };
+        // La zona de la letra la definen SOLO las zonas NORMALES (no las de agrupación),
+        // así al mover una letra a una agrupación el selector no se bloquea en esa zona.
+        if (!enAgrup && !mapZ[l]) mapZ[l] = { zonaId: n.zona, zonaNombre: n.zona_nombre || '' };
+        // El número SIEMPRE cuenta como usado (aunque esté en agrupación) para no repetir código.
         (mapN[l] = mapN[l] || []).push(n.numero);
       }
       if (n.instalacion != null) conNom.add(n.instalacion);
@@ -205,7 +211,10 @@ export class ZonasNominativosDialogComponent implements OnInit {
   onLetraChange(): void {
     this.nomLetra = (this.nomLetra || '').toUpperCase();
     const hit = this.letraZona[this.nomLetra];
-    if (hit) {
+    const agrupIds = new Set((this.zonas || []).filter(z => z.es_agrupacion).map(z => z.id));
+    // Solo se auto-fija/bloquea la zona si la letra ya vive en una zona NORMAL.
+    // Si su única presencia es en una agrupación, el usuario puede elegir la zona.
+    if (hit && !agrupIds.has(hit.zonaId)) {
       this.nomZona = hit.zonaId;
       this.zonaAuto = true;
     } else {
