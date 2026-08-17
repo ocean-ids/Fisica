@@ -446,6 +446,35 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Marcado RAPIDO de ASISTE con un clic en la celda de Asistencia (sin abrir el
+  // formulario). Alterna: vacio/FALTO -> ASISTE, y ASISTE -> vacio. Guarda al instante.
+  // Para FALTO (que necesita cobertura/reemplazo) se sigue usando el lapiz.
+  marcarAsiste(row: ReporteAsistenciaRow): void {
+    if (!row?.asignacion_id) return;
+    const nuevo: 'ASISTIO' | null = (row.estado_asistencia === 'ASISTIO') ? null : 'ASISTIO';
+    const payload = {
+      estado_asistencia: nuevo,
+      estado: 'TURNO',
+      reemplazo_id: null,
+      descripcion: null,
+      hueca: false,
+      hueca_motivo: null,
+      fecha: this.filtroFecha || null,
+    };
+    this.reporteSvc.updateReporteAsistencia(row.asignacion_id, payload).subscribe({
+      next: (res) => {
+        row.estado_asistencia = res.estado_asistencia;
+        row.estado = res.estado;
+        row.reemplazo_id = res.reemplazo_id;
+        row.reemplazo = res.reemplazo;
+        row.descripcion = res.descripcion;
+        row.modificado_por = res.modificado_por;
+        row.modificado_en = res.modificado_en;
+      },
+      error: (err) => this.handleActionError(err, 'No se pudo marcar la asistencia'),
+    });
+  }
+
   abrirHistorialModal(row: ReporteAsistenciaRow): void {
     if (!row?.asignacion_id) return;
 
