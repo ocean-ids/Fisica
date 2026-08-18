@@ -99,6 +99,19 @@
         [matAutocomplete]="autoDescripcion"
         style="resize: vertical;"
       ></textarea>
+      <button
+        *ngIf="soportaDictado"
+        type="button"
+        mat-icon-button
+        matSuffix
+        [color]="dictando ? 'warn' : ''"
+        [disabled]="guardando"
+        (click)="toggleDictado()"
+        [attr.aria-label]="dictando ? 'Detener dictado' : 'Dictar descripción'"
+        [title]="dictando ? 'Detener dictado' : 'Dictar por voz'"
+      >
+        <mat-icon>{{ dictando ? 'mic_off' : 'mic' }}</mat-icon>
+      </button>
       <mat-autocomplete #autoDescripcion="matAutocomplete">
         <mat-option *ngFor="let d of getDescripcionesFiltradas()" [value]="d">{{ d }}</mat-option>
         <mat-option disabled *ngIf="!getDescripcionesFiltradas().length">Sin coincidencias</mat-option>

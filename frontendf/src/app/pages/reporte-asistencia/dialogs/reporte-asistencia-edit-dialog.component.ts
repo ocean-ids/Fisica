@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatIconModule } from '@angular/material/icon';
 import { ReporteAsistenciaService } from '../../../services/reporte-asistencia.service';
 import { ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../../../models';
 import { PersonaService } from '../../../services/persona.service';
@@ -27,7 +28,8 @@ import Swal from 'sweetalert2';
     MatInputModule,
     MatButtonModule,
     MatSelectModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatIconModule
   ],
   templateUrl: './reporte-asistencia-edit-dialog.component.html',
   styleUrl: './reporte-asistencia-edit-dialog.component.css'
@@ -57,6 +59,12 @@ export class ReporteAsistenciaEditDialogComponent {
   guardando = false;
   error = '';
   form: FormGroup;
+
+  // Dictado por voz (Web Speech API — nativo del navegador, Chrome/Edge)
+  soportaDictado = !!((window as any).webkitSpeechRecognition || (window as any).SpeechRecognition);
+  dictando = false;
+  private recognition?: any;
+  private descBase = '';
 
   constructor(
     private fb: FormBuilder,
@@ -139,33 +147,40 @@ export class ReporteAsistenciaEditDialogComponent {
     const huecaCtrl = this.form.get('hueca');
     const motivoCtrl = this.form.get('hueca_motivo');
 
-    // Estado: se habilita solo si la asistencia es FALTO (regla normal, obligatorio).
+    // Check "Hueca": solo disponible si la asistencia es FALTO.
+    if (esFalto) {
+      huecaCtrl?.enable({ emitEvent: false });
+    } else {
+      if (limpiar) { huecaCtrl?.setValue(false, { emitEvent: false }); }
+      huecaCtrl?.disable({ emitEvent: false });
+    }
+    const esHueca = esFalto && !!huecaCtrl?.value;
+
+    // Estado: habilitado si es FALTO (NO se bloquea por hueca; se puede usar igual).
     if (esFalto) {
       estadoCtrl?.enable({ emitEvent: false });
     } else {
       if (limpiar) { estadoCtrl?.setValue(null, { emitEvent: false }); }
       estadoCtrl?.disable({ emitEvent: false });
     }
-
-    // Check "Hueca" (extra): solo habilitado si la asistencia es FALTO.
-    if (esFalto) {
-      huecaCtrl?.enable({ emitEvent: false });
-      // Motivo: habilitado solo si la hueca está marcada.
-      if (huecaCtrl?.value) {
-        motivoCtrl?.enable({ emitEvent: false });
-      } else {
-        motivoCtrl?.disable({ emitEvent: false });
-      }
+    // Obligatorio SOLO si es FALTO y NO es hueca (una hueca no obliga a estado/reemplazo,
+    // pero se pueden llenar igual si la hueca sí tuvo cobertura).
+    if (esFalto && !esHueca) {
+      estadoCtrl?.setValidators([Validators.required]);
     } else {
-      if (limpiar) {
-        huecaCtrl?.setValue(false, { emitEvent: false });
-        motivoCtrl?.setValue('', { emitEvent: false });
-      }
-      huecaCtrl?.disable({ emitEvent: false });
+      estadoCtrl?.clearValidators();
+    }
+    estadoCtrl?.updateValueAndValidity({ emitEvent: false });
+
+    // Motivo de la hueca: habilitado solo cuando la hueca está marcada.
+    if (esHueca) {
+      motivoCtrl?.enable({ emitEvent: false });
+    } else {
+      if (limpiar) { motivoCtrl?.setValue('', { emitEvent: false }); }
       motivoCtrl?.disable({ emitEvent: false });
     }
 
-    // El reemplazo depende de FALTO Y de tener un Estado elegido (regla normal).
+    // El reemplazo depende de FALTO y de tener un Estado elegido (regla normal).
     this.aplicarBloqueoReemplazo(limpiar);
   }
 
@@ -322,7 +337,45 @@ export class ReporteAsistenciaEditDialogComponent {
 
   cancelar(): void {
     if (this.guardando) return;
+    this.detenerDictado();
     this.dialogRef.close();
+  }
+
+  // Dictado por voz sobre el campo Descripción (Web Speech API, nativo del navegador).
+  // Escribe lo dictado respetando el texto ya tecleado; se detiene al hacer clic de nuevo.
+  toggleDictado(): void {
+    const SR = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    if (!SR) { return; }
+    if (this.dictando) {            // ya está escuchando -> detener
+      this.detenerDictado();
+      return;
+    }
+    if (!this.recognition) {
+      this.recognition = new SR();
+      this.recognition.lang = 'es-EC';
+      this.recognition.continuous = true;
+      this.recognition.interimResults = true;
+      this.recognition.onresult = (e: any) => {
+        let texto = '';
+        for (let i = 0; i < e.results.length; i++) {
+          texto += e.results[i][0].transcript;
+        }
+        const val = (this.descBase ? this.descBase + ' ' : '') + texto;
+        this.form.get('descripcion')?.setValue(val.trim());
+      };
+      this.recognition.onend = () => { this.dictando = false; };
+      this.recognition.onerror = () => { this.dictando = false; };
+    }
+    this.descBase = this.form.get('descripcion')?.value || '';   // conserva lo ya escrito
+    this.dictando = true;
+    this.recognition.start();       // pide permiso de micrófono la 1ª vez
+  }
+
+  private detenerDictado(): void {
+    if (this.recognition && this.dictando) {
+      try { this.recognition.stop(); } catch { /* noop */ }
+    }
+    this.dictando = false;
   }
 
   // Tipo de la persona elegida como reemplazo.
@@ -340,7 +393,11 @@ export class ReporteAsistenciaEditDialogComponent {
     if (estadoAsistencia !== 'FALTO') { return false; }
     const estado = (this.form?.value?.estado || '').toString().trim().toUpperCase();
     const reemplazoId = this.form?.value?.reemplazo_id;
-    return !reemplazoId || !estado || estado === 'TURNO';
+    const tieneEstadoReal = !!estado && estado !== 'TURNO';
+    // HUECA sin estado de cobertura: falto sin reemplazo, se puede guardar (solo el motivo).
+    if (this.form?.getRawValue().hueca && !tieneEstadoReal) { return false; }
+    // En cualquier otro caso FALTO exige estado de cobertura Y reemplazo (aunque sea hueca).
+    return !reemplazoId || !tieneEstadoReal;
   }
 
   guardar(): void {
@@ -350,11 +407,14 @@ export class ReporteAsistenciaEditDialogComponent {
     const raw = this.form.getRawValue();
 
     // Si la asistencia es FALTO, exigir estado de cobertura y reemplazo antes de guardar.
+    // Excepción: HUECA SIN estado de cobertura (falto sin reemplazo) — ahí solo se pide motivo.
     const estadoAsistencia = (raw.estado_asistencia || '').toString().toUpperCase();
     if (estadoAsistencia === 'FALTO') {
       const estado = (raw.estado || '').toString().trim().toUpperCase();
       const reemplazoId = raw.reemplazo_id;
-      if (!reemplazoId || !estado || estado === 'TURNO') {
+      const tieneEstadoReal = !!estado && estado !== 'TURNO';
+      const huecaPura = raw.hueca && !tieneEstadoReal;
+      if (!huecaPura && (!reemplazoId || !tieneEstadoReal)) {
         Swal.fire({
           icon: 'warning',
           title: 'Completa la cobertura',

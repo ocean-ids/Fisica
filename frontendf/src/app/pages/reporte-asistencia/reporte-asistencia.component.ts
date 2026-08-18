@@ -278,18 +278,21 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   private buildResumenAsistencia(): ResumenAsistencia {
     const filas = this.reporte.filter(r => !! r.asignacion_id);
     const faltas = filas.filter(r => this.hasReemplazo(r)).length;
+    // Asistencias = SOLO los marcados ASISTIO (los sin marcar quedan pendientes, no cuentan).
+    const asistencias = filas.filter(r => (r.estado_asistencia || '') === 'ASISTIO').length;
     const total = filas.length;
     const por_zona = this.buildResumenPorZona(filas);
-    return { total, asistencias: total - faltas, faltas, por_zona };
+    return { total, asistencias, faltas, por_zona };
   }
 
   private buildResumenPorZona(filas: ReporteAsistenciaRow[]): ResumenAsistenciaZona[] {
-    const zonas: Record<string, { total: number; faltas: number }> = {};
+    const zonas: Record<string, { total: number; asistencias: number; faltas: number }> = {};
     for (const row of filas) {
       const zona = (row.zona_titulo || '').trim() || 'SIN ZONA';
-      if (!zonas[zona]) zonas[zona] = { total: 0, faltas: 0 };
+      if (!zonas[zona]) zonas[zona] = { total: 0, asistencias: 0, faltas: 0 };
       zonas[zona].total += 1;
       if (this.hasReemplazo(row)) zonas[zona].faltas += 1;
+      else if ((row.estado_asistencia || '') === 'ASISTIO') zonas[zona].asistencias += 1;
     }
 
     return Object.keys(zonas)
@@ -301,7 +304,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
         zona,
         total: zonas[zona].total,
         faltas: zonas[zona].faltas,
-        asistencias: Math.max(zonas[zona].total - zonas[zona].faltas, 0),
+        asistencias: zonas[zona].asistencias,
       }));
   }
 
@@ -441,6 +444,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       row.descripcion = res.descripcion;
       row.reemplazo_id = res.reemplazo_id;
       row.reemplazo = res.reemplazo;
+      row.hueca = res.hueca;
+      row.hueca_motivo = res.hueca_motivo;
       row.modificado_por = res.modificado_por;
       row.modificado_en = res.modificado_en;
     });
@@ -468,6 +473,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
         row.reemplazo_id = res.reemplazo_id;
         row.reemplazo = res.reemplazo;
         row.descripcion = res.descripcion;
+        row.hueca = res.hueca;
+        row.hueca_motivo = res.hueca_motivo;
         row.modificado_por = res.modificado_por;
         row.modificado_en = res.modificado_en;
       },

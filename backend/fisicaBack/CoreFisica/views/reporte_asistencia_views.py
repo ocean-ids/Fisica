@@ -113,6 +113,24 @@ def _build_header_context(request, fecha, turno):
     }
 
 
+def _texto_hueca(item):
+    """Motivo de la hueca para mostrar en los reportes (ej. 'HUECA POR UNIDAD FIJA').
+    Devuelve '' cuando la fila no es hueca."""
+    if item.get('hueca'):
+        return (item.get('hueca_motivo') or '').strip() or 'HUECA'
+    return ''
+
+
+def _descripcion_con_hueca(item):
+    """DESCRIPCIÓN para el descargable: si la fila es hueca, antepone el motivo
+    al texto que ya tuviera la descripción (para que la hueca salga en el reporte)."""
+    desc = (item.get('descripcion') or '').strip()
+    h = _texto_hueca(item)
+    if h:
+        return f"{h} · {desc}" if desc else h
+    return desc
+
+
 def _draw_excel_header(ws, ctx, border):
     ws.merge_cells('A1:B2')
     ws.merge_cells('C1:F2')
@@ -376,7 +394,11 @@ def _format_zona_label(zona_titulo):
 def _build_resumen_asistencia(data):
     evaluables = [item for item in data if item.get('asignacion_id')]
     faltos = sum(1 for item in evaluables if _is_falto(item))
-    asistencias = max(len(evaluables) - faltos, 0)
+    # Asistencias = SOLO los marcados ASISTIO (los sin marcar quedan pendientes, no cuentan).
+    asistencias = sum(
+        1 for item in evaluables
+        if _normalize_estado_asistencia(item.get('estado_asistencia')) == 'ASISTIO'
+    )
     return asistencias, faltos
 
 
@@ -385,22 +407,24 @@ def _build_resumen_asistencia_por_zona(data):
     zonas = {}
     for item in evaluables:
         zona = _normalize_zona_label((item.get('zona_titulo') or 'SIN ZONA').strip())
-        entry = zonas.setdefault(zona, {'total': 0, 'faltas': 0})
+        entry = zonas.setdefault(zona, {'total': 0, 'asistencias': 0, 'faltas': 0})
         entry['total'] += 1
         if _is_falto(item):
             entry['faltas'] += 1
+        elif _normalize_estado_asistencia(item.get('estado_asistencia')) == 'ASISTIO':
+            entry['asistencias'] += 1
 
     resumen = []
     for zona in sorted(zonas.keys(), key=_zona_sort_key):
-        total = zonas[zona]['total']
-        faltas = zonas[zona]['faltas']
+        z = zonas[zona]
         resumen.append({
             'zona': zona,
-            'total': total,
-            'asistencias': max(total - faltas, 0),
-            'faltas': faltas,
+            'total': z['total'],
+            'asistencias': z['asistencias'],   # solo ASISTIO, ya no total - faltas
+            'faltas': z['faltas'],
         })
     return resumen
+
 
 
 def _group_reporte_por_zona_y_provincia(data):
@@ -717,7 +741,9 @@ def _build_reporte_asistencia_data(
                 auto_sacafranco=is_auto_sacafranco,
                 modificado_por=h.usuario,
                 modificado_en=h.creado_en,
-                row_color=h.row_color
+                row_color=h.row_color,
+                hueca=bool(getattr(h, 'hueca', False)),
+                hueca_motivo=getattr(h, 'hueca_motivo', '') or '',
             )
 
     reporte_iter = reporte_qs
@@ -1124,7 +1150,9 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
             _row.save()
 
     # HUECA espeja al ADICIONAL: solo Cliente/Puesto/Fecha + Motivo editable (preservado).
-    if seccion_reemplazo == 'ADICIONALES':
+    # PERO si el check "Hueca" está marcado, la fila manual (auto=False) que crea
+    # _sync_hueca_reporte_guardia ya la representa (con su motivo). No duplicar aquí.
+    if seccion_reemplazo == 'ADICIONALES' and not getattr(override, 'hueca', False):
         _hueca = ReporteGuardia.objects.create(
             fecha=fecha_reporte,
             turno=turno,
@@ -1306,7 +1334,9 @@ def insertar_reporte_asistencia(request, asignacion_id):
             estado=override.estado,
             reemplazo=override.reemplazo,
             descripcion=override.descripcion,
-            row_color=override.row_color
+            row_color=override.row_color,
+            hueca=bool(override.hueca),
+            hueca_motivo=override.hueca_motivo or '',
         )
     except Exception:
         pass
@@ -1468,7 +1498,7 @@ def exportar_reporte_asistencia_excel(request):
                         'ASISTE' if item.get('estado_asistencia') == 'ASISTIO' else ('FALTO' if item.get('estado_asistencia') == 'FALTO' else ''),
                         item.get('reemplazo', ''),
                         item.get('estado', ''),
-                        item.get('descripcion', ''),
+                        _descripcion_con_hueca(item),
                     ]
                     for col_idx, value in enumerate(row_vals, start=1):
                         cell = ws.cell(row=current_row, column=col_idx)
@@ -1641,7 +1671,7 @@ def exportar_reporte_asistencia_pdf(request):
                     'ASISTE' if item.get('estado_asistencia') == 'ASISTIO' else ('FALTO' if item.get('estado_asistencia') == 'FALTO' else ''),
                     item.get('reemplazo', ''),
                     item.get('estado', ''),
-                    (item.get('descripcion', '') or '')[:240],
+                    _descripcion_con_hueca(item)[:240],
                 ]
 
                 # Envolver cada celda en varias líneas (no se corta el texto).
