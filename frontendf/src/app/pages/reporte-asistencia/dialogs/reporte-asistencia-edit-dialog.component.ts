@@ -360,7 +360,7 @@ export class ReporteAsistenciaEditDialogComponent {
         for (let i = 0; i < e.results.length; i++) {
           texto += e.results[i][0].transcript;
         }
-        const val = (this.descBase ? this.descBase + ' ' : '') + texto;
+        const val = (this.descBase ? this.descBase + ' ' : '') + texto.toUpperCase();
         this.form.get('descripcion')?.setValue(val.trim());
       };
       this.recognition.onend = () => { this.dictando = false; };
