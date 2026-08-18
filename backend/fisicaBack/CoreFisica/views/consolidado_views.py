@@ -15,7 +15,7 @@ from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.lib import colors
 from ..models import Consolidado, Asignacion, ConsolidadoResumen, Persona
-from .reporte_asistencia_views import _build_reporte_asistencia_data
+from .reporte_asistencia_views import _build_reporte_asistencia_data, _texto_hueca
 
 ALLOWED_TURNOS = {'Diurno', 'Nocturno'}
 ALLOWED_TIPOS = {choice[0] for choice in Consolidado.TIPOS}
@@ -154,7 +154,9 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
             'cedula': row.get('cedula') or '',
             'estado': row.get('estado') or '',
             'reemplazo': row.get('reemplazo') or '',
-            'observacion': cons.observacion if cons else '',
+            # OBSERVACIONES: gana lo escrito a mano en el consolidado; si está vacío y la
+            # fila es una hueca, se muestra el motivo de la hueca (ej. 'HUECA POR UNIDAD FIJA').
+            'observacion': (cons.observacion if cons else '') or _texto_hueca(row),
             'zona': (row.get('zona_titulo') or 'SIN ZONA').strip(),
             'provincia': (row.get('provincia') or 'SIN PROVINCIA').strip()
         })

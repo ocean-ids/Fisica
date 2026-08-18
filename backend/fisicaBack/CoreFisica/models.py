@@ -1181,6 +1181,10 @@ class ReporteAsistenciaHistorial(models.Model):
     reemplazo = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True)
     descripcion = models.CharField(max_length=200, blank=True, null=True)
     row_color = models.CharField(max_length=7, blank=True, null=True)
+    # Hueca por fecha: se guarda en el historial para que el reporte de una fecha
+    # concreta refleje la hueca de ESE dia (el reporte con fecha lee del historial).
+    hueca = models.BooleanField(default=False)
+    hueca_motivo = models.CharField(max_length=40, blank=True, default='')
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:

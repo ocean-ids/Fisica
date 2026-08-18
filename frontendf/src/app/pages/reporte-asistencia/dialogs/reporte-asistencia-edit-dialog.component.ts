@@ -147,33 +147,40 @@ export class ReporteAsistenciaEditDialogComponent {
     const huecaCtrl = this.form.get('hueca');
     const motivoCtrl = this.form.get('hueca_motivo');
 
-    // Estado: se habilita solo si la asistencia es FALTO (regla normal, obligatorio).
+    // Check "Hueca": solo disponible si la asistencia es FALTO.
+    if (esFalto) {
+      huecaCtrl?.enable({ emitEvent: false });
+    } else {
+      if (limpiar) { huecaCtrl?.setValue(false, { emitEvent: false }); }
+      huecaCtrl?.disable({ emitEvent: false });
+    }
+    const esHueca = esFalto && !!huecaCtrl?.value;
+
+    // Estado: habilitado si es FALTO (NO se bloquea por hueca; se puede usar igual).
     if (esFalto) {
       estadoCtrl?.enable({ emitEvent: false });
     } else {
       if (limpiar) { estadoCtrl?.setValue(null, { emitEvent: false }); }
       estadoCtrl?.disable({ emitEvent: false });
     }
-
-    // Check "Hueca" (extra): solo habilitado si la asistencia es FALTO.
-    if (esFalto) {
-      huecaCtrl?.enable({ emitEvent: false });
-      // Motivo: habilitado solo si la hueca está marcada.
-      if (huecaCtrl?.value) {
-        motivoCtrl?.enable({ emitEvent: false });
-      } else {
-        motivoCtrl?.disable({ emitEvent: false });
-      }
+    // Obligatorio SOLO si es FALTO y NO es hueca (una hueca no obliga a estado/reemplazo,
+    // pero se pueden llenar igual si la hueca sí tuvo cobertura).
+    if (esFalto && !esHueca) {
+      estadoCtrl?.setValidators([Validators.required]);
     } else {
-      if (limpiar) {
-        huecaCtrl?.setValue(false, { emitEvent: false });
-        motivoCtrl?.setValue('', { emitEvent: false });
-      }
-      huecaCtrl?.disable({ emitEvent: false });
+      estadoCtrl?.clearValidators();
+    }
+    estadoCtrl?.updateValueAndValidity({ emitEvent: false });
+
+    // Motivo de la hueca: habilitado solo cuando la hueca está marcada.
+    if (esHueca) {
+      motivoCtrl?.enable({ emitEvent: false });
+    } else {
+      if (limpiar) { motivoCtrl?.setValue('', { emitEvent: false }); }
       motivoCtrl?.disable({ emitEvent: false });
     }
 
-    // El reemplazo depende de FALTO Y de tener un Estado elegido (regla normal).
+    // El reemplazo depende de FALTO y de tener un Estado elegido (regla normal).
     this.aplicarBloqueoReemplazo(limpiar);
   }
 
@@ -386,7 +393,11 @@ export class ReporteAsistenciaEditDialogComponent {
     if (estadoAsistencia !== 'FALTO') { return false; }
     const estado = (this.form?.value?.estado || '').toString().trim().toUpperCase();
     const reemplazoId = this.form?.value?.reemplazo_id;
-    return !reemplazoId || !estado || estado === 'TURNO';
+    const tieneEstadoReal = !!estado && estado !== 'TURNO';
+    // HUECA sin estado de cobertura: falto sin reemplazo, se puede guardar (solo el motivo).
+    if (this.form?.getRawValue().hueca && !tieneEstadoReal) { return false; }
+    // En cualquier otro caso FALTO exige estado de cobertura Y reemplazo (aunque sea hueca).
+    return !reemplazoId || !tieneEstadoReal;
   }
 
   guardar(): void {
@@ -396,11 +407,14 @@ export class ReporteAsistenciaEditDialogComponent {
     const raw = this.form.getRawValue();
 
     // Si la asistencia es FALTO, exigir estado de cobertura y reemplazo antes de guardar.
+    // Excepción: HUECA SIN estado de cobertura (falto sin reemplazo) — ahí solo se pide motivo.
     const estadoAsistencia = (raw.estado_asistencia || '').toString().toUpperCase();
     if (estadoAsistencia === 'FALTO') {
       const estado = (raw.estado || '').toString().trim().toUpperCase();
       const reemplazoId = raw.reemplazo_id;
-      if (!reemplazoId || !estado || estado === 'TURNO') {
+      const tieneEstadoReal = !!estado && estado !== 'TURNO';
+      const huecaPura = raw.hueca && !tieneEstadoReal;
+      if (!huecaPura && (!reemplazoId || !tieneEstadoReal)) {
         Swal.fire({
           icon: 'warning',
           title: 'Completa la cobertura',
