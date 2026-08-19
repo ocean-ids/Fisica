@@ -6,30 +6,31 @@
     <!-- ================= ZONAS ================= -->
     <div class="zn-col">
       <h5>Zonas</h5>
-      <table class="table table-sm table-bordered align-middle">
+      <table class="table table-sm table-bordered align-middle text-center">
         <thead class="table-light">
-          <tr><th>#</th><th>Nombre</th><th>Nomin.</th><th></th></tr>
+          <tr><th class="text-center">#</th><th class="text-center">Nombre</th><th class="text-center">Nomin.</th><th class="text-center"></th></tr>
         </thead>
         <tbody>
           <tr *ngFor="let z of zonas">
             <ng-container *ngIf="zonaEditId === z.id; else zonaView">
-              <td><input type="number" class="form-control form-control-sm" [(ngModel)]="zonaEditNumero" style="width:60px"></td>
+              <td class="text-center"><input type="number" class="form-control form-control-sm mx-auto text-center" [(ngModel)]="zonaEditNumero" style="width:60px"></td>
               <td><input class="form-control form-control-sm" [(ngModel)]="zonaEditNombre"></td>
               <td class="text-center">{{ z.nominativos_count }}</td>
-              <td class="text-nowrap">
+              <td class="text-nowrap text-center">
                 <button class="btn btn-success btn-sm" (click)="guardarZona()">✓</button>
                 <button class="btn btn-secondary btn-sm ms-1" (click)="cancelarEditZona()">✕</button>
               </td>
             </ng-container>
             <ng-template #zonaView>
-              <td>{{ z.numero }}</td>
+              <td class="text-center">{{ z.numero }}</td>
               <td>{{ z.nombre }}
                 <span *ngIf="z.es_agrupacion" class="badge bg-info text-dark" title="Zona de agrupación: al borrarla, los nominativos vuelven a su zona original">agrup.</span>
               </td>
               <td class="text-center">{{ z.nominativos_count }}</td>
               <td class="text-nowrap">
                 <button class="btn btn-outline-primary btn-sm" (click)="editarZona(z)">✎</button>
-                <button class="btn btn-outline-danger btn-sm ms-1" (click)="borrarZona(z)">🗑</button>
+                <button class="btn btn-outline-danger btn-sm ms-1" [disabled]="true"
+                        title="No se puede eliminar la zona">🗑</button>
               </td>
             </ng-template>
           </tr>
@@ -75,6 +76,11 @@
       </div>
 
       <div class="input-group input-group-sm mb-2">
+        <select class="form-select" [(ngModel)]="filtroZona" style="max-width:170px"
+                title="Filtrar por zona">
+          <option [ngValue]="null">Todas las zonas</option>
+          <option *ngFor="let z of zonas" [ngValue]="z.id">{{ z.nombre }}</option>
+        </select>
         <input class="form-control" placeholder="Buscar (código, instalación, cliente)…"
                [(ngModel)]="busqueda" (keyup.enter)="buscar()">
         <button class="btn btn-outline-secondary" (click)="buscar()">Buscar</button>
@@ -110,22 +116,22 @@
       </div>
 
       <div class="zn-nomlist">
-        <table class="table table-sm table-bordered align-middle">
+        <table class="table table-sm table-bordered align-middle text-center">
           <thead class="table-light">
-            <tr><th>Nominativo</th><th>Zona</th><th>Instalación</th><th>Cliente</th><th></th></tr>
+            <tr><th class="text-center">Nominativo</th><th class="text-center">Zona</th><th class="text-center">Instalación</th><th class="text-center">Cliente</th><th class="text-center"></th></tr>
           </thead>
           <tbody>
-            <tr *ngFor="let n of nominativos">
+            <tr *ngFor="let n of nominativosFiltrados">
               <td class="fw-bold">{{ n.codigo }}</td>
-              <td>{{ n.zona_nombre }}</td>
+              <td class="text-nowrap">{{ n.zona_nombre }}</td>
               <td>{{ n.instalacion_nombre || '—' }}</td>
               <td>{{ n.cliente_nombre || '—' }}</td>
-              <td class="text-nowrap">
+              <td class="text-nowrap text-center">
                 <button class="btn btn-outline-primary btn-sm" (click)="editarNominativo(n)">✎</button>
                 <button class="btn btn-outline-danger btn-sm ms-1" (click)="borrarNominativo(n)">🗑</button>
               </td>
             </tr>
-            <tr *ngIf="!nominativos.length">
+            <tr *ngIf="!nominativosFiltrados.length">
               <td colspan="5" class="text-center text-muted">Sin nominativos</td>
             </tr>
           </tbody>

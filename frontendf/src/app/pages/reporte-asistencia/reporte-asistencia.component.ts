@@ -103,7 +103,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
   abrirZonasNominativos(): void {
     const ref = this.dialog.open(ZonasNominativosDialogComponent, {
-      width: '900px',
+      width: '1100px',
       maxWidth: '95vw',
       maxHeight: '90vh',
       autoFocus: false,
