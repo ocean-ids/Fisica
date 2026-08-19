@@ -298,9 +298,10 @@ def parse_compact_horas_turno_dias(value):
     text = str(value).strip().upper()
     if not text:
         return []
-    # separar grupos por '/', ' - ' o ' Y ' (texto ya en mayúsculas)
-    raw_parts = re.split(r'\s*/\s*|\s+-\s+|\s+Y\s+', text)
+    # separar grupos por '/', ' - ', ' + ' o ' Y ' (texto ya en mayúsculas)
+    raw_parts = re.split(r'\s*/\s*|\s+-\s+|\s*\+\s*|\s+Y\s+', text)
     groups = []
+    turno_heredado = None  # el turno se declara una vez y se hereda a los grupos siguientes
     for part in raw_parts:
         p = re.sub(r'\s+', '', part)
         if not p:
@@ -315,10 +316,24 @@ def parse_compact_horas_turno_dias(value):
             hours_val = 12
         turno_token = m.group(2) or ''
         dias_token = m.group(3) or ''
+        dias = _expand_compact_dias(dias_token)
+        turno = parse_turno(turno_token) if turno_token else None
+        # Ambiguedad de la letra D: en un grupo tipo "5 H D" (D suelta, sin mas dias),
+        # la D es el DIA Domingo, no el turno Diurno (ej. "14HDLV + 9HS + 5HD" =
+        # L-V + Sabado + Domingo). Solo aplica cuando el grupo quedaria SIN dias.
+        if not dias and turno_token == 'D':
+            dias = [7]  # Domingo
+            turno = None
+        # Herencia de turno: si el grupo no trae turno propio, usa el del grupo anterior
+        # (ej. "12HNLV y 24HSD" -> el 24HSD tambien es Nocturno). Si lo trae, actualiza.
+        if turno is None:
+            turno = turno_heredado
+        else:
+            turno_heredado = turno
         groups.append({
             'hours': hours_val,
-            'turno': parse_turno(turno_token) if turno_token else None,
-            'dias': _expand_compact_dias(dias_token),
+            'turno': turno,
+            'dias': dias,
         })
     return groups
 

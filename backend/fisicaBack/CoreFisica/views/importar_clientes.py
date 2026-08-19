@@ -9,7 +9,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from openpyxl import load_workbook
 from openpyxl.utils.datetime import from_excel
 
-from ..models import Cliente, Instalacion, Puesto, Provincia, Canton
+from ..models import Cliente, Instalacion, Puesto, PuestoHorario, Provincia, Canton
+from .importar_puestos_asignaciones import parse_compact_horas_turno_dias
 
 
 HEADER_MAP = {
@@ -208,6 +209,9 @@ def importar_clientes(request):
             
             puesto_nombre = col('puesto_nombre') or col('puesto')
             puesto_tipo = col('puesto_tipo') or None
+            # La columna "PUESTO" trae el horario compacto (ej. "10 H D L V") SOLO cuando
+            # hay una columna aparte "NOMBRE DE PUESTO"; si no, 'puesto' ES el nombre.
+            puesto_horario_txt = col('puesto') if col('puesto_nombre') else ''
 
             if not nombre_comercial:
                 errors.append(f"Fila {i}: sin nombre_comercial")
@@ -266,6 +270,30 @@ def importar_clientes(request):
                     )
                     created_puestos += 1
                     nuevos_puestos.append(f"{inst_nombre} - {puesto_nombre}")
+                    # Opcion 2: al CREAR el puesto, armar su horario desde la columna
+                    # "PUESTO" (ej. "10 H D L V" -> dias/horas/turno). Los puestos que YA
+                    # existen NO se tocan (se respeta lo configurado a mano).
+                    grupos = parse_compact_horas_turno_dias(puesto_horario_txt) if puesto_horario_txt else []
+                    hizo_horario = False
+                    for grp in grupos:
+                        for dia in grp.get('dias', []):
+                            PuestoHorario.objects.update_or_create(
+                                puesto=puesto, dia=dia,
+                                defaults={'horas': min(max(grp.get('hours', 12), 0), 24),
+                                          'turno': grp.get('turno') or 'Diurno'},
+                            )
+                            hizo_horario = True
+                    if hizo_horario:
+                        try:
+                            puesto.sync_from_horarios()
+                            puesto.save()
+                        except Exception:
+                            pass
+                    elif puesto_horario_txt:
+                        errors.append(
+                            f"Fila {i}: no se pudo interpretar el horario '{puesto_horario_txt}' "
+                            f"del puesto '{puesto_nombre}' (se creo sin horario)"
+                        )
 
     summary = {
         'clientes_creados': created_clientes,
