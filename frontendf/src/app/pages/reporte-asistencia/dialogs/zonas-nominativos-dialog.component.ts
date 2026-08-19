@@ -19,6 +19,7 @@ export class ZonasNominativosDialogComponent implements OnInit {
   instalaciones: any[] = [];
   loading = false;
   busqueda = '';
+  filtroZona: number | null = null;   // null = todas las zonas
 
   // numero sugerido para la proxima zona (max + 1)
   nuevaZonaNumero: number | null = null;
@@ -95,6 +96,20 @@ export class ZonasNominativosDialogComponent implements OnInit {
     this.svc.getNominativos({ q: this.busqueda || undefined }).subscribe({
       next: (ns) => { this.nominativos = ns || []; },
       error: () => { this.nominativos = []; },
+    });
+  }
+
+  // Lista mostrada: aplica el filtro por zona (null = todas) y ordena por
+  // LETRA y luego NÚMERO (A1, A2, A10, D24…).
+  get nominativosFiltrados(): Nominativo[] {
+    const base = this.filtroZona == null
+      ? this.nominativos
+      : this.nominativos.filter(n => n.zona === this.filtroZona);
+    return [...base].sort((a, b) => {
+      const la = (a.letra || '').toUpperCase();
+      const lb = (b.letra || '').toUpperCase();
+      if (la !== lb) return la.localeCompare(lb);
+      return (a.numero || 0) - (b.numero || 0);
     });
   }
 
