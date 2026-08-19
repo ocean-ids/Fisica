@@ -207,8 +207,10 @@ export class ZonasNominativosDialogComponent implements OnInit {
   // Solo instalaciones SIN nominativo (libres). Al editar, incluye también la que ya
   // tiene este nominativo para que quede seleccionada.
   get instalacionesLibres(): any[] {
+    // Solo instalaciones ACTIVAS y sin nominativo. Las CERRADAS (activo=false) no se
+    // ofrecen (vuelven a aparecer al reabrirlas). Se mantiene la ya seleccionada al editar.
     return this.instalaciones.filter(
-      (i) => !this.instalacionesConNom.has(i.id) || i.id === this.nomInstalacion
+      (i) => (i.activo !== false && !this.instalacionesConNom.has(i.id)) || i.id === this.nomInstalacion
     );
   }
 
