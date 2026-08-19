@@ -261,7 +261,35 @@ def importar_clientes(request):
             # Puesto por instalación + nombre (tolerante a duplicados existentes).
             if puesto_nombre:
                 puesto = Puesto.objects.filter(instalacion=instalacion, nombre=puesto_nombre).first()
+
+                # Arma el horario del puesto desde la columna "PUESTO" (ej. "10 H D L V"
+                # -> dias/horas/turno). Devuelve True si creó algún PuestoHorario.
+                def _armar_horario(p):
+                    grupos = parse_compact_horas_turno_dias(puesto_horario_txt) if puesto_horario_txt else []
+                    hecho = False
+                    for grp in grupos:
+                        for dia in grp.get('dias', []):
+                            PuestoHorario.objects.update_or_create(
+                                puesto=p, dia=dia,
+                                defaults={'horas': min(max(grp.get('hours', 12), 0), 24),
+                                          'turno': grp.get('turno') or 'Diurno'},
+                            )
+                            hecho = True
+                    if hecho:
+                        try:
+                            p.sync_from_horarios()
+                            p.save()
+                        except Exception:
+                            pass
+                    elif puesto_horario_txt:
+                        errors.append(
+                            f"Fila {i}: no se pudo interpretar el horario '{puesto_horario_txt}' "
+                            f"del puesto '{puesto_nombre}'"
+                        )
+                    return hecho
+
                 if not puesto:
+                    # NUEVO: se crea con nombre + tipo + cantidad=1 y se arma su horario.
                     puesto_defaults = {'cantidad_puestos': 1}
                     if puesto_tipo:
                         puesto_defaults['tipo'] = puesto_tipo
@@ -270,30 +298,20 @@ def importar_clientes(request):
                     )
                     created_puestos += 1
                     nuevos_puestos.append(f"{inst_nombre} - {puesto_nombre}")
-                    # Opcion 2: al CREAR el puesto, armar su horario desde la columna
-                    # "PUESTO" (ej. "10 H D L V" -> dias/horas/turno). Los puestos que YA
-                    # existen NO se tocan (se respeta lo configurado a mano).
-                    grupos = parse_compact_horas_turno_dias(puesto_horario_txt) if puesto_horario_txt else []
-                    hizo_horario = False
-                    for grp in grupos:
-                        for dia in grp.get('dias', []):
-                            PuestoHorario.objects.update_or_create(
-                                puesto=puesto, dia=dia,
-                                defaults={'horas': min(max(grp.get('hours', 12), 0), 24),
-                                          'turno': grp.get('turno') or 'Diurno'},
-                            )
-                            hizo_horario = True
-                    if hizo_horario:
-                        try:
-                            puesto.sync_from_horarios()
-                            puesto.save()
-                        except Exception:
-                            pass
-                    elif puesto_horario_txt:
-                        errors.append(
-                            f"Fila {i}: no se pudo interpretar el horario '{puesto_horario_txt}' "
-                            f"del puesto '{puesto_nombre}' (se creo sin horario)"
-                        )
+                    _armar_horario(puesto)
+                else:
+                    # EXISTENTE: solo se COMPLETAN los datos VACIOS (no se pisa lo ya
+                    # configurado a mano). Tipo si esta vacio, y horario si aun no tiene.
+                    toco = False
+                    if puesto_tipo and not (puesto.tipo or '').strip():
+                        puesto.tipo = puesto_tipo
+                        puesto.save(update_fields=['tipo'])
+                        toco = True
+                    if puesto_horario_txt and not PuestoHorario.objects.filter(puesto=puesto).exists():
+                        if _armar_horario(puesto):
+                            toco = True
+                    if toco:
+                        updated_puestos += 1
 
     summary = {
         'clientes_creados': created_clientes,
