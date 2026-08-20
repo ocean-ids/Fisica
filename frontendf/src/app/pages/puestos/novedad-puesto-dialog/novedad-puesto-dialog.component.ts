@@ -14,6 +14,7 @@ interface DialogData {
   puestos?: any[];
   clienteNombre?: string;
   fecha?: string;
+  novedad?: string;   // novedad ya elegida en el select de la pantalla
 }
 
 @Component({
@@ -29,6 +30,7 @@ interface DialogData {
 export class NovedadPuestoDialogComponent implements OnInit {
   puestos: any[] = [];
   puestoId: number | null = null;
+  novedadPreseleccionada = false;   // true si la novedad llegó elegida desde el select
 
   model: NovedadPuesto = {
     fecha: '',
@@ -67,6 +69,12 @@ export class NovedadPuestoDialogComponent implements OnInit {
     }
     // "Solicitado por" = nombre completo del usuario logueado.
     this.model.solicitado_por = this.nombreUsuarioActual();
+
+    // Novedad ya elegida en el select de la pantalla: se fija y se oculta el select interno.
+    if (this.data?.novedad) {
+      this.model.novedad = this.data.novedad;
+      this.novedadPreseleccionada = true;
+    }
   }
 
   private nombreUsuarioActual(): string {
@@ -87,6 +95,13 @@ export class NovedadPuestoDialogComponent implements OnInit {
   get esModificacion(): boolean {
     const n = (this.model.novedad || '').toString().toUpperCase();
     return n === 'MODIFICACION' || n === 'MODIFICACION INCREMENTO';
+  }
+
+  // Apertura y Cierre NO tienen formulario: solo cambian el estado. Ocultan
+  // Turno/Sector/Tipo/Horario/Observación. El resto (Modif./Increm.) sí los muestra.
+  get soloEstado(): boolean {
+    const n = (this.model.novedad || '').toString().toUpperCase();
+    return n === 'APERTURA' || n === 'CIERRE';
   }
 
   // APERTURA -> solo puestos CERRADOS (reabrir). Resto (cierre, etc.) -> solo ACTIVOS.
