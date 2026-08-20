@@ -1,76 +1,82 @@
 <div class="container-fluid px-0 px-md-2">
   
-  <h2 class="mb-2 text-center">Gestión de Puestos</h2>
-  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-  </div>
+  <h2 class="mb-3 text-center">Gestión de Puestos</h2>
 
-  <div class="row g-2 align-items-center mb-3">
-    <div class="col-12 col-md-4">
-      <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Seleccionar Cliente</mat-label>
-        <input
-          type="text"
-          matInput
-          [(ngModel)]="clienteFiltro"
-          (ngModelChange)="filtrarClientes()"
-          [matAutocomplete]="clienteAuto"
-        />
-        <button *ngIf="clienteFiltro" matSuffix mat-icon-button type="button"
-                aria-label="Limpiar" (click)="limpiarCliente()">
-          <mat-icon>close</mat-icon>
-        </button>
-        <mat-autocomplete #clienteAuto="matAutocomplete" [displayWith]="mostrarCliente" (optionSelected)="onClienteSeleccionado($event.option.value)">
-          <mat-option *ngFor="let cliente of clientesFiltrados" [value]="cliente">
-            {{ cliente.nombre_comercial }}
-          </mat-option>
-        </mat-autocomplete>
-      </mat-form-field>
-    </div>
-    <div class="col-12 col-md-8 d-grid d-md-flex justify-content-md-end gap-2">
-      <button class="btn btn-outline-primary" (click)="abrirFormularioNuevo()" [disabled]="!clienteSeleccionado">
-        <i class="bi bi-plus-circle"></i> Nuevo Puesto
-      </button>
-    </div>
+  <div class="card shadow-sm mb-3">
+    <div class="card-body pb-1">
+      <!-- Filtros -->
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Seleccionar Cliente</mat-label>
+            <input
+              type="text"
+              matInput
+              [(ngModel)]="clienteFiltro"
+              (ngModelChange)="filtrarClientes()"
+              [matAutocomplete]="clienteAuto"
+            />
+            <button *ngIf="clienteFiltro" matSuffix mat-icon-button type="button"
+                    aria-label="Limpiar" (click)="limpiarCliente()">
+              <mat-icon>close</mat-icon>
+            </button>
+            <mat-autocomplete #clienteAuto="matAutocomplete" [displayWith]="mostrarCliente" (optionSelected)="onClienteSeleccionado($event.option.value)">
+              <mat-option *ngFor="let cliente of clientesFiltrados" [value]="cliente">
+                {{ cliente.nombre_comercial }}
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+        </div>
 
-    <div class="col-12 d-flex flex-wrap align-items-center justify-content-md-end gap-2 mt-1">
-      <input type="date" class="form-control form-control-sm" style="max-width: 170px;" [(ngModel)]="fechaReporteNovedad" [ngModelOptions]="{standalone:true}" />
-      <button class="btn btn-sm btn-outline-success" [matMenuTriggerFor]="novMenu">
-        <i class="bi bi-journal-plus"></i> Novedades <i class="bi bi-caret-down-fill"></i>
-      </button>
-      <mat-menu #novMenu="matMenu">
-        <button mat-menu-item (click)="abrirNovedad('APERTURA')">
-          <i class="bi bi-unlock me-2 text-success"></i> Apertura
-        </button>
-        <button mat-menu-item (click)="abrirNovedad('MODIFICACION')">
-          <i class="bi bi-sliders me-2 text-info"></i> Modificación
-        </button>
-        <button mat-menu-item (click)="abrirNovedad('CIERRE')">
-          <i class="bi bi-lock me-2 text-warning"></i> Cierre
-        </button>
-        <button mat-menu-item (click)="abrirNovedad('INCREMENTO')">
-          <i class="bi bi-plus-square me-2 text-info"></i> Incremento
-        </button>
-        <button mat-menu-item (click)="abrirNovedad('MODIFICACION INCREMENTO')">
-          <i class="bi bi-plus-slash-minus me-2 text-info"></i> Modificación / Incremento
-        </button>
-      </mat-menu>
-      <button class="btn btn-sm btn-outline-secondary" (click)="verNovedades()" title="Ver novedades del mes por día">
-        <i class="bi bi-eye"></i> Ver
-      </button>
-      <button class="btn btn-sm btn-outline-success" (click)="descargarNovedadesExcel()" title="Descarga el mes: una pestaña por cada día con registros">
-        <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
-        Descargar
-      </button>
-    </div>
+        <div class="col-12 col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Instalación</mat-label>
+            <mat-select [(ngModel)]="instalacionSeleccionada" [ngModelOptions]="{standalone:true}"
+                        [disabled]="!instalaciones.length">
+              <mat-option [value]="null">Todas las instalaciones</mat-option>
+              <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.nombre }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
 
-    <div class="col-12 col-md-4" *ngIf="instalaciones.length">
-      <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Instalación</mat-label>
-        <mat-select [(ngModel)]="instalacionSeleccionada" [ngModelOptions]="{standalone:true}">
-          <mat-option [value]="null">Todas las instalaciones</mat-option>
-          <mat-option *ngFor="let i of instalaciones" [value]="i.id">{{ i.nombre }}</mat-option>
-        </mat-select>
-      </mat-form-field>
+      <hr class="my-1" />
+
+      <!-- Barra de Novedades -->
+      <div class="d-flex flex-wrap align-items-center gap-2 pb-2">
+        <span class="text-muted small fw-semibold me-1"><i class="bi bi-journal-text"></i> Novedades del día</span>
+        <input type="date" class="form-control form-control-sm" style="max-width: 160px;" [(ngModel)]="fechaReporteNovedad" [ngModelOptions]="{standalone:true}" />
+        <button class="btn btn-sm btn-outline-success" [matMenuTriggerFor]="novMenu">
+          <i class="bi bi-journal-plus"></i> Registrar <i class="bi bi-caret-down-fill"></i>
+        </button>
+        <mat-menu #novMenu="matMenu">
+          <button mat-menu-item (click)="abrirNovedad('APERTURA')">
+            <i class="bi bi-unlock me-2 text-success"></i> Apertura
+          </button>
+          <button mat-menu-item (click)="abrirNovedad('MODIFICACION')">
+            <i class="bi bi-sliders me-2 text-info"></i> Modificación
+          </button>
+          <button mat-menu-item (click)="abrirNovedad('CIERRE')">
+            <i class="bi bi-lock me-2 text-warning"></i> Cierre
+          </button>
+          <button mat-menu-item (click)="abrirNovedad('INCREMENTO')">
+            <i class="bi bi-plus-square me-2 text-info"></i> Incremento
+          </button>
+          <button mat-menu-item (click)="abrirNovedad('MODIFICACION INCREMENTO')">
+            <i class="bi bi-plus-slash-minus me-2 text-info"></i> Modificación / Incremento
+          </button>
+        </mat-menu>
+        <button class="btn btn-sm btn-outline-secondary" (click)="verNovedades()" title="Ver novedades del mes por día">
+          <i class="bi bi-eye"></i> Ver
+        </button>
+        <button class="btn btn-sm btn-outline-success" (click)="descargarNovedadesExcel()" title="Descarga el mes: una pestaña por cada día con registros">
+          <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
+          Descargar
+        </button>
+        <button class="btn btn-sm btn-primary ms-auto" (click)="abrirFormularioNuevo()" [disabled]="!clienteSeleccionado">
+          <i class="bi bi-plus-circle"></i> Nuevo Puesto
+        </button>
+      </div>
     </div>
   </div>
 
