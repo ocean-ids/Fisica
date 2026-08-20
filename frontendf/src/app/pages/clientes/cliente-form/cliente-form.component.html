@@ -36,18 +36,18 @@
       <mat-form-field appearance="outline">
         <mat-label>Tipo ID</mat-label>
         <mat-select formControlName="tipo_id">
-          <mat-option value="">-</mat-option>
+          <mat-option value="">Seleccione</mat-option>
           <mat-option *ngFor="let t of tiposId" [value]="t.v">{{ t.l }}</mat-option>
         </mat-select>
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>RUC / Identificación</mat-label>
-        <input matInput formControlName="ruc" placeholder="10 o 13 dígitos">
+        <input matInput formControlName="ruc" placeholder="10 o 13 dígitos" required>
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Tipo de Cliente</mat-label>
         <mat-select formControlName="tipo_cliente">
-          <mat-option value="">-</mat-option>
+          <mat-option value="">Seleccione</mat-option>
           <mat-option *ngFor="let t of tiposCliente" [value]="t.v">{{ t.l }}</mat-option>
         </mat-select>
       </mat-form-field>
@@ -61,6 +61,7 @@
       <mat-form-field appearance="outline">
         <mat-label>Tamaño del Cliente</mat-label>
         <mat-select formControlName="size">
+          <mat-option [value]="null">Seleccione</mat-option>
           <mat-option *ngFor="let s of sizes" [value]="s.v">{{ s.l }}</mat-option>
         </mat-select>
       </mat-form-field>

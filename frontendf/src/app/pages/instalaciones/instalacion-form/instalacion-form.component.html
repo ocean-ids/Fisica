@@ -4,18 +4,26 @@
   <form [formGroup]="instalacionForm">
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Cliente</mat-label>
-      <mat-select formControlName="cliente_id" required>
-        <mat-option *ngFor="let cliente of data.clientes" [value]="cliente.id">
+      <input matInput [matAutocomplete]="autoCli" [(ngModel)]="clienteInput"
+             [ngModelOptions]="{ standalone: true }"
+             placeholder="Escribe para buscar el cliente" required>
+      <button *ngIf="clienteInput" matSuffix mat-icon-button type="button"
+              aria-label="Limpiar" (click)="limpiarCliente()">
+        <mat-icon>close</mat-icon>
+      </button>
+      <mat-autocomplete #autoCli="matAutocomplete"
+                        (optionSelected)="onClienteSeleccionado($event.option.value)">
+        <mat-option *ngFor="let cliente of clientesFiltrados" [value]="cliente">
           {{ cliente.nombre_comercial }}
         </mat-option>
-      </mat-select>
+      </mat-autocomplete>
       <mat-error *ngIf="instalacionForm.get('cliente_id')?.hasError('required')">
         El cliente es requerido
       </mat-error>
     </mat-form-field>
     <mat-form-field class="w-100">
       <mat-label>Nominativo</mat-label>
-      <input matInput formControlName="codigo" placeholder="—" readonly>
+      <input matInput formControlName="codigo" placeholder="—" readonly >
     </mat-form-field>
     <mat-form-field class="w-100">
       <mat-label>Nombre</mat-label>

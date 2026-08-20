@@ -66,11 +66,11 @@ export class ClienteFormComponent implements OnInit {
       // Identificación
       razon_social: [c.razon_social || '', Validators.required],
       nombre_comercial: [c.nombre_comercial || '', Validators.required],
-      ruc: [c.ruc || '', [Validators.pattern(/^\d{10}(\d{3})?$/), Validators.minLength(10), Validators.maxLength(13)]],
+      ruc: [c.ruc || '', [Validators.required, Validators.pattern(/^\d{10}(\d{3})?$/), Validators.minLength(10), Validators.maxLength(13)]],
       codigo_erp: [c.codigo_erp || ''],
       tipo_id: [c.tipo_id || ''],
       tipo_cliente: [c.tipo_cliente || ''],
-      size: [c.size || 'MEDIANO', Validators.required],
+      size: [c.size || null, Validators.required],
       estado: [c.estado || 'ACTIVO'],
       fecha_ingreso: [c.fecha_ingreso || null],
       fecha_retiro: [c.fecha_retiro || null],
@@ -115,7 +115,7 @@ export class ClienteFormComponent implements OnInit {
       cuenta_contable: [c.cuenta_contable || ''],
       cod_area: [c.cod_area || ''],
       cod_rol: [c.cod_rol || ''],
-      paga_iva: [c.paga_iva ?? true],
+      paga_iva: [c.paga_iva ?? false],
       observaciones: [c.observaciones || ''],
     });
 

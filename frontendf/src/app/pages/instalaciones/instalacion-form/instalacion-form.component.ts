@@ -1,11 +1,13 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatIconModule } from '@angular/material/icon';
 import { Cliente } from '../../../models/cliente.model';
 import { UbicacionService } from '../../../services/ubicacion.service';
 
@@ -19,13 +21,34 @@ import { UbicacionService } from '../../../services/ubicacion.service';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatSelectModule
+    MatSelectModule,
+    FormsModule,
+    MatAutocompleteModule,
+    MatIconModule
   ],
   templateUrl: './instalacion-form.component.html',
   styleUrl: './instalacion-form.component.css'
 })
 export class InstalacionFormComponent implements OnInit {
   instalacionForm!: FormGroup;
+  clienteInput = '';   // texto escrito en el buscador de cliente
+
+  get clientesFiltrados(): Cliente[] {
+    const q = (this.clienteInput || '').toLowerCase().trim();
+    const list = this.data.clientes || [];
+    if (!q) return list;
+    return list.filter(c => (c.nombre_comercial || '').toLowerCase().includes(q));
+  }
+
+  onClienteSeleccionado(cliente: Cliente): void {
+    this.instalacionForm.get('cliente_id')?.setValue(cliente.id);
+    this.clienteInput = cliente.nombre_comercial || '';
+  }
+
+  limpiarCliente(): void {
+    this.instalacionForm.get('cliente_id')?.setValue(null);
+    this.clienteInput = '';
+  }
   provincias: any[] = [];
   cantones: any[] = [];
   zonaOptions: { id: any; label: string; titulo?: string }[] = [];
@@ -63,6 +86,10 @@ export class InstalacionFormComponent implements OnInit {
     // Zona y código son SOLO LECTURA: se administran en "Zonas y Nominativos".
     // (el código usa readonly en el template; la zona se deshabilita aquí)
     this.instalacionForm.get('zona_id')?.disable();
+    this.instalacionForm.get('codigo')?.disable();
+    // Mostrar el nombre del cliente en el buscador cuando se edita
+    const cliSel = (this.data.clientes || []).find(c => c.id === this.instalacionForm.get('cliente_id')?.value);
+    if (cliSel) { this.clienteInput = cliSel.nombre_comercial || ''; }
 
     if (instalacion.zonas && Array.isArray(instalacion.zonas) && instalacion.zonas.length) {
       this.zonaOptions = this.withDefaultZonaTitles(this.buildZonaOptions(instalacion.zonas));
