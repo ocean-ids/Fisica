@@ -9,7 +9,7 @@
       </mat-form-field>
     </div>
 
-    <div class="col-md-6 mb-2">
+    <div class="col-md-6 mb-2" *ngIf="!soloEstado">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Turno</mat-label>
         <mat-select [(ngModel)]="model.turno" [ngModelOptions]="{standalone:true}">
@@ -22,7 +22,8 @@
     <div class="col-md-6 mb-2">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Novedad</mat-label>
-        <mat-select [(ngModel)]="model.novedad" (selectionChange)="onNovedadChange()" [ngModelOptions]="{standalone:true}">
+        <mat-select [(ngModel)]="model.novedad" (selectionChange)="onNovedadChange()"
+                    [disabled]="novedadPreseleccionada" [ngModelOptions]="{standalone:true}">
           <mat-option *ngFor="let n of novedades" [value]="n.value">{{ n.label }}</mat-option>
         </mat-select>
       </mat-form-field>
@@ -47,14 +48,14 @@
       </mat-form-field>
     </div>
 
-    <div class="col-md-6 mb-2">
+    <div class="col-md-6 mb-2" *ngIf="!soloEstado">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Sector</mat-label>
         <input matInput type="text" [(ngModel)]="model.sector" [ngModelOptions]="{standalone:true}" />
       </mat-form-field>
     </div>
 
-    <div class="col-md-6 mb-2">
+    <div class="col-md-6 mb-2" *ngIf="!soloEstado">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Tipo</mat-label>
         <input matInput type="text" [(ngModel)]="model.tipo" [ngModelOptions]="{standalone:true}"
@@ -62,7 +63,7 @@
       </mat-form-field>
     </div>
 
-    <div class="col-md-6 mb-2">
+    <div class="col-md-6 mb-2" *ngIf="!soloEstado">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Horario</mat-label>
         <input matInput type="text" [(ngModel)]="model.horario" [ngModelOptions]="{standalone:true}" placeholder="ej. 3,3,2" />
@@ -76,7 +77,7 @@
       </mat-form-field>
     </div>
 
-    <div class="col-12 mb-2">
+    <div class="col-12 mb-2" *ngIf="!soloEstado">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Observación</mat-label>
         <textarea matInput rows="3" [(ngModel)]="model.observacion" [ngModelOptions]="{standalone:true}"></textarea>

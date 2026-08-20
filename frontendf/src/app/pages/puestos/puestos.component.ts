@@ -108,6 +108,12 @@ export class PuestosComponent implements OnInit {
     );
   }
 
+  // Limpia el buscador de cliente (la X): borra el texto y la selección.
+  limpiarCliente(): void {
+    this.clienteFiltro = '';
+    this.filtrarClientes();
+  }
+
   onClienteSeleccionado(cliente: Cliente): void {
     this.clienteSeleccionado = cliente.id ?? null;
     this.clienteSeleccionadoNombre = cliente.nombre_comercial || '';
@@ -357,7 +363,8 @@ export class PuestosComponent implements OnInit {
     }
   }
 
-  abrirNovedad(): void {
+  // Menú de Novedades: cada opción abre el diálogo con esa novedad preseleccionada.
+  abrirNovedad(novedad?: string): void {
     const dialogRef = this.dialog.open(NovedadPuestoDialogComponent, {
       width: '760px',
       maxWidth: '95vw',
@@ -365,6 +372,7 @@ export class PuestosComponent implements OnInit {
         puestos: this.puestosMostrados,
         clienteNombre: this.clienteSeleccionadoNombre,
         fecha: this.fechaReporteNovedad,
+        novedad: novedad,
       }
     });
 
