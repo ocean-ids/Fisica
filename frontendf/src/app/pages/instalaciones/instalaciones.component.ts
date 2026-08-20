@@ -92,6 +92,7 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
   abrirModal(instalacion?: any): void {
     const dialogRef = this.dialog.open(InstalacionFormComponent, {
       width: '500px',
+      autoFocus: false,
       data: { instalacion: instalacion || null, clientes: this.clientes }
     });
 
@@ -122,7 +123,7 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
       next: (resp: any) => {
         this.cargarInstalaciones();
         if (resp?.nominativo_aviso) {
-          Swal.fire({ icon: 'info', title: 'Instalación creada', text: 'Nominativo pendiente: ' + resp.nominativo_aviso });
+          Swal.fire({ icon: 'info', title: 'Instalación creada', html: 'La instalación se creó correctamente.<br><br><b>Nominativo y Zona pendientes por asignación de Consola .</b>' });
         } else {
           Swal.fire({ icon: 'success', title: 'Creada', timer: 1200, showConfirmButton: false });
         }
@@ -150,7 +151,7 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
       next: (resp: any) => {
         this.cargarInstalaciones();
         if (resp?.nominativo_aviso) {
-          Swal.fire({ icon: 'info', title: 'Instalación actualizada', text: 'Nominativo pendiente: ' + resp.nominativo_aviso });
+          Swal.fire({ icon: 'info', title: 'Instalación actualizada', html: 'La instalación se actualizó correctamente.<br><br><b>Nominativo y zona pendientes de asignación por Consola.</b>' });
         } else {
           Swal.fire({ icon: 'success', title: 'Actualizada', timer: 1200, showConfirmButton: false });
         }
@@ -166,8 +167,8 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
     const res = await Swal.fire({
       title: '¿Cerrar instalación?',
       html: `Se cerrará <b>${instalacion.nombre || ''}</b>.<br><br>` +
-            'Se desactivarán sus puestos y asignaciones (las personas quedan libres) y se ' +
-            'liberará su código. <b>No se borra nada</b> y se puede reabrir.',
+            'Se desactivarán sus puestos y asignaciones y se ' +
+            'liberará su Nominativo por Zona.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Sí, cerrar',
@@ -190,8 +191,7 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
   async confirmarReabrir(instalacion: any): Promise<void> {
     const res = await Swal.fire({
       title: '¿Reabrir instalación?',
-      html: `Se reactivará <b>${instalacion.nombre || ''}</b> y sus puestos. ` +
-            'Las asignaciones de personal se vuelven a asignar (o se re-importan).',
+      html: `Se reactivará <b>${instalacion.nombre || ''}</b> y sus puestos. ` ,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Sí, reabrir',
@@ -201,7 +201,7 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
     try {
       const r: any = await firstValueFrom(this.instalacionService.reabrirInstalacion(instalacion.id));
       if (r?.nominativo_aviso) {
-        await Swal.fire({ icon: 'info', title: 'Instalación reabierta', text: 'Nominativo pendiente: ' + r.nominativo_aviso });
+        await Swal.fire({ icon: 'info', title: 'Instalación reabierta', html: 'La instalación quedó activa nuevamente.<br><br><b>Nominativo y zona pendientes de asignación por Consola.</b>' });
       } else {
         await Swal.fire({ icon: 'success', title: 'Instalación reabierta', timer: 1400, showConfirmButton: false });
       }
