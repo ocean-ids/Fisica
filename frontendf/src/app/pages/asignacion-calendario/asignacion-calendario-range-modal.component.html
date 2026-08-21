@@ -1,32 +1,44 @@
-<h2 mat-dialog-title>Aplicar secuencia</h2>
+<h2 class="text-center" mat-dialog-title>Aplicar secuencia</h2>
 
 <mat-dialog-content>
   <div class="range-form">
-    <mat-form-field appearance="outline" class="field">
-      <mat-label>Desde</mat-label>
-      <input #desdeInput matInput type="date" [(ngModel)]="start" (ngModelChange)="onInputChange()" (dblclick)="openDatePicker($event)" />
-      <button matSuffix mat-icon-button type="button" aria-label="Abrir calendario" (click)="abrirPicker(desdeInput)">
-        <mat-icon>calendar_today</mat-icon>
-      </button>
-    </mat-form-field>
+    <div class="fechas-row">
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>Desde</mat-label>
+        <input #desdeInput matInput type="date" [(ngModel)]="start" (ngModelChange)="onInputChange()" (dblclick)="openDatePicker($event)" />
+        <button matSuffix mat-icon-button type="button" aria-label="Abrir calendario" (click)="abrirPicker(desdeInput)">
+          <mat-icon>calendar_today</mat-icon>
+        </button>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline" class="field">
-      <mat-label>Hasta</mat-label>
-      <input
-        #hastaInput
-        matInput
-        type="date"
-        [(ngModel)]="end"
-        (ngModelChange)="onEndChange()"
-        (dblclick)="openDatePicker($event)"
-        [disabled]="noEnd"
-      />
-      <button matSuffix mat-icon-button type="button" aria-label="Abrir calendario" [disabled]="noEnd" (click)="abrirPicker(hastaInput)">
-        <mat-icon>calendar_today</mat-icon>
-      </button>
-    </mat-form-field>
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>Hasta</mat-label>
+        <input
+          #hastaInput
+          matInput
+          type="date"
+          [(ngModel)]="end"
+          (ngModelChange)="onEndChange()"
+          (dblclick)="openDatePicker($event)"
+          [disabled]="noEnd"
+        />
+        <button matSuffix mat-icon-button type="button" aria-label="Abrir calendario" [disabled]="noEnd" (click)="abrirPicker(hastaInput)">
+          <mat-icon>calendar_today</mat-icon>
+        </button>
+      </mat-form-field>
+    </div>
 
-    <mat-checkbox [(ngModel)]="noEnd" (change)="onNoEndChange()">Sin fecha fin</mat-checkbox>
+    <div class="opciones-row">
+      <mat-checkbox [(ngModel)]="noEnd" (change)="onNoEndChange()">Sin fecha fin</mat-checkbox>
+    </div>
+
+    <div class="patron-row" *ngIf="!data.isSacafranco && patrones.length">
+      <label class="patron-label">Patrón</label>
+      <select class="patron-select" [(ngModel)]="patronSel" (change)="aplicarPatron()">
+        <option value="">— Elegir patrón —</option>
+        <option *ngFor="let p of patrones" [value]="p.codigo">{{ p.codigo }} ({{ p.secuencia.join('') }})</option>
+      </select>
+    </div>
 
     <mat-form-field appearance="outline" class="field">
       <mat-label>Secuencia</mat-label>
@@ -34,17 +46,22 @@
     </mat-form-field>
 
     <div class="preview" *ngIf="previewRows.length">
-      <div class="preview-title">Vista previa</div>
-      <div class="preview-sub" *ngIf="rowTitle">{{ rowTitle }}</div>
-      <div class="preview-row" *ngFor="let p of previewRows">
-        <div class="preview-cell label">{{ p.label }}</div>
-        <div class="preview-cell date">{{ p.date }}</div>
-        <div class="preview-cell current">{{ p.currentValue || '-' }}</div>
-        <div class="preview-cell next">{{ p.newValue || '-' }}</div>
-      </div>
-      <div class="preview-legend">
-        <span class="legend">Actual</span>
-        <span class="legend">Nuevo</span>
+      <div class="preview-title">Vista previa <span class="preview-sub" *ngIf="rowTitle">· {{ rowTitle }}</span></div>
+      <div class="preview-table">
+        <div class="preview-head">
+          <div>Día</div>
+          <div>Fecha</div>
+          <div>Actual</div>
+          <div>Nuevo</div>
+        </div>
+        <div class="preview-body">
+          <div class="preview-row" *ngFor="let p of previewRows">
+            <div class="preview-cell label">{{ p.label }}</div>
+            <div class="preview-cell date">{{ p.date }}</div>
+            <div class="preview-cell current">{{ p.currentValue || '-' }}</div>
+            <div class="preview-cell next">{{ p.newValue || '-' }}</div>
+          </div>
+        </div>
       </div>
     </div>
 

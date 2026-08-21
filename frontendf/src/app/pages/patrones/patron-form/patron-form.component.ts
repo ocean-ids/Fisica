@@ -39,7 +39,7 @@ export class PatronFormComponent {
       : (rawData as PatronFormData)?.patron || null;
 
     this.patronForm = this.fb.group({
-      codigo: [patron?.codigo || '', [Validators.required, Validators.pattern(/^\d{2}$/), Validators.maxLength(2), Validators.minLength(2)]],
+      codigo: [patron?.codigo || '', [Validators.required, Validators.pattern(/^\d{2,4}$/), Validators.maxLength(4), Validators.minLength(2)]],
       secuencia: [patron?.secuencia?.join('-') || '', [Validators.required, Validators.pattern(/^(?:[DNF]+|[DNF](?:-[DNF])*)$/)]]
     });
   }
@@ -47,12 +47,13 @@ export class PatronFormComponent {
   
   onCodigoInput(event: Event): void{
     const input = event.target as HTMLInputElement;
-    input.value = input.value.replace(/\D/g, '').slice(0, 2);
+    input.value = input.value.replace(/\D/g, '').slice(0, 4);
     this.patronForm.get('codigo')?.setValue(input.value, { emitEvent: false});
 
-    if (input.value.length === 2) {
-      const [d1, d2] = input.value.split('').map(n => Number(n));
-      const seq = `${'D'.repeat(d1 || 0)}${'N'.repeat(d2 || 0)}${'F'.repeat(0)}`;
+    // Auto-relleno de secuencia: dig1 = D (dias), dig2 = N (noches), dig3 = F (francos).
+    if (input.value.length === 2 || input.value.length === 3) {
+      const [d1, d2, d3] = input.value.split('').map(n => Number(n));
+      const seq = `${'D'.repeat(d1 || 0)}${'N'.repeat(d2 || 0)}${'F'.repeat(d3 || 0)}`;
       this.patronForm.get('secuencia')?.setValue(seq, { emitEvent: false });
     }
   }

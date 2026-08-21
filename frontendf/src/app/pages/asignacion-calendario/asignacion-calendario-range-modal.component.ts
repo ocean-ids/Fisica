@@ -7,6 +7,8 @@ import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import {MatCheckboxModule} from '@angular/material/checkbox';
+import { PatronAsignacionService } from '../../services/patron-asignacion.service';
+import { PatronAsignacion } from '../../models/asignacion.model';
 
 export interface AsignacionRangeModalData {
   start: string;
@@ -49,8 +51,13 @@ export class AsignacionCalendarioRangeModalComponent {
   previewRows: Array<{ label: string; date: string; dayKey: string; currentValue: string; newValue: string }> = [];
   rowTitle: string = '';
 
+  // Patrones predefinidos (331, 222...) para llenar la secuencia sin escribir.
+  patrones: PatronAsignacion[] = [];
+  patronSel = '';
+
   constructor(
     private dialogRef: MatDialogRef<AsignacionCalendarioRangeModalComponent, AsignacionRangeModalResult>,
+    private patronService: PatronAsignacionService,
     @Inject(MAT_DIALOG_DATA) public data: AsignacionRangeModalData
   ) {
     this.start = data.start || '';
@@ -59,6 +66,21 @@ export class AsignacionCalendarioRangeModalComponent {
     this.noEnd = true;
     this.end = '';
     this.rowTitle = this.buildRowTitle(data?.row);
+    // Los patrones (D/N/F) solo aplican a guardias fijos, no a sacafranco.
+    if (!data.isSacafranco) {
+      this.patronService.obtenerPatrones().subscribe({
+        next: (list) => { this.patrones = list || []; },
+        error: () => { this.patrones = []; },
+      });
+    }
+    this.refreshPreview();
+  }
+
+  // Al elegir un patrón del select, llena la secuencia con su ciclo (ej. 331 -> DDDNNNF).
+  aplicarPatron(): void {
+    const p = this.patrones.find(x => x.codigo === this.patronSel);
+    if (!p) return;
+    this.seq = (p.secuencia || []).join('');
     this.refreshPreview();
   }
 
