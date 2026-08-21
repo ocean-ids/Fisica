@@ -113,7 +113,7 @@
                                 {{ r.codigo || '-' }}
                             </td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.cliente || '-' }}</td>
-                            <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto_tipo || r.puesto || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.horario || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.nombre_apellidos || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)"
