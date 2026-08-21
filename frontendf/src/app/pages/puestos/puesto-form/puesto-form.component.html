@@ -1,7 +1,7 @@
 <h2 mat-dialog-title>{{ data.puesto?.id ? 'Editar' : 'Nuevo' }} Puesto</h2>
 <mat-dialog-content>
   <form [formGroup]="puestoForm">
-    <mat-form-field appearance="outline" class="full-width">
+    <mat-form-field appearance="outline" class="full-width mt-1">
       <mat-label>Nombre del Puesto</mat-label>
       <input matInput formControlName="nombre" required>
       <mat-error *ngIf="puestoForm.get('nombre')?.hasError('required')">
@@ -18,7 +18,10 @@
 
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Tipo de Puesto</mat-label>
-      <input matInput formControlName="tipo">
+      <mat-select formControlName="tipo">
+        <mat-option [value]="''">Seleccione</mat-option>
+        <mat-option *ngFor="let t of tiposPuestoOpciones" [value]="t">{{ t }}</mat-option>
+      </mat-select>
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">

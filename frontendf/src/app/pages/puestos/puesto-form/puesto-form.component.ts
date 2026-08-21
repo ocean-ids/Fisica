@@ -29,6 +29,16 @@ import { Instalacion, Horario } from '../../../models';
 })
 export class PuestoFormComponent implements OnInit {
   puestoForm!: FormGroup;
+  // Tipos de puesto (lista fija, ya no texto libre).
+  readonly tiposPuestoBase = ['GARITA', 'RONDA', 'FIJO', 'INGRESO', 'CONTROL DE ACCESO (PERSONAS/VEHICULOS)'];
+  // Opciones a mostrar: las fijas + el tipo actual si es uno distinto (para no perderlo al editar).
+  get tiposPuestoOpciones(): string[] {
+    const actual = (this.puestoForm?.get('tipo')?.value || '').toString().trim();
+    if (actual && !this.tiposPuestoBase.includes(actual)) {
+      return [...this.tiposPuestoBase, actual];
+    }
+    return this.tiposPuestoBase;
+  }
   instalaciones: Instalacion[] = [];
   horariosCatalogo: Horario[] = [];
   private readonly TURNO_24H_UI = '24';
