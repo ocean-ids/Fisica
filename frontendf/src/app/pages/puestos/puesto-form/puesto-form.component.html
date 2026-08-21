@@ -13,7 +13,10 @@
       <mat-label>Código del puesto (opcional)</mat-label>
       <input matInput formControlName="codigo" maxlength="10" style="text-transform: uppercase"
              placeholder="Ej. G1, R2">
-      <mat-hint>Se usa en sacafranco: turno + nominativo + código (ej. DG15G1)</mat-hint>
+      <mat-hint>
+        Se usa en sacafranco: turno + nominativo + código (ej. DG15G1)
+        <span *ngIf="codigoSugerido"> · Sugerido: <strong>{{ codigoSugerido }}</strong></span>
+      </mat-hint>
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">

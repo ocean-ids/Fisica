@@ -1,44 +1,51 @@
-"""Asigna el `codigo` corto a los puestos GARITA/RONDA para usarlo en el sacafranco
-(token turno+nominativo+codigo, ej. DU6R1). El codigo se DERIVA del nombre/tipo:
+"""Asigna el `codigo` corto a los puestos para usarlo en el sacafranco
+(token turno+nominativo+codigo, ej. DU6R1). El codigo se DERIVA del TIPO (y si el
+tipo no define uno conocido, del nombre):
 
-  - GARITA -> G,  RONDA -> R
-  - si el nombre trae numero ("GARITA 2", "RONDA 1") -> usa ese numero: G2, R1
+  - GARITA -> G,  RONDA -> R,  FIJO -> F,  INGRESO -> I,  CONTROL DE ACCESO -> C
+  - si trae numero pegado al tipo ("GARITA 2", "RONDA 1") -> usa ese numero: G2, R1
   - si NO trae numero y hay varias en la instalacion -> se numeran por orden (id)
     rellenando huecos que no choquen con los numeros explicitos.
 
-Solo toca puestos GARITA/RONDA. No pisa codigos ya puestos a mano salvo con --forzar.
+Toca puestos de los 5 tipos. No pisa codigos ya puestos a mano salvo con --forzar.
 
 Uso:
     python manage.py asignar_codigos_puestos --dry-run
     python manage.py asignar_codigos_puestos
     python manage.py asignar_codigos_puestos --forzar     # reescribe todos
 """
-import re
 from collections import defaultdict
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from CoreFisica.models import Puesto
+# Reutiliza las mismas reglas de derivacion que usa la resolucion del sacafranco.
+from CoreFisica.views.asignacion_semanal_views import _PUESTO_TIPO_DEFS
 
-_NUM_RE = re.compile(r'(GARITA|RONDA)\s*0*([0-9]+)', re.I)
+
+def _letra_num(p):
+    """(letra, numero_explicito|None) derivado del TIPO y, si no, del NOMBRE.
+    Dentro de cada fuente gana la coincidencia mas a la izquierda."""
+    for fuente in (p.tipo or '', p.nombre or ''):
+        best = None  # (posicion, letra, numero)
+        for letra, rx in _PUESTO_TIPO_DEFS:
+            m = rx.search(fuente)
+            if m and (best is None or m.start() < best[0]):
+                best = (m.start(), letra, m.group(1))
+        if best:
+            return best[1], (int(best[2]) if best[2] else None)
+    return None, None
 
 
 def _grupo(p):
-    txt = f"{p.tipo or ''} {p.nombre or ''}".upper()
-    if 'GARITA' in txt:
-        return 'G'
-    if 'RONDA' in txt:
-        return 'R'
-    return None
+    return _letra_num(p)[0]
 
 
 def _num_en_nombre(p):
-    txt = f"{p.tipo or ''} {p.nombre or ''}"
-    m = _NUM_RE.search(txt)
-    return int(m.group(2)) if m else None
+    return _letra_num(p)[1]
 
 
 class Command(BaseCommand):
-    help = "Asigna codigo (G1/R1...) a puestos GARITA/RONDA, derivado del nombre."
+    help = "Asigna codigo (G1/R1/F1/I1/C1...) a puestos, derivado del tipo/nombre."
 
     def add_arguments(self, parser):
         parser.add_argument('--dry-run', action='store_true', help='Solo muestra, no guarda.')
@@ -48,10 +55,10 @@ class Command(BaseCommand):
         dry = opts.get('dry_run')
         forzar = opts.get('forzar')
 
-        # Agrupar puestos GARITA/RONDA ACTIVOS por (instalacion, grupo G/R).
+        # Agrupar puestos ACTIVOS por (instalacion, letra de tipo G/R/F/I/C).
         # Los puestos CERRADOS (activo=False) NO se numeran (no deben robar el G1/R1
         # al activo) y ademas se les LIMPIA el codigo para que no quede uno viejo.
-        por_inst = defaultdict(lambda: {'G': [], 'R': []})
+        por_inst = defaultdict(lambda: defaultdict(list))
         total_gr = 0
         cerrados_a_limpiar = []
         for p in Puesto.objects.filter(instalacion__isnull=False).order_by('instalacion_id', 'id'):
@@ -93,7 +100,7 @@ class Command(BaseCommand):
                     if forzar or (p.codigo or '') != nuevo:
                         cambios.append((p, nuevo))
 
-        self.stdout.write(f"Puestos GARITA/RONDA (total): {total_gr}")
+        self.stdout.write(f"Puestos con tipo reconocido (total): {total_gr}")
         self.stdout.write(f"Codigos a asignar/cambiar (ACTIVOS): {len(cambios)}")
         self.stdout.write(f"Codigos a LIMPIAR (puestos cerrados): {len(cerrados_a_limpiar)}")
         for p, nuevo in cambios[:20]:
