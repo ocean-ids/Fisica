@@ -4,12 +4,16 @@
   <div class="range-form">
     <mat-form-field appearance="outline" class="field">
       <mat-label>Desde</mat-label>
-      <input matInput type="date" [(ngModel)]="start" (ngModelChange)="onInputChange()" (dblclick)="openDatePicker($event)" />
+      <input #desdeInput matInput type="date" [(ngModel)]="start" (ngModelChange)="onInputChange()" (dblclick)="openDatePicker($event)" />
+      <button matSuffix mat-icon-button type="button" aria-label="Abrir calendario" (click)="abrirPicker(desdeInput)">
+        <mat-icon>calendar_today</mat-icon>
+      </button>
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="field">
       <mat-label>Hasta</mat-label>
       <input
+        #hastaInput
         matInput
         type="date"
         [(ngModel)]="end"
@@ -17,6 +21,9 @@
         (dblclick)="openDatePicker($event)"
         [disabled]="noEnd"
       />
+      <button matSuffix mat-icon-button type="button" aria-label="Abrir calendario" [disabled]="noEnd" (click)="abrirPicker(hastaInput)">
+        <mat-icon>calendar_today</mat-icon>
+      </button>
     </mat-form-field>
 
     <mat-checkbox [(ngModel)]="noEnd" (change)="onNoEndChange()">Sin fecha fin</mat-checkbox>

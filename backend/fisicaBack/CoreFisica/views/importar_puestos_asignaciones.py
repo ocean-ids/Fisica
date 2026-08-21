@@ -1532,11 +1532,15 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
 
                 if not cedula:
                     continue
-                # Solo registros completos: si la fila no tiene NINGUN dia marcado en el
-                # calendario, se salta (registro incompleto, no se importa).
-                if not any((v or '').strip() for v in cal):
+                # Solo registros COMPLETOS: el cronograma del mes debe estar lleno.
+                # Si falta ALGUN dia (hueco en blanco) o vienen menos dias que el mes,
+                # la fila NO se importa (cronograma incompleto).
+                _cal_mes = [(v or '').strip() for v in cal]
+                _dias_faltantes = [d_i + 1 for d_i, v in enumerate(_cal_mes) if not v]
+                if len(_cal_mes) < days_in_month or _dias_faltantes:
+                    _faltan = _dias_faltantes if len(_cal_mes) >= days_in_month else 'todos los dias del mes'
                     resumen['errores'].append(
-                        f'Hoja {ws.title}, Fila {i}: calendario vacio — no se importa (registro incompleto)'
+                        f'Hoja {ws.title}, Fila {i}: cronograma incompleto (dias sin marcar: {_faltan}) — no se importa'
                     )
                     continue
                 if not carry['nominativo']:

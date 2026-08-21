@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -32,7 +33,8 @@ export interface AsignacionRangeModalResult {
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatIconModule
   ],
   templateUrl: './asignacion-calendario-range-modal.component.html',
   styleUrl: './asignacion-calendario-range-modal.component.css'
@@ -72,9 +74,14 @@ export class AsignacionCalendarioRangeModalComponent {
 
   openDatePicker(event: Event): void {
     const input = event.target as HTMLInputElement | null;
+    this.abrirPicker(input);
+  }
+
+  // Abre el selector de fecha del input dado (usado por el boton del icono de calendario).
+  abrirPicker(input: HTMLInputElement | null): void {
     if (!input) return;
-    if (typeof input.showPicker === 'function') {
-      input.showPicker();
+    if (typeof (input as any).showPicker === 'function') {
+      (input as any).showPicker();
     } else {
       input.focus();
     }
