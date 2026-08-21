@@ -2,6 +2,7 @@ export interface ReporteAsistenciaRow {
   asignacion_id?: number | null;
   codigo?: string | null;
   cliente?: string;
+  instalacion_nombre?: string;
   puesto?: string;
   puesto_tipo?: string;
   horario?: string;

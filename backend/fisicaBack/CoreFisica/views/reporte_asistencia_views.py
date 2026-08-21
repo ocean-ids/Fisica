@@ -836,6 +836,7 @@ def _build_reporte_asistencia_data(
             'asignacion_id': asig.id,
             'codigo': override.codigo if (override and override.codigo) else (codigo_instalacion or ''),
             'cliente': cliente_nombre,
+            'instalacion_nombre': (getattr(asig.instalacion, 'nombre', '') or '') if asig else '',
             'puesto': puesto_nombre,
             'puesto_tipo': (getattr(asig.puesto, 'tipo', '') or '') if asig else '',
             'horario': horario_str,
