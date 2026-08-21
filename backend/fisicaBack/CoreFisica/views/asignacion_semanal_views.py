@@ -19,6 +19,7 @@ from rest_framework import status
 from ..serializers import AsignacionSemanalSerializer, SacafrancoFilaSemanalSerializer
 from django.db import transaction
 from datetime import datetime, date, timedelta
+from collections import defaultdict
 import re
 
 
@@ -30,22 +31,96 @@ SACAFRANCO_TOKEN_REGEX = re.compile(
     r'^(?P<prefix>[DN])(?P<code>[A-Z]{1,3}\d+)(?P<puesto>[A-Z]{1,3}\d+)?(?:#(?P<index>\d+))?$'
 )
 
-# Deriva el codigo corto del puesto (G1/R1...) desde su TIPO/NOMBRE, para que el
-# token del sacafranco (G2/R1) coincida con el puesto SIN necesitar el campo codigo:
-#   "GARITA 2" -> G2, "RONDA 1" -> R1, "GARITA" -> G1 (una sola, sin numero).
-_PUESTO_GR_RE = re.compile(r'(GARITA|RONDA)\s*0*(\d+)?', re.I)
+# Deriva el codigo corto del puesto (G1/R1/F1/I1/C1...) desde su TIPO (y, si el
+# tipo no define uno conocido, desde el NOMBRE) para que el token del sacafranco
+# (ej. DG15F1) coincida con el puesto SIN necesitar el campo `codigo`.
+#   GARITA->G  RONDA->R  FIJO->F  INGRESO->I  CONTROL DE ACCESO->C
+#   "GARITA 2" -> G2, "RONDA 1" -> R1, "FIJO" -> F1 (sin numero = 1).
+# El numero debe ir pegado al tipo (ej. "GARITA 2"); "RONDA PARQUEO 2" -> R1.
+_PUESTO_TIPO_DEFS = [
+    ('C', re.compile(r'CONTROL\s+DE\s+ACCESO\s*0*(\d+)?', re.I)),
+    ('G', re.compile(r'GARITA\s*0*(\d+)?', re.I)),
+    ('R', re.compile(r'RONDA\s*0*(\d+)?', re.I)),
+    ('I', re.compile(r'INGRESO\s*0*(\d+)?', re.I)),
+    ('F', re.compile(r'FIJO\s*0*(\d+)?', re.I)),
+]
+
+
+def _letra_num_puesto(puesto):
+    """(letra, numero_explicito|None) del puesto. La LETRA sale del TIPO (y si no
+    define un tipo conocido, del NOMBRE). El NUMERO explicito (pegado al tipo, ej.
+    "GARITA 2" -> 2) se busca en el tipo y en el nombre; si no hay, devuelve None."""
+    if not puesto:
+        return None, None
+    tipo = getattr(puesto, 'tipo', '') or ''
+    nombre = getattr(puesto, 'nombre', '') or ''
+    # 1) Letra: TIPO manda; si no, NOMBRE. Dentro de cada fuente gana la mas a la izquierda.
+    letra = None
+    for fuente in (tipo, nombre):
+        best = None
+        for l, rx in _PUESTO_TIPO_DEFS:
+            m = rx.search(fuente)
+            if m and (best is None or m.start() < best[0]):
+                best = (m.start(), l)
+        if best:
+            letra = best[1]
+            break
+    if not letra:
+        return None, None
+    # 2) Numero explicito pegado al keyword de esa letra, en tipo o nombre.
+    rx_letra = dict(_PUESTO_TIPO_DEFS)[letra]
+    for fuente in (tipo, nombre):
+        m = rx_letra.search(fuente)
+        if m and m.group(1):
+            return letra, int(m.group(1))
+    return letra, None
 
 
 def _codigo_puesto_desde_tipo(puesto):
-    if not puesto:
+    letra, num = _letra_num_puesto(puesto)
+    if not letra:
         return ''
-    txt = f"{getattr(puesto, 'tipo', '') or ''} {getattr(puesto, 'nombre', '') or ''}"
-    m = _PUESTO_GR_RE.search(txt)
-    if not m:
-        return ''
-    letra = 'G' if m.group(1).upper().startswith('G') else 'R'
-    num = m.group(2) or '1'
-    return f"{letra}{int(num)}"
+    return f"{letra}{num if num is not None else 1}"
+
+
+def _codigos_efectivos(asigs):
+    """Numera automaticamente los puestos de UNA instalacion por letra (G/R/F/I/C)
+    segun el orden (orden, id), respetando el `codigo` manual y los numeros
+    explicitos del tipo/nombre. Devuelve {asignacion_id: codigo} (ej. G1, G2).
+    Asi, con 2 garitas, la 1a resuelve G1 y la 2a G2 sin llenar nada."""
+    por_letra = defaultdict(list)
+    for a in asigs:
+        letra, _ = _letra_num_puesto(getattr(a, 'puesto', None))
+        if letra:
+            por_letra[letra].append(a)
+    out = {}
+    for letra, lista in por_letra.items():
+        lista = sorted(lista, key=lambda a: ((a.orden if getattr(a, 'orden', None) is not None else 999999), a.id))
+        usados = set()
+        pendientes = []
+        # 1) numeros explicitos (codigo manual "Gn" manda; si no, numero del tipo/nombre)
+        for a in lista:
+            n = None
+            cod_manual = str(getattr(a.puesto, 'codigo', '') or '').strip().upper()
+            m = re.fullmatch(rf'{letra}(\d+)', cod_manual)
+            if m:
+                n = int(m.group(1))
+            else:
+                _, n = _letra_num_puesto(a.puesto)
+            if n is not None and n not in usados:
+                usados.add(n)
+                out[a.id] = f"{letra}{n}"
+            else:
+                pendientes.append(a)
+        # 2) el resto -> siguiente numero libre por orden
+        k = 1
+        for a in pendientes:
+            while k in usados:
+                k += 1
+            usados.add(k)
+            out[a.id] = f"{letra}{k}"
+            k += 1
+    return out
 
 
 def _puesto_detalle_dict(puesto):
@@ -217,32 +292,40 @@ def _validate_sacafranco_tokens(data, week_start_date):
             instalacion__codigo__iexact=token_code
         ).exclude(persona__tipo='SACAFRANCO')
 
-        matches = []
+        # Candidatos: asignaciones activas en la fecha y del turno del token.
+        candidatos = []
         for asig in qs:
             if not _is_asignacion_active_on_date(asig, target_date):
                 continue
-            # Si el token trae codigo de puesto (ej. DG15G2 -> G2), filtrar al puesto exacto.
-            # Coincide contra el campo `codigo` del puesto O el codigo derivado de su
-            # TIPO/NOMBRE ("GARITA 2" -> G2), asi basta con nombrar bien el puesto.
-            if token_puesto:
-                _codes = set()
-                _c = str(getattr(asig.puesto, 'codigo', '') or '').strip().upper()
-                if _c:
-                    _codes.add(_c)
-                _d = _codigo_puesto_desde_tipo(asig.puesto)
-                if _d:
-                    _codes.add(_d)
-                if token_puesto not in _codes:
-                    continue
             asig_turno = _resolve_asignacion_turno(asig)
             if asig_turno == token_turno or asig_turno == 'Ambos':
-                matches.append(asig)
+                candidatos.append(asig)
+
+        if token_puesto:
+            # El token trae codigo de puesto (ej. DG15G2 -> G2). Se numeran los puestos
+            # de la instalacion automaticamente por letra (G1, G2...) y se filtra al que
+            # coincide; asi con 2 garitas basta DG15G1 / DG15G2 sin llenar el codigo.
+            cod_map = _codigos_efectivos(candidatos)
+            matches = [a for a in candidatos if cod_map.get(a.id) == token_puesto]
+        else:
+            matches = list(candidatos)
 
         matches = sorted(matches, key=lambda a: ((a.orden if getattr(a, 'orden', None) is not None else 999999), a.id))
 
         if not matches:
             _turno_txt = 'Noche' if token_turno == 'Nocturno' else ('Día' if token_turno == 'Diurno' else str(token_turno or ''))
             _nom = token_code or raw_value
+            # Aviso especifico: hay asignaciones en el nominativo/turno, pero el codigo de
+            # puesto del token (ej. G1) ya no coincide (p.ej. cambio el tipo del puesto).
+            if token_puesto and candidatos:
+                _disp = sorted(set(_codigos_efectivos(candidatos).values()))
+                _disp_txt = ', '.join(_disp) if _disp else '(sin código)'
+                return (
+                    f"El código de puesto '{token_puesto}' del token {raw_value} en "
+                    f"{day_key.upper()} ({target_date.strftime('%d/%m/%Y')}) ya no coincide con "
+                    f"ningún puesto de {_nom}. Puestos disponibles ese día: {_disp_txt}. "
+                    f"Puede que haya cambiado el tipo del puesto; corrija el código en el token."
+                ), None
             return (
                 f"Este sacafranco iba a cubrir el nominativo {_nom} en turno {_turno_txt} "
                 f"el {target_date.strftime('%d/%m/%Y')}, pero no hay ninguna asignación activa "

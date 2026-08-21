@@ -39,6 +39,34 @@ export class PuestoFormComponent implements OnInit {
     }
     return this.tiposPuestoBase;
   }
+  // Reglas para sugerir el codigo del puesto (mismas del backend): el TIPO manda
+  // y, si no define uno conocido, cae al NOMBRE. GARITA->G RONDA->R FIJO->F
+  // INGRESO->I CONTROL DE ACCESO->C.
+  private readonly tipoDefs: { letra: string; rx: RegExp }[] = [
+    { letra: 'C', rx: /CONTROL\s+DE\s+ACCESO\s*0*(\d+)?/i },
+    { letra: 'G', rx: /GARITA\s*0*(\d+)?/i },
+    { letra: 'R', rx: /RONDA\s*0*(\d+)?/i },
+    { letra: 'I', rx: /INGRESO\s*0*(\d+)?/i },
+    { letra: 'F', rx: /FIJO\s*0*(\d+)?/i },
+  ];
+
+  // Codigo sugerido (G1/R1/F1/I1/C1) segun el Tipo elegido o el nombre.
+  get codigoSugerido(): string {
+    const tipo = (this.puestoForm?.get('tipo')?.value || '').toString();
+    const nombre = (this.puestoForm?.get('nombre')?.value || '').toString();
+    for (const fuente of [tipo, nombre]) {
+      let best: { pos: number; letra: string; num: string } | null = null;
+      for (const d of this.tipoDefs) {
+        const m = d.rx.exec(fuente);
+        if (m && (best === null || m.index < best.pos)) {
+          best = { pos: m.index, letra: d.letra, num: m[1] || '1' };
+        }
+      }
+      if (best) { return `${best.letra}${parseInt(best.num, 10)}`; }
+    }
+    return '';
+  }
+
   instalaciones: Instalacion[] = [];
   horariosCatalogo: Horario[] = [];
   private readonly TURNO_24H_UI = '24';
