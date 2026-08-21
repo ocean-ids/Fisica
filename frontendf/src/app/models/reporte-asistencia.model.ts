@@ -3,6 +3,7 @@ export interface ReporteAsistenciaRow {
   codigo?: string | null;
   cliente?: string;
   puesto?: string;
+  puesto_tipo?: string;
   horario?: string;
   nombre_apellidos?: string;
   reemplazo_id?: number | null;
