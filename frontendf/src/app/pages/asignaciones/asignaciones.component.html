@@ -316,7 +316,7 @@
                                 class="calendar-input"
                                 [ngClass]="getCalendarCellClass(calRow[dayKey])"
                                 [ngModel]="calRow[dayKey]"
-                                (input)="onSacafrancoCalendarCellChange(row, ws, dayKey, $any($event.target).value)"
+                                (change)="onSacafrancoCalendarCellChange(row, ws, dayKey, $any($event.target).value)"
                                 (dblclick)="openRangeModal(row, ws, dayKey, true)"
                                 [disabled]="isPastMonth()"
                                 [ngModelOptions]="{standalone:true}">
