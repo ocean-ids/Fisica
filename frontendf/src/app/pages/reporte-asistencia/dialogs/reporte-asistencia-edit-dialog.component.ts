@@ -286,6 +286,12 @@ export class ReporteAsistenciaEditDialogComponent {
     return this.getNombrePersona(value);
   };
 
+  // Limpia el buscador de Reemplazo (la X): borra texto y el reemplazo elegido.
+  limpiarReemplazo(): void {
+    this.reemplazoCtrl.setValue('', { emitEvent: false });
+    this.form.get('reemplazo_id')?.setValue(null);
+  }
+
   onReemplazoOptionSelected(value: Persona | null): void {
     if (value?.id && this.reemplazosOcupadosIds.has(Number(value.id))) {
       Swal.fire({
