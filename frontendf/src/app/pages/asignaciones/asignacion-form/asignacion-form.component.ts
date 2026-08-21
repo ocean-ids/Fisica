@@ -7,6 +7,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatIconModule } from '@angular/material/icon';
 import { Asignacion, PatronAsignacion } from '../../../models/asignacion.model';
 import { Cliente, Persona, Instalacion, Puesto, Horario } from '../../../models';
 import { InstalacionService } from '../../../services/instalacion.service';
@@ -49,7 +50,8 @@ export interface AsignacionFormResult {
     MatSelectModule,
     MatButtonModule,
     MatInputModule,
-    MatAutocompleteModule
+    MatAutocompleteModule,
+    MatIconModule
   ],
   templateUrl: './asignacion-form.component.html',
   styleUrl: './asignacion-form.component.css'
@@ -271,6 +273,15 @@ export class AsignacionFormComponent implements OnInit {
     this.onClientChange();
   }
 
+  // Limpia el buscador de Cliente (la X): borra texto, selección y todo en cascada.
+  limpiarCliente(inputEl: HTMLInputElement): void {
+    if (inputEl) { inputEl.value = ''; }
+    this.clienteSeleccionadoObj = null;
+    this.clienteSeleccionado = null;
+    this.clientesFiltrados = this.clientes.slice();
+    this.onClientChange();
+  }
+
   private setClienteSeleccionadoFromAsignacion(): void {
     if (!this.clienteSeleccionado) return;
     this.clienteSeleccionadoObj = this.clientes.find(c => c.id === this.clienteSeleccionado) || null;
@@ -348,6 +359,14 @@ export class AsignacionFormComponent implements OnInit {
   seleccionarPersona(persona: Persona): void {
     this.asignacion.persona = persona?.id || 0;
     this.personaSeleccionada = persona || null;
+  }
+
+  // Limpia el buscador de Persona (la X): borra texto y selección.
+  limpiarPersona(inputEl: HTMLInputElement): void {
+    if (inputEl) { inputEl.value = ''; }
+    this.personaSeleccionada = null;
+    this.asignacion.persona = 0;
+    this.personasFiltradas = this.getPersonasActivas();
   }
 
   private setPersonaSeleccionadaFromAsignacion(): void {

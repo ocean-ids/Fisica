@@ -14,6 +14,10 @@
           [ngModelOptions]="{standalone:true}"
           (input)="filtrarClientes(clienteInput.value)"
         />
+        <button *ngIf="clienteInput.value" matSuffix mat-icon-button type="button"
+                aria-label="Limpiar" (click)="limpiarCliente(clienteInput)">
+          <mat-icon>close</mat-icon>
+        </button>
 
         <mat-autocomplete
           #clienteAuto="matAutocomplete"
@@ -88,6 +92,10 @@
           (input)="filtrarPersonas(personaInput.value)"
           [disabled]="!canSelectPersona()"
         />
+        <button *ngIf="personaInput.value" matSuffix mat-icon-button type="button"
+                aria-label="Limpiar" (click)="limpiarPersona(personaInput)">
+          <mat-icon>close</mat-icon>
+        </button>
 
         <mat-autocomplete
           #personaAuto="matAutocomplete"

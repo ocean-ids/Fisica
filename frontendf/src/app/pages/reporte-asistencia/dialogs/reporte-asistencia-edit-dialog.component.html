@@ -64,6 +64,10 @@
         [readonly]="guardando || cargandoReemplazos"
         placeholder="Escribe para filtrar reemplazo"
       >
+      <button *ngIf="reemplazoCtrl.enabled && reemplazoCtrl.value" matSuffix mat-icon-button type="button"
+              aria-label="Limpiar" (click)="limpiarReemplazo()">
+        <mat-icon>close</mat-icon>
+      </button>
       <mat-autocomplete
         #autoReemplazo="matAutocomplete"
         [displayWith]="displayReemplazo"
