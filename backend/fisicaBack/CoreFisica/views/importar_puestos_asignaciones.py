@@ -1240,7 +1240,7 @@ def es_formato_reporte(wb):
 
 
 def importar_formato_reporte(request, wb, cliente_id_filter=None):
-    from .asignacion_semanal_views import _sync_sacafranco_to_reporte_y_consolidado, _validate_sacafranco_tokens
+    from .asignacion_semanal_views import _sync_sacafranco_to_reporte_y_consolidado, _validate_sacafranco_tokens, _purge_auto_sacafranco_persona
     from ..models import SacafrancoFilaSemanal, SacafrancoFila
     from ..audit import suppress_audit
 
@@ -1455,6 +1455,13 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         sem, _ = SacafrancoFilaSemanal.objects.get_or_create(sacafranco_fila=fila, week_start=ws_start)
                         setattr(sem, day_field, (val or '').upper())
                         sem.save()
+                    # RECONCILIAR: borrar toda la cobertura AUTO vieja de este sacafranco en
+                    # el mes (incluye huerfanas de imports previos, p.ej. un nominativo que ya
+                    # no cubre); el sync de abajo regenera solo la vigente.
+                    try:
+                        _purge_auto_sacafranco_persona(persona.id, month_start, date(anio, mes, days_in_month))
+                    except Exception:
+                        pass
                     _saca_errs = set()
                     for wk in range(((days_in_month - 1) // 7) + 1):
                         ws_start = month_start + timedelta(days=wk * 7)
@@ -1511,6 +1518,14 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                                 )
                                 for wss, dm in wp.items()
                             ])
+                            # RECONCILIAR el mes proyectado: borrar cobertura AUTO vieja
+                            # (incluye huerfanas de imports previos hasta futuros lejanos,
+                            # p.ej. un K16 que quedo hasta 2029). El sync de abajo (si esta
+                            # dentro del horizonte) regenera solo la vigente.
+                            try:
+                                _purge_auto_sacafranco_persona(persona.id, t_start, date(ty, tm, t_days))
+                            except Exception:
+                                pass
                             # ...y sincronizar por semana para que el sacafranco SI se refleje
                             # en Reporte de Asistencia y Consolidado. Solo para los primeros
                             # meses (horizonte operativo): sincronizar los 36 meses por semana
