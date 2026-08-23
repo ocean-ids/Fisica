@@ -292,11 +292,14 @@ def _validate_sacafranco_tokens(data, week_start_date):
             instalacion__codigo__iexact=token_code
         ).exclude(persona__tipo='SACAFRANCO')
 
-        # Candidatos: asignaciones activas en la fecha, ruteadas por el CALENDARIO del
-        # dia (D/N) igual que el Reporte de Asistencia. El turno real de cada guardia lo
-        # da su cronograma (AsignacionSemanal), no el turno estatico del puesto: un puesto
-        # "Diurno" puede tener a su guardia en N ese dia. Si la asignacion no tiene
-        # calendario ese dia, se cae al turno del puesto como respaldo.
+        # Candidatos: asignaciones activas en la fecha cuyo TURNO del token corresponde.
+        # El turno se decide asi (combina calendario y turno del puesto):
+        #  - si el guardia ese dia esta en D/N segun su cronograma y coincide con el token
+        #    -> es el que trabaja ese turno (recupera cobertura Noche que el turno estatico
+        #    "Diurno" del puesto nunca hallaba);
+        #  - si ese dia esta en FRANCO (F) o no tiene calendario -> se usa el turno base del
+        #    puesto; asi el sacafranco cubre la posicion del guardia que esta de franco
+        #    (que es JUSTO cuando se necesita cobertura).
         from .reporte_asistencia_views import _calendar_dnf_for_date
         dnf = _calendar_dnf_for_date(target_date)
         token_letter = 'D' if token_turno == 'Diurno' else ('N' if token_turno == 'Nocturno' else '')
@@ -306,12 +309,12 @@ def _validate_sacafranco_tokens(data, week_start_date):
             if not _is_asignacion_active_on_date(asig, target_date):
                 continue
             letra = dnf.get(asig.id)
-            if letra:
-                # El calendario manda: F = franco (no cubre); D/N debe coincidir con el token.
+            if letra in ('D', 'N'):
+                # Trabaja ese dia: solo coincide si su letra es la del token.
                 if letra == token_letter:
                     candidatos.append(asig)
             else:
-                # Sin calendario ese dia: respaldo por el turno estatico del puesto.
+                # Franco (F), sin marca o sin calendario: cubre segun el turno base del puesto.
                 asig_turno = _resolve_asignacion_turno(asig)
                 if asig_turno == token_turno or asig_turno == 'Ambos':
                     candidatos.append(asig)
