@@ -292,14 +292,29 @@ def _validate_sacafranco_tokens(data, week_start_date):
             instalacion__codigo__iexact=token_code
         ).exclude(persona__tipo='SACAFRANCO')
 
-        # Candidatos: asignaciones activas en la fecha y del turno del token.
+        # Candidatos: asignaciones activas en la fecha, ruteadas por el CALENDARIO del
+        # dia (D/N) igual que el Reporte de Asistencia. El turno real de cada guardia lo
+        # da su cronograma (AsignacionSemanal), no el turno estatico del puesto: un puesto
+        # "Diurno" puede tener a su guardia en N ese dia. Si la asignacion no tiene
+        # calendario ese dia, se cae al turno del puesto como respaldo.
+        from .reporte_asistencia_views import _calendar_dnf_for_date
+        dnf = _calendar_dnf_for_date(target_date)
+        token_letter = 'D' if token_turno == 'Diurno' else ('N' if token_turno == 'Nocturno' else '')
+
         candidatos = []
         for asig in qs:
             if not _is_asignacion_active_on_date(asig, target_date):
                 continue
-            asig_turno = _resolve_asignacion_turno(asig)
-            if asig_turno == token_turno or asig_turno == 'Ambos':
-                candidatos.append(asig)
+            letra = dnf.get(asig.id)
+            if letra:
+                # El calendario manda: F = franco (no cubre); D/N debe coincidir con el token.
+                if letra == token_letter:
+                    candidatos.append(asig)
+            else:
+                # Sin calendario ese dia: respaldo por el turno estatico del puesto.
+                asig_turno = _resolve_asignacion_turno(asig)
+                if asig_turno == token_turno or asig_turno == 'Ambos':
+                    candidatos.append(asig)
 
         if token_puesto:
             # El token trae codigo de puesto (ej. DG15G2 -> G2). Se numeran los puestos
@@ -612,6 +627,36 @@ def _cleanup_auto_sacafranco_from_token_map(sacafranco_fila_id, week_start_date,
                 | Q(observacion='')
                 | Q(observacion__istartswith='COBERTURA SACAFRANCO AUTO')
             ).delete()
+
+
+def _purge_auto_sacafranco_persona(persona_id, date_from, date_to):
+    """Borra TODA la cobertura AUTO de sacafranco de esta persona entre date_from
+    y date_to (historial + consolidado). Se usa al reimportar para RECONCILIAR:
+    elimina coberturas AUTO viejas (incluidas las huerfanas de un import previo,
+    p.ej. un nominativo que ya no cubre) y luego el sync regenera solo la vigente.
+    No toca entradas manuales (usuario != null) ni descripciones que no sean AUTO."""
+    if not persona_id or not date_from or not date_to:
+        return
+    hist = ReporteAsistenciaHistorial.objects.filter(
+        reemplazo_id=persona_id,
+        fecha_reporte__gte=date_from,
+        fecha_reporte__lte=date_to,
+        usuario__isnull=True,
+        descripcion__istartswith='Cobertura SACAFRANCO AUTO',
+    )
+    asig_ids = list(hist.values_list('asignacion_id', flat=True))
+    hist.delete()
+    if asig_ids:
+        Consolidado.objects.filter(
+            fecha__gte=date_from,
+            fecha__lte=date_to,
+            tipo='GUARDIA',
+            asignacion_ref_id__in=asig_ids,
+        ).filter(
+            Q(observacion__isnull=True)
+            | Q(observacion='')
+            | Q(observacion__istartswith='COBERTURA SACAFRANCO AUTO')
+        ).delete()
 
 
 def _auto_create_asignacion_semanal_for_week(week_start_date, provincia_id=None, canton_id=None):
