@@ -2037,9 +2037,12 @@ def exportar_asignaciones_excel(request):
         # En vista por TIPO de persona no se muestran filas de sacafranco.
         if tipos:
             return []
+        # Solo mostrar como SACAFRANCO a quien realmente es tipo SACAFRANCO.
+        # Evita que un FIJO con SacafrancoFila vieja (de cuando fue sacafranco)
+        # aparezca duplicado como fila sacafranco en el descargable.
         sac_qs = SacafrancoFila.objects.filter(
             Q(anio__lt=year) | Q(anio=year, mes__lte=month)
-        ).select_related('persona')
+        ).filter(persona__tipo='SACAFRANCO').select_related('persona')
         sin_scope = Q(cantones__len=0) & Q(clientes__len=0)
         if cliente_ids and not canton_ids:
             derived_cantones = list(
@@ -2202,8 +2205,10 @@ def exportar_asignaciones_excel(request):
                 'id': getattr(f, 'id', 0) or 0,
                 'item': f
             })
+        # Ordenar por la SECUENCIA del Excel (orden del import), NO por provincia:
+        # asi los sacafranco quedan intercalados donde estaban y no al final
+        # (antes provincia mandaba y los sacafranco, sin provincia, caian ultimos).
         rows.sort(key=lambda r: (
-            r['provincia'],
             r['orden'],
             0 if r['kind'] == 'asignacion' else 1,
             r['id']
