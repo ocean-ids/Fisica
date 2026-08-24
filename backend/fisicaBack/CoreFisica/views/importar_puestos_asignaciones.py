@@ -1647,6 +1647,11 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 row_orden = orden_counter
                 # RE-ORDENAR SIEMPRE segun el Excel: el orden refleja el ultimo import
                 # (fila por fila, pestaña por pestaña). Asi el grid sigue el orden del Excel.
+                # Acotar la asignacion a SU mes (end_date = ultimo dia del mes). Antes
+                # quedaba abierta (end_date=None) y se solapaba con los meses proyectados
+                # -> la persona salia DUPLICADA en los meses siguientes. Como la proyeccion
+                # crea una asignacion por cada mes, cada fecha queda cubierta por una sola.
+                _base_end = (date(anio, mes + 1, 1) - timedelta(days=1)) if mes < 12 else date(anio, 12, 31)
                 asig, created = Asignacion.objects.update_or_create(
                     persona=persona, mes=mes, anio=anio,
                     defaults={
@@ -1654,7 +1659,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         'puesto': puesto, 'horario': horario, 'fecha': None,
                         'patronAsignacion': None, 'estado': 'ACTIVO',
                         'publicada_calendario': True, 'recurring': True,
-                        'start_date': month_start, 'end_date': None,
+                        'start_date': month_start, 'end_date': _base_end,
                         'orden': row_orden,
                     }
                 )
@@ -1730,6 +1735,8 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                                    'recurring', 'start_date', 'end_date', 'orden']
                     to_update, to_create = [], []
                     for (ty, tm, t_start, wp) in targets:
+                        # Acotar cada mes proyectado a su propio mes (evita solape/duplicados).
+                        _t_end = (date(ty, tm + 1, 1) - timedelta(days=1)) if tm < 12 else date(ty, 12, 31)
                         a = existing.get((tm, ty))
                         if a:
                             a.cliente = instalacion.cliente
@@ -1742,7 +1749,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                             a.publicada_calendario = True
                             a.recurring = True
                             a.start_date = t_start
-                            a.end_date = None
+                            a.end_date = _t_end
                             a.orden = row_orden
                             to_update.append(a)
                         else:
@@ -1752,7 +1759,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                                 puesto=puesto, horario=horario, fecha=None,
                                 patronAsignacion=None, estado='ACTIVO',
                                 publicada_calendario=True, recurring=True,
-                                start_date=t_start, end_date=None, orden=row_orden,
+                                start_date=t_start, end_date=_t_end, orden=row_orden,
                             ))
                     if to_update:
                         Asignacion.objects.bulk_update(to_update, _upd_fields)
