@@ -319,7 +319,11 @@ def obtener_asignaciones(request, mes=None, anio=None):
     # si se proporcionan mes y año, filtrar asignaciones activas que correspondan al mes/año o que sean recurrentes y tengan rango de fechas que incluya el mes/año. Si no se proporcionan mes/año, devolver todas las asignaciones activas. En ambos casos, excluir personas de tipo SACAFRANCO y ordenar por orden y id para mantener un orden consistente.   
     base_qs = Asignacion.objects.filter(
         estado='ACTIVO'
-    ).exclude(puesto__activo=False)  # ocultar puestos CERRADOS (SACAFRANCO con asignación SÍ se incluye)
+    ).exclude(puesto__activo=False).filter(
+        # Ocultar asignaciones de personas desactivadas (is_active=False).
+        # Se mantienen las VACANTES (persona NULL) y las personas activas.
+        Q(persona__isnull=True) | Q(persona__is_active=True)
+    )  # ocultar puestos CERRADOS (SACAFRANCO con asignación SÍ se incluye)
 
     if mes and anio:
         month_start = datetime.date(int(anio), int(mes), 1)
@@ -1886,7 +1890,7 @@ def exportar_asignaciones_excel(request):
 
     # Columnas izquierdas (datos de asignación)
     # Se eliminó 'Dirección Instalación' según solicitud
-    left_headers = ['HORARIO', 'NOMINATIVO', 'CLIENTE', 'NOMBRE PUESTO', 'RESUMEN', 'CÉDULA', 'PERSONA', 'TIPO']
+    left_headers = ['HORARIO', 'NOMINATIVO', 'CLIENTE', 'NOMBRE PUESTO', 'RESUMEN', 'CÉDULA', 'PERSONA']
     left_cols = len(left_headers)
 
     # Columnas de fecha comienzan después de las columnas izquierdas
@@ -1900,34 +1904,34 @@ def exportar_asignaciones_excel(request):
     sacafranco_fill = PatternFill(fill_type='solid', fgColor='FFF3CD')
 
     ws.merge_cells('A1:A3')
-    ws.merge_cells('B1:E2')
-    ws.merge_cells('B3:E3')
-    ws.merge_cells('G1:H1')
-    ws.merge_cells('G2:H2')
-    ws.merge_cells('G3:H3')
+    ws.merge_cells('B1:D2')
+    ws.merge_cells('B3:D3')
+    ws.merge_cells('F1:G1')
+    ws.merge_cells('F2:G2')
+    ws.merge_cells('F3:G3')
 
     ws['B1'] = 'REPORTE DE HORARIOS DE PERSONAL'
     ws['B3'] = 'SEGURIDAD FÍSICA'
-    ws['F1'] = 'Código:'
-    ws['F2'] = 'Versión:'
-    ws['F3'] = 'Fecha:'
-    ws['G1'] = 'FOR-SF-001'
-    ws['G2'] = '02'
-    ws['G3'] = datetime.date.today().strftime('%d/%m/%Y')
+    ws['E1'] = 'Código:'
+    ws['E2'] = 'Versión:'
+    ws['E3'] = 'Fecha:'
+    ws['F1'] = 'FOR-SF-001'
+    ws['F2'] = '02'
+    ws['F3'] = datetime.date.today().strftime('%d/%m/%Y')
 
     ws['B1'].font = Font(bold=True, size=18)
     ws['B3'].font = Font(bold=True, size=14)
+    ws['E1'].font = ws['E2'].font = ws['E3'].font = Font(bold=True, size=11)
     ws['F1'].font = ws['F2'].font = ws['F3'].font = Font(bold=True, size=11)
-    ws['G1'].font = ws['G2'].font = ws['G3'].font = Font(bold=True, size=11)
 
     for row in range(1, 4):
-        for col in range(1, 9):
+        for col in range(1, 8):
             c = ws.cell(row=row, column=col)
             c.border = border
             c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
+    ws['E1'].alignment = ws['E2'].alignment = ws['E3'].alignment = Alignment(horizontal='left', vertical='center')
     ws['F1'].alignment = ws['F2'].alignment = ws['F3'].alignment = Alignment(horizontal='left', vertical='center')
-    ws['G1'].alignment = ws['G2'].alignment = ws['G3'].alignment = Alignment(horizontal='left', vertical='center')
 
     ws.row_dimensions[1].height = 42
     ws.row_dimensions[2].height = 34
@@ -1985,7 +1989,10 @@ def exportar_asignaciones_excel(request):
 
     # Base comun (igual que obtener_asignaciones, con el fix del NULL en NOT IN).
     # SACAFRANCO con asignación normal SÍ se incluye (aparece en lista y vistas).
-    _base = Asignacion.objects.filter(estado='ACTIVO').exclude(puesto__activo=False)
+    _base = Asignacion.objects.filter(estado='ACTIVO').exclude(puesto__activo=False).filter(
+        # Excluir personas desactivadas (is_active=False); mantener VACANTES (persona NULL).
+        Q(persona__isnull=True) | Q(persona__is_active=True)
+    )
     _personas_con_mes = _base.filter(mes=month, anio=year, persona_id__isnull=False).values('persona_id')
     _base = _base.filter(
         Q(mes=month, anio=year) |
@@ -2235,34 +2242,34 @@ def exportar_asignaciones_excel(request):
         target_ws.title = title
         # Encabezado institucional con logo (igual a la hoja general)
         target_ws.merge_cells('A1:A3')
-        target_ws.merge_cells('B1:E2')
-        target_ws.merge_cells('B3:E3')
-        target_ws.merge_cells('G1:H1')
-        target_ws.merge_cells('G2:H2')
-        target_ws.merge_cells('G3:H3')
+        target_ws.merge_cells('B1:D2')
+        target_ws.merge_cells('B3:D3')
+        target_ws.merge_cells('F1:G1')
+        target_ws.merge_cells('F2:G2')
+        target_ws.merge_cells('F3:G3')
 
         target_ws['B1'] = 'REPORTE DE HORARIOS DE PERSONAL'
         target_ws['B3'] = 'SEGURIDAD FÍSICA'
-        target_ws['F1'] = 'Código:'
-        target_ws['F2'] = 'Versión:'
-        target_ws['F3'] = 'Fecha:'
-        target_ws['G1'] = 'FOR-SF-001'
-        target_ws['G2'] = '02'
-        target_ws['G3'] = datetime.date.today().strftime('%d/%m/%Y')
+        target_ws['E1'] = 'Código:'
+        target_ws['E2'] = 'Versión:'
+        target_ws['E3'] = 'Fecha:'
+        target_ws['F1'] = 'FOR-SF-001'
+        target_ws['F2'] = '02'
+        target_ws['F3'] = datetime.date.today().strftime('%d/%m/%Y')
 
         target_ws['B1'].font = Font(bold=True, size=18)
         target_ws['B3'].font = Font(bold=True, size=14)
+        target_ws['E1'].font = target_ws['E2'].font = target_ws['E3'].font = Font(bold=True, size=11)
         target_ws['F1'].font = target_ws['F2'].font = target_ws['F3'].font = Font(bold=True, size=11)
-        target_ws['G1'].font = target_ws['G2'].font = target_ws['G3'].font = Font(bold=True, size=11)
 
         for row in range(1, 4):
-            for col in range(1, 9):
+            for col in range(1, 8):
                 c = target_ws.cell(row=row, column=col)
                 c.border = border
                 c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
+        target_ws['E1'].alignment = target_ws['E2'].alignment = target_ws['E3'].alignment = Alignment(horizontal='left', vertical='center')
         target_ws['F1'].alignment = target_ws['F2'].alignment = target_ws['F3'].alignment = Alignment(horizontal='left', vertical='center')
-        target_ws['G1'].alignment = target_ws['G2'].alignment = target_ws['G3'].alignment = Alignment(horizontal='left', vertical='center')
 
         target_ws.row_dimensions[1].height = 42
         target_ws.row_dimensions[2].height = 34
@@ -2362,7 +2369,6 @@ def exportar_asignaciones_excel(request):
                     resumen_val,
                     getattr(asignacion.persona, 'cedula', '') if asignacion.persona else '',
                     f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}".strip() if asignacion.persona else '(VACANTE)',
-                    getattr(asignacion.persona, 'tipo', '') if asignacion.persona else ''
                 ]
                 for ci, v in enumerate(vals, start=1):
                     cell = target_ws.cell(row=row_idx, column=ci)
@@ -2417,7 +2423,6 @@ def exportar_asignaciones_excel(request):
                     '',
                     getattr(persona, 'cedula', '') if persona else '',
                     f"{getattr(persona, 'apellidos', '')} {getattr(persona, 'nombres', '')}".strip(),
-                    getattr(persona, 'tipo', '') if persona else ''
                 ]
                 for ci, v in enumerate(vals, start=1):
                     cell = target_ws.cell(row=row_idx, column=ci)
