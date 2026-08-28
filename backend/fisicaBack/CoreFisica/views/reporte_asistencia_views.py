@@ -666,43 +666,33 @@ def _build_reporte_asistencia_data(
 
     # Ruteo por el calendario del día (D/N), no por la config de turno del puesto.
     # D -> Diurno, N -> Nocturno. Los francos (F) NO aparecen en el reporte.
+    # NOTA: la cobertura de sacafranco NO se enruta aqui; se agrega mas abajo como
+    # fila propia (independiente del fijo) desde su calendario semanal.
     dnf = _calendar_dnf_for_date(fecha_obj)
-
-    # Cobertura de sacafranco: la letra D/N del token NO es el turno del puesto, es el
-    # FILTRO (Diurno/Nocturno) bajo el que debe salir la cobertura en este reporte. Se
-    # enruta la fila cubierta según ese token (no según el calendario del puesto) y no se
-    # oculta aunque el puesto esté en franco.
-    cobertura_turno = {}
     if fecha_obj:
-        from .asignacion_semanal_views import _parse_sacafranco_token
-        _cov_latest = (ReporteAsistenciaHistorial.objects
-                       .filter(fecha_reporte=fecha_obj, asignacion__estado='ACTIVO')
-                       .order_by('asignacion_id', '-creado_en')
-                       .distinct('asignacion_id').values('id'))
-        for _aid, _desc in (ReporteAsistenciaHistorial.objects
-                            .filter(id__in=Subquery(_cov_latest))
-                            .values_list('asignacion_id', 'descripcion')):
-            if not _is_auto_sacafranco_desc(_desc):
-                continue
-            _parts = str(_desc or '').strip().split()
-            _tok = _parts[-1] if _parts else ''
-            _tt = _parse_sacafranco_token(_tok)[1]
-            if _tt in ('Diurno', 'Nocturno'):
-                cobertura_turno[_aid] = _tt
-
-    if fecha_obj:
-        # No ocultar como franco las asignaciones cubiertas por sacafranco.
-        franco_ids = {aid for aid, lt in dnf.items() if lt == 'F' and aid not in cobertura_turno}
+        franco_ids = {aid for aid, lt in dnf.items() if lt == 'F'}
         if franco_ids:
             asig_qs = asig_qs.exclude(id__in=franco_ids)
     _TURNO_LETRA = {'Diurno': 'D', 'Nocturno': 'N', 'Tarde': 'T', 'Veinticuatro': 'V'}
     if turno in _TURNO_LETRA and fecha_obj:
         letra_turno = _TURNO_LETRA[turno]
-        # Base: por calendario del puesto, EXCEPTO las cubiertas por sacafranco (esas se
-        # enrutan por el token). Luego se agregan las cubiertas cuyo token = este filtro.
-        ids_turno = {aid for aid, lt in dnf.items() if lt == letra_turno and aid not in cobertura_turno}
-        ids_turno |= {aid for aid, tt in cobertura_turno.items() if tt == turno}
+        ids_turno = {aid for aid, lt in dnf.items() if lt == letra_turno}
         asig_qs = asig_qs.filter(id__in=ids_turno)
+
+    # Evitar duplicado: cuando hay filtro de turno (Diurno/Nocturno) el sacafranco se
+    # muestra como su PROPIA fila (mas abajo, desde su calendario). Por eso el fijo que
+    # ese dia esta cubierto por un sacafranco NO debe salir tambien como fila de fijo.
+    if turno in ('Diurno', 'Nocturno') and fecha_obj:
+        _cov_latest = (ReporteAsistenciaHistorial.objects
+                       .filter(fecha_reporte=fecha_obj)
+                       .order_by('asignacion_id', '-creado_en')
+                       .distinct('asignacion_id').values('id'))
+        covered_ids = {aid for aid, desc in (ReporteAsistenciaHistorial.objects
+                       .filter(id__in=Subquery(_cov_latest))
+                       .values_list('asignacion_id', 'descripcion'))
+                       if _is_auto_sacafranco_desc(desc)}
+        if covered_ids:
+            asig_qs = asig_qs.exclude(id__in=covered_ids)
 
     if exclude_sacafranco:
         # Excluir asignaciones marcadas como cobertura de sacafranco (F) en la fecha consultada.

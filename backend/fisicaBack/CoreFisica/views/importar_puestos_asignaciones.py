@@ -1240,8 +1240,8 @@ def es_formato_reporte(wb):
 
 
 def importar_formato_reporte(request, wb, cliente_id_filter=None):
-    from .asignacion_semanal_views import _sync_sacafranco_to_reporte_y_consolidado, _validate_sacafranco_tokens, _purge_auto_sacafranco_persona
-    from ..models import SacafrancoFilaSemanal, SacafrancoFila
+    from .asignacion_semanal_views import _sync_sacafranco_to_reporte_y_consolidado, _validate_sacafranco_tokens, _purge_auto_sacafranco_persona, _parse_sacafranco_token
+    from ..models import SacafrancoFilaSemanal, SacafrancoFila, Instalacion as _Instalacion
     from ..audit import suppress_audit
 
     resumen = {
@@ -1448,12 +1448,32 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     if fila.orden != row_orden:
                         fila.orden = row_orden
                         fila.save(update_fields=['orden'])
+                    _pname = f"{getattr(persona, 'apellidos', '') or ''} {getattr(persona, 'nombres', '') or ''}".strip() or (getattr(persona, 'cedula', '') or '')
+                    _inst_exists_cache = {}
+                    def _nom_existe(_code):
+                        if not _code:
+                            return True
+                        _c = _code.upper()
+                        if _c not in _inst_exists_cache:
+                            _inst_exists_cache[_c] = _Instalacion.objects.filter(codigo__iexact=_c).exists()
+                        return _inst_exists_cache[_c]
                     for d_i, val in enumerate(cal):
                         day_num = d_i + 1
                         ws_start = month_start + timedelta(days=((day_num - 1) // 7) * 7)
                         day_field = WEEK_KEYS[date(anio, mes, day_num).weekday()]
+                        v_up = (val or '').upper()
+                        # Opcion (a): si el token cubre un nominativo que NO existe, ese DIA
+                        # no se importa (se deja en blanco). Los demas dias validos si entran.
+                        _tt, _tturno, _tcode, _tidx, _tpue = _parse_sacafranco_token(v_up)
+                        if _tt == 'coverage' and _tcode and not _nom_existe(_tcode):
+                            resumen['errores'].append(
+                                f"Hoja {ws.title}, Fila {i}: sacafranco {_pname} — el nominativo "
+                                f"'{_tcode}' no existe; no se importa el día "
+                                f"{day_num:02d}/{mes:02d}/{anio} (token {v_up})"
+                            )
+                            v_up = ''
                         sem, _ = SacafrancoFilaSemanal.objects.get_or_create(sacafranco_fila=fila, week_start=ws_start)
-                        setattr(sem, day_field, (val or '').upper())
+                        setattr(sem, day_field, v_up)
                         sem.save()
                     # RECONCILIAR: borrar toda la cobertura AUTO vieja de este sacafranco en
                     # el mes (incluye huerfanas de imports previos, p.ej. un nominativo que ya

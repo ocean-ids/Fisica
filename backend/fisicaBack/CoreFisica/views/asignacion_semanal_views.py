@@ -321,15 +321,15 @@ def _validate_sacafranco_tokens(data, week_start_date):
                     f"ningún puesto de {_nom} el {target_date.strftime('%d/%m/%Y')} "
                     f"(disponibles: {_disp_txt})"
                 ), None
-            existe = Asignacion.objects.filter(
-                instalacion__codigo__iexact=token_code
-            ).exclude(persona__tipo='SACAFRANCO').exists()
-            if not existe:
+            # Independiente del fijo: si la INSTALACION (nominativo) existe, el sacafranco
+            # igual aparece como su propia fila en el reporte de asistencia; no se valida
+            # si hay un fijo/franco disponible ese dia. Solo se alerta si el nominativo
+            # (la instalacion) no existe.
+            from ..models import Instalacion
+            if not Instalacion.objects.filter(codigo__iexact=token_code).exists():
                 return (f"el nominativo '{_nom}' no existe (token {raw_value})"), None
-            return (
-                f"el nominativo '{_nom}' no tiene asignación activa el "
-                f"{target_date.strftime('%d/%m/%Y')} (token {raw_value})"
-            ), None
+            resolved[day_key] = None
+            continue
 
         selected = None
         if token_index is None:
