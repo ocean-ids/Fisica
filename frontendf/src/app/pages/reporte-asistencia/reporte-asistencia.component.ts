@@ -180,9 +180,13 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   private buildReporteAgrupado(): ReporteAsistenciaGrupoZona[] {
     const zonas: Record<string, Record<string, ReporteAsistenciaRow[]>> = {};
     for (const row of this.reporte) {
-      const isBaseLibre = !row.asignacion_id
-        && (row.descripcion || '').toString().trim().toLowerCase().includes('libre en base');
-      if (!row.asignacion_id && !isBaseLibre) {
+      // Las filas de SACAFRANCO (cobertura y base) vienen con asignacion_id=null desde
+      // el backend y deben mostrarse. Antes solo se mostraban las de "libre en base" y
+      // se descartaban las de cobertura (S6, K66...). Ahora se muestra toda fila con
+      // contenido (nombre o codigo); solo se saltan las filas null realmente vacias.
+      if (!row.asignacion_id
+        && !(row.nombre_apellidos || '').toString().trim()
+        && !(row.codigo || '').toString().trim()) {
         continue;
       }
       let zona = (row.zona_titulo || '').trim() || 'SIN ZONA';

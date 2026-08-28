@@ -679,10 +679,10 @@ def _build_reporte_asistencia_data(
         ids_turno = {aid for aid, lt in dnf.items() if lt == letra_turno}
         asig_qs = asig_qs.filter(id__in=ids_turno)
 
-    # Evitar duplicado: cuando hay filtro de turno (Diurno/Nocturno) el sacafranco se
-    # muestra como su PROPIA fila (mas abajo, desde su calendario). Por eso el fijo que
-    # ese dia esta cubierto por un sacafranco NO debe salir tambien como fila de fijo.
-    if turno in ('Diurno', 'Nocturno') and fecha_obj:
+    # Evitar duplicado: el sacafranco se muestra como su PROPIA fila (mas abajo, desde su
+    # calendario) tanto con filtro Diurno/Nocturno como sin filtro de turno. Por eso el fijo
+    # que ese dia esta cubierto por un sacafranco NO debe salir tambien como fila de fijo.
+    if fecha_obj and (turno in ('Diurno', 'Nocturno') or not turno):
         _cov_latest = (ReporteAsistenciaHistorial.objects
                        .filter(fecha_reporte=fecha_obj)
                        .order_by('asignacion_id', '-creado_en')
@@ -879,12 +879,13 @@ def _build_reporte_asistencia_data(
     #   D{nominativo}/N{nominativo} -> fila en ese turno con el CLIENTE de ese nominativo.
     #   DB/NB -> base, cliente 'SEGURIDAD FISICA', puesto 'DIA BASE'/'NOCHE BASE'.
     #   F u otro turno -> no aparece.
-    if fecha_obj and turno in ['Diurno', 'Nocturno']:
+    if fecha_obj and (turno in ['Diurno', 'Nocturno'] or not turno):
         day_key_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
         day_key = day_key_map.get(fecha_obj.weekday())
         if day_key:
-            turno_letter = 'D' if turno == 'Diurno' else 'N'
-            puesto_base = 'DIA BASE' if turno == 'Diurno' else 'NOCHE BASE'
+            # Sin filtro de turno -> se muestran TODOS los sacafranco (tokens D y N).
+            # Con filtro Diurno/Nocturno -> solo los de ese turno.
+            _turno_letters = ('D',) if turno == 'Diurno' else (('N',) if turno == 'Nocturno' else ('D', 'N'))
             month_base = fecha_obj.replace(day=1)
             week_start_month = month_base + datetime.timedelta(days=((fecha_obj.day - 1) // 7) * 7)
             week_start_iso = fecha_obj - datetime.timedelta(days=fecha_obj.weekday())
@@ -900,24 +901,27 @@ def _build_reporte_asistencia_data(
                 if nom in inst_cache:
                     return inst_cache[nom]
                 inst = Instalacion.objects.select_related(
-                    'cliente', 'canton', 'canton__provincia'
+                    'cliente', 'canton', 'canton__provincia', 'nominativo', 'nominativo__zona'
                 ).filter(codigo__iexact=nom).first()
                 if inst:
+                    _nomobj = getattr(inst, 'nominativo', None)
+                    _zona = _nomobj.zona.nombre if (_nomobj and getattr(_nomobj, 'zona_id', None)) else 'SIN ZONA'
                     ctx_val = {
                         'cliente': getattr(inst.cliente, 'nombre_comercial', '') or '',
                         'puesto': inst.nombre or '',
                         'codigo': inst.codigo or nom,
                         'provincia': getattr(getattr(getattr(inst, 'canton', None), 'provincia', None), 'nombre', '') or 'SIN PROVINCIA',
+                        'zona': _zona,
                     }
                 else:
-                    ctx_val = {'cliente': '', 'puesto': '', 'codigo': nom, 'provincia': 'SIN PROVINCIA'}
+                    ctx_val = {'cliente': '', 'puesto': '', 'codigo': nom, 'provincia': 'SIN PROVINCIA', 'zona': 'SIN ZONA'}
                 inst_cache[nom] = ctx_val
                 return ctx_val
 
             seen_fila_ids = set()
             for srow in sac_qs:
                 token_val = str(getattr(srow, day_key, '') or '').strip().upper()
-                if not token_val or token_val[0] != turno_letter:
+                if not token_val or token_val[0] not in _turno_letters:
                     continue
                 fila = getattr(srow, 'sacafranco_fila', None)
                 persona = getattr(fila, 'persona', None) if fila else None
@@ -932,18 +936,26 @@ def _build_reporte_asistencia_data(
                 if nominativo in ('', 'B'):
                     codigo_val = 'BASE'
                     cliente_val = 'SEGURIDAD FISICA'
-                    puesto_val = puesto_base
+                    puesto_val = 'DIA BASE' if token_val[0] == 'D' else 'NOCHE BASE'
                     provincia_val = (getattr(getattr(fila, 'provincia', None), 'nombre', None)
                                      or getattr(getattr(persona, 'provincia', None), 'nombre', None)
                                      or 'SIN PROVINCIA')
+                    zona_val = 'SIN ZONA'
                 else:
                     # Cobertura: el nominativo es el código de la instalación cubierta.
-                    # Si no resuelve, se muestra el nominativo tal cual (no es base).
+                    # Toma cliente, provincia y ZONA de esa instalación para que la fila
+                    # del sacafranco salga agrupada/ordenada junto a ese nominativo.
                     ctx_n = _ctx_nominativo(nominativo)
                     codigo_val = ctx_n['codigo']
                     cliente_val = ctx_n['cliente']
                     puesto_val = ctx_n['puesto']
                     provincia_val = ctx_n['provincia']
+                    zona_val = ctx_n['zona']
+
+                # Respetar filtro de zona: si hay filtro activo, solo salen los sacafranco
+                # cuyo nominativo pertenece a esa zona.
+                if zona_filter_norm and _normalize_zona_filter(zona_val) != zona_filter_norm:
+                    continue
 
                 _hi = getattr(fila, 'hora_ingreso', None)
                 _ho = getattr(fila, 'hora_salida', None)
@@ -968,7 +980,7 @@ def _build_reporte_asistencia_data(
                     'hueca': False,
                     'hueca_motivo': '',
                     'modificado_en': None,
-                    'zona_titulo': zona_filter_norm or 'SIN ZONA',
+                    'zona_titulo': zona_val,
                     'provincia': provincia_val,
                 })
 
