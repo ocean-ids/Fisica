@@ -165,7 +165,7 @@ export class ReporteAsistenciaEditDialogComponent {
     }
     // Obligatorio SOLO si es FALTO y NO es hueca (una hueca no obliga a estado/reemplazo,
     // pero se pueden llenar igual si la hueca sí tuvo cobertura).
-    if (esFalto && !esHueca) {
+    if (esFalto && !esHueca && !this.esSacafranco) {
       estadoCtrl?.setValidators([Validators.required]);
     } else {
       estadoCtrl?.clearValidators();
@@ -394,7 +394,13 @@ export class ReporteAsistenciaEditDialogComponent {
 
   // FALTO sin cobertura completa: falta elegir estado (no TURNO) o reemplazo.
   // Mientras sea true, el botón Guardar queda deshabilitado.
+  get esSacafranco(): boolean {
+    return !this.data?.row?.asignacion_id && !!this.data?.row?.sacafranco_fila_id;
+  }
+
   get coberturaFaltoIncompleta(): boolean {
+    // El sacafranco no requiere cobertura (estado/reemplazo) para marcar FALTO.
+    if (this.esSacafranco) { return false; }
     const estadoAsistencia = (this.form?.value?.estado_asistencia || '').toString().toUpperCase();
     if (estadoAsistencia !== 'FALTO') { return false; }
     const estado = (this.form?.value?.estado || '').toString().trim().toUpperCase();
@@ -407,7 +413,8 @@ export class ReporteAsistenciaEditDialogComponent {
   }
 
   guardar(): void {
-    if (this.guardando || this.form.invalid || !this.data?.row?.asignacion_id) return;
+    if (this.guardando || this.form.invalid) return;
+    if (!this.data?.row?.asignacion_id && !this.data?.row?.sacafranco_fila_id) return;
 
     // getRawValue incluye los controles deshabilitados (estado/reemplazo cuando NO es FALTO).
     const raw = this.form.getRawValue();
@@ -415,7 +422,7 @@ export class ReporteAsistenciaEditDialogComponent {
     // Si la asistencia es FALTO, exigir estado de cobertura y reemplazo antes de guardar.
     // Excepción: HUECA SIN estado de cobertura (falto sin reemplazo) — ahí solo se pide motivo.
     const estadoAsistencia = (raw.estado_asistencia || '').toString().toUpperCase();
-    if (estadoAsistencia === 'FALTO') {
+    if (estadoAsistencia === 'FALTO' && !this.esSacafranco) {
       const estado = (raw.estado || '').toString().trim().toUpperCase();
       const reemplazoId = raw.reemplazo_id;
       const tieneEstadoReal = !!estado && estado !== 'TURNO';
@@ -464,7 +471,12 @@ export class ReporteAsistenciaEditDialogComponent {
     this.guardando = true;
     this.error = '';
 
-    this.reporteSvc.updateReporteAsistencia(this.data.row.asignacion_id, payload).subscribe({
+    // SACAFRANCO: no tiene asignacion; se guarda por su fila en el endpoint de sacafranco.
+    const obs = (!this.data.row.asignacion_id && this.data.row.sacafranco_fila_id)
+      ? this.reporteSvc.updateSacafrancoAsistencia(this.data.row.sacafranco_fila_id!, payload as any)
+      : this.reporteSvc.updateReporteAsistencia(this.data.row.asignacion_id!, payload);
+
+    obs.subscribe({
       next: (res) => {
         this.guardando = false;
         this.dialogRef.close(res);

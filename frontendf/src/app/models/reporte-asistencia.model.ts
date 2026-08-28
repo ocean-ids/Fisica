@@ -1,5 +1,6 @@
 export interface ReporteAsistenciaRow {
   asignacion_id?: number | null;
+  sacafranco_fila_id?: number | null;
   codigo?: string | null;
   cliente?: string;
   instalacion_nombre?: string;

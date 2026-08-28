@@ -396,7 +396,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   }
 
   abrirModalEdicion(row: ReporteAsistenciaRow): void {
-    if (!row?.asignacion_id) return;
+    if (!row?.asignacion_id && !row?.sacafranco_fila_id) return;
 
     const occupiedReemplazoIds = Array.from(new Set(
       (this.reporte || [])
@@ -442,7 +442,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe((res: any) => {
       if (!res) return;
-      row.codigo = res.codigo;
+      // res.codigo puede no venir (p.ej. sacafranco): no sobrescribir el codigo existente.
+      row.codigo = (res.codigo ?? row.codigo);
       row.estado_asistencia = res.estado_asistencia;
       row.estado = res.estado;
       row.descripcion = res.descripcion;
@@ -450,6 +451,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       row.reemplazo = res.reemplazo;
       row.hueca = res.hueca;
       row.hueca_motivo = res.hueca_motivo;
+      row.row_color = (res.row_color ?? row.row_color);
       row.modificado_por = res.modificado_por;
       row.modificado_en = res.modificado_en;
     });
@@ -459,6 +461,23 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   // formulario). Alterna: vacio/FALTO -> ASISTE, y ASISTE -> vacio. Guarda al instante.
   // Para FALTO (que necesita cobertura/reemplazo) se sigue usando el lapiz.
   marcarAsiste(row: ReporteAsistenciaRow): void {
+    // SACAFRANCO: no tiene asignacion; la asistencia se guarda por su fila. El clic
+    // alterna ASISTIO <-> (vacio), igual que los fijos. Para FALTO/hueca se usa el lapiz.
+    if (!row?.asignacion_id && row?.sacafranco_fila_id) {
+      const siguiente: 'ASISTIO' | '' = (row.estado_asistencia === 'ASISTIO') ? '' : 'ASISTIO';
+      this.reporteSvc.updateSacafrancoAsistencia(row.sacafranco_fila_id, {
+        fecha: this.filtroFecha || null,
+        estado_asistencia: siguiente || null,
+      }).subscribe({
+        next: (res) => {
+          row.estado_asistencia = res.estado_asistencia;
+          row.modificado_por = res.modificado_por;
+          row.modificado_en = res.modificado_en;
+        },
+        error: (err) => this.handleActionError(err, 'No se pudo marcar la asistencia'),
+      });
+      return;
+    }
     if (!row?.asignacion_id) return;
     const nuevo: 'ASISTIO' | null = (row.estado_asistencia === 'ASISTIO') ? null : 'ASISTIO';
     const payload = {

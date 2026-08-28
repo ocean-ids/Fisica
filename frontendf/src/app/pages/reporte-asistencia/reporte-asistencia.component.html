@@ -119,9 +119,9 @@
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.horario || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.nombre_apellidos || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)"
-                                [style.cursor]="r.asignacion_id ? 'pointer' : 'default'"
-                                [title]="r.asignacion_id ? 'Clic para marcar ASISTE (clic de nuevo para quitar). Para FALTÓ usa el lápiz.' : ''"
-                                (click)="r.asignacion_id && marcarAsiste(r); $event.stopPropagation()">
+                                [style.cursor]="(r.asignacion_id || r.sacafranco_fila_id) ? 'pointer' : 'default'"
+                                [title]="(r.asignacion_id || r.sacafranco_fila_id) ? 'Clic para marcar ASISTE (clic de nuevo para quitar). Para FALTÓ usa el lápiz.' : ''"
+                                (click)="(r.asignacion_id || r.sacafranco_fila_id) && marcarAsiste(r); $event.stopPropagation()">
                                 <span [class]="estadoAsistenciaClass(r.estado_asistencia)">{{ estadoAsistenciaLabel(r.estado_asistencia) }}</span>
                             </td>
                             <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">{{ r.reemplazo || '-' }}</td>
@@ -148,7 +148,7 @@
                                     mat-stroked-button
                                     type="button"
                                     color="primary"
-                                    [disabled]="!r.asignacion_id"
+                                    [disabled]="!r.asignacion_id && !r.sacafranco_fila_id"
                                     (click)="abrirModalEdicion(r)">
                                     <i class="bi bi-pencil"></i>
                                 </button>

@@ -17,6 +17,12 @@ export class ReporteAsistenciaService {
     return this.apiService.put<ReporteAsistenciaRow>(`/reporte-asistencia/${asignacionId}/`, payload);
   }
 
+  // Marca la asistencia/edición (FALTÓ, hueca, descripción, color...) de un SACAFRANCO
+  // (no tiene asignacion; se guarda por su fila).
+  updateSacafrancoAsistencia(sacafrancoFilaId: number, payload: Partial<UpdateReporteAsistenciaPayload> & { fecha: string | null; estado_asistencia: string | null }) {
+    return this.apiService.put<ReporteAsistenciaRow>(`/reporte-asistencia/sacafranco/${sacafrancoFilaId}/`, payload);
+  }
+
   getReporteAsistenciaHistorial(asignacionId: number, params?: any) {
     return this.apiService.get<ReporteAsistenciaHistorialItem[]>(`/reporte-asistencia/${asignacionId}/historial/`, params);
   }

@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal, SacafrancoFilaSemanal, Instalacion
+from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal, SacafrancoFilaSemanal, Instalacion, SacafrancoAsistencia
 import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from openpyxl.drawing.image import Image as XLImage
@@ -895,6 +895,11 @@ def _build_reporte_asistencia_data(
                 'sacafranco_fila', 'sacafranco_fila__persona', 'sacafranco_fila__provincia'
             ).filter(week_start__in=[week_start_month, week_start_iso])
 
+            # Asistencia marcada del sacafranco (ASISTIO/FALTO) para ESTA fecha, por fila.
+            _saca_asist = {}
+            for _sa in SacafrancoAsistencia.objects.filter(fecha=fecha_obj).select_related('modificado_por'):
+                _saca_asist[_sa.sacafranco_fila_id] = _sa
+
             inst_cache = {}
 
             def _ctx_nominativo(nom):
@@ -963,23 +968,36 @@ def _build_reporte_asistencia_data(
                 if _hi or _ho:
                     horario_saca = f"{_hi.strftime('%H:%M') if _hi else ''} {_ho.strftime('%H:%M') if _ho else ''}".strip()
 
+                # Asistencia/edicion marcada del sacafranco para esta fecha (si existe).
+                _sa = _saca_asist.get(fila.id)
+                _sa_estado = _normalize_estado_asistencia(getattr(_sa, 'estado_asistencia', '')) if _sa else ''
+                _sa_modpor = ''
+                _sa_moden = None
+                _sa_rem = getattr(_sa, 'reemplazo', None) if _sa else None
+                if _sa:
+                    _u = getattr(_sa, 'modificado_por', None)
+                    if _u:
+                        _sa_modpor = f"{_u.first_name} {_u.last_name}".strip() or _u.get_username()
+                    _sa_moden = _sa.modificado_en.isoformat() if _sa.modificado_en else None
+
                 data.append({
                     'asignacion_id': None,
+                    'sacafranco_fila_id': fila.id,
                     'codigo': codigo_val,
                     'cliente': cliente_val,
                     'puesto': puesto_val,
                     'horario': horario_saca,
                     'nombre_apellidos': persona_nombre or 'Libre en base',
-                    'reemplazo_id': None,
-                    'reemplazo': '',
-                    'estado_asistencia': '',
-                    'estado': 'TURNO',
-                    'descripcion': '',
-                    'modificado_por': '',
-                    'row_color': '',
-                    'hueca': False,
-                    'hueca_motivo': '',
-                    'modificado_en': None,
+                    'reemplazo_id': _sa_rem.id if _sa_rem else None,
+                    'reemplazo': f"{_sa_rem.nombres} {_sa_rem.apellidos}".strip() if _sa_rem else '',
+                    'estado_asistencia': _sa_estado,
+                    'estado': (getattr(_sa, 'estado', '') or 'TURNO') if _sa else 'TURNO',
+                    'descripcion': (getattr(_sa, 'descripcion', '') or '') if _sa else '',
+                    'modificado_por': _sa_modpor,
+                    'row_color': (getattr(_sa, 'row_color', '') or '') if _sa else '',
+                    'hueca': bool(getattr(_sa, 'hueca', False)) if _sa else False,
+                    'hueca_motivo': (getattr(_sa, 'hueca_motivo', '') or '') if _sa else '',
+                    'modificado_en': _sa_moden,
                     'zona_titulo': zona_val,
                     'provincia': provincia_val,
                 })
@@ -1409,6 +1427,70 @@ def insertar_reporte_asistencia(request, asignacion_id):
         'hueca': bool(override.hueca),
         'hueca_motivo': override.hueca_motivo or '',
         'modificado_en': override.modificado_en.isoformat() if override.modificado_en else None,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def marcar_sacafranco_asistencia(request, sacafranco_fila_id):
+    """Marca la asistencia (ASISTIO/FALTO/'') de un sacafranco para una fecha. El
+    sacafranco no tiene Asignacion; se guarda por SacafrancoFila + fecha."""
+    if not request.user.has_perm('CoreFisica.change_reporteasistencia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    from ..models import SacafrancoFila
+    fila = SacafrancoFila.objects.filter(id=sacafranco_fila_id).first()
+    if not fila:
+        return JsonResponse({'error': 'Sacafranco no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        fecha = datetime.date.fromisoformat(str(request.data.get('fecha')))
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Fecha invalida'}, status=status.HTTP_400_BAD_REQUEST)
+
+    obj, _ = SacafrancoAsistencia.objects.get_or_create(sacafranco_fila=fila, fecha=fecha)
+
+    if 'estado_asistencia' in request.data:
+        est_a = str(request.data.get('estado_asistencia') or '').strip().upper()
+        if est_a not in ('ASISTIO', 'FALTO', ''):
+            return JsonResponse({'error': 'estado_asistencia invalido'}, status=status.HTTP_400_BAD_REQUEST)
+        obj.estado_asistencia = est_a
+    if 'estado' in request.data:
+        obj.estado = (request.data.get('estado') or '').strip()
+    if 'descripcion' in request.data:
+        obj.descripcion = (request.data.get('descripcion') or '').strip()
+    if 'row_color' in request.data:
+        obj.row_color = (request.data.get('row_color') or '').strip()
+    if 'hueca' in request.data:
+        _hv = request.data.get('hueca')
+        obj.hueca = str(_hv).strip().lower() in ('1', 'true', 'si', 'on', 'yes', 'verdadero')
+    if 'hueca_motivo' in request.data:
+        obj.hueca_motivo = (request.data.get('hueca_motivo') or '').strip()
+    if 'reemplazo_id' in request.data:
+        _rid = request.data.get('reemplazo_id')
+        if _rid in (None, '', 'null'):
+            obj.reemplazo = None
+        else:
+            try:
+                obj.reemplazo = Persona.objects.filter(id=int(_rid)).first()
+            except (ValueError, TypeError):
+                obj.reemplazo = None
+    obj.modificado_por = request.user
+    obj.save()
+
+    _u = obj.modificado_por
+    _rem = obj.reemplazo
+    return JsonResponse({
+        'sacafranco_fila_id': fila.id,
+        'fecha': fecha.isoformat(),
+        'estado_asistencia': obj.estado_asistencia,
+        'estado': obj.estado or 'TURNO',
+        'reemplazo_id': _rem.id if _rem else None,
+        'reemplazo': f"{_rem.nombres} {_rem.apellidos}".strip() if _rem else '',
+        'descripcion': obj.descripcion or '',
+        'hueca': obj.hueca,
+        'hueca_motivo': obj.hueca_motivo or '',
+        'row_color': obj.row_color or '',
+        'modificado_por': (f"{_u.first_name} {_u.last_name}".strip() or _u.get_username()) if _u else '',
+        'modificado_en': obj.modificado_en.isoformat() if obj.modificado_en else None,
     }, status=status.HTTP_200_OK)
 
 

@@ -920,6 +920,37 @@ class SacafrancoFila(models.Model):
         return f"Sacafranco ({self.mes}/{self.anio})"
 
 
+class SacafrancoAsistencia(models.Model):
+    """Asistencia (ASISTIO/FALTO) de un sacafranco en una fecha, marcada desde el
+    reporte de asistencia. El sacafranco NO tiene Asignacion, por eso se referencia por
+    su SacafrancoFila + fecha (una marca por sacafranco por dia)."""
+    ESTADO_CHOICES = [('ASISTIO', 'ASISTIO'), ('FALTO', 'FALTO')]
+    sacafranco_fila = models.ForeignKey(
+        SacafrancoFila, on_delete=models.CASCADE, related_name='asistencias'
+    )
+    fecha = models.DateField()
+    estado_asistencia = models.CharField(max_length=10, blank=True, default='')
+    estado = models.CharField(max_length=30, blank=True, default='')
+    descripcion = models.TextField(blank=True, default='')
+    hueca = models.BooleanField(default=False)
+    hueca_motivo = models.CharField(max_length=255, blank=True, default='')
+    row_color = models.CharField(max_length=20, blank=True, default='')
+    reemplazo = models.ForeignKey(
+        Persona, null=True, blank=True, on_delete=models.SET_NULL, related_name='+'
+    )
+    modificado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    modificado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('sacafranco_fila', 'fecha')]
+        indexes = [models.Index(fields=['fecha'])]
+
+    def __str__(self):
+        return f"AsistSaca fila={self.sacafranco_fila_id} {self.fecha} {self.estado_asistencia}"
+
+
 class Asignacion(models.Model):
     ESTADO_CHOICES = [
         ('ACTIVO', 'ACTIVO'),

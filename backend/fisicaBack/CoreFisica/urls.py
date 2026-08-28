@@ -24,7 +24,7 @@ from .views.horario_views import obtener_horarios, crear_horario, actualizar_hor
 from .views.asignacion_views import obtener_asignaciones, asignar_servicio, editar_servicio, guardar_orden_asignacion, guardar_orden_sacafranco, eliminar_asignacion, exportar_asignaciones_excel, exportar_asignaciones_reimportable, sacafranco_filas, eliminar_sacafranco_fila, asignaciones_vacantes, personas_asignadas, puestos_ocupacion
 from .views.asignacion_semanal_views import listar_asignacion_semanal, listar_asignacion_semanal_mes, semanas_del_mes, crear_o_actualizar_asignacion_semanal, copiar_semana, listar_sacafranco_fila_semanal, crear_o_actualizar_sacafranco_fila_semanal
 from .views.patron_asignacion_views import PatronAsignacionListCreateView, PatronAsignacionRetrieveUpdateDestroyView
-from .views.reporte_asistencia_views import obtener_reporte_asistencia, listar_descripciones_reporte, insertar_reporte_asistencia, historial_reporte_asistencia, exportar_reporte_asistencia_excel, exportar_reporte_asistencia_pdf
+from .views.reporte_asistencia_views import obtener_reporte_asistencia, listar_descripciones_reporte, insertar_reporte_asistencia, historial_reporte_asistencia, exportar_reporte_asistencia_excel, exportar_reporte_asistencia_pdf, marcar_sacafranco_asistencia
 from .views.consolidado_views import obtener_consolidado, crear_consolidado, actualizar_consolidado, eliminar_consolidado, obtener_consolidado_armado, exportar_consolidado_excel, exportar_consolidado_pdf, obtener_consolidado_resumen, actualizar_consolidado_resumen
 from .views.vista_canton_views import vistas_cantones
 from .views.novedad_puesto_views import obtener_novedades, crear_novedad, actualizar_novedad, eliminar_novedad, exportar_novedades_excel
@@ -157,6 +157,7 @@ urlpatterns = [
     path('reporte-asistencia/', obtener_reporte_asistencia, name='reporte-asistencia'),
     path('reporte-asistencia/descripciones/', listar_descripciones_reporte, name='reporte-asistencia-descripciones'),
     path('reporte-asistencia/<int:asignacion_id>/', insertar_reporte_asistencia, name='reporte-asistencia-update'),
+    path('reporte-asistencia/sacafranco/<int:sacafranco_fila_id>/', marcar_sacafranco_asistencia, name='reporte-asistencia-sacafranco'),
     path('reporte-asistencia/<int:asignacion_id>/historial/', historial_reporte_asistencia, name='reporte-asistencia-historial'),
     path('reporte-asistencia/exportar-excel/', exportar_reporte_asistencia_excel, name='reporte-asistencia-excel'),
     path('reporte-asistencia/exportar-pdf/', exportar_reporte_asistencia_pdf, name='reporte-asistencia-pdf'),
