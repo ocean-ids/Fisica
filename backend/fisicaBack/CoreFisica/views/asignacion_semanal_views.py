@@ -292,32 +292,12 @@ def _validate_sacafranco_tokens(data, week_start_date):
             instalacion__codigo__iexact=token_code
         ).exclude(persona__tipo='SACAFRANCO')
 
-        # Candidatos: asignaciones activas en la fecha cuyo TURNO del token corresponde.
-        # El turno se decide asi (combina calendario y turno del puesto):
-        #  - si el guardia ese dia esta en D/N segun su cronograma y coincide con el token
-        #    -> es el que trabaja ese turno (recupera cobertura Noche que el turno estatico
-        #    "Diurno" del puesto nunca hallaba);
-        #  - si ese dia esta en FRANCO (F) o no tiene calendario -> se usa el turno base del
-        #    puesto; asi el sacafranco cubre la posicion del guardia que esta de franco
-        #    (que es JUSTO cuando se necesita cobertura).
-        from .reporte_asistencia_views import _calendar_dnf_for_date
-        dnf = _calendar_dnf_for_date(target_date)
-        token_letter = 'D' if token_turno == 'Diurno' else ('N' if token_turno == 'Nocturno' else '')
-
-        candidatos = []
-        for asig in qs:
-            if not _is_asignacion_active_on_date(asig, target_date):
-                continue
-            letra = dnf.get(asig.id)
-            if letra in ('D', 'N'):
-                # Trabaja ese dia: solo coincide si su letra es la del token.
-                if letra == token_letter:
-                    candidatos.append(asig)
-            else:
-                # Franco (F), sin marca o sin calendario: cubre segun el turno base del puesto.
-                asig_turno = _resolve_asignacion_turno(asig)
-                if asig_turno == token_turno or asig_turno == 'Ambos':
-                    candidatos.append(asig)
+        # El sacafranco cubre el FRANCO de la persona del nominativo: el turno del
+        # puesto es INDIFERENTE para hallar la cobertura. La letra D/N del token NO
+        # filtra aqui; solo clasifica en que filtro (Diurno/Nocturno) sale el sacafranco
+        # en el reporte de asistencia. Por eso los candidatos son TODAS las asignaciones
+        # activas del nominativo ese dia (sin mirar el turno del puesto).
+        candidatos = [a for a in qs if _is_asignacion_active_on_date(a, target_date)]
 
         if token_puesto:
             # El token trae codigo de puesto (ej. DG15G2 -> G2). Se numeran los puestos
@@ -331,23 +311,24 @@ def _validate_sacafranco_tokens(data, week_start_date):
         matches = sorted(matches, key=lambda a: ((a.orden if getattr(a, 'orden', None) is not None else 999999), a.id))
 
         if not matches:
-            _turno_txt = 'Noche' if token_turno == 'Nocturno' else ('Día' if token_turno == 'Diurno' else str(token_turno or ''))
             _nom = token_code or raw_value
-            # Aviso especifico: hay asignaciones en el nominativo/turno, pero el codigo de
-            # puesto del token (ej. G1) ya no coincide (p.ej. cambio el tipo del puesto).
+            # El nominativo existe pero el tipo de puesto del token no coincide con ninguno.
             if token_puesto and candidatos:
                 _disp = sorted(set(_codigos_efectivos(candidatos).values()))
                 _disp_txt = ', '.join(_disp) if _disp else '(sin código)'
                 return (
-                    f"El código de puesto '{token_puesto}' del token {raw_value} en "
-                    f"{day_key.upper()} ({target_date.strftime('%d/%m/%Y')}) ya no coincide con "
-                    f"ningún puesto de {_nom}. Puestos disponibles ese día: {_disp_txt}. "
-                    f"Puede que haya cambiado el tipo del puesto; corrija el código en el token."
+                    f"el tipo de puesto '{token_puesto}' del token {raw_value} no coincide con "
+                    f"ningún puesto de {_nom} el {target_date.strftime('%d/%m/%Y')} "
+                    f"(disponibles: {_disp_txt})"
                 ), None
+            existe = Asignacion.objects.filter(
+                instalacion__codigo__iexact=token_code
+            ).exclude(persona__tipo='SACAFRANCO').exists()
+            if not existe:
+                return (f"el nominativo '{_nom}' no existe (token {raw_value})"), None
             return (
-                f"Este sacafranco iba a cubrir el nominativo {_nom} en turno {_turno_txt} "
-                f"el {target_date.strftime('%d/%m/%Y')}, pero no hay ninguna asignación activa "
-                f"en {_nom} ({_turno_txt}) ese día a quién cubrir. Revise el nominativo y el turno."
+                f"el nominativo '{_nom}' no tiene asignación activa el "
+                f"{target_date.strftime('%d/%m/%Y')} (token {raw_value})"
             ), None
 
         selected = None

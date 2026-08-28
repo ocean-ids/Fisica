@@ -667,14 +667,41 @@ def _build_reporte_asistencia_data(
     # Ruteo por el calendario del día (D/N), no por la config de turno del puesto.
     # D -> Diurno, N -> Nocturno. Los francos (F) NO aparecen en el reporte.
     dnf = _calendar_dnf_for_date(fecha_obj)
+
+    # Cobertura de sacafranco: la letra D/N del token NO es el turno del puesto, es el
+    # FILTRO (Diurno/Nocturno) bajo el que debe salir la cobertura en este reporte. Se
+    # enruta la fila cubierta según ese token (no según el calendario del puesto) y no se
+    # oculta aunque el puesto esté en franco.
+    cobertura_turno = {}
     if fecha_obj:
-        franco_ids = {aid for aid, lt in dnf.items() if lt == 'F'}
+        from .asignacion_semanal_views import _parse_sacafranco_token
+        _cov_latest = (ReporteAsistenciaHistorial.objects
+                       .filter(fecha_reporte=fecha_obj, asignacion__estado='ACTIVO')
+                       .order_by('asignacion_id', '-creado_en')
+                       .distinct('asignacion_id').values('id'))
+        for _aid, _desc in (ReporteAsistenciaHistorial.objects
+                            .filter(id__in=Subquery(_cov_latest))
+                            .values_list('asignacion_id', 'descripcion')):
+            if not _is_auto_sacafranco_desc(_desc):
+                continue
+            _parts = str(_desc or '').strip().split()
+            _tok = _parts[-1] if _parts else ''
+            _tt = _parse_sacafranco_token(_tok)[1]
+            if _tt in ('Diurno', 'Nocturno'):
+                cobertura_turno[_aid] = _tt
+
+    if fecha_obj:
+        # No ocultar como franco las asignaciones cubiertas por sacafranco.
+        franco_ids = {aid for aid, lt in dnf.items() if lt == 'F' and aid not in cobertura_turno}
         if franco_ids:
             asig_qs = asig_qs.exclude(id__in=franco_ids)
     _TURNO_LETRA = {'Diurno': 'D', 'Nocturno': 'N', 'Tarde': 'T', 'Veinticuatro': 'V'}
     if turno in _TURNO_LETRA and fecha_obj:
         letra_turno = _TURNO_LETRA[turno]
-        ids_turno = {aid for aid, lt in dnf.items() if lt == letra_turno}
+        # Base: por calendario del puesto, EXCEPTO las cubiertas por sacafranco (esas se
+        # enrutan por el token). Luego se agregan las cubiertas cuyo token = este filtro.
+        ids_turno = {aid for aid, lt in dnf.items() if lt == letra_turno and aid not in cobertura_turno}
+        ids_turno |= {aid for aid, tt in cobertura_turno.items() if tt == turno}
         asig_qs = asig_qs.filter(id__in=ids_turno)
 
     if exclude_sacafranco:

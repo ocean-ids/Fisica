@@ -1463,24 +1463,37 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     except Exception:
                         pass
                     _saca_errs = set()
+                    _pname = f"{getattr(persona, 'apellidos', '') or ''} {getattr(persona, 'nombres', '') or ''}".strip() or (getattr(persona, 'cedula', '') or '')
                     for wk in range(((days_in_month - 1) // 7) + 1):
                         ws_start = month_start + timedelta(days=wk * 7)
                         sem = SacafrancoFilaSemanal.objects.filter(sacafranco_fila=fila, week_start=ws_start).first()
                         if not sem:
                             continue
                         payload = {k: getattr(sem, k, '') for k in WEEK_KEYS}
-                        try:
-                            err, resolved = _validate_sacafranco_tokens(payload, ws_start)
-                            if not err:
-                                _sync_sacafranco_to_reporte_y_consolidado(fila.id, ws_start, payload, resolved)
-                            else:
-                                # Token de sacafranco que NO resuelve (nominativo/turno mal):
-                                # se reporta para que se revise (validacion por codigo, confiable).
-                                _saca_errs.add(err)
-                        except Exception:
-                            pass
+                        # Validar DIA POR DIA: un dia con nominativo inexistente no debe
+                        # impedir que el resto de la semana (coberturas validas) se proyecte.
+                        # La alerta solo salta cuando el nominativo no existe / no tiene
+                        # asignacion activa esa fecha (con nombre de la persona y fila).
+                        resolved_ok = {}
+                        for _dk in WEEK_KEYS:
+                            _dv = str(payload.get(_dk) or '').strip()
+                            if not _dv:
+                                continue
+                            try:
+                                _e1, _r1 = _validate_sacafranco_tokens({_dk: _dv}, ws_start)
+                            except Exception:
+                                continue
+                            if _e1:
+                                _saca_errs.add(_e1)
+                            elif _r1:
+                                resolved_ok.update(_r1)
+                        if resolved_ok:
+                            try:
+                                _sync_sacafranco_to_reporte_y_consolidado(fila.id, ws_start, payload, resolved_ok)
+                            except Exception:
+                                pass
                     for _e in _saca_errs:
-                        resumen['errores'].append(f"Hoja {ws.title}, Fila {i}: sacafranco — {_e}")
+                        resumen['errores'].append(f"Hoja {ws.title}, Fila {i}: sacafranco {_pname} — {_e}")
 
                     # Continuar el patrón del sacafranco en los próximos 36 meses
                     sf_vals = [(v or '').upper() for v in cal]
