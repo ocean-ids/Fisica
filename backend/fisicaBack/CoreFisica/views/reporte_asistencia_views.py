@@ -101,7 +101,7 @@ def _find_logo_path():
 
 def _build_header_context(request, fecha, turno):
     fecha_obj = _parse_fecha_reporte(fecha)
-    turno_label = turno if turno in ['Diurno', 'Nocturno'] else 'TODOS'
+    turno_label = turno if turno in ['Diurno', 'Nocturno', 'Tarde', 'Veinticuatro'] else 'TODOS'
     return {
         'titulo': HEADER_TITULO,
         'version': HEADER_VERSION,
@@ -560,8 +560,8 @@ def _resolver_reemplazo_desde_request(request, fecha_reporte=None, asignacion_id
 def _calendar_dnf_for_date(fecha_obj):
     """Letra del calendario (AsignacionSemanal) para esa fecha, por asignación.
 
-    Devuelve {asignacion_id: 'D' | 'N' | 'F'} según el valor del día:
-    D=diurno, N=nocturno, F=franco (se toma solo la primera letra del valor).
+    Devuelve {asignacion_id: 'D' | 'N' | 'F' | 'T' | 'V'} según el valor del día:
+    D=diurno, N=nocturno, F=franco, T=tarde, V=24 horas (se toma solo la primera letra).
     Considera semana estilo mensual (día 1 + saltos de 7) y estilo ISO (lunes).
     """
     if not fecha_obj:
@@ -579,7 +579,7 @@ def _calendar_dnf_for_date(fecha_obj):
     out = {}
     for aid, val in rows:
         letra = (str(val).strip()[:1].upper()) if val else ''
-        if letra in ('D', 'N', 'F') and aid not in out:
+        if letra in ('D', 'N', 'F', 'T', 'V') and aid not in out:
             out[aid] = letra
     return out
 
@@ -671,8 +671,9 @@ def _build_reporte_asistencia_data(
         franco_ids = {aid for aid, lt in dnf.items() if lt == 'F'}
         if franco_ids:
             asig_qs = asig_qs.exclude(id__in=franco_ids)
-    if turno in ['Diurno', 'Nocturno'] and fecha_obj:
-        letra_turno = 'D' if turno == 'Diurno' else 'N'
+    _TURNO_LETRA = {'Diurno': 'D', 'Nocturno': 'N', 'Tarde': 'T', 'Veinticuatro': 'V'}
+    if turno in _TURNO_LETRA and fecha_obj:
+        letra_turno = _TURNO_LETRA[turno]
         ids_turno = {aid for aid, lt in dnf.items() if lt == letra_turno}
         asig_qs = asig_qs.filter(id__in=ids_turno)
 

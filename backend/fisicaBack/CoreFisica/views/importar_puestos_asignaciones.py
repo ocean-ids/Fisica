@@ -350,13 +350,13 @@ def parse_calendar_value(val):
 
 def _cal_valor_ok(v, es_saca):
     """True si el valor del calendario es RECONOCIDO. Solo lo establecido:
-      - Normal: D, N, F (y vacio).
+      - Normal: D (diurno), N (nocturno), F (franco), T (tarde), V (24h) y vacio.
       - Sacafranco: ademas cualquier token valido (D/N+codigo, DB, NB, F...).
-    Todo lo demas (T, numeros, #REF!, M, V, S, L, J...) => NO reconocido (se ignora)."""
+    Todo lo demas (numeros, #REF!, M, S, L, J...) => NO reconocido (se ignora)."""
     v = (v or '').strip().upper()
     if not v:
         return True
-    if v in ('D', 'N', 'F'):
+    if v in ('D', 'N', 'F', 'T', 'V'):
         return True
     if es_saca:
         try:
