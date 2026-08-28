@@ -180,8 +180,11 @@ def regenerar_reporte_guardia(request):
     except (TypeError, ValueError):
         return Response({'error': 'fecha invalida'}, status=status.HTTP_400_BAD_REQUEST)
 
-    from .reporte_asistencia_views import _sync_reporte_guardia
-    from ..models import ReporteAsistencia
+    from .reporte_asistencia_views import (
+        _sync_reporte_guardia, _sync_reporte_guardia_sacafranco,
+        _sync_hueca_reporte_guardia_sacafranco,
+    )
+    from ..models import ReporteAsistencia, SacafrancoAsistencia
 
     overrides = ReporteAsistencia.objects.select_related('asignacion').filter(
         fecha_reporte=fecha_obj, asignacion__estado='ACTIVO'
@@ -191,6 +194,14 @@ def regenerar_reporte_guardia(request):
             continue
         try:
             _sync_reporte_guardia(ov, ov.asignacion, fecha_obj)
+        except Exception:
+            pass
+
+    # Sacafranco: su asistencia esta en SacafrancoAsistencia (no tiene asignacion).
+    for sa in SacafrancoAsistencia.objects.select_related('sacafranco_fila', 'reemplazo').filter(fecha=fecha_obj):
+        try:
+            _sync_reporte_guardia_sacafranco(sa, fecha_obj)
+            _sync_hueca_reporte_guardia_sacafranco(sa, fecha_obj)
         except Exception:
             pass
     return Response({'ok': True})

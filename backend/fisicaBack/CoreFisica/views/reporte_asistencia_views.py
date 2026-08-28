@@ -1312,6 +1312,137 @@ def _sync_frtrabajado_dobladas(override, asignacion, fecha_reporte):
     )
 
 
+def _sacafranco_token_for_date(sacafranco_fila_id, fecha):
+    """Token (ej 'DS6') del sacafranco para esa fecha, o '' si no hay."""
+    from ..models import SacafrancoFilaSemanal
+    day_field_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
+    day_field = day_field_map.get(fecha.weekday())
+    if not day_field:
+        return ''
+    month_base = fecha.replace(day=1)
+    week_start_month = month_base + datetime.timedelta(days=((fecha.day - 1) // 7) * 7)
+    week_start_iso = fecha - datetime.timedelta(days=fecha.weekday())
+    row = SacafrancoFilaSemanal.objects.filter(
+        sacafranco_fila_id=sacafranco_fila_id,
+        week_start__in=[week_start_month, week_start_iso],
+    ).first()
+    if not row:
+        return ''
+    return str(getattr(row, day_field, '') or '').strip().upper()
+
+
+def _saca_guardia_ctx(fila, fecha_reporte):
+    """(turno, cliente, puesto) del nominativo que cubre el sacafranco ese dia, segun su
+    token. Devuelve None si ese dia no tiene cobertura Diurno/Nocturno."""
+    from ..models import Instalacion
+    from .asignacion_semanal_views import _parse_sacafranco_token
+    token = _sacafranco_token_for_date(fila.id, fecha_reporte)
+    _t, tturno, tcode, _i, _p = _parse_sacafranco_token(token)
+    if tturno not in ('Diurno', 'Nocturno'):
+        return None
+    cliente = ''
+    puesto = ''
+    if tcode and tcode != 'BASE':
+        inst = Instalacion.objects.select_related('cliente').filter(codigo__iexact=tcode).first()
+        if inst:
+            cliente = getattr(inst.cliente, 'nombre_comercial', '') or ''
+            puesto = inst.nombre or ''
+    else:
+        cliente = 'SEGURIDAD FISICA'
+    return tturno, cliente, puesto
+
+
+def _sync_reporte_guardia_sacafranco(sa, fecha_reporte):
+    """Refleja la asistencia de un SACAFRANCO (SacafrancoAsistencia) en el REPORTE DE
+    GUARDIA: FALTO -> Faltos; reemplazo segun estado -> Dobladas/Adicionales/Adelantos;
+    ADICIONAL -> Hueca auto. Idempotente por sacafranco_fila. Preserva overrides y motivo."""
+    from ..models import ReporteGuardia
+    fila = getattr(sa, 'sacafranco_fila', None)
+    if not fila:
+        return
+
+    hueca_motivo_prev = ''
+    if fecha_reporte:
+        _h = ReporteGuardia.objects.filter(
+            sacafranco_fila=fila, fecha=fecha_reporte, seccion='HUECA', auto=True
+        ).first()
+        if _h:
+            hueca_motivo_prev = _h.motivo or ''
+    prev_overrides = {}
+    for _r in ReporteGuardia.objects.filter(sacafranco_fila=fila, auto=True):
+        if _r.overrides:
+            prev_overrides.setdefault(_r.seccion, _r.overrides)
+
+    ReporteGuardia.objects.filter(sacafranco_fila=fila, auto=True).delete()
+    if not fecha_reporte:
+        return
+    ctx = _saca_guardia_ctx(fila, fecha_reporte)
+    if not ctx:
+        return
+    turno, cliente, puesto = ctx
+    persona = getattr(fila, 'persona', None)
+
+    def _nombre(p):
+        return f"{p.nombres} {p.apellidos}".strip() if p else ''
+
+    filas = []
+    if (sa.estado_asistencia or '').upper() == 'FALTO':
+        filas.append(('FALTOS', persona, 'FALTO'))
+    estado = (sa.estado or '').upper()
+    mapa = {'DOBLA': 'DOBLADAS', 'DOBLADO': 'DOBLADAS', 'ADICIONAL': 'ADICIONALES', 'ADEL/TURNO': 'ADELANTOS'}
+    seccion_reemplazo = mapa.get(estado)
+    rem = getattr(sa, 'reemplazo', None)
+    if seccion_reemplazo and rem:
+        filas.append((seccion_reemplazo, rem, ''))
+
+    for seccion, per, motivo in filas:
+        _row = ReporteGuardia.objects.create(
+            fecha=fecha_reporte, turno=turno, seccion=seccion,
+            cliente=cliente, puesto=puesto,
+            persona_nombre=_nombre(per), persona_ref=per,
+            sacafranco_fila=fila, auto=True, motivo=motivo,
+        )
+        _ov = prev_overrides.get(seccion)
+        if _ov:
+            for _k, _v in _ov.items():
+                setattr(_row, _k, _v)
+            _row.overrides = _ov
+            _row.save()
+
+    if seccion_reemplazo == 'ADICIONALES' and not getattr(sa, 'hueca', False):
+        _hueca = ReporteGuardia.objects.create(
+            fecha=fecha_reporte, turno=turno, seccion='HUECA',
+            cliente=cliente, puesto=puesto, fecha_evento=fecha_reporte,
+            sacafranco_fila=fila, auto=True, motivo=hueca_motivo_prev,
+        )
+        _ov = prev_overrides.get('HUECA')
+        if _ov:
+            for _k, _v in _ov.items():
+                setattr(_hueca, _k, _v)
+            _hueca.overrides = _ov
+            _hueca.save()
+
+
+def _sync_hueca_reporte_guardia_sacafranco(sa, fecha_reporte):
+    """Refleja el check 'Hueca' del sacafranco como fila MANUAL (auto=False) en HUECA."""
+    from ..models import ReporteGuardia
+    fila = getattr(sa, 'sacafranco_fila', None)
+    if not fila:
+        return
+    qs = ReporteGuardia.objects.filter(sacafranco_fila=fila, seccion='HUECA', auto=False)
+    if not getattr(sa, 'hueca', False) or not fecha_reporte:
+        qs.delete()
+        return
+    ctx = _saca_guardia_ctx(fila, fecha_reporte)
+    turno, cliente, puesto = ctx if ctx else ('Diurno', '', '')
+    qs.delete()
+    ReporteGuardia.objects.create(
+        fecha=fecha_reporte, turno=turno, seccion='HUECA',
+        cliente=cliente, puesto=puesto, fecha_evento=fecha_reporte,
+        sacafranco_fila=fila, auto=False, motivo=sa.hueca_motivo or '',
+    )
+
+
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def insertar_reporte_asistencia(request, asignacion_id):
@@ -1475,6 +1606,13 @@ def marcar_sacafranco_asistencia(request, sacafranco_fila_id):
                 obj.reemplazo = None
     obj.modificado_por = request.user
     obj.save()
+
+    # Reflejar en el REPORTE DE GUARDIA (Faltos/Dobladas/Adicionales/Hueca).
+    try:
+        _sync_reporte_guardia_sacafranco(obj, fecha)
+        _sync_hueca_reporte_guardia_sacafranco(obj, fecha)
+    except Exception:
+        pass
 
     _u = obj.modificado_por
     _rem = obj.reemplazo

@@ -1327,6 +1327,9 @@ class ReporteGuardia(models.Model):
     reporte_asistencia = models.ForeignKey('ReporteAsistencia', on_delete=models.SET_NULL, null=True, blank=True, related_name='reporte_guardia')
     # Para NO_CUBIERTOS: la asignacion (puesto sin persona) que origina la fila.
     asignacion_ref = models.ForeignKey('Asignacion', on_delete=models.SET_NULL, null=True, blank=True, related_name='reporte_guardia_no_cubierto')
+    # Para filas originadas por un SACAFRANCO (no tiene Asignacion ni ReporteAsistencia):
+    # su asistencia se marca en SacafrancoAsistencia y se refleja aqui por su fila.
+    sacafranco_fila = models.ForeignKey('SacafrancoFila', on_delete=models.SET_NULL, null=True, blank=True, related_name='reporte_guardia')
     auto = models.BooleanField(default=False)
 
     # PROVIENE = tipo de la persona (se autocompleta al elegir la persona)
