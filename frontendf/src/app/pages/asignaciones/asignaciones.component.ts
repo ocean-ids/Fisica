@@ -925,9 +925,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       const resumenErrores = gruposOrden
         .map(([k, n]) => {
           if (k === 'Otros') {
-            const distintos = Array.from(new Set(otrosMsgs)).slice(0, 5);
-            const extra = otrosMsgs.length > distintos.length ? ' …' : '';
-            return `<li><b>${n}</b> — Otros: ${distintos.join(' | ')}${extra}</li>`;
+            const items = Array.from(new Set(otrosMsgs))
+              .map(msg => `<li style="margin-bottom:2px;">${msg}</li>`)
+              .join('');
+            return `<li><b>${n}</b> — Otros:`
+              + `<ul style="margin:4px 0 6px 16px;max-height:180px;overflow:auto;">${items}</ul></li>`;
           }
           return `<li><b>${n}</b> — ${k}</li>`;
         })
