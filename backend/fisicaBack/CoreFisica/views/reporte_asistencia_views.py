@@ -627,10 +627,12 @@ def _build_reporte_asistencia_data(
     ).exclude(persona__tipo='SACAFRANCO')
 
     if fecha_obj:
-        # Reporte por rango hasta fin de anio actual cuando la fecha es hoy/futura.
+        # El reporte de asistencia es de UN dia: solo debe traer registros del MES/AÑO de
+        # esa fecha. Antes, para fechas hoy/futuras se filtraba solo por año, lo que colaba
+        # las asignaciones proyectadas de los meses siguientes (sept, oct...) en la vista
+        # "todos". Ahora se restringe siempre al mes de la fecha.
         if fecha_obj >= hoy:
-            # Mantener visibilidad de asignaciones vigentes durante todo el anio actual.
-            asig_qs = asig_qs.filter(anio=hoy.year)
+            asig_qs = asig_qs.filter(mes=fecha_obj.month, anio=fecha_obj.year)
             asig_qs = asig_qs.filter(
                 Q(fecha__gte=fecha_obj, fecha__lte=fin_anio_actual) |
                 Q(fecha__isnull=True) |
