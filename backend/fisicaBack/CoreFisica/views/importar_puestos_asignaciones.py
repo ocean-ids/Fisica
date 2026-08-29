@@ -1329,6 +1329,30 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
             days_in_month = (date(anio, mes + 1, 1) - timedelta(days=1)).day if mes < 12 else 31
             carry = {'nominativo': '', 'cli': '', 'pue': '', 'resumen': ''}
             carry_time = {'ing': None, 'sal': None}
+
+            _ubic_cache = {}
+
+            def _ubic():
+                # Sufijo con nominativo / cliente / instalacion para ubicar la fila en la
+                # alerta. Si el nominativo existe en BD, se usa su cliente e instalacion
+                # REALES (mas fiable que el cli/puesto arrastrado de celdas combinadas).
+                nom = str(carry.get('nominativo') or '').strip()
+                cli = str(carry.get('cli') or '').strip()
+                pue = str(carry.get('pue') or '').strip()
+                if nom:
+                    if nom not in _ubic_cache:
+                        _inst = Instalacion.objects.select_related('cliente').filter(codigo__iexact=nom).first()
+                        _ubic_cache[nom] = (
+                            (getattr(getattr(_inst, 'cliente', None), 'nombre_comercial', '') or '', _inst.nombre or '')
+                            if _inst else (None, None)
+                        )
+                    _c, _n = _ubic_cache[nom]
+                    if _c:
+                        cli = _c
+                    if _n:
+                        pue = _n
+                _p = [x for x in [nom, cli, pue] if x]
+                return (' — ' + ' / '.join(_p)) if _p else ''
             # Vista de ESTA hoja: cantones/clientes de sus asignaciones y los sacafranco
             # que aparecen en ella. Al final de la hoja, a esos sacafranco se les "sella"
             # esta vista (cantones/clientes) para que queden por vista, no globales.
@@ -1426,7 +1450,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     from collections import Counter as _Cnt
                     _det = ', '.join(f"{k}(x{n})" for k, n in _Cnt(_cal_ignorados).items())
                     resumen['errores'].append(
-                        f'Hoja {ws.title}, Fila {i}: valores ignorados en calendario (no reconocidos): {_det}'
+                        f'Hoja {ws.title}, Fila {i}: valores ignorados en calendario (no reconocidos): {_det}' + _ubic()
                     )
 
                 if es_saca:
@@ -1588,15 +1612,15 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 if len(_cal_mes) < days_in_month or _dias_faltantes:
                     _faltan = _dias_faltantes if len(_cal_mes) >= days_in_month else 'todos los dias del mes'
                     resumen['errores'].append(
-                        f'Hoja {ws.title}, Fila {i}: cronograma incompleto (dias sin marcar: {_faltan}) — no se importa'
+                        f'Hoja {ws.title}, Fila {i}: cronograma incompleto (dias sin marcar: {_faltan}) — no se importa' + _ubic()
                     )
                     continue
                 if not carry['nominativo']:
-                    resumen['errores'].append(f'Hoja {ws.title}, Fila {i}: sin nominativo (codigo de instalacion)')
+                    resumen['errores'].append(f'Hoja {ws.title}, Fila {i}: sin nominativo (codigo de instalacion)' + _ubic())
                     continue
                 instalacion = Instalacion.objects.filter(codigo__iexact=carry['nominativo']).first()
                 if not instalacion:
-                    resumen['errores'].append(f"Hoja {ws.title}, Fila {i}: instalacion con codigo '{carry['nominativo']}' no existe")
+                    resumen['errores'].append(f"Hoja {ws.title}, Fila {i}: instalacion con codigo '{carry['nominativo']}' no existe" + _ubic())
                     continue
                 if cliente_id_filter and instalacion.cliente_id != cliente_id_filter:
                     continue
@@ -1630,7 +1654,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 hora_ingreso = parse_excel_time(raw_ing if (raw_ing is not None and str(raw_ing).strip()) else carry_time['ing'])
                 hora_salida = parse_excel_time(raw_sal if (raw_sal is not None and str(raw_sal).strip()) else carry_time['sal'])
                 if not hora_ingreso or not hora_salida:
-                    resumen['errores'].append(f'Hoja {ws.title}, Fila {i}: hora ingreso/salida invalida')
+                    resumen['errores'].append(f'Hoja {ws.title}, Fila {i}: hora ingreso/salida invalida' + _ubic())
                     continue
 
                 resumen_txt = carry['resumen'] or ''
@@ -1644,7 +1668,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 persona = Persona.objects.filter(cedula=cedula).first()
                 if not persona:
                     resumen['errores'].append(
-                        f'Hoja {ws.title}, Fila {i}: persona con cedula {cedula} no esta registrada — no se importa'
+                        f'Hoja {ws.title}, Fila {i}: persona con cedula {cedula} no esta registrada — no se importa' + _ubic()
                     )
                     continue
 
@@ -1658,7 +1682,7 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 if not puesto:
                     resumen['errores'].append(
                         f"Hoja {ws.title}, Fila {i}: el puesto '{puesto_nombre}' no existe en la "
-                        f"instalacion {carry['nominativo']} — no se importa"
+                        f"instalacion {carry['nominativo']} — no se importa" + _ubic()
                     )
                     continue
                 if not puesto.horario_id:
