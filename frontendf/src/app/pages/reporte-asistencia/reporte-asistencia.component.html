@@ -117,7 +117,12 @@
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.instalacion_nombre || r.cliente || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto_tipo || r.puesto || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.horario || '-' }}</td>
-                            <td [style.backgroundColor]="getRowColor(r)">{{ r.nombre_apellidos || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">
+                                {{ r.nombre_apellidos || '-' }}
+                                <div *ngIf="r.sacafranco_fila_id">
+                                    <span class="badge rounded-pill bg-primary mt-1" style="font-size:0.6rem; letter-spacing:0.5px;">SACAFRANCO</span>
+                                </div>
+                            </td>
                             <td [style.backgroundColor]="getRowColor(r)"
                                 [style.cursor]="(r.asignacion_id || r.sacafranco_fila_id) ? 'pointer' : 'default'"
                                 [title]="(r.asignacion_id || r.sacafranco_fila_id) ? 'Clic para marcar ASISTE (clic de nuevo para quitar). Para FALTÓ usa el lápiz.' : ''"
