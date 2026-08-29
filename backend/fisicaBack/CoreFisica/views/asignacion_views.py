@@ -1900,7 +1900,11 @@ def exportar_asignaciones_excel(request):
     # Encabezado superior (formato institucional)
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
-    celeste_fill = PatternFill(fill_type='solid', fgColor='B1C2CC')
+    celeste_fill = PatternFill(fill_type='solid', fgColor='CFE8FF')   # F (franco), igual que la app
+    base_fill = PatternFill(fill_type='solid', fgColor='34C759')      # DB/NB (base), verde como la app
+    base_font = Font(color='FFFFFF', bold=True)                       # texto blanco sobre el verde
+    header_fill = PatternFill(fill_type='solid', fgColor='305496')    # azul de los encabezados
+    header_font = Font(bold=True, color='FFFFFF')
     sacafranco_fill = PatternFill(fill_type='solid', fgColor='FFF3CD')
 
     ws.merge_cells('A1:A3')
@@ -2326,23 +2330,32 @@ def exportar_asignaciones_excel(request):
             )
             cell = target_ws.cell(row=month_row, column=date_start_col)
             cell.value = f"{month_name} {year}"
-            cell.font = Font(bold=True)
+            cell.font = header_font
+            cell.fill = header_fill
             cell.alignment = Alignment(horizontal='center', vertical='center')
+            for _mc in range(date_start_col, date_start_col + num_days):
+                _c = target_ws.cell(row=month_row, column=_mc)
+                _c.fill = header_fill
 
         dow_names = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
         for i, d in enumerate(dates):
             c = target_ws.cell(row=dow_row, column=date_start_col + i)
             c.value = dow_names[d.weekday()]
+            c.font = header_font
+            c.fill = header_fill
             c.alignment = Alignment(horizontal='center')
 
         for idx, h in enumerate(left_headers, start=1):
             ch = target_ws.cell(row=header_row, column=idx)
             ch.value = h
-            ch.font = Font(bold=True)
+            ch.font = header_font
+            ch.fill = header_fill
             ch.alignment = Alignment(horizontal='left')
         for i, d in enumerate(dates):
             c = target_ws.cell(row=header_row, column=date_start_col + i)
             c.value = d.day
+            c.font = header_font
+            c.fill = header_fill
             c.alignment = Alignment(horizontal='center')
 
         target_ws.freeze_panes = target_ws.cell(row=data_start_row, column=date_start_col)
@@ -2405,8 +2418,12 @@ def exportar_asignaciones_excel(request):
                     cell.value = val
                     cell.alignment = Alignment(horizontal='center')
                     cell.border = border
-                    if str(val).strip().upper() == 'F':
+                    _vu = str(val).strip().upper()
+                    if _vu == 'F':
                         cell.fill = celeste_fill
+                    elif _vu in ('DB', 'NB'):
+                        cell.fill = base_fill
+                        cell.font = base_font
             else:
                 fila = entry['item']
                 persona = getattr(fila, 'persona', None)
@@ -2449,8 +2466,12 @@ def exportar_asignaciones_excel(request):
                     cell.value = val
                     cell.alignment = Alignment(horizontal='center')
                     cell.border = border
-                    if str(val).strip().upper() == 'F':
+                    _vu = str(val).strip().upper()
+                    if _vu == 'F':
                         cell.fill = celeste_fill
+                    elif _vu in ('DB', 'NB'):
+                        cell.fill = base_fill
+                        cell.font = base_font
 
             start_row += 1
 
