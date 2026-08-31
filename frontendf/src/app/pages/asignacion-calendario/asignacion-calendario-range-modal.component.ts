@@ -246,7 +246,6 @@ export class AsignacionCalendarioRangeModalComponent {
   }
 
 
-
   // Convierte una fecha en formato string a un objeto Date, considerando solo la parte de la fecha
   private parseDate(value: string): Date | null {
     if (!value) return null;

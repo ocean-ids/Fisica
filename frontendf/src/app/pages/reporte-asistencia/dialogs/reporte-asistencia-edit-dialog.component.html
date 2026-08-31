@@ -118,7 +118,6 @@
       </button>
       <mat-autocomplete #autoDescripcion="matAutocomplete">
         <mat-option *ngFor="let d of getDescripcionesFiltradas()" [value]="d">{{ d }}</mat-option>
-        <mat-option disabled *ngIf="!getDescripcionesFiltradas().length">Sin coincidencias</mat-option>
       </mat-autocomplete>
     </mat-form-field>
 
