@@ -192,10 +192,13 @@ export interface CantonViewsModalResult {
         }
       }
 
-      <div class="d-flex gap-2 mb-3">
+      <div class="d-flex gap-2 mb-1">
         <button mat-flat-button color="primary" type="button" (click)="saveView()">Guardar vista</button>
         <button mat-stroked-button type="button" (click)="resetForm()">Limpiar</button>
       </div>
+      @if (error) {
+        <div class="view-error mb-3">{{ error }}</div>
+      }
 
       @if (views.length) {
         <div class="saved-list">
@@ -254,6 +257,7 @@ export interface CantonViewsModalResult {
     .saved-chip { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
     .saved-chip-inst { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
     .hint-inst { font-size: 12px; color: #6b7280; margin: -4px 0 8px; }
+    .view-error { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 6px 10px; font-size: 13px; }
     `
   ]
 })
@@ -277,6 +281,7 @@ export class CantonViewsModalComponent {
   readonly tiposDisponibles = TIPOS_PERSONA;
   query = '';
   editingId: string | null = null;
+  error = '';   // aviso de validacion al guardar una vista
   // Lista completa de cantones (la carga el propio modal para no depender de la
   // vista actualmente cargada en la pantalla de asignaciones).
   cantonesAll: CantonOption[] = [];
@@ -287,6 +292,12 @@ export class CantonViewsModalComponent {
     private ubicacionService: UbicacionService,
     @Inject(MAT_DIALOG_DATA) public data: CantonViewsModalData,
   ) {
+    // Cualquier cierre (clic afuera / Escape) devuelve la lista para que el padre
+    // PERSISTA los cambios (crear/eliminar). Antes solo el boton "Cerrar" guardaba, asi
+    // que cerrar de otra forma perdia lo creado/eliminado.
+    this.dialogRef.disableClose = true;
+    this.dialogRef.backdropClick().subscribe(() => this.close());
+    this.dialogRef.keydownEvents().subscribe(e => { if (e.key === 'Escape') this.close(); });
     this.cantonesAll = (data?.cantones || []).slice();
     // Cargar TODOS los cantones (independiente de la vista activa).
     this.ubicacionService.getCantones().subscribe({
@@ -467,11 +478,18 @@ export class CantonViewsModalComponent {
   }
 
   saveView(): void {
+    this.error = '';
     const nombre = (this.viewName || '').trim();
-    if (!nombre) return;
-    if (this.tipo === 'canton' && this.selectedCantonIds.length < 1) return;
-    if (this.tipo === 'cliente' && (this.selectedInstalaciones.length + this.selectedEmpresasToda.length) < 1) return;
-    if (this.tipo === 'persona_tipo' && this.selectedTipos.length < 1) return;
+    if (!nombre) { this.error = 'Escribe un nombre para la vista.'; return; }
+    if (this.tipo === 'canton' && this.selectedCantonIds.length < 1) {
+      this.error = 'Selecciona al menos un cantón.'; return;
+    }
+    if (this.tipo === 'cliente' && (this.selectedInstalaciones.length + this.selectedEmpresasToda.length) < 1) {
+      this.error = 'Selecciona al menos una instalación o marca "toda la empresa".'; return;
+    }
+    if (this.tipo === 'persona_tipo' && this.selectedTipos.length < 1) {
+      this.error = 'Selecciona al menos un tipo de persona.'; return;
+    }
 
     // Empresas de la vista = empresas de las instalaciones elegidas + empresas "toda" (sin repetir).
     const empresasDeInst = this.selectedInstalaciones.map(i => i.empresaId);
@@ -522,6 +540,7 @@ export class CantonViewsModalComponent {
 
   resetForm(): void {
     this.editingId = null;
+    this.error = '';
     this.viewName = '';
     this.selectedCantonIds = [];
     this.selectedTipos = [];
