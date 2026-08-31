@@ -646,8 +646,8 @@ def _build_reporte_asistencia_data(
         'puesto', 'horario', 'persona',
         'instalacion__nominativo', 'instalacion__nominativo__zona',
     ).filter(
-        persona__isnull=False,
-        persona__is_active=True,
+        # Incluye HUECAS (asignacion sin persona = puesto sin guardia): salen como "HUECA".
+        Q(persona__isnull=True) | Q(persona__is_active=True),
         estado='ACTIVO'
     ).exclude(persona__tipo='SACAFRANCO')
 
@@ -839,8 +839,9 @@ def _build_reporte_asistencia_data(
         return _cov_ctx_cache[cod]
 
     for asig in asig_list:
-        p = asig.persona
-        personas_con_asignacion.add(p.id)
+        p = asig.persona   # None = HUECA (puesto sin guardia)
+        if p:
+            personas_con_asignacion.add(p.id)
         override = overrides.get(asig.id)
 
         cliente_nombre = getattr(asig.cliente, 'nombre_comercial', '') if asig else ''
@@ -855,7 +856,7 @@ def _build_reporte_asistencia_data(
             horario_str = f"{hi.strftime('%H:%M')} - {ho.strftime('%H:%M')}" if ho else hi.strftime('%H:%M')
         elif asig and asig.horario:
             horario_str = f"{asig.horario.hora_ingreso.strftime('%H:%M')} - {asig.horario.hora_salida.strftime('%H:%M')}"
-        nombre_apellidos = f"{p.nombres} {p.apellidos}".strip()
+        nombre_apellidos = f"{p.nombres} {p.apellidos}".strip() if p else 'HUECA'
         auto_sacafranco = _is_auto_sacafranco_desc(getattr(override, 'descripcion', '')) if override else False
         persona_cobertura = None
         if override:
@@ -895,6 +896,13 @@ def _build_reporte_asistencia_data(
         estado_asistencia = _normalize_estado_asistencia(getattr(override, 'estado_asistencia', '') if override else '')
         estado = (getattr(override, 'estado', None) if override else None) or 'TURNO'
         descripcion = (override.descripcion or '') if override else ''
+        hueca_val = bool(getattr(override, 'hueca', False)) if override else False
+        # HUECA estructural (puesto sin guardia, sin edicion manual): por defecto sale en
+        # FALTÓ con el check "Hueca" marcado, para que el supervisor solo ponga el motivo y
+        # al guardar pase al Reporte de Guardia (seccion HUECA).
+        if p is None and not override:
+            estado_asistencia = 'FALTO'
+            hueca_val = True
         if auto_sacafranco:
             puesto_nombre = ''
             horario_str = ''
@@ -937,7 +945,7 @@ def _build_reporte_asistencia_data(
             'descripcion': descripcion,
             'modificado_por': modificado_por_nombre,
             'row_color': (override.row_color or '') if override else '',
-            'hueca': bool(getattr(override, 'hueca', False)) if override else False,
+            'hueca': hueca_val,
             'hueca_motivo': (getattr(override, 'hueca_motivo', '') or '') if override else '',
             'modificado_en': modificado_en_iso,
             'zona_titulo': zona_titulo,

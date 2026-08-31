@@ -1607,8 +1607,14 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     touched_dates.add(month_start)
                     continue
 
-                if not cedula:
-                    continue
+                # Fila SIN cedula: puede ser una HUECA (puesto sin guardia) si trae
+                # nominativo + calendario. Se importa como asignacion SIN persona y en el
+                # reporte sale "HUECA" segun su calendario. Si no trae nada util -> saltar.
+                es_hueca = not cedula
+                if es_hueca:
+                    _tiene_cal = any((v or '').strip() for v in cal)
+                    if not (carry['nominativo'] and _tiene_cal):
+                        continue
                 # Solo registros COMPLETOS: el cronograma del mes debe estar lleno.
                 # Si falta ALGUN dia (hueco en blanco) o vienen menos dias que el mes,
                 # la fila NO se importa (cronograma incompleto).
@@ -1669,13 +1675,16 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 grupos = parse_compact_horas_turno_dias(resto) or []
 
                 # REGLA: el import NO crea personas. Solo referencia por cedula.
-                # Si la persona no esta registrada -> avisa y salta (no se importa esa fila).
-                persona = Persona.objects.filter(cedula=cedula).first()
-                if not persona:
-                    resumen['errores'].append(
-                        f'Hoja {ws.title}, Fila {i}: persona con cedula {cedula} no esta registrada — no se importa' + _ubic()
-                    )
-                    continue
+                # HUECA: sin cedula -> asignacion SIN persona (puesto sin guardia).
+                if es_hueca:
+                    persona = None
+                else:
+                    persona = Persona.objects.filter(cedula=cedula).first()
+                    if not persona:
+                        resumen['errores'].append(
+                            f'Hoja {ws.title}, Fila {i}: persona con cedula {cedula} no esta registrada — no se importa' + _ubic()
+                        )
+                        continue
 
                 horario, h_created = _get_or_create_horario(hora_ingreso, hora_salida)
                 if h_created:
@@ -1714,24 +1723,32 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 # -> la persona salia DUPLICADA en los meses siguientes. Como la proyeccion
                 # crea una asignacion por cada mes, cada fecha queda cubierta por una sola.
                 _base_end = (date(anio, mes + 1, 1) - timedelta(days=1)) if mes < 12 else date(anio, 12, 31)
-                asig, created = Asignacion.objects.update_or_create(
-                    persona=persona, mes=mes, anio=anio,
-                    defaults={
-                        'cliente': instalacion.cliente, 'instalacion': instalacion,
-                        'puesto': puesto, 'horario': horario, 'fecha': None,
-                        'patronAsignacion': None, 'estado': 'ACTIVO',
-                        'publicada_calendario': True, 'recurring': True,
-                        'start_date': month_start, 'end_date': _base_end,
-                        'orden': row_orden,
-                    }
-                )
+                _defaults = {
+                    'cliente': instalacion.cliente, 'instalacion': instalacion,
+                    'puesto': puesto, 'horario': horario, 'fecha': None,
+                    'patronAsignacion': None, 'estado': 'ACTIVO',
+                    'publicada_calendario': True, 'recurring': True,
+                    'start_date': month_start, 'end_date': _base_end,
+                    'orden': row_orden,
+                }
+                if es_hueca:
+                    # Hueca (sin persona): puede haber VARIAS por puesto -> se distingue por
+                    # el orden de la fila. Clave: instalacion + puesto + mes + anio + orden.
+                    asig, created = Asignacion.objects.update_or_create(
+                        persona=None, instalacion=instalacion, puesto=puesto,
+                        mes=mes, anio=anio, orden=row_orden, defaults=_defaults,
+                    )
+                else:
+                    asig, created = Asignacion.objects.update_or_create(
+                        persona=persona, mes=mes, anio=anio, defaults=_defaults,
+                    )
                 touched_asig_ids.add(asig.id)
                 _sheet_cantones.add(getattr(instalacion, 'canton_id', None))
                 _sheet_clientes.add(getattr(instalacion, 'cliente_id', None))
                 _sheet_inst_ids.add(instalacion.id)
                 touched_dates.add(month_start)
                 touched_periodos.add((mes, anio))
-                puesto_personas.setdefault((puesto.id, mes, anio), set()).add(persona.id)
+                puesto_personas.setdefault((puesto.id, mes, anio), set()).add(getattr(persona, 'id', None))
                 resumen['asignaciones_creadas' if created else 'asignaciones_actualizadas'] += 1
 
                 cal_by_week = {}
@@ -1760,7 +1777,10 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 # Detectar el período REAL (ej. DDDNNNF=7) para no repetir el mes entero.
                 cal_vals = [(v or '').upper() for v in cal]
                 ciclo = _ciclo_para_continuar(cal_vals)
-                if proyectar and ciclo and any(str(x).strip() for x in ciclo):
+                # Las HUECAS (sin persona) NO se proyectan a meses futuros: son del mes
+                # importado (se vuelven a traer al importar cada mes). Ademas la proyeccion
+                # se indexa por persona, que en hueca es None.
+                if proyectar and (not es_hueca) and ciclo and any(str(x).strip() for x in ciclo):
                     cycle_len = len(ciclo)
                     seq_idx = len(cal_vals)  # desfase global: continúa donde terminó el mes
 
