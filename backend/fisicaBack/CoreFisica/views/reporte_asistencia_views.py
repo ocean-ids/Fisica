@@ -584,6 +584,31 @@ def _calendar_dnf_for_date(fecha_obj):
     return out
 
 
+def _calendar_raw_for_date(fecha_obj):
+    """Token CRUDO del calendario (AsignacionSemanal) para esa fecha, por asignación.
+    A diferencia de _calendar_dnf_for_date (que da solo la 1a letra), devuelve el valor
+    completo, ej. 'DK37'. Sirve para detectar cobertura de un FIJO (D/N + nominativo):
+    ese dia el fijo cubre OTRA instalacion, no su puesto propio."""
+    if not fecha_obj:
+        return {}
+    day_field_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
+    day_field = day_field_map.get(fecha_obj.weekday())
+    if not day_field:
+        return {}
+    month_base = fecha_obj.replace(day=1)
+    week_start_month = month_base + datetime.timedelta(days=((fecha_obj.day - 1) // 7) * 7)
+    week_start_iso = fecha_obj - datetime.timedelta(days=fecha_obj.weekday())
+    rows = AsignacionSemanal.objects.filter(
+        week_start__in=[week_start_month, week_start_iso]
+    ).exclude(asignacion_id__isnull=True).values_list('asignacion_id', day_field)
+    out = {}
+    for aid, val in rows:
+        v = str(val).strip().upper() if val else ''
+        if v and aid not in out:
+            out[aid] = v
+    return out
+
+
 def _build_reporte_asistencia_data(
     fecha=None,
     cliente_id=None,
@@ -788,6 +813,31 @@ def _build_reporte_asistencia_data(
                 if ph.hora_ingreso and ph.puesto_id not in horario_puesto_dia:
                     horario_puesto_dia[ph.puesto_id] = (ph.hora_ingreso, ph.hora_salida)
 
+    # COBERTURA de FIJO: token crudo del dia (ej. DK37). Si un fijo tiene D/N+nominativo,
+    # ese dia cubre OTRA instalacion -> se muestra bajo ese nominativo (su puesto propio
+    # queda vacante). Se resuelve el contexto (cliente/instalacion/zona) del nominativo.
+    raw_cal = _calendar_raw_for_date(fecha_obj) if fecha_obj else {}
+    from .asignacion_semanal_views import _parse_sacafranco_token as _parse_tok
+    _cov_ctx_cache = {}
+
+    def _cov_inst_ctx(cod):
+        if cod not in _cov_ctx_cache:
+            _i = Instalacion.objects.select_related(
+                'cliente', 'canton', 'canton__provincia', 'nominativo', 'nominativo__zona'
+            ).filter(codigo__iexact=cod).first()
+            if _i:
+                _nz = getattr(_i, 'nominativo', None)
+                _cov_ctx_cache[cod] = {
+                    'codigo': _i.codigo or cod,
+                    'cliente': getattr(_i.cliente, 'nombre_comercial', '') or '',
+                    'nombre': _i.nombre or '',
+                    'zona': (_nz.zona.nombre if (_nz and getattr(_nz, 'zona_id', None)) else ''),
+                    'provincia': getattr(getattr(getattr(_i, 'canton', None), 'provincia', None), 'nombre', '') or '',
+                }
+            else:
+                _cov_ctx_cache[cod] = None
+        return _cov_ctx_cache[cod]
+
     for asig in asig_list:
         p = asig.persona
         personas_con_asignacion.add(p.id)
@@ -852,11 +902,29 @@ def _build_reporte_asistencia_data(
             estado_asistencia = ''
             descripcion = ''
 
+        # COBERTURA de FIJO: si el token del dia es D/N + nominativo (ej. DK37), el fijo
+        # cubre OTRA instalacion ese dia -> mostrar la fila bajo ese nominativo (cliente,
+        # instalacion, zona, provincia del nominativo cubierto). La letra D/N ya rutea el
+        # turno via dnf; su puesto propio queda vacante (no sale en su instalacion).
+        instalacion_nombre = (getattr(asig.instalacion, 'nombre', '') or '') if asig else ''
+        _raw_tok = raw_cal.get(asig.id, '') if not auto_sacafranco else ''
+        if _raw_tok:
+            _ct, _cturno, _ccode, _cidx, _cpue = _parse_tok(_raw_tok)
+            if _ct == 'coverage' and _ccode:
+                _cov = _cov_inst_ctx(_ccode)
+                if _cov:
+                    codigo_instalacion = _cov['codigo']
+                    cliente_nombre = _cov['cliente']
+                    instalacion_nombre = _cov['nombre']
+                    puesto_nombre = _cov['nombre']
+                    zona_titulo = _cov['zona']
+                    provincia_nombre = _cov['provincia']
+
         data.append({
             'asignacion_id': asig.id,
             'codigo': override.codigo if (override and override.codigo) else (codigo_instalacion or ''),
             'cliente': cliente_nombre,
-            'instalacion_nombre': (getattr(asig.instalacion, 'nombre', '') or '') if asig else '',
+            'instalacion_nombre': instalacion_nombre,
             'puesto': puesto_nombre,
             'puesto_tipo': (getattr(asig.puesto, 'tipo', '') or '') if asig else '',
             'horario': horario_str,

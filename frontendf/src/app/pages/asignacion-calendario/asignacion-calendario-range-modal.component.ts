@@ -126,6 +126,7 @@ export class AsignacionCalendarioRangeModalComponent {
       this.errorText = 'Fechas inválidas.';
       return;
     }
+
     if (startDate > endDate) {
       this.errorText = 'La fecha final debe ser mayor o igual a la inicial.';
       return;
@@ -134,7 +135,7 @@ export class AsignacionCalendarioRangeModalComponent {
     if (!this.isValidSequence(this.seq, this.data.isSacafranco)) {
       this.errorText = this.data.isSacafranco
         ? 'Ingresa una secuencia válida.'
-        : 'Solo se permiten F, D o N.';
+        : 'Solo se permiten D,N, F, T, V, DK37';
       return;
     }
 
@@ -178,12 +179,13 @@ export class AsignacionCalendarioRangeModalComponent {
   }
 
   // Valida la secuencia ingresada, permitiendo cualquier valor si es sacafranco o solo F/D/N si no lo es
-  private isValidSequence(seq: string, isSacafranco: boolean): boolean {
+    private isValidSequence(seq: string, isSacafranco: boolean): boolean {
     const raw = (seq || '').trim().toUpperCase();
     if (!raw) return false;
     if (isSacafranco) return true;
-    return /[FDN]/.test(raw);
+    return this.parseSequence(seq, false).length > 0;   // vale si produce al menos un token
   }
+
   
   // Refresca la vista previa de los cambios basándose en las fechas y secuencia ingresadas
   private refreshPreview(): void {
@@ -226,12 +228,24 @@ export class AsignacionCalendarioRangeModalComponent {
   private parseSequence(seq: string, isSacafranco: boolean): string[] {
     const raw = (seq || '').trim().toUpperCase();
     if (!raw) return [];
-    if (!isSacafranco) {
-      return raw.match(/[FDN]/g) || [];
+    if (isSacafranco) {
+      const parts = raw.split(/[^A-Z0-9#]+/).filter(Boolean);
+      return parts.length ? parts : [raw];
     }
-    const parts = raw.split(/[^A-Z0-9]+/).filter(Boolean);
-    return parts.length ? parts : [raw];
+    // Fijo: letras simples (F/D/N/T/V) Y tokens de COBERTURA (D/N + nominativo, ej. DK37).
+    const cobertura = /^[DN][A-Z]+\d+([A-Z]+\d+)?(#\d+)?$/;
+    const out: string[] = [];
+    for (const part of raw.split(/[^A-Z0-9#]+/).filter(Boolean)) {
+      if (cobertura.test(part)) {
+        out.push(part);
+      } else {
+        out.push(...(part.match(/[FDNTV]/g) || []));
+      }
+    }
+    return out;
   }
+
+
 
   // Convierte una fecha en formato string a un objeto Date, considerando solo la parte de la fecha
   private parseDate(value: string): Date | null {

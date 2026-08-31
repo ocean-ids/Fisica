@@ -1017,13 +1017,15 @@ class AsignacionSemanal(models.Model):
     puesto = models.ForeignKey(Puesto, on_delete=models.CASCADE, related_name='asignaciones_semanales')
     week_start = models.DateField()  
 
-    mon = models.CharField(max_length=4, blank=True)
-    tue = models.CharField(max_length=4, blank=True)
-    wed = models.CharField(max_length=4, blank=True)
-    thu = models.CharField(max_length=4, blank=True)
-    fri = models.CharField(max_length=4, blank=True)
-    sat = models.CharField(max_length=4, blank=True)
-    sun = models.CharField(max_length=4, blank=True)
+    # Ampliado a 12 para admitir tokens de cobertura (D/N + nominativo + puesto),
+    # ej. DK37, NK35, DG15G2#2 — un fijo puede cubrir otra instalacion ese dia.
+    mon = models.CharField(max_length=12, blank=True)
+    tue = models.CharField(max_length=12, blank=True)
+    wed = models.CharField(max_length=12, blank=True)
+    thu = models.CharField(max_length=12, blank=True)
+    fri = models.CharField(max_length=12, blank=True)
+    sat = models.CharField(max_length=12, blank=True)
+    sun = models.CharField(max_length=12, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

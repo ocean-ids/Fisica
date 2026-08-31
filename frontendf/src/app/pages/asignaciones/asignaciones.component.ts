@@ -1292,12 +1292,21 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   private parseSequence(seq: string, isSacafranco: boolean): string[] {
     const raw = (seq || '').trim().toUpperCase();
     if (!raw) return [];
-    if (!isSacafranco) {
-      const letters = raw.match(/[FDN]/g) || [];
-      return letters;
+    if (isSacafranco) {
+      const parts = raw.split(/[^A-Z0-9#]+/).filter(Boolean);
+      return parts.length ? parts : [raw];
     }
-    const parts = raw.split(/[,\s]+/).filter(Boolean);
-    return parts.length ? parts : [raw];
+    // Fijo: letras simples (F/D/N/T/V) Y tokens de COBERTURA (D/N + nominativo, ej. DK37).
+    const cobertura = /^[DN][A-Z]+\d+([A-Z]+\d+)?(#\d+)?$/;
+    const out: string[] = [];
+    for (const part of raw.split(/[^A-Z0-9#]+/).filter(Boolean)) {
+      if (cobertura.test(part)) {
+        out.push(part);
+      } else {
+        out.push(...(part.match(/[FDNTV]/g) || []));
+      }
+    }
+    return out;
   }
 
   private buildRangeMap(startDate: Date, endDate: Date, tokens: string[], anchorWeekStart?: Date | null, clampToView: boolean = false): Record<string, Record<string, string>> {

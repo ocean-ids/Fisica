@@ -352,19 +352,24 @@ def _cal_valor_ok(v, es_saca):
     """True si el valor del calendario es RECONOCIDO. Solo lo establecido:
       - Normal: D (diurno), N (nocturno), F (franco), T (tarde), V (24h) y vacio.
       - Sacafranco: ademas cualquier token valido (D/N+codigo, DB, NB, F...).
+      - Fijo: ademas tokens de COBERTURA D/N+nominativo (ej. DK37, NK35): ese dia el
+        fijo cubre otra instalacion; su puesto propio queda vacante.
     Todo lo demas (numeros, #REF!, M, S, L, J...) => NO reconocido (se ignora)."""
     v = (v or '').strip().upper()
     if not v:
         return True
     if v in ('D', 'N', 'F', 'T', 'V'):
         return True
+    try:
+        from .asignacion_semanal_views import _parse_sacafranco_token
+        tipo = _parse_sacafranco_token(v)[0]
+    except Exception:
+        return False
     if es_saca:
-        try:
-            from .asignacion_semanal_views import _parse_sacafranco_token
-            return _parse_sacafranco_token(v)[0] != 'invalid'
-        except Exception:
-            return False
-    return False
+        # Sacafranco: acepta cualquier token valido (cobertura, base DB/NB, free).
+        return tipo != 'invalid'
+    # Fijo: acepta solo tokens de COBERTURA (D/N + nominativo). No DB/NB (base).
+    return tipo == 'coverage'
 
 
 def _detect_month_year_from_sheet(rows):
