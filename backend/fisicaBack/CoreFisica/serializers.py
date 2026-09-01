@@ -216,6 +216,7 @@ class AsignacionLiteSerializer(serializers.ModelSerializer):
             'sacafranco_grupo',
             'cedula_color',
             'fecha',
+            'es_hueca',
             'persona_detalle',
             'cliente_detalle',
             'instalacion_detalle',

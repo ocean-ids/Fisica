@@ -687,6 +687,14 @@ def asignar_servicio(request):
     except Exception:
         pass
 
+    # HUECA manual: si NO se envía persona (puesto sin guardia), se crea la asignacion
+    # con persona=None y es_hueca=True (se mostrara como "HUECA", no "No Cubierto").
+    # Normalizar persona vacia/0 -> None para que el serializer no intente un pk invalido.
+    _tiene_persona = str(data.get('persona', '')).strip() not in ('', '0', 'None', 'null')
+    if not _tiene_persona:
+        data['persona'] = None
+        data['es_hueca'] = True
+
     reasignar = str(data.get('reasignar', '')).strip().lower() in ('1', 'true', 'yes', 'si', 'sí')
     if 'reasignar' in data:
         data.pop('reasignar')
@@ -752,7 +760,7 @@ def asignar_servicio(request):
         puesto_id = data.get('puesto') or data.get('puesto_id')
         mes_val = data.get('mes')
         anio_val = data.get('anio')
-        if not reasignar and puesto_id and mes_val and anio_val:
+        if not reasignar and _tiene_persona and puesto_id and mes_val and anio_val:
             existentes = Asignacion.objects.filter(
                 puesto_id=int(puesto_id),
                 mes=int(mes_val),

@@ -1618,9 +1618,12 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 # Solo registros COMPLETOS: el cronograma del mes debe estar lleno.
                 # Si falta ALGUN dia (hueco en blanco) o vienen menos dias que el mes,
                 # la fila NO se importa (cronograma incompleto).
+                # EXCEPCION: las HUECAS (puesto sin guardia, sin cedula) se importan aunque
+                # el cronograma este PARCIAL: un dia en blanco = no hay hueca ese dia. Basta
+                # con que traiga al menos un dia marcado (ya validado arriba con _tiene_cal).
                 _cal_mes = [(v or '').strip() for v in cal]
                 _dias_faltantes = [d_i + 1 for d_i, v in enumerate(_cal_mes) if not v]
-                if len(_cal_mes) < days_in_month or _dias_faltantes:
+                if (not es_hueca) and (len(_cal_mes) < days_in_month or _dias_faltantes):
                     _faltan = _dias_faltantes if len(_cal_mes) >= days_in_month else 'todos los dias del mes'
                     resumen['errores'].append(
                         f'Hoja {ws.title}, Fila {i}: cronograma incompleto (dias sin marcar: {_faltan}) — no se importa' + _ubic()
@@ -1730,6 +1733,9 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     'publicada_calendario': True, 'recurring': True,
                     'start_date': month_start, 'end_date': _base_end,
                     'orden': row_orden,
+                    # Marca explicita: una HUECA (sin persona) se muestra como "HUECA",
+                    # no como "No Cubierto". El resto siempre queda en False.
+                    'es_hueca': bool(es_hueca),
                 }
                 if es_hueca:
                     # Hueca (sin persona): puede haber VARIAS por puesto -> se distingue por

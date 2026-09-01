@@ -433,10 +433,10 @@ export class AsignacionFormComponent implements OnInit {
 
   isFormValid(): boolean {
     // El horario ya no se pide en el modal: proviene del puesto (PuestoHorario).
+    // La PERSONA es opcional: sin persona se crea una HUECA (puesto sin guardia).
     return !!this.clienteSeleccionado
       && !!this.instalacionSeleccionada
       && !!this.asignacion.puesto
-      && !!this.asignacion.persona
       && !!this.asignacion.start_date;
     }
 
@@ -473,6 +473,9 @@ export class AsignacionFormComponent implements OnInit {
         this.isSaving = false;
       }
     }
+
+    // Sin persona -> es una HUECA (puesto sin guardia).
+    this.asignacion.es_hueca = !this.asignacion.persona;
 
     this.isSaving = true;
     this.dialogRef.close({

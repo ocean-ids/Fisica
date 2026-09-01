@@ -3,12 +3,13 @@ instalacion -> sale en el reporte bajo ese nominativo, no en su puesto propio.""
 import datetime
 from django.test import TestCase
 from django.utils import timezone
+from rest_framework.test import APIRequestFactory
 
 from CoreFisica.models import (
     Provincia, Canton, Cliente, Instalacion, Puesto, Persona, Asignacion, AsignacionSemanal,
 )
 from CoreFisica.views.reporte_asistencia_views import _build_reporte_asistencia_data
-from CoreFisica.views.importar_puestos_asignaciones import _cal_valor_ok
+from CoreFisica.views.importar_puestos_asignaciones import _cal_valor_ok, importar_formato_reporte
 
 
 class CoberturaFijoTests(TestCase):
@@ -76,3 +77,55 @@ class CoberturaFijoTests(TestCase):
         fila2 = [r for r in rows2 if isinstance(r, dict) and r.get('asignacion_id') == asig.id]
         self.assertEqual(len(fila2), 1)
         self.assertEqual(fila2[0].get('codigo'), 'K35', 'dia normal -> su puesto propio')
+
+
+class HuecaImportParcialTests(TestCase):
+    """Una fila SIN cedula ni nombre (puesto sin guardia) se importa como HUECA
+    (persona=None) AUNQUE el cronograma del mes venga PARCIAL: no se exige el mes
+    completo para huecas; los dias en blanco simplemente = no hay hueca ese dia."""
+
+    def _build_wb(self, mes, anio, dias_marcados):
+        from openpyxl import Workbook
+        days_in_month = ((datetime.date(anio, mes + 1, 1) if mes < 12 else datetime.date(anio, 12, 31))
+                         - datetime.timedelta(days=1)).day if mes < 12 else 31
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'HOJA'
+        # Encabezado que reconoce _rep_detectar_columnas: nominativo = CLIENTE-1.
+        # cols: 0=nominativo 1=CLIENTE 2=PUESTO 3=TIPO 4=CEDULA 5=NOMBRES 6=HING 7=HSAL 8..=dias
+        header = [None, 'CLIENTE', 'PUESTO', 'TIPO', 'CEDULA', 'APELLIDOS Y NOMBRES',
+                  'H INGRESO', 'H SALIDA'] + list(range(1, days_in_month + 1))
+        ws.append(header)
+        cal = ['D' if (d in dias_marcados) else '' for d in range(1, days_in_month + 1)]
+        # Fila HUECA: SIN cedula y SIN nombre.
+        fila = ['K35', 'CELCO GYE', 'CELCO BODEGA', '24H', '', '', '07:00', '19:00'] + cal
+        ws.append(fila)
+        return wb
+
+    def test_hueca_con_mes_parcial_se_importa(self):
+        prov, _ = Provincia.objects.get_or_create(nombre='GUAYAS')
+        can, _ = Canton.objects.get_or_create(nombre='GUAYAQUIL', provincia=prov)
+        cli = Cliente.objects.create(razon_social='CELCO SA', nombre_comercial='CELCO GYE')
+        inst = Instalacion.objects.create(cliente=cli, canton=can, nombre='CELCO GUAYAQUIL', codigo='K35')
+        puesto = Puesto.objects.create(instalacion=inst, nombre='CELCO BODEGA', tipo='CONTROL')
+
+        hoy = timezone.localdate()
+        mes, anio = hoy.month, hoy.year
+        dias_marcados = [21, 22, 23, 24, 25]  # SOLO 5 dias -> mes parcial
+
+        wb = self._build_wb(mes, anio, dias_marcados)
+        req = APIRequestFactory().get(f'/x?mes={mes}&anio={anio}&meses=0&meses_sync=0')
+        importar_formato_reporte(req, wb, None)
+
+        huecas = Asignacion.objects.filter(persona__isnull=True, instalacion=inst, puesto=puesto,
+                                           mes=mes, anio=anio)
+        self.assertEqual(huecas.count(), 1, 'la hueca con mes parcial debe importarse')
+        self.assertTrue(huecas.first().es_hueca, 'debe quedar marcada como HUECA (no "No Cubierto")')
+
+        # Y sale como HUECA en el reporte un dia marcado (persona vacia -> "HUECA").
+        fecha = datetime.date(anio, mes, 22)
+        rows = _build_reporte_asistencia_data(fecha=fecha.isoformat(), turno='Diurno')
+        rows = rows[0] if isinstance(rows, tuple) else rows
+        fila = [r for r in rows if isinstance(r, dict) and r.get('asignacion_id') == huecas.first().id]
+        self.assertEqual(len(fila), 1, 'la hueca debe salir en el reporte el dia marcado')
+        self.assertEqual((fila[0].get('nombre_apellidos') or '').upper(), 'HUECA')

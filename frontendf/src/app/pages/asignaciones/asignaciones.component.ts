@@ -2540,10 +2540,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       Swal.fire({ icon: 'warning', title: 'Falta Puesto', text: 'Debe seleccionar un Puesto' });
       return;
     }
-    if (!this.asignacionActual.persona) {
-      Swal.fire({ icon: 'warning', title: 'Falta Persona', text: 'Debe seleccionar una Persona' });
-      return;
-    }
+    // La PERSONA es opcional: sin persona se guarda como HUECA (puesto sin guardia).
+    const tienePersona = !!this.asignacionActual.persona;
+    this.asignacionActual.es_hueca = !tienePersona;
     // El horario ya no se pide: proviene del puesto (PuestoHorario).
 
     this.asignacionActual.cliente = this.clienteSeleccionado;
@@ -2566,7 +2565,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       a.anio === this.anio &&
       (!this.modoEdicion || a.id !== this.asignacionActual.id)
     );
-    const personaConflict = !esMismaPersona && (conflictoLocal || enGlobal);
+    // Sin persona (HUECA) no hay conflicto de persona posible.
+    const personaConflict = tienePersona && !esMismaPersona && (conflictoLocal || enGlobal);
     // El puesto solo es "conflicto" cuando YA LLENÓ todos sus cupos (capacidad).
     // Si todavía hay cupo libre, se crea una asignación más (no se sobreescribe).
     const pidSel = Number(this.asignacionActual.puesto);
@@ -2580,7 +2580,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       a.anio === this.anio &&
       (!this.modoEdicion || a.id !== this.asignacionActual.id)
     ).length;
-    const puestoConflict = ocupadasPuesto >= capPuesto;
+    // Una HUECA (sin persona) no ocupa cupo: no se bloquea por capacidad del puesto.
+    const puestoConflict = tienePersona && (ocupadasPuesto >= capPuesto);
 
     // Modo edición: si la persona ya está en otro puesto este mes, ofrecer reasignar
     if (this.modoEdicion && this.asignacionActual.id) {
@@ -2651,8 +2652,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   private ejecutarCrearAsignacion(reasignar: boolean): void {
+    // Sin persona -> HUECA: enviar persona=null (no 0) y es_hueca=true.
+    const esHueca = !this.asignacionActual.persona;
     const payload = {
       ...this.asignacionActual,
+      persona: this.asignacionActual.persona || null,
+      es_hueca: esHueca,
       patronAsignacion: null,
       start_date: this.asignacionActual.start_date || null,
       create_calendar: true,

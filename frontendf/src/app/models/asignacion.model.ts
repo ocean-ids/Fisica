@@ -25,6 +25,7 @@ export interface Asignacion{
     sacafranco_grupo?: number | null;
     orden?: number;
     cedula_color?: string;
+    es_hueca?: boolean;
 }
 
 export interface SacafrancoFila {

@@ -210,7 +210,15 @@
                           class="badge bg-secondary d-inline-flex align-items-center gap-1">
                           <i class="bi bi-lock-fill"></i> CERRADO
                         </span>
-                        <button *ngIf="row.asig.puesto_detalle?.activo !== false"
+                        <!-- HUECA: puesto sin guardia traido del Excel (fila sin cedula/nombre).
+                             Se distingue de un puesto simplemente sin asignar ("No Cubierto"). -->
+                        <button *ngIf="row.asig.puesto_detalle?.activo !== false && row.asig.es_hueca"
+                          type="button" class="btn btn-sm btn-warning d-flex align-items-center gap-1 mx-auto"
+                          title="Puesto sin guardia (HUECA)"
+                          (click)="mostrarPuestoVacante(row.asig)">
+                          <i class="bi bi-exclamation-triangle-fill"></i> HUECA
+                        </button>
+                        <button *ngIf="row.asig.puesto_detalle?.activo !== false && !row.asig.es_hueca"
                           type="button" class="btn btn-sm btn-warning d-flex align-items-center gap-1 mx-auto"
                           title="Puesto sin persona asignada"
                           (click)="mostrarPuestoVacante(row.asig)">

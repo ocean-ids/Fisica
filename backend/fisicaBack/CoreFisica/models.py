@@ -991,6 +991,11 @@ class Asignacion(models.Model):
 
     agregar_sacafranco = models.BooleanField(default=False)
 
+    # HUECA: puesto sin guardia importado desde el Excel (fila sin cedula/nombre).
+    # Distingue una hueca (que debe mostrarse como "HUECA") de un puesto simplemente
+    # sin asignar (persona=None por renuncia/cierre), que sigue siendo "No Cubierto".
+    es_hueca = models.BooleanField(default=False)
+
     orden = models.PositiveIntegerField(default=0)
 
     cedula_color = models.CharField(max_length=7, blank=True, null=True)
