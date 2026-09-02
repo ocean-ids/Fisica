@@ -63,6 +63,7 @@
         [matAutocomplete]="autoReemplazo"
         [readonly]="guardando || cargandoReemplazos"
         placeholder="Escribe para filtrar reemplazo"
+        style="text-transform: uppercase;"
       >
       <button *ngIf="reemplazoCtrl.enabled && reemplazoCtrl.value" matSuffix mat-icon-button type="button"
               aria-label="Limpiar" (click)="limpiarReemplazo()">
@@ -101,7 +102,7 @@
         [readonly]="guardando"
         placeholder="Ej: No asistió por enfermedad"
         [matAutocomplete]="autoDescripcion"
-        style="resize: vertical;"
+        style="resize: vertical; text-transform: uppercase;"
       ></textarea>
       <button
         *ngIf="soportaDictado"

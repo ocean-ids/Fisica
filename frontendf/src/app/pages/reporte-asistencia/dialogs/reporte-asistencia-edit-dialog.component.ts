@@ -472,7 +472,7 @@ export class ReporteAsistenciaEditDialogComponent {
       estado: raw.estado || null,
       estado_asistencia: raw.estado_asistencia || null,
       reemplazo_id: raw.reemplazo_id === '' ? null : raw.reemplazo_id,
-      descripcion: raw.descripcion === '' ? null : raw.descripcion,
+      descripcion: raw.descripcion ? raw.descripcion.toString().toUpperCase() : null,
       hueca: !!raw.hueca,
       hueca_motivo: raw.hueca ? (raw.hueca_motivo || null) : null,
       fecha: this.data?.fecha || null
