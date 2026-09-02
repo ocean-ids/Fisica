@@ -192,3 +192,46 @@ class FormatoDescargableImportableTests(TestCase):
         self.assertIsNotNone(asig.horario)
         self.assertEqual(str(asig.horario.hora_ingreso)[:5], '07:00')
         self.assertEqual(str(asig.horario.hora_salida)[:5], '19:00')
+
+    def test_fila_con_puesto_vacio_no_se_importa_y_avisa(self):
+        """Una fila con persona pero PUESTO en blanco NO se importa (no hereda el
+        puesto de la fila de arriba) y genera una alerta 'PUESTO vacia'."""
+        from openpyxl import Workbook
+        prov, _ = Provincia.objects.get_or_create(nombre='GUAYAS')
+        can, _ = Canton.objects.get_or_create(nombre='GUAYAQUIL', provincia=prov)
+        cli = Cliente.objects.create(razon_social='CELCO SA', nombre_comercial='CELCO GYE')
+        inst = Instalacion.objects.create(cliente=cli, canton=can, nombre='CELCO GUAYAQUIL', codigo='K35')
+        Puesto.objects.create(instalacion=inst, nombre='CELCO BODEGA', tipo='CONTROL')
+        p_ok = Persona.objects.create(cedula='0900000201', nombres='ANA', apellidos='LOPEZ',
+                                      tipo='FIJOS', is_active=True)
+        p_sin = Persona.objects.create(cedula='0900000202', nombres='BETO', apellidos='RUIZ',
+                                       tipo='FIJOS', is_active=True)
+
+        hoy = timezone.localdate()
+        mes, anio = hoy.month, hoy.year
+        dim = ((datetime.date(anio, mes + 1, 1) if mes < 12 else datetime.date(anio, 12, 31))
+               - datetime.timedelta(days=1)).day if mes < 12 else 31
+
+        wb = Workbook(); ws = wb.active; ws.title = 'HOJA'
+        ws.append(['NOMINATIVO', 'CLIENTE', 'PUESTO', 'TIPO', 'CEDULA',
+                   'APELLIDOS Y NOMBRES', 'H INGRESO', 'H SALIDA'] + list(range(1, dim + 1)))
+        # Fila 1: valida (con puesto)
+        ws.append(['K35', 'CELCO GYE', 'CELCO BODEGA', '1 24HLD', '0900000201',
+                   'LOPEZ ANA', '07:00', '19:00'] + ['D'] * dim)
+        # Fila 2: PUESTO en blanco (aunque la de arriba SI tiene puesto -> NO se hereda)
+        ws.append(['K35', 'CELCO GYE', '', '', '0900000202',
+                   'RUIZ BETO', '', ''] + ['D'] * dim)
+
+        req = APIRequestFactory().get(f'/x?mes={mes}&anio={anio}&meses=0&meses_sync=0')
+        resp = importar_formato_reporte(req, wb, None)
+        data = resp.data if hasattr(resp, 'data') else resp
+
+        # La de arriba SI se importa
+        self.assertIsNotNone(Asignacion.objects.filter(persona=p_ok, mes=mes, anio=anio).first())
+        # La de puesto vacio NO se importa (y NO hereda 'CELCO BODEGA')
+        self.assertIsNone(Asignacion.objects.filter(persona=p_sin, mes=mes, anio=anio).first(),
+                          'la fila sin puesto no debe importarse ni heredar el puesto de arriba')
+        # Y sale la alerta
+        errores = data.get('errores', []) if isinstance(data, dict) else []
+        self.assertTrue(any('PUESTO vacia' in e and '0900000202' in e for e in errores),
+                        f'debe avisar PUESTO vacia para la fila sin puesto. Alertas: {errores}')

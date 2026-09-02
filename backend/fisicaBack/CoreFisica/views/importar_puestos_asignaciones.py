@@ -1414,10 +1414,14 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 # nominativo de otra y quede con el cliente equivocado).
                 _raw_nom = g('nominativo')
                 carry['nominativo'] = str(_raw_nom).strip() if _raw_nom is not None else ''
-                for k in ('cli', 'pue', 'resumen'):
+                for k in ('cli', 'resumen'):
                     v = g(k)
                     if v is not None and str(v).strip():
                         carry[k] = str(v).strip()
+                # PUESTO: SU propio valor por fila; NO se hereda el de arriba. Si la celda
+                # de PUESTO viene vacia, la fila se salta (regla: puesto vacio = no importa).
+                _raw_pue = g('pue')
+                carry['pue'] = str(_raw_pue).strip() if _raw_pue is not None else ''
 
                 cedula = normalize_cedula(norm(g('ced')))
                 # Anti-mezcla: si esta persona esta repetida en la hoja, solo se procesa
@@ -1455,6 +1459,16 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
 
                 puesto_nombre = carry['pue']
                 es_saca = _rep_norm(puesto_nombre) == 'SACAFRANCO'
+
+                # PUESTO vacio (y no es sacafranco) -> NO se importa y se AVISA. No se
+                # hereda el puesto de la fila de arriba.
+                if not es_saca and not puesto_nombre:
+                    _nom_p = norm(g('nombre'))
+                    _quien = f"{normalize_cedula(norm(g('ced')))} {_nom_p}".strip() or 'sin persona'
+                    resumen['errores'].append(
+                        f'Hoja {ws.title}, Fila {i}: [{_quien}] columna PUESTO vacia — no se importa' + _ubic()
+                    )
+                    continue
 
                 cal = []
                 _cal_ignorados = []
