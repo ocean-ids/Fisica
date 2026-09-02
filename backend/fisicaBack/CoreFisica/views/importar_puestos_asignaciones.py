@@ -106,6 +106,17 @@ def parse_excel_date(val):
     return None
 
 
+def _split_horario_rango(v):
+    """Parte un horario en rango 'HH:MM - HH:MM' (formato del descargable) en
+    (ingreso, salida). Si no es un rango, devuelve (v, None)."""
+    if v is None:
+        return None, None
+    partes = re.split(r'\s*[-–]\s*', str(v).strip(), maxsplit=1)
+    if len(partes) == 2:
+        return partes[0].strip(), partes[1].strip()
+    return str(v).strip(), None
+
+
 def parse_excel_time(val):
     if not val:
         return None
@@ -1174,16 +1185,22 @@ def _ciclo_para_continuar(seq):
 def _rep_detectar_columnas(rows):
     for ri, row in enumerate(rows[:20]):
         H = {_rep_norm(c): j for j, c in enumerate(row) if c is not None and str(c).strip()}
-        if 'CLIENTE' in H and 'PUESTO' in H and 'CEDULA' in H and ('H INGRESO' in H or 'H SALIDA' in H):
+        # Acepta el formato PARA IMPORTAR (PUESTO / H INGRESO / H SALIDA / APELLIDOS Y
+        # NOMBRES / TIPO) Y TAMBIEN el formato nativo del DESCARGABLE (NOMBRE PUESTO /
+        # HORARIO como rango / PERSONA / RESUMEN). Asi el mismo archivo que se descarga
+        # es reimportable sin reformatear.
+        _pue_idx = H.get('PUESTO', H.get('NOMBRE PUESTO'))
+        _has_hor = ('H INGRESO' in H) or ('H SALIDA' in H) or ('HORARIO' in H)
+        if 'CLIENTE' in H and _pue_idx is not None and 'CEDULA' in H and _has_hor:
             dias = []
             for j, c in enumerate(row):
                 s = str(c).strip() if c is not None else ''
                 if s.isdigit() and 1 <= int(s) <= 31:
                     dias.append(j)
             col = {
-                'ing': H.get('H INGRESO'), 'sal': H.get('H SALIDA'),
-                'cli': H['CLIENTE'], 'pue': H['PUESTO'], 'resumen': H.get('TIPO'),
-                'ced': H['CEDULA'], 'nombre': H.get('APELLIDOS Y NOMBRES'),
+                'ing': H.get('H INGRESO'), 'sal': H.get('H SALIDA'), 'hor': H.get('HORARIO'),
+                'cli': H['CLIENTE'], 'pue': _pue_idx, 'resumen': H.get('TIPO', H.get('RESUMEN')),
+                'ced': H['CEDULA'], 'nombre': H.get('APELLIDOS Y NOMBRES', H.get('PERSONA')),
                 'nominativo': H['CLIENTE'] - 1, 'dias': dias,
             }
             # Si no hay encabezado "TIPO", inferir la columna del resumen del puesto:
@@ -1661,6 +1678,12 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 # arrastrar hora ingreso/salida de celdas combinadas (mismo puesto)
                 raw_ing = g('ing')
                 raw_sal = g('sal')
+                # Formato descargable: una sola columna HORARIO con rango 'HH:MM - HH:MM'.
+                if (raw_ing is None or not str(raw_ing).strip()) and \
+                   (raw_sal is None or not str(raw_sal).strip()) and col.get('hor') is not None:
+                    _pi, _ps = _split_horario_rango(g('hor'))
+                    raw_ing = raw_ing if (raw_ing is not None and str(raw_ing).strip()) else _pi
+                    raw_sal = raw_sal if (raw_sal is not None and str(raw_sal).strip()) else _ps
                 if raw_ing is not None and str(raw_ing).strip():
                     carry_time['ing'] = raw_ing
                 if raw_sal is not None and str(raw_sal).strip():

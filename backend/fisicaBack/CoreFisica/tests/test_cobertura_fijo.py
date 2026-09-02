@@ -9,7 +9,9 @@ from CoreFisica.models import (
     Provincia, Canton, Cliente, Instalacion, Puesto, Persona, Asignacion, AsignacionSemanal,
 )
 from CoreFisica.views.reporte_asistencia_views import _build_reporte_asistencia_data
-from CoreFisica.views.importar_puestos_asignaciones import _cal_valor_ok, importar_formato_reporte
+from CoreFisica.views.importar_puestos_asignaciones import (
+    _cal_valor_ok, importar_formato_reporte, _split_horario_rango, _rep_detectar_columnas,
+)
 
 
 class CoberturaFijoTests(TestCase):
@@ -129,3 +131,64 @@ class HuecaImportParcialTests(TestCase):
         fila = [r for r in rows if isinstance(r, dict) and r.get('asignacion_id') == huecas.first().id]
         self.assertEqual(len(fila), 1, 'la hueca debe salir en el reporte el dia marcado')
         self.assertEqual((fila[0].get('nombre_apellidos') or '').upper(), 'HUECA')
+
+
+class FormatoDescargableImportableTests(TestCase):
+    """El importador acepta el formato NATIVO del descargable: encabezados
+    NOMBRE PUESTO / PERSONA / RESUMEN y una sola columna HORARIO en rango
+    'HH:MM - HH:MM' (que se parte en ingreso/salida)."""
+
+    def test_split_horario_rango(self):
+        self.assertEqual(_split_horario_rango('07:00 - 19:00'), ('07:00', '19:00'))
+        self.assertEqual(_split_horario_rango('06:30 – 21:00'), ('06:30', '21:00'))  # guion largo
+        self.assertEqual(_split_horario_rango('07:00'), ('07:00', None))
+        self.assertEqual(_split_horario_rango(None), (None, None))
+
+    def test_detecta_ambos_formatos(self):
+        # Formato PARA IMPORTAR (clasico)
+        clasico = [['NOMINATIVO', 'CLIENTE', 'PUESTO', 'TIPO', 'CEDULA',
+                    'APELLIDOS Y NOMBRES', 'H INGRESO', 'H SALIDA', 1, 2, 3]]
+        ri, col = _rep_detectar_columnas(clasico)
+        self.assertEqual(ri, 0)
+        self.assertIsNotNone(col.get('ing'))
+        # Formato DESCARGABLE (nativo)
+        desc = [['HORARIO', 'NOMINATIVO', 'CLIENTE', 'NOMBRE PUESTO', 'RESUMEN',
+                 'CEDULA', 'PERSONA', 1, 2, 3]]
+        ri2, col2 = _rep_detectar_columnas(desc)
+        self.assertEqual(ri2, 0)
+        self.assertIsNotNone(col2.get('hor'))      # columna HORARIO detectada
+        self.assertIsNotNone(col2.get('pue'))      # NOMBRE PUESTO -> pue
+        self.assertIsNotNone(col2.get('nombre'))   # PERSONA -> nombre
+
+    def test_importa_formato_descargable(self):
+        from openpyxl import Workbook
+        prov, _ = Provincia.objects.get_or_create(nombre='GUAYAS')
+        can, _ = Canton.objects.get_or_create(nombre='GUAYAQUIL', provincia=prov)
+        cli = Cliente.objects.create(razon_social='CELCO SA', nombre_comercial='CELCO GYE')
+        inst = Instalacion.objects.create(cliente=cli, canton=can, nombre='CELCO GUAYAQUIL', codigo='K35')
+        Puesto.objects.create(instalacion=inst, nombre='CELCO BODEGA', tipo='CONTROL')
+        persona = Persona.objects.create(cedula='0900000123', nombres='JUAN', apellidos='PEREZ',
+                                         tipo='FIJOS', is_active=True)
+
+        hoy = timezone.localdate()
+        mes, anio = hoy.month, hoy.year
+        dim = ((datetime.date(anio, mes + 1, 1) if mes < 12 else datetime.date(anio, 12, 31))
+               - datetime.timedelta(days=1)).day if mes < 12 else 31
+
+        wb = Workbook(); ws = wb.active; ws.title = 'HOJA'
+        # Encabezado NATIVO del descargable
+        ws.append(['HORARIO', 'NOMINATIVO', 'CLIENTE', 'NOMBRE PUESTO', 'RESUMEN',
+                   'CEDULA', 'PERSONA'] + list(range(1, dim + 1)))
+        ws.append(['07:00 - 19:00', 'K35', 'CELCO GYE', 'CELCO BODEGA', '1 24HLD',
+                   '0900000123', 'PEREZ JUAN'] + ['D'] * dim)
+
+        req = APIRequestFactory().get(f'/x?mes={mes}&anio={anio}&meses=0&meses_sync=0')
+        importar_formato_reporte(req, wb, None)
+
+        asig = Asignacion.objects.filter(persona=persona, mes=mes, anio=anio).first()
+        self.assertIsNotNone(asig, 'la asignacion del formato descargable debe importarse')
+        self.assertEqual(asig.instalacion_id, inst.id)
+        # El HORARIO en rango se partio en ingreso/salida
+        self.assertIsNotNone(asig.horario)
+        self.assertEqual(str(asig.horario.hora_ingreso)[:5], '07:00')
+        self.assertEqual(str(asig.horario.hora_salida)[:5], '19:00')

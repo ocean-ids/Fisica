@@ -277,7 +277,11 @@ export class ReporteAsistenciaEditDialogComponent {
 
   private normalizeText(value: string | null | undefined): string {
     if (!value) return '';
-    return value.toString().trim().toUpperCase().replace(/[^A-Z0-9]+/g, '');
+    // NFD separa los acentos en marcas combinantes; el replace final las elimina
+    // (no son A-Z0-9), asi "Hernán" -> "HERNAN".
+    return value.toString().trim().toUpperCase()
+      .normalize('NFD')
+      .replace(/[^A-Z0-9]+/g, '');
   }
 
   displayReemplazo = (value: Persona | string | null): string => {
@@ -331,13 +335,19 @@ export class ReporteAsistenciaEditDialogComponent {
     const query = typeof currentValue === 'string'
       ? currentValue
       : (currentValue ? this.getNombrePersona(currentValue) : '');
-    const q = this.normalizeText(query);
-    if (!q) return base;
-
+    // Separar por espacios ANTES de normalizar (normalizeText quita los espacios).
+    // Cada palabra debe estar en "nombres apellidos cedula tipo" (en cualquier orden),
+    // asi "hector castro" (primer nombre + primer apellido) tambien coincide.
+    const tokens = (query || '')
+      .split(/\s+/)
+      .map(t => this.normalizeText(t))
+      .filter(Boolean);
+    if (!tokens.length) return base;
     return base.filter((p) => {
-      const fullName = this.normalizeText(`${p.apellidos || ''} ${p.nombres || ''}`);
-      const tipo = this.normalizeText(p.tipo || '');
-      return fullName.includes(q) || tipo.includes(q);
+      const hay = this.normalizeText(
+        `${p.nombres || ''} ${p.apellidos || ''} ${p.cedula || ''} ${p.tipo || ''}`
+      );
+      return tokens.every(t => hay.includes(t));
     });
   }
 
