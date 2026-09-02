@@ -1640,8 +1640,16 @@ def eliminar_asignacion(request, id):
                     pass
 
                 asignar.delete()
-        except Exception:
-            return Response({'error': 'No se pudo eliminar la asignación'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            import traceback as _tb
+            import logging as _logging
+            _logging.getLogger(__name__).error(
+                'eliminar_asignacion id=%s fallo: %s', id, _tb.format_exc()
+            )
+            return Response(
+                {'error': 'No se pudo eliminar la asignación', 'detalle': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         return Response({'mensaje': 'Asignación eliminada correctamente'}, status=status.HTTP_204_NO_CONTENT)
     except Asignacion.DoesNotExist:

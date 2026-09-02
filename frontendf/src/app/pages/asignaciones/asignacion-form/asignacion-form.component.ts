@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -37,6 +37,9 @@ export interface AsignacionFormResult {
   asignacion?: Asignacion;
   clienteSeleccionado?: number | null;
   instalacionSeleccionada?: number | null;
+  // Solo en modo NUEVO: ids de las personas a asignar (una asignacion por cada una,
+  // hasta el cupo del puesto). Lista vacia = HUECA.
+  personaIds?: (number | null)[];
 }
 
 @Component({
@@ -78,6 +81,9 @@ export class AsignacionFormComponent implements OnInit {
 
   personaSeleccionada: Persona | null = null;
   personasFiltradas: Persona[] = [];
+  // Modo NUEVO: varias personas a la vez, hasta el cupo del puesto.
+  personasSeleccionadas: Persona[] = [];
+  @ViewChild('personaInput') personaInputRef?: ElementRef<HTMLInputElement>;
 
   clienteSeleccionadoObj: Cliente | null = null;
   clientesFiltrados: Cliente[] = [];
@@ -159,6 +165,7 @@ export class AsignacionFormComponent implements OnInit {
     this.puestoSeleccionado = null;
     this.personaSeleccionada = null;
     this.asignacion.persona = 0;
+    this.personasSeleccionadas = [];
     this.personasFiltradas = this.getPersonasActivas();
     this.cargarInstalaciones(this.clienteSeleccionado);
   }
@@ -234,6 +241,11 @@ export class AsignacionFormComponent implements OnInit {
   seleccionarPuesto(puesto: Puesto): void {
     this.puestoSeleccionado = puesto || null;
     this.asignacion.puesto = puesto?.id || 0;
+    // Cambió el puesto -> cambia el cupo: reiniciar personas marcadas.
+    this.personasSeleccionadas = [];
+    this.personaSeleccionada = null;
+    this.asignacion.persona = 0;
+    this.personasFiltradas = this.getPersonasActivas();
     // Auto-rellenar el horario desde el puesto si lo tiene
     const horarioPuesto = (puesto as any)?.horario;
     if (horarioPuesto) {
@@ -303,10 +315,12 @@ export class AsignacionFormComponent implements OnInit {
   getPersonasActivas(): Persona[] {
     // Todos los tipos EXCEPTO sacavacaciones (sacafranco SÍ aparece), sin filtrar
     // por provincia/cantón (se muestran todas y se indica su ubicación con un badge).
+    const yaMarcadas = new Set(this.personasSeleccionadas.map(p => p.id));
     return this.personas.filter(persona => {
       const tipo = (persona.tipo || '').toString().toUpperCase();
       if (persona.is_active === false) return false;
       if (tipo === 'SACAVACACIONES') return false;
+      if (yaMarcadas.has(persona.id)) return false;   // ya seleccionada (multi)
       return true;
     });
   }
@@ -338,6 +352,28 @@ export class AsignacionFormComponent implements OnInit {
       && !!this.asignacion.puesto;
   }
 
+  // Cupos LIBRES del puesto en el mes = capacidad - ya ocupados.
+  cuposDisponibles(): number {
+    const cap = this.getPuestoCapacidad(this.puestoSeleccionado);
+    const ocup = this.getPuestoOcupadas(this.asignacion.puesto);
+    return Math.max(0, cap - ocup);
+  }
+
+  // Selección múltiple SOLO en modo NUEVO y cuando quedan 2+ cupos libres.
+  multiPersona(): boolean {
+    return !this.modoEdicion && this.cuposDisponibles() > 1;
+  }
+
+  // ¿Ya se llenaron los cupos con las personas marcadas?
+  cuposLlenos(): boolean {
+    return this.personasSeleccionadas.length >= this.cuposDisponibles();
+  }
+
+  quitarPersonaSel(p: Persona): void {
+    this.personasSeleccionadas = this.personasSeleccionadas.filter(x => x.id !== p.id);
+    this.personasFiltradas = this.getPersonasActivas();
+  }
+
   filtrarPersonas(value: string): void {
     const term = (value || '').trim().toLowerCase();
     const tokens = term.split(/\s+/).filter(Boolean);
@@ -357,6 +393,18 @@ export class AsignacionFormComponent implements OnInit {
   };
 
   seleccionarPersona(persona: Persona): void {
+    if (this.multiPersona()) {
+      // Agregar a la lista (hasta el cupo), sin repetir, y limpiar el buscador.
+      if (persona?.id
+          && !this.personasSeleccionadas.some(p => p.id === persona.id)
+          && this.personasSeleccionadas.length < this.cuposDisponibles()) {
+        this.personasSeleccionadas = [...this.personasSeleccionadas, persona];
+      }
+      this.personaSeleccionada = null;
+      if (this.personaInputRef?.nativeElement) { this.personaInputRef.nativeElement.value = ''; }
+      this.personasFiltradas = this.getPersonasActivas();
+      return;
+    }
     this.asignacion.persona = persona?.id || 0;
     this.personaSeleccionada = persona || null;
   }
@@ -394,6 +442,7 @@ export class AsignacionFormComponent implements OnInit {
     this.puestoSeleccionado = null;
     this.personaSeleccionada = null;
     this.asignacion.persona = 0;
+    this.personasSeleccionadas = [];
     this.personasFiltradas = this.getPersonasActivas();
     this.cargarPuestos(this.instalacionSeleccionada);
   }
@@ -443,6 +492,20 @@ export class AsignacionFormComponent implements OnInit {
   async onSave(): Promise<void> {
     if (!this.isFormValid() || this.isSaving) return;
 
+    // Modo NUEVO con varios cupos: devolver la lista de personas marcadas (una
+    // asignacion por cada una). Se omite el prompt de SACAFRANCO->FIJOS aqui.
+    if (this.multiPersona()) {
+      this.isSaving = true;
+      this.dialogRef.close({
+        action: 'save',
+        asignacion: this.asignacion,
+        clienteSeleccionado: this.clienteSeleccionado,
+        instalacionSeleccionada: this.instalacionSeleccionada,
+        personaIds: this.personasSeleccionadas.map(p => p.id as number),
+      });
+      return;
+    }
+
     // Si la persona es SACAFRANCO y se la asigna a un puesto fijo, ofrecer cambiar su tipo a FIJOS.
     const persona = this.personaSeleccionada;
     const esSacafranco = (persona?.tipo || '').toString().toUpperCase() === 'SACAFRANCO';
@@ -482,7 +545,9 @@ export class AsignacionFormComponent implements OnInit {
       action: 'save',
       asignacion: this.asignacion,
       clienteSeleccionado: this.clienteSeleccionado,
-      instalacionSeleccionada: this.instalacionSeleccionada
+      instalacionSeleccionada: this.instalacionSeleccionada,
+      // Modo NUEVO: una persona (o ninguna = hueca). En EDICION no se envia.
+      personaIds: this.modoEdicion ? undefined : (this.asignacion.persona ? [this.asignacion.persona] : []),
     });
   }
 

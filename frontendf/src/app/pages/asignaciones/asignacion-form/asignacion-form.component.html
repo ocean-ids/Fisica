@@ -81,7 +81,7 @@
 
     <div class="col-md-6 mb-3">
       <mat-form-field class="w-100">
-        <mat-label>Persona</mat-label>
+        <mat-label>{{ multiPersona() ? 'Personas' : 'Persona' }}</mat-label>
         <input
           matInput
           type="text"
@@ -90,7 +90,8 @@
           [ngModel]="personaSeleccionada"
           [ngModelOptions]="{standalone:true}"
           (input)="filtrarPersonas(personaInput.value)"
-          [disabled]="!canSelectPersona()"
+          [disabled]="!canSelectPersona() || (multiPersona() && cuposLlenos())"
+          [placeholder]="multiPersona() ? 'Escribe y marca varias (hasta el cupo)' : ''"
         />
         <button *ngIf="personaInput.value" matSuffix mat-icon-button type="button"
                 aria-label="Limpiar" (click)="limpiarPersona(personaInput)">
@@ -119,6 +120,24 @@
           </mat-option>
         </mat-autocomplete>
       </mat-form-field>
+
+      <!-- Multi-seleccion: chips de las personas marcadas + contador de cupo -->
+      <div *ngIf="multiPersona()" class="personas-chips">
+        <small class="text-muted">
+          Cupos: <strong>{{ personasSeleccionadas.length }}/{{ cuposDisponibles() }}</strong> seleccionados
+          <span *ngIf="cuposLlenos()"> · cupo lleno</span>
+        </small>
+        <div class="d-flex flex-wrap gap-2 mt-1">
+          <span *ngFor="let p of personasSeleccionadas"
+                class="badge rounded-pill bg-primary d-inline-flex align-items-center gap-1"
+                style="font-size:12px; padding:6px 10px;">
+            {{ p.apellidos }} {{ p.nombres }}
+            <button type="button" class="btn-close btn-close-white"
+                    style="font-size:8px;" aria-label="Quitar"
+                    (click)="quitarPersonaSel(p)"></button>
+          </span>
+        </div>
+      </div>
     </div>
 
   </div>

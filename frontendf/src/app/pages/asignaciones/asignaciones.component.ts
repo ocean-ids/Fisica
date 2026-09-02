@@ -2278,8 +2278,72 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.instalacionSeleccionada = result.instalacionSeleccionada ?? null;
       this.modoEdicion = false;
       this.textoBotonAsignacion = 'Guardar';
-      this.guardarAsignacion();
+      // Modo NUEVO: puede venir una LISTA de personas (una asignacion por cada cupo).
+      if (Array.isArray(result.personaIds)) {
+        this.crearAsignacionesDesdeForm(result.personaIds.filter((x): x is number => !!x));
+      } else {
+        this.guardarAsignacion();
+      }
     });
+  }
+
+  // Crea 1..N asignaciones para el mismo cliente/instalacion/puesto, una por persona.
+  // 0 o 1 persona -> flujo normal (incluye HUECA, conflictos y "Aplicar secuencia").
+  // 2+ personas -> se crean en lote (sin abrir "Aplicar secuencia" por cada una).
+  private crearAsignacionesDesdeForm(personaIds: number[]): void {
+    const ids = (personaIds || []).filter(Boolean);
+    if (ids.length <= 1) {
+      this.asignacionActual.persona = ids[0] || 0;
+      this.guardarAsignacion();
+      return;
+    }
+    if (!this.clienteSeleccionado || !this.instalacionSeleccionada || !this.asignacionActual.puesto) {
+      Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Selecciona cliente, instalación y puesto.' });
+      return;
+    }
+    this.asignacionActual.cliente = this.clienteSeleccionado;
+    this.asignacionActual.instalacion = this.instalacionSeleccionada;
+    this.asignacionActual.mes = this.mes;
+    this.asignacionActual.anio = this.anio;
+
+    const base = {
+      ...this.asignacionActual,
+      patronAsignacion: null,
+      start_date: this.asignacionActual.start_date || null,
+      create_calendar: true,
+      recurring: true,
+      end_date: null,
+    } as any;
+
+    this.isSaving = true;
+    let creadas = 0;
+    let fallidas = 0;
+    let ultimaId: number | null = null;
+
+    const crearUno = (i: number): void => {
+      if (i >= ids.length) {
+        this.cargarAsignaciones();
+        this.resetAsignacionState();
+        this.loadCalendarWeeks();
+        this.asignacionService.notifyAsignacionesChanged();
+        this.isSaving = false;
+        if (ultimaId) { this.scrollAFilaNuevaPendiente = { type: 'asignacion', id: ultimaId }; }
+        Swal.fire({
+          icon: fallidas ? 'warning' : 'success',
+          title: fallidas ? 'Asignaciones parciales' : 'Asignaciones creadas',
+          text: `${creadas} creada(s)` + (fallidas ? `, ${fallidas} con error` : ''),
+          timer: fallidas ? undefined : 1400,
+          showConfirmButton: !!fallidas,
+        });
+        return;
+      }
+      const payload = { ...base, persona: ids[i], es_hueca: false };
+      this.asignacionService.crearAsignacion(payload).subscribe({
+        next: (c: any) => { creadas++; if (c?.id) { ultimaId = c.id; } crearUno(i + 1); },
+        error: () => { fallidas++; crearUno(i + 1); },
+      });
+    };
+    crearUno(0);
   }
 
   //openSacafrancosModal se encarga de abrir un diálogo para mostrar los sacafrancos asociados a una semana, día, puesto y patrón específicos, permitiendo al usuario gestionar las asignaciones de sacafranco para esa combinación de parámetros, y luego actualizando la vista con los cambios realizados después de cerrar el diálogo, además de manejar los errores que puedan ocurrir durante el proceso para asegurar que la operación se realice correctamente
@@ -2748,7 +2812,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         },
         error: err => {
           console.error(err);
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar la asignación' });
+          const detalle = err?.error?.detalle || err?.error?.error || err?.message || 'No se pudo eliminar la asignación';
+          Swal.fire({ icon: 'error', title: 'Error', text: detalle });
         }
       });
     });
