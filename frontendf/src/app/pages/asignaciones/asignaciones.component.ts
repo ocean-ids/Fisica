@@ -2506,10 +2506,13 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     const cliente = (asig as any)?.cliente_detalle?.nombre_comercial || '';
     const puesto = (asig as any)?.puesto_detalle?.nombre || '';
     const codigo = this.getCodigoInstalacionAsignacion(asig) || '-';
+    const esHueca = !!(asig as any)?.es_hueca;
     Swal.fire({
       icon: 'warning',
-      title: 'Puesto no cubierto',
-      html: `Este puesto quedó <b>sin persona asignada</b>.<br><br>` +
+      title: esHueca ? 'Puesto Hueca' : 'Puesto no cubierto',
+      html: (esHueca
+              ? `Este puesto está marcado como <b>HUECA</b> (puesto sin guardia).<br><br>`
+              : `Este puesto quedó <b>sin persona asignada</b>.<br><br>`) +
             `<b>Nominativo:</b> ${codigo}<br>` +
             `<b>Cliente:</b> ${cliente}<br>` +
             `<b>Puesto:</b> ${puesto}<br><br>` +
