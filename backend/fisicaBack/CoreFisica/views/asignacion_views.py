@@ -679,7 +679,18 @@ def asignar_servicio(request):
 
     data = request.data.copy()
     data['recurring'] = True
-    data['end_date'] = None
+    # Acotar end_date al ULTIMO DIA DEL MES de la asignacion (no dejar abierta con
+    # end_date=NULL). Una asignacion abierta se cuela en el reporte de meses posteriores
+    # (aparece DUPLICADA junto a la del mes real). Misma regla que usa el import.
+    try:
+        _m = int(data.get('mes'))
+        _y = int(data.get('anio'))
+        data['end_date'] = (
+            datetime.date(_y, 12, 31) if _m >= 12
+            else datetime.date(_y, _m + 1, 1) - datetime.timedelta(days=1)
+        ).isoformat()
+    except (TypeError, ValueError):
+        data['end_date'] = None
     # El horario es opcional (proviene del puesto). Evitar enviar pk inválido (0/'').
     try:
         if str(data.get('horario', '')).strip() in ('', '0', 'None', 'null'):
@@ -1321,6 +1332,22 @@ def editar_servicio(request, id):
     if 'reset_calendar' in data:
         data.pop('reset_calendar')
     reset_calendar = str(reset_calendar_raw).strip().lower() in ('1', 'true', 'yes', 'y', 'si', 'sí')
+
+    # No REABRIR la asignacion: si viene end_date vacio/NULL y es recurrente, acotar al
+    # ultimo dia del mes (una asignacion abierta se cuela duplicada en meses posteriores).
+    # Se respeta un end_date explicito (p.ej. cierre de puesto a una fecha concreta).
+    try:
+        _ed = data.get('end_date', 'MISSING')
+        _rec = str(data.get('recurring', asignacion.recurring)).strip().lower() in ('1', 'true', 'yes', 'si', 'sí')
+        if _rec and _ed != 'MISSING' and str(_ed).strip().lower() in ('', 'null', 'none'):
+            _m = int(data.get('mes') or asignacion.mes)
+            _y = int(data.get('anio') or asignacion.anio)
+            data['end_date'] = (
+                datetime.date(_y, 12, 31) if _m >= 12
+                else datetime.date(_y, _m + 1, 1) - datetime.timedelta(days=1)
+            ).isoformat()
+    except Exception:
+        pass
 
     # Detectar cambio de persona
     new_persona_raw = data.get('persona')
