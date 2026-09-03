@@ -235,3 +235,39 @@ class FormatoDescargableImportableTests(TestCase):
         errores = data.get('errores', []) if isinstance(data, dict) else []
         self.assertTrue(any('PUESTO vacia' in e and '0900000202' in e for e in errores),
                         f'debe avisar PUESTO vacia para la fila sin puesto. Alertas: {errores}')
+
+    def test_cedula_no_coincide_con_nombre_no_se_importa(self):
+        """Si la cedula del Excel pertenece a OTRA persona (el nombre no coincide),
+        la fila NO se importa y sale alerta 'revisar cedula'."""
+        from openpyxl import Workbook
+        prov, _ = Provincia.objects.get_or_create(nombre='GUAYAS')
+        can, _ = Canton.objects.get_or_create(nombre='GUAYAQUIL', provincia=prov)
+        cli = Cliente.objects.create(razon_social='CELCO SA', nombre_comercial='CELCO GYE')
+        inst = Instalacion.objects.create(cliente=cli, canton=can, nombre='CELCO GUAYAQUIL', codigo='K35')
+        Puesto.objects.create(instalacion=inst, nombre='CELCO BODEGA', tipo='CONTROL')
+        # La cedula 0900000301 pertenece a PEREZ JUAN...
+        p = Persona.objects.create(cedula='0900000301', nombres='JUAN', apellidos='PEREZ',
+                                   tipo='FIJOS', is_active=True)
+
+        hoy = timezone.localdate()
+        mes, anio = hoy.month, hoy.year
+        dim = ((datetime.date(anio, mes + 1, 1) if mes < 12 else datetime.date(anio, 12, 31))
+               - datetime.timedelta(days=1)).day if mes < 12 else 31
+
+        wb = Workbook(); ws = wb.active; ws.title = 'HOJA'
+        ws.append(['NOMINATIVO', 'CLIENTE', 'PUESTO', 'TIPO', 'CEDULA',
+                   'APELLIDOS Y NOMBRES', 'H INGRESO', 'H SALIDA'] + list(range(1, dim + 1)))
+        # ...pero en el Excel esa cedula viene con el nombre de OTRA persona.
+        ws.append(['K35', 'CELCO GYE', 'CELCO BODEGA', '1 24HLD', '0900000301',
+                   'GOMEZ LUIS CARLOS', '07:00', '19:00'] + ['D'] * dim)
+
+        req = APIRequestFactory().get(f'/x?mes={mes}&anio={anio}&meses=0&meses_sync=0')
+        resp = importar_formato_reporte(req, wb, None)
+        data = resp.data if hasattr(resp, 'data') else resp
+
+        # NO se importa a PEREZ JUAN
+        self.assertIsNone(Asignacion.objects.filter(persona=p, mes=mes, anio=anio).first(),
+                          'no debe importar cuando la cedula no corresponde al nombre')
+        errores = data.get('errores', []) if isinstance(data, dict) else []
+        self.assertTrue(any('revisar cedula' in e.lower() and '0900000301' in e for e in errores),
+                        f'debe avisar que la cedula no coincide. Alertas: {errores}')

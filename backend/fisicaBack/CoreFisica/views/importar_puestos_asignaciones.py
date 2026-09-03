@@ -1142,6 +1142,21 @@ def _rep_norm(v):
     return ' '.join(t.split())
 
 
+def _nombre_coincide(nombre_excel, persona):
+    """True si el nombre escrito en el Excel coincide (tolerante) con el de la persona
+    registrada para esa cedula. Sirve para detectar cedulas MAL ESCRITAS que apuntan a
+    OTRA persona. Compara por palabras (ignora orden, acentos y mayusculas); considera
+    que coincide si comparten al menos 2 palabras. Si falta info (algun nombre con menos
+    de 2 palabras) NO bloquea (devuelve True), para no botar filas por datos incompletos."""
+    def toks(s):
+        return set(t for t in _rep_norm(s).split() if len(t) > 1)
+    a = toks(nombre_excel or '')
+    b = toks(f"{getattr(persona, 'apellidos', '') or ''} {getattr(persona, 'nombres', '') or ''}")
+    if len(a) < 2 or len(b) < 2:
+        return True
+    return len(a & b) >= 2
+
+
 def _periodo_minimo(seq):
     """Detecta el período mínimo EXACTO de una secuencia (ej. DDDNNNF -> 7).
     Si no hay período exacto más corto, devuelve la secuencia completa."""
@@ -1499,6 +1514,14 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                             f'Hoja {ws.title}, Fila {i}: sacafranco con cedula {cedula} no esta registrado — no se importa'
                         )
                         continue
+                    # La cedula debe corresponder al nombre escrito (evita cedula de OTRA persona).
+                    if not _nombre_coincide(g('nombre'), persona):
+                        resumen['errores'].append(
+                            f'Hoja {ws.title}, Fila {i}: la cedula {cedula} es de '
+                            f'"{persona.apellidos} {persona.nombres}", NO de "{norm(g("nombre"))}" '
+                            f'— revisar cedula, no se importa (sacafranco)'
+                        )
+                        continue
                     orden_counter += 1
                     row_orden = orden_counter
                     fila, _ = _get_or_create_sacafranco_fila(persona, mes, anio, row_orden)
@@ -1723,6 +1746,15 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                     if not persona:
                         resumen['errores'].append(
                             f'Hoja {ws.title}, Fila {i}: persona con cedula {cedula} no esta registrada — no se importa' + _ubic()
+                        )
+                        continue
+                    # La cedula debe corresponder al nombre escrito. Si la cedula es de OTRA
+                    # persona (nombre no coincide) -> alerta y NO se importa esa fila.
+                    if not _nombre_coincide(g('nombre'), persona):
+                        resumen['errores'].append(
+                            f'Hoja {ws.title}, Fila {i}: la cedula {cedula} es de '
+                            f'"{persona.apellidos} {persona.nombres}", NO de "{norm(g("nombre"))}" '
+                            f'— revisar cedula, no se importa' + _ubic()
                         )
                         continue
 
