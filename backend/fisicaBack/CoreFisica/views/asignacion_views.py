@@ -698,6 +698,11 @@ def asignar_servicio(request):
     except Exception:
         pass
 
+    # Turno preferido de ESTA persona (puestos día/noche con varias personas): 'Diurno' o
+    # 'Nocturno'. Se usa para llenar el calendario con el token (D/N) del turno de la persona
+    # y así cada una salga en su turno/hora en el reporte. Se saca del payload (no va al serializer).
+    turno_preferido = str(data.pop('turno_preferido', '') or '').strip()
+
     # HUECA manual: si NO se envía persona (puesto sin guardia), se crea la asignacion
     # con persona=None y es_hueca=True (se mostrara como "HUECA", no "No Cubierto").
     # Normalizar persona vacia/0 -> None para que el serializer no intente un pk invalido.
@@ -833,6 +838,35 @@ def asignar_servicio(request):
                 puesto_obj.save(update_fields=['horario'])
         except Exception:
             pass
+
+        # Turno elegido para ESTA persona (puesto día/noche): guardarle SU horario según el
+        # turno (Diurno 07-19 / Nocturno 19-07) tomando las horas del PuestoHorario de ese
+        # turno, para que cada persona muestre su hora correcta (no la del otro turno).
+        if turno_preferido and getattr(asignacion, 'puesto_id', None):
+            try:
+                from ..models import PuestoHorario as _PH, Horario as _Hor
+                _tp = turno_preferido.lower()
+                _ph = None
+                for _h in _PH.objects.filter(puesto_id=asignacion.puesto_id):
+                    _t = (getattr(_h, 'turno', '') or '').strip().lower()
+                    if (_tp.startswith('n') and _t.startswith('n')) or \
+                       (_tp.startswith('d') and (_t.startswith('d') or _t.startswith('a'))):
+                        _ph = _h
+                        break
+                if _ph and _ph.hora_ingreso and _ph.hora_salida:
+                    # filter().first() (no get_or_create): puede haber Horarios duplicados
+                    # con la misma hora y get_or_create reventaría con MultipleObjectsReturned.
+                    _hor = _Hor.objects.filter(
+                        hora_ingreso=_ph.hora_ingreso, hora_salida=_ph.hora_salida
+                    ).first()
+                    if not _hor:
+                        _hor = _Hor.objects.create(
+                            hora_ingreso=_ph.hora_ingreso, hora_salida=_ph.hora_salida
+                        )
+                    asignacion.horario = _hor
+                    asignacion.save(update_fields=['horario'])
+            except Exception:
+                pass
         # Crear filas de AsignacionSemanal para el puesto en las semanas del mes/año de la asignación
         # Forzamos creación de calendario siempre (evita depender del flag del front y cubre el mes actual)
         create_calendar = True
@@ -1035,7 +1069,8 @@ def asignar_servicio(request):
                                 except Exception:
                                     value = ''
                         else:
-                            # Sin patrón: dejar el día vacío para llenarlo manualmente.
+                            # Sin patrón: dejar el día vacío para llenarlo manualmente (la
+                            # rotación real con francos la marca el usuario en el calendario).
                             value = ''
 
                         defaults[key] = value
@@ -1678,7 +1713,10 @@ def eliminar_asignacion(request, id):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        return Response({'mensaje': 'Asignación eliminada correctamente'}, status=status.HTTP_204_NO_CONTENT)
+        # 204 NO puede llevar cuerpo (viola HTTP): si se envía JSON, el proxy de vite
+        # lee ese cuerpo como el inicio de la siguiente respuesta -> "Parse Error:
+        # Expected HTTP/" -> el navegador muestra "0 Unknown Error". Debe ir vacío.
+        return Response(status=status.HTTP_204_NO_CONTENT)
     except Asignacion.DoesNotExist:
         return Response({'error': 'Asignacion no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 

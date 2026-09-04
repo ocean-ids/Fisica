@@ -94,11 +94,24 @@ class AsignacionSerializer(serializers.ModelSerializer):
         }
 
     def get_horario_detalle(self, obj):
-        # El horario del PUESTO (ingreso/salida configurado) manda sobre el de la asignación.
+        # El horario del PUESTO (ingreso/salida configurado) manda, PERO respetando el turno
+        # de la asignación (día/noche por persona): si la asignación tiene su propio horario,
+        # se elige el horario del puesto que coincida con ese turno (por hora de ingreso); si
+        # no coincide, se usa el de la asignación. Sin horario propio, el primero del puesto.
         if obj.puesto_id:
             phs = [h for h in obj.puesto.horarios.all() if getattr(h, 'hora_ingreso', None)]
             if phs:
                 ph = phs[0]
+                if getattr(obj, 'horario_id', None) and obj.horario:
+                    match = next((h for h in phs if h.hora_ingreso == obj.horario.hora_ingreso), None)
+                    if match:
+                        ph = match
+                    else:
+                        return {
+                            'id': obj.horario.id,
+                            'hora_ingreso': str(obj.horario.hora_ingreso),
+                            'hora_salida': str(obj.horario.hora_salida),
+                        }
                 return {
                     'id': None,
                     'hora_ingreso': str(ph.hora_ingreso),
@@ -177,11 +190,24 @@ class AsignacionLiteSerializer(serializers.ModelSerializer):
         }
 
     def get_horario_detalle(self, obj):
-        # El horario del PUESTO (ingreso/salida configurado) manda sobre el de la asignación.
+        # El horario del PUESTO (ingreso/salida configurado) manda, PERO respetando el turno
+        # de la asignación (día/noche por persona): si la asignación tiene su propio horario,
+        # se elige el horario del puesto que coincida con ese turno (por hora de ingreso); si
+        # no coincide, se usa el de la asignación. Sin horario propio, el primero del puesto.
         if obj.puesto_id:
             phs = [h for h in obj.puesto.horarios.all() if getattr(h, 'hora_ingreso', None)]
             if phs:
                 ph = phs[0]
+                if getattr(obj, 'horario_id', None) and obj.horario:
+                    match = next((h for h in phs if h.hora_ingreso == obj.horario.hora_ingreso), None)
+                    if match:
+                        ph = match
+                    else:
+                        return {
+                            'id': obj.horario.id,
+                            'hora_ingreso': str(obj.horario.hora_ingreso),
+                            'hora_salida': str(obj.horario.hora_salida),
+                        }
                 return {
                     'id': None,
                     'hora_ingreso': str(ph.hora_ingreso),

@@ -84,10 +84,6 @@ export class PuestoFormComponent implements OnInit {
   ngOnInit(): void {
     const puesto = this.data.puesto || {};
     const initialHorarios = puesto?.horarios && Array.isArray(puesto.horarios) ? puesto.horarios : [];
-    // Ingreso/Salida son ÚNICOS para el puesto (van arriba, no por bloque). Se toman del
-    // primer horario guardado (o 07:00-19:00 por defecto).
-    const ingresoPuesto = ((initialHorarios[0] as any)?.hora_ingreso || '07:00').toString().slice(0, 5);
-    const salidaPuesto = ((initialHorarios[0] as any)?.hora_salida || '19:00').toString().slice(0, 5);
 
     this.puestoForm = this.fb.group({
       nombre: [puesto?.nombre || '', Validators.required],
@@ -95,15 +91,9 @@ export class PuestoFormComponent implements OnInit {
       tipo: [puesto?.tipo || ''],
       instalacion_id: [puesto?.instalacion_id || '', Validators.required],
       cantidad_puestos: [puesto?.cantidad_puestos ?? 0, Validators.required],
-      ingreso: [ingresoPuesto, Validators.required],
-      salida: [salidaPuesto, Validators.required],
       horario: [puesto?.horario ?? null],
       horarios: this.fb.array([])
     });
-
-    // Si cambia la hora del puesto, recalcular las horas de todos los bloques.
-    this.puestoForm.get('ingreso')?.valueChanges.subscribe(() => this.recalcularTodos());
-    this.puestoForm.get('salida')?.valueChanges.subscribe(() => this.recalcularTodos());
 
     this.horarioService.obtenerHorarios().subscribe({
       next: data => this.horariosCatalogo = data || [],
@@ -111,20 +101,20 @@ export class PuestoFormComponent implements OnInit {
     });
 
     if (initialHorarios.length) {
-      // Bloques por TURNO (+ horas); la hora ingreso/salida ya no varía por bloque.
-      const grouped: Record<string, { turno: string; days: number[]; horas: any }> = {};
+      // Un bloque por TURNO, con SU propia hora de ingreso/salida (dia y noche distintos).
+      const grouped: Record<string, { turno: string; days: number[]; horas: any; ing: string; sal: string }> = {};
       for (const h of initialHorarios) {
         const turno = this.toUiTurno(h.turno || 'Diurno');
-        const horas = (h as any).horas;
-        const key = `${turno}-${horas}`;
-        if (!grouped[key]) {
-          grouped[key] = { turno, days: [], horas };
+        if (!grouped[turno]) {
+          grouped[turno] = {
+            turno, days: [], horas: (h as any).horas,
+            ing: ((h as any).hora_ingreso || '').toString().slice(0, 5),
+            sal: ((h as any).hora_salida || '').toString().slice(0, 5),
+          };
         }
-        if (h.dia) {
-          grouped[key].days.push(h.dia);
-        }
+        if (h.dia) { grouped[turno].days.push(h.dia); }
       }
-      Object.values(grouped).forEach(g => this.addHorario(g.turno, g.days, g.horas));
+      Object.values(grouped).forEach(g => this.addHorario(g.turno, g.days, g.horas, g.ing, g.sal));
     } else {
       this.addHorario('Diurno', []);
     }
@@ -154,25 +144,25 @@ export class PuestoFormComponent implements OnInit {
       const formValue = this.puestoForm.value;
       const selectedInstalacion = this.instalaciones.find(i => i.id === formValue.instalacion_id);
 
-      // Ingreso/Salida son únicos del puesto (no por bloque).
-      const ingreso = formValue.ingreso;
-      const salida = formValue.salida;
+      // Cada bloque (turno) tiene SU propia hora de ingreso/salida (dia/noche distintos).
       const horariosPayload: any[] = [];
       const horariosFA = this.puestoForm.get('horarios') as any;
       for (let i = 0; i < horariosFA.length; i++) {
         const h = horariosFA.at(i).getRawValue();
         const days: number[] = h.days || [];
+        const bIng = h.ingreso;
+        const bSal = h.salida;
         // El campo Horas viene en HH:MM (editable). Se convierte a decimal para guardar/resumen.
         const horasManual = this.hhmmToDecimal(h.horas);
-        const horasDur = horasManual > 0 ? horasManual : this.calcDuracion(ingreso, salida);
+        const horasDur = horasManual > 0 ? horasManual : this.calcDuracion(bIng, bSal);
         if (days.length) {
           for (const d of days) {
             horariosPayload.push({
               dia: d,
               horas: horasDur,
               turno: this.toBackendTurno(h.turno),
-              hora_ingreso: ingreso,
-              hora_salida: salida
+              hora_ingreso: bIng,
+              hora_salida: bSal
             });
           }
         }
@@ -193,28 +183,51 @@ export class PuestoFormComponent implements OnInit {
     return this.puestoForm.get('horarios') as any;
   }
 
-  addHorario(turno: string = 'Diurno', days: number[] = [], horasGuardadas?: number | string | null) {
-    const ing = this.puestoForm?.get('ingreso')?.value || '07:00';
-    const sal = this.puestoForm?.get('salida')?.value || '19:00';
-    // Si viene un valor guardado (al editar), úsalo; si no, calcula desde la hora del puesto.
+  // Hora de ingreso/salida por defecto segun el turno (editable). Diurno 07-19,
+  // Nocturno 19-07, 24h 07-07.
+  private defaultHoras(turno: string): { ing: string; sal: string } {
+    const t = (turno || '').toLowerCase();
+    if (t.startsWith('n')) return { ing: '19:00', sal: '07:00' };
+    if (t === '24' || t.startsWith('a')) return { ing: '07:00', sal: '07:00' };
+    return { ing: '07:00', sal: '19:00' };
+  }
+
+  addHorario(turno: string = 'Diurno', days: number[] = [], horasGuardadas?: number | string | null,
+             ingreso?: string, salida?: string) {
+    const def = this.defaultHoras(turno);
+    const ing = (ingreso && ingreso.length >= 4) ? ingreso.slice(0, 5) : def.ing;
+    const sal = (salida && salida.length >= 4) ? salida.slice(0, 5) : def.sal;
     const horasStr = (horasGuardadas !== undefined && horasGuardadas !== null && horasGuardadas !== '')
       ? this.decimalToHHMM(Number(horasGuardadas))
       : this.decimalToHHMM(this.calcDuracion(ing, sal));
     const group = this.fb.group({
       horas: [horasStr],  // duración en HH:MM (editable)
       turno: [turno, Validators.required],
+      ingreso: [ing, Validators.required],
+      salida: [sal, Validators.required],
       days: [days]
     });
 
-    // Al elegir Turno = 24, cargar 24:00; al volver a Diurno/Nocturno, recalcular desde la hora del puesto.
+    // Al cambiar el TURNO: reponer la hora default de ese turno y recalcular horas.
     group.get('turno')?.valueChanges.subscribe((t: string | null) => {
+      const d = this.defaultHoras(t || 'Diurno');
+      group.get('ingreso')?.setValue(d.ing, { emitEvent: false });
+      group.get('salida')?.setValue(d.sal, { emitEvent: false });
       if (this.is24hTurn(t)) {
         group.get('horas')?.setValue('24:00', { emitEvent: false });
       } else {
-        const dur = this.calcDuracion(this.puestoForm.get('ingreso')?.value, this.puestoForm.get('salida')?.value);
-        group.get('horas')?.setValue(this.decimalToHHMM(dur), { emitEvent: false });
+        group.get('horas')?.setValue(this.decimalToHHMM(this.calcDuracion(d.ing, d.sal)), { emitEvent: false });
       }
     });
+
+    // Al cambiar la hora del bloque: recalcular sus horas.
+    const recomputa = () => {
+      if (this.is24hTurn(group.get('turno')?.value)) return;
+      const dur = this.calcDuracion(group.get('ingreso')?.value, group.get('salida')?.value);
+      group.get('horas')?.setValue(this.decimalToHHMM(dur), { emitEvent: false });
+    };
+    group.get('ingreso')?.valueChanges.subscribe(recomputa);
+    group.get('salida')?.valueChanges.subscribe(recomputa);
 
     this.horarios.push(group);
   }
@@ -329,10 +342,14 @@ export class PuestoFormComponent implements OnInit {
 
     if (checked) {
       if (current.indexOf(day) === -1) current.push(day);
-      // Un día solo puede pertenecer a UN bloque: si estaba marcado en otro, se quita de ahí.
+      // Un día puede estar en DIURNO y NOCTURNO a la vez (turnos distintos), pero no
+      // repetido en dos bloques del MISMO turno. Solo se quita de otros bloques del
+      // mismo turno.
+      const miTurno = group.get('turno')?.value;
       for (let i = 0; i < this.horarios.length; i++) {
         if (i === horarioIndex) { continue; }
         const otro = this.horarios.at(i);
+        if (otro.get('turno')?.value !== miTurno) { continue; }
         const otrosDias: number[] = otro.get('days')?.value || [];
         if (otrosDias.indexOf(day) !== -1) {
           otro.get('days')?.setValue(otrosDias.filter(d => d !== day));

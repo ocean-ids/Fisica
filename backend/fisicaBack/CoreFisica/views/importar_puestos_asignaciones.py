@@ -859,7 +859,8 @@ def importar_puestos_asignaciones(request):
                         PuestoHorario.objects.update_or_create(
                             puesto=puesto,
                             dia=dia,
-                            defaults={'horas': min(max(horas, 0), 24), 'turno': turno_val}
+                            turno=turno_val,
+                            defaults={'horas': min(max(horas, 0), 24)}
                         )
 
                 try:
@@ -1777,8 +1778,8 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 for grp in grupos:
                     for dia in grp.get('dias', []):
                         PuestoHorario.objects.update_or_create(
-                            puesto=puesto, dia=dia,
-                            defaults={'horas': min(max(grp.get('hours', 12), 0), 24), 'turno': grp.get('turno') or 'Diurno'}
+                            puesto=puesto, dia=dia, turno=grp.get('turno') or 'Diurno',
+                            defaults={'horas': min(max(grp.get('hours', 12), 0), 24)}
                         )
                 try:
                     puesto.sync_from_horarios()

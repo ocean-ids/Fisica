@@ -238,6 +238,26 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Resumen del puesto FILTRADO al turno de esta persona (puestos día/noche): así el
+  // diurno muestra solo 12HD.. y el nocturno solo 12HN.., no ambos mezclados. Se deduce
+  // el turno por la hora de ingreso del horario de la asignación (07->Diurno, 19->Nocturno).
+  getResumenPuestoTurno(asig: any): string {
+    const puesto = asig?.puesto_detalle;
+    if (!puesto || !puesto.horarios || !puesto.horarios.length) return '-';
+    const ing = (asig?.horario_detalle?.hora_ingreso || '').toString();
+    const hh = parseInt(ing.slice(0, 2), 10);
+    let horarios = puesto.horarios;
+    if (!isNaN(hh)) {
+      const esNoche = hh >= 12;   // 19:00 -> Nocturno; 07:00 -> Diurno
+      const filtrados = puesto.horarios.filter((h: any) => {
+        const t = (h.turno || '').toString().toLowerCase();
+        return esNoche ? t.startsWith('n') : (t.startsWith('d') || t.startsWith('a'));
+      });
+      if (filtrados.length) horarios = filtrados;
+    }
+    return this.getResumenPuestoCompacto({ ...puesto, horarios });
+  }
+
   // Obtiene el código de la instalación asociada a una asignación, utilizando diferentes campos según la estructura de datos disponible
   getCodigoInstalacionAsignacion(asig: any): string {
     if (!asig) return '-';
@@ -2280,7 +2300,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.textoBotonAsignacion = 'Guardar';
       // Modo NUEVO: puede venir una LISTA de personas (una asignacion por cada cupo).
       if (Array.isArray(result.personaIds)) {
-        this.crearAsignacionesDesdeForm(result.personaIds.filter((x): x is number => !!x));
+        // Emparejar cada persona con su turno elegido (día/noche) antes de filtrar los nulos.
+        const turnos = result.turnosPreferidos || [];
+        const pares = result.personaIds
+          .map((id, i) => ({ id, turno: turnos[i] ?? null }))
+          .filter((p): p is { id: number; turno: string | null } => !!p.id);
+        this.crearAsignacionesDesdeForm(pares.map(p => p.id), pares.map(p => p.turno));
       } else {
         this.guardarAsignacion();
       }
@@ -2290,7 +2315,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   // Crea 1..N asignaciones para el mismo cliente/instalacion/puesto, una por persona.
   // 0 o 1 persona -> flujo normal (incluye HUECA, conflictos y "Aplicar secuencia").
   // 2+ personas -> se crean en lote (sin abrir "Aplicar secuencia" por cada una).
-  private crearAsignacionesDesdeForm(personaIds: number[]): void {
+  private crearAsignacionesDesdeForm(personaIds: number[], turnos: (string | null)[] = []): void {
     const ids = (personaIds || []).filter(Boolean);
     if (ids.length <= 1) {
       this.asignacionActual.persona = ids[0] || 0;
@@ -2337,7 +2362,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         });
         return;
       }
-      const payload = { ...base, persona: ids[i], es_hueca: false };
+      const payload = { ...base, persona: ids[i], es_hueca: false } as any;
+      const turnoPref = turnos[i];
+      if (turnoPref) { payload.turno_preferido = turnoPref; }
       this.asignacionService.crearAsignacion(payload).subscribe({
         next: (c: any) => { creadas++; if (c?.id) { ultimaId = c.id; } crearUno(i + 1); },
         error: () => { fallidas++; crearUno(i + 1); },

@@ -493,8 +493,8 @@ def actualizar_puesto(request, id):
                         # (gana el último) en vez de fallar por la restricción unique (puesto, dia),
                         # que antes abortaba todo el guardado y hacía "desaparecer" filas.
                         PuestoHorario.objects.update_or_create(
-                            puesto=puesto, dia=dia,
-                            defaults={'horas': horas, 'turno': turno_val,
+                            puesto=puesto, dia=dia, turno=turno_val,
+                            defaults={'horas': horas,
                                       'hora_ingreso': hi, 'hora_salida': ho},
                         )
                         horarios_payload.append({

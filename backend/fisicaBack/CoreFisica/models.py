@@ -440,6 +440,17 @@ DIAS = (
 )
 
 
+def horas_default_turno(turno):
+    """Hora de ingreso/salida por defecto segun el turno. Editable luego en el puesto.
+    Diurno -> 07:00-19:00 · Nocturno -> 19:00-07:00 · otros (24h/Ambos) -> sin default."""
+    t = (turno or '').strip().lower()
+    if t.startswith('n'):
+        return datetime.time(19, 0), datetime.time(7, 0)
+    if t.startswith('d'):
+        return datetime.time(7, 0), datetime.time(19, 0)
+    return None, None
+
+
 class PuestoHorario(models.Model):
     puesto = models.ForeignKey(Puesto, related_name='horarios', on_delete=models.CASCADE)
     dia = models.PositiveSmallIntegerField(choices=DIAS)
@@ -456,7 +467,9 @@ class PuestoHorario(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('puesto', 'dia')
+        # Un puesto puede tener DIA y NOCHE el mismo dia (turnos distintos con su propia
+        # hora de ingreso/salida). Por eso la unicidad es por (puesto, dia, turno).
+        unique_together = ('puesto', 'dia', 'turno')
         verbose_name = 'Horario de Puesto'
         verbose_name_plural = 'Horarios de Puestos'
 

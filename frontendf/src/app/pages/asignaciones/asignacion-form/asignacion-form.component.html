@@ -120,26 +120,44 @@
           </mat-option>
         </mat-autocomplete>
       </mat-form-field>
+    </div>
 
-      <!-- Multi-seleccion: chips de las personas marcadas + contador de cupo -->
-      <div *ngIf="multiPersona()" class="personas-chips">
-        <small class="text-muted">
-          Cupos: <strong>{{ personasSeleccionadas.length }}/{{ cuposDisponibles() }}</strong> seleccionados
-          <span *ngIf="cuposLlenos()"> · cupo lleno</span>
-        </small>
-        <div class="d-flex flex-wrap gap-2 mt-1">
-          <span *ngFor="let p of personasSeleccionadas"
-                class="badge rounded-pill bg-primary d-inline-flex align-items-center gap-1"
-                style="font-size:12px; padding:6px 10px;">
-            {{ p.apellidos }} {{ p.nombres }}
-            <button type="button" class="btn-close btn-close-white"
-                    style="font-size:8px;" aria-label="Quitar"
-                    (click)="quitarPersonaSel(p)"></button>
-          </span>
+  </div>
+
+  <!-- Multi-seleccion: personas marcadas + su turno. Fila completa (debajo) para que el
+       select no se corte y "se corra" con espacio. -->
+  <div class="row" *ngIf="multiPersona()">
+    <div class="col-12 personas-chips text-center">
+      <small class="text-muted d-block">
+        Cupos: <strong>{{ personasSeleccionadas.length }}/{{ cuposDisponibles() }}</strong> seleccionados
+        <span *ngIf="cuposLlenos()"> · cupo lleno</span>
+      </small>
+      <div class="d-flex flex-column gap-2 mt-1">
+        <!-- Cada persona en una fila de 2 columnas: turno (izq) y nombre (der), centrados. -->
+        <div *ngFor="let p of personasSeleccionadas" class="row align-items-center">
+          <div class="col-6 text-center">
+            <!-- Selector de turno por persona (solo si el puesto tiene día y noche) -->
+            <select *ngIf="hasTurnoSelector()"
+                    [ngModel]="turnoPorPersona[p.id!]" [ngModelOptions]="{standalone:true}"
+                    (ngModelChange)="setTurnoPersona(p, $event)"
+                    style="font-size:12px; padding:3px 8px; border-radius:12px; border:1px solid #bbb; background:#fff;">
+              <option *ngFor="let t of getTurnosDisponibles()" [value]="t">
+                {{ t }}<ng-container *ngIf="turnoHoras(t)"> · {{ turnoHoras(t) }}</ng-container>
+              </option>
+            </select>
+          </div>
+          <div class="col-6 text-center">
+            <span class="badge rounded-pill bg-primary d-inline-flex align-items-center gap-1"
+                  style="font-size:12px; padding:6px 10px;">
+              {{ p.apellidos }} {{ p.nombres }}
+              <button type="button" class="btn-close btn-close-white"
+                      style="font-size:8px;" aria-label="Quitar"
+                      (click)="quitarPersonaSel(p)"></button>
+            </span>
+          </div>
         </div>
       </div>
     </div>
-
   </div>
 
   <div class="row" *ngIf="modoEdicion && data.patronDetectado">

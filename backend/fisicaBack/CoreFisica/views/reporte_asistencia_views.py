@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal, SacafrancoFilaSemanal, Instalacion, SacafrancoAsistencia
+from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal, SacafrancoFilaSemanal, Instalacion, SacafrancoAsistencia, SacafrancoFila
 import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from openpyxl.drawing.image import Image as XLImage
@@ -649,7 +649,14 @@ def _build_reporte_asistencia_data(
         # Incluye HUECAS (asignacion sin persona = puesto sin guardia): salen como "HUECA".
         Q(persona__isnull=True) | Q(persona__is_active=True),
         estado='ACTIVO'
-    ).exclude(persona__tipo='SACAFRANCO')
+    )
+    # Los sacafrancos se muestran como fila propia (desde SacafrancoFilaSemanal, mas abajo), por
+    # eso se excluye aqui su Asignacion. PERO una persona registrada como tipo SACAFRANCO pero
+    # asignada como FIJO (tiene Asignacion y NO tiene ficha de sacafranco) no saldria por ningun
+    # lado: hay que incluirla. Por eso solo excluimos a los tipo SACAFRANCO que SI tienen ficha.
+    _saca_con_ficha = set(SacafrancoFila.objects.values_list('persona_id', flat=True))
+    if _saca_con_ficha:
+        asig_qs = asig_qs.exclude(persona__tipo='SACAFRANCO', persona_id__in=_saca_con_ficha)
 
     if fecha_obj:
         # El reporte de asistencia es de UN dia: solo debe traer registros del MES/AÑO de
@@ -803,15 +810,17 @@ def _build_reporte_asistencia_data(
 
     # Horario del PUESTO para el día del reporte (manda sobre el Horario de la asignación):
     # se busca el PuestoHorario del puesto para ese día de la semana.
-    horario_puesto_dia = {}
+    horario_puesto_dia = {}     # {puesto_id: (ing,sal)} — fallback (cualquier turno)
+    horario_puesto_turno = {}   # {(puesto_id, 'Diurno'|'Nocturno'): (ing,sal)} — por turno
     if fecha_obj:
         from ..models import PuestoHorario
         dia_semana = fecha_obj.weekday() + 1  # 1=Lunes ... 7=Domingo
         puesto_ids = [getattr(a, 'puesto_id', None) for a in asig_list if getattr(a, 'puesto_id', None)]
         if puesto_ids:
             for ph in PuestoHorario.objects.filter(dia=dia_semana, puesto_id__in=puesto_ids):
-                if ph.hora_ingreso and ph.puesto_id not in horario_puesto_dia:
-                    horario_puesto_dia[ph.puesto_id] = (ph.hora_ingreso, ph.hora_salida)
+                if ph.hora_ingreso:
+                    horario_puesto_turno.setdefault((ph.puesto_id, ph.turno), (ph.hora_ingreso, ph.hora_salida))
+                    horario_puesto_dia.setdefault(ph.puesto_id, (ph.hora_ingreso, ph.hora_salida))
 
     # COBERTURA de FIJO: token crudo del dia (ej. DK37). Si un fijo tiene D/N+nominativo,
     # ese dia cubre OTRA instalacion -> se muestra bajo ese nominativo (su puesto propio
@@ -850,7 +859,18 @@ def _build_reporte_asistencia_data(
         if not puesto_nombre and asig:
             puesto_nombre = getattr(asig.puesto, 'tipo', '')
         horario_str = ''
-        ph_horas = horario_puesto_dia.get(getattr(asig, 'puesto_id', None)) if asig else None
+        # Horario segun el TURNO de la persona ese dia (D->Diurno, N->Nocturno). Asi en un
+        # puesto con dia+noche, cada persona muestra SU horario. Si no hay match por turno,
+        # se usa el primero del puesto (fallback).
+        ph_horas = None
+        if asig:
+            _pid = getattr(asig, 'puesto_id', None)
+            _lt = (dnf.get(asig.id) if asig else '') or ''
+            _turno_nombre = 'Diurno' if _lt == 'D' else ('Nocturno' if _lt == 'N' else '')
+            if _turno_nombre:
+                ph_horas = horario_puesto_turno.get((_pid, _turno_nombre))
+            if not ph_horas:
+                ph_horas = horario_puesto_dia.get(_pid)
         if ph_horas and ph_horas[0]:
             hi, ho = ph_horas
             horario_str = f"{hi.strftime('%H:%M')} - {ho.strftime('%H:%M')}" if ho else hi.strftime('%H:%M')

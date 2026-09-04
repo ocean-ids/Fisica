@@ -265,28 +265,36 @@ def importar_clientes(request):
                 # Arma el horario del puesto desde la columna "PUESTO" (ej. "10 H D L V"
                 # -> dias/horas/turno). Devuelve True si creó algún PuestoHorario.
                 def _armar_horario(p):
+                    from ..models import horas_default_turno
                     grupos = parse_compact_horas_turno_dias(puesto_horario_txt) if puesto_horario_txt else []
-                    hecho = False
+                    tenia_grupos = bool(grupos)
+                    creado_algo = False
                     for grp in grupos:
+                        turno_val = grp.get('turno') or 'Diurno'
+                        _ing, _sal = horas_default_turno(turno_val)
                         for dia in grp.get('dias', []):
-                            PuestoHorario.objects.update_or_create(
-                                puesto=p, dia=dia,
+                            # Clave por (puesto, dia, TURNO): un puesto puede tener DIA y NOCHE
+                            # el mismo dia (ej. "12 H D L D y 12 H N S"). get_or_create SOLO
+                            # agrega los turnos que faltan; NO pisa lo ya configurado a mano.
+                            _ph, ph_created = PuestoHorario.objects.get_or_create(
+                                puesto=p, dia=dia, turno=turno_val,
                                 defaults={'horas': min(max(grp.get('hours', 12), 0), 24),
-                                          'turno': grp.get('turno') or 'Diurno'},
+                                          'hora_ingreso': _ing, 'hora_salida': _sal},
                             )
-                            hecho = True
-                    if hecho:
+                            if ph_created:
+                                creado_algo = True
+                    if creado_algo:
                         try:
                             p.sync_from_horarios()
                             p.save()
                         except Exception:
                             pass
-                    elif puesto_horario_txt:
+                    elif puesto_horario_txt and not tenia_grupos:
                         errors.append(
                             f"Fila {i}: no se pudo interpretar el horario '{puesto_horario_txt}' "
                             f"del puesto '{puesto_nombre}'"
                         )
-                    return hecho
+                    return creado_algo
 
                 if not puesto:
                     # NUEVO: se crea con nombre + tipo + cantidad=1 y se arma su horario.
@@ -307,7 +315,9 @@ def importar_clientes(request):
                         puesto.tipo = puesto_tipo
                         puesto.save(update_fields=['tipo'])
                         toco = True
-                    if puesto_horario_txt and not PuestoHorario.objects.filter(puesto=puesto).exists():
+                    # Siempre intenta agregar los turnos del patron que FALTEN (p.ej. la
+                    # NOCHE de un puesto que hoy solo tiene DIA). Solo agrega, no pisa.
+                    if puesto_horario_txt:
                         if _armar_horario(puesto):
                             toco = True
                     if toco:

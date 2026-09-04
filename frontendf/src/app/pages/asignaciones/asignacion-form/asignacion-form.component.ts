@@ -40,6 +40,9 @@ export interface AsignacionFormResult {
   // Solo en modo NUEVO: ids de las personas a asignar (una asignacion por cada una,
   // hasta el cupo del puesto). Lista vacia = HUECA.
   personaIds?: (number | null)[];
+  // Paralelo a personaIds: turno elegido de cada persona ('Diurno'|'Nocturno'|null) para
+  // puestos día/noche. null = sin turno específico (el calendario se llena como siempre).
+  turnosPreferidos?: (string | null)[];
 }
 
 @Component({
@@ -75,6 +78,9 @@ export class AsignacionFormComponent implements OnInit {
   puestos: Puesto[] = [];
   puestoSeleccionado: Puesto | null = null;
   puestosFiltrados: Puesto[] = [];
+  // Resumen del horario del puesto elegido (turno · días · horas) para mostrarlo
+  // al lado de la persona y saber a qué turno se está asignando.
+  turnosResumen: { turno: string; dias: string; horas: string }[] = [];
   occupiedPuestoIds = new Set<number>();
   occupiedCounts: { [puestoId: number]: number } = {};
   assignedPersonaIds = new Set<number>();
@@ -83,6 +89,8 @@ export class AsignacionFormComponent implements OnInit {
   personasFiltradas: Persona[] = [];
   // Modo NUEVO: varias personas a la vez, hasta el cupo del puesto.
   personasSeleccionadas: Persona[] = [];
+  // Turno elegido por persona (puestos día/noche): { personaId: 'Diurno'|'Nocturno' }.
+  turnoPorPersona: { [id: number]: string } = {};
   @ViewChild('personaInput') personaInputRef?: ElementRef<HTMLInputElement>;
 
   clienteSeleccionadoObj: Cliente | null = null;
@@ -243,14 +251,55 @@ export class AsignacionFormComponent implements OnInit {
     this.asignacion.puesto = puesto?.id || 0;
     // Cambió el puesto -> cambia el cupo: reiniciar personas marcadas.
     this.personasSeleccionadas = [];
+    this.turnoPorPersona = {};
     this.personaSeleccionada = null;
     this.asignacion.persona = 0;
     this.personasFiltradas = this.getPersonasActivas();
+    this.computeTurnosResumen();
     // Auto-rellenar el horario desde el puesto si lo tiene
     const horarioPuesto = (puesto as any)?.horario;
     if (horarioPuesto) {
       this.asignacion.horario = horarioPuesto;
     }
+  }
+
+  // Resumen legible del horario del puesto agrupado por turno (turno · días · horas),
+  // p.ej. "Diurno · L M X J V S D · 07:00-19:00". Se muestra al elegir la persona.
+  private computeTurnosResumen(): void {
+    const hs = ((this.puestoSeleccionado as any)?.horarios || []) as any[];
+    if (!Array.isArray(hs) || !hs.length) { this.turnosResumen = []; return; }
+    const letras = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+    const groups: { [k: string]: { turno: string; ing: string; sal: string; dias: number[] } } = {};
+    for (const h of hs) {
+      const turno = (h?.turno || 'Diurno').toString();
+      const ing = this.fmtHora(h?.hora_ingreso, turno, 'ing');
+      const sal = this.fmtHora(h?.hora_salida, turno, 'sal');
+      const key = `${turno}|${ing}|${sal}`;
+      if (!groups[key]) groups[key] = { turno, ing, sal, dias: [] };
+      const d = Number(h?.dia);
+      if (d >= 1 && d <= 7) groups[key].dias.push(d);
+    }
+    // Ordenar: Diurno, Nocturno, 24, otros
+    const orden: { [t: string]: number } = { 'Diurno': 0, 'Nocturno': 1, '24': 2 };
+    this.turnosResumen = Object.values(groups)
+      .sort((a, b) => (orden[a.turno] ?? 9) - (orden[b.turno] ?? 9))
+      .map(g => ({
+        turno: g.turno,
+        dias: Array.from(new Set(g.dias)).sort((a, b) => a - b).map(d => letras[d - 1]).join(' '),
+        horas: (g.ing && g.sal) ? `${g.ing}-${g.sal}` : '',
+      }));
+  }
+
+  // Formatea "07:00:00" -> "07:00"; si viene vacío usa el default del turno.
+  private fmtHora(v: any, turno?: string, tipo?: 'ing' | 'sal'): string {
+    const s = (v ?? '').toString().trim();
+    const m = s.match(/^(\d{1,2}):(\d{2})/);
+    if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
+    const t = (turno || '').toLowerCase();
+    if (t.startsWith('n')) return tipo === 'ing' ? '19:00' : '07:00';
+    if (t.startsWith('d')) return tipo === 'ing' ? '07:00' : '19:00';
+    if (t.startsWith('2')) return '07:00';
+    return '';
   }
 
   // Solo lectura si el puesto ya tiene horario; editable si no (se guardará en el puesto al asignar).
@@ -261,9 +310,11 @@ export class AsignacionFormComponent implements OnInit {
   private setPuestoSeleccionadoFromAsignacion(): void {
     if (!this.asignacion.puesto) {
       this.puestoSeleccionado = null;
+      this.turnosResumen = [];
       return;
     }
     this.puestoSeleccionado = this.puestos.find(p => p.id === this.asignacion.puesto) || null;
+    this.computeTurnosResumen();
   }
 
   filtrarClientes(value: string): void {
@@ -371,7 +422,47 @@ export class AsignacionFormComponent implements OnInit {
 
   quitarPersonaSel(p: Persona): void {
     this.personasSeleccionadas = this.personasSeleccionadas.filter(x => x.id !== p.id);
+    if (p?.id) { delete this.turnoPorPersona[p.id]; }
     this.personasFiltradas = this.getPersonasActivas();
+  }
+
+  // Turnos que ofrece el puesto elegido (para el selector por persona).
+  getTurnosDisponibles(): string[] {
+    return Array.from(new Set(this.turnosResumen.map(t => t.turno)));
+  }
+
+  // Mostrar el selector de turno por persona solo si el puesto tiene 2+ turnos (día y noche).
+  hasTurnoSelector(): boolean {
+    return !this.modoEdicion && this.getTurnosDisponibles().length >= 2;
+  }
+
+  // Horas "07:00-19:00" de un turno, para mostrarlas junto al nombre.
+  turnoHoras(turno: string): string {
+    const t = this.turnosResumen.find(x => x.turno === turno);
+    return t?.horas || '';
+  }
+
+  setTurnoPersona(p: Persona, turno: string): void {
+    if (!p?.id) return;
+    this.turnoPorPersona[p.id] = turno;
+    // Día/noche con 2 personas y 2 turnos: al elegir uno, la otra persona toma el
+    // turno contrario automáticamente (una diurna y otra nocturna).
+    const turnos = this.getTurnosDisponibles();
+    if (turnos.length === 2 && this.personasSeleccionadas.length === 2) {
+      const otra = this.personasSeleccionadas.find(x => x.id !== p.id);
+      const otroTurno = turnos.find(t => t !== turno);
+      if (otra?.id && otroTurno) {
+        this.turnoPorPersona[otra.id] = otroTurno;
+      }
+    }
+  }
+
+  // Turno por defecto al agregar una persona: reparte en orden (1ª Diurno, 2ª Nocturno...).
+  private defaultTurnoParaNueva(): string {
+    const turnos = this.getTurnosDisponibles();
+    if (!turnos.length) return '';
+    if (turnos.length < 2) return turnos[0];
+    return turnos[this.personasSeleccionadas.length % turnos.length];
   }
 
   filtrarPersonas(value: string): void {
@@ -398,7 +489,9 @@ export class AsignacionFormComponent implements OnInit {
       if (persona?.id
           && !this.personasSeleccionadas.some(p => p.id === persona.id)
           && this.personasSeleccionadas.length < this.cuposDisponibles()) {
+        const turnoDef = this.defaultTurnoParaNueva();
         this.personasSeleccionadas = [...this.personasSeleccionadas, persona];
+        if (turnoDef) { this.turnoPorPersona[persona.id] = turnoDef; }
       }
       this.personaSeleccionada = null;
       if (this.personaInputRef?.nativeElement) { this.personaInputRef.nativeElement.value = ''; }
@@ -502,6 +595,9 @@ export class AsignacionFormComponent implements OnInit {
         clienteSeleccionado: this.clienteSeleccionado,
         instalacionSeleccionada: this.instalacionSeleccionada,
         personaIds: this.personasSeleccionadas.map(p => p.id as number),
+        turnosPreferidos: this.personasSeleccionadas.map(
+          p => this.hasTurnoSelector() ? (this.turnoPorPersona[p.id as number] || null) : null
+        ),
       });
       return;
     }
