@@ -219,7 +219,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   }
 
   onRowDoubleClick(row: ReporteAsistenciaRow): void {
-    if (!row?.asignacion_id) return;
+    // Permitir asignar color tanto a filas normales (asignacion) como a SACAFRANCO (fila).
+    if (!row?.asignacion_id && !row?.sacafranco_fila_id) return;
 
     const dialogRef = this.dialog.open(ReporteAsistenciaColorDialogComponent, {
       width: '420px',
@@ -231,18 +232,23 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     });
 
     dialogRef.afterClosed().subscribe((selectedColor?: string) => {
-      if (!selectedColor || !row.asignacion_id) return;
+      if (!selectedColor) return;
 
       const payload = {
         row_color: selectedColor,
         fecha: this.filtroFecha || null,
       };
 
-      this.reporteSvc.updateReporteAsistencia(row.asignacion_id, payload).subscribe({
-        next: (res) => {
+      // SACAFRANCO: no tiene asignacion; el color se guarda por su fila.
+      const obs = (!row.asignacion_id && row.sacafranco_fila_id)
+        ? this.reporteSvc.updateSacafrancoAsistencia(row.sacafranco_fila_id, payload as any)
+        : this.reporteSvc.updateReporteAsistencia(row.asignacion_id!, payload);
+
+      obs.subscribe({
+        next: (res: any) => {
           row.row_color = res.row_color || selectedColor;
         },
-        error: (err) => this.handleActionError(err, 'No se pudo actualizar el color')
+        error: (err: any) => this.handleActionError(err, 'No se pudo actualizar el color')
       });
     });
   }
