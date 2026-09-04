@@ -510,7 +510,8 @@ class Persona(models.Model):
         ('CASADO', 'Casado'),
         ('DIVORCIADO', 'Divorciado'),
         ('UNION LIBRE', 'Unión Libre'),
-        ('VIUDO', 'Viudo'),   
+        ('VIUDO', 'Viudo'),
+        ('OTROS', 'Otros'),   # Powersai (codigo 5) no tiene equivalente: se acepta OTROS.
     ]
 
     TIPO_EMPLEADO_CHOICES = [

@@ -64,7 +64,29 @@ def sincronizar_empleado(request):
         sx = _norm(data.get('sexo')).upper()
         sexo = 'MASCULINO' if sx.startswith('M') else ('FEMENINO' if sx.startswith('F') else '')
         ec = _norm(data.get('estado_civil')).upper()
-        estado_civil = ec if ec in ('SOLTERO', 'CASADO', 'DIVORCIADO', 'UNION LIBRE', 'VIUDO') else ''
+        estado_civil = ec if ec in ('SOLTERO', 'CASADO', 'DIVORCIADO', 'UNION LIBRE', 'VIUDO', 'OTROS') else ''
+
+        # 4b) nacionalidad: Powersai envia ECU/EXT; se mapea al catalogo de la Plataforma.
+        nac = _norm(data.get('nacionalidad')).upper()
+        if nac in ('ECU', 'ECUATORIANA', 'ECUATORIANO'):
+            nacionalidad = 'Ecuatoriana'
+        elif nac in ('EXT', 'EXTRANJERO', 'EXTRANJERA'):
+            nacionalidad = 'Extranjero'
+        elif nac:
+            nacionalidad = 'Otros'
+        else:
+            nacionalidad = ''
+
+        # 4c) tipo_empleado: Powersai envia EMPLEADO / OPERADOR O EVENTUAL / OBRERO.
+        te = _norm(data.get('tipo_empleado')).upper()
+        if te.startswith('EMPLEADO'):
+            tipo_empleado = 'EMPLEADO'
+        elif te.startswith('OPERADOR'):
+            tipo_empleado = 'OPERADOR'
+        elif te.startswith('OBRERO'):
+            tipo_empleado = 'OBRERO'
+        else:
+            tipo_empleado = te
 
         # 5) provincia / canton (texto -> FK)
         prov = None
@@ -98,7 +120,7 @@ def sincronizar_empleado(request):
             'direccion': _norm(data.get('direccion')),
             'telefono': _norm(data.get('telefono')),
             'conyuge': _norm(data.get('conyuge')),
-            'nacionalidad': _norm(data.get('nacionalidad')),
+            'nacionalidad': nacionalidad,
             'parroquia': _norm(data.get('parroquia')),
             'cargo': _norm(data.get('cargo')),
             'departamento': _norm(data.get('departamento')),
@@ -109,7 +131,7 @@ def sincronizar_empleado(request):
             'codigo_erp': _norm(data.get('codigo_erp')),
             'centro_costo': _norm(data.get('centro_costo')),
             'unidad_negocio': _norm(data.get('unidad_negocio')),
-            'tipo_empleado': _norm(data.get('tipo_empleado')).upper(),
+            'tipo_empleado': tipo_empleado,
             'forma_pago': _norm(data.get('forma_pago')),
             'numero_afiliacion': _norm(data.get('numero_afiliacion')),
             'numero_contrato': _norm(data.get('numero_contrato')),
@@ -126,7 +148,28 @@ def sincronizar_empleado(request):
         if cli is not None:
             defaults['cliente'] = cli
 
-        persona, creado = Persona.objects.update_or_create(cedula=cedula, defaults=defaults)
+        # 8) Identificacion del empleado: PRIMERO por codigo_erp (estable), luego por
+        #    cedula (respaldo). Asi, si en el ERP corrigen una cedula mal digitada, se
+        #    actualiza el MISMO empleado (encontrado por codigo_erp) en vez de crear un
+        #    duplicado. En la primera sincronizacion el codigo_erp aun no esta guardado,
+        #    por eso el match cae a cedula y de paso queda poblado el codigo_erp.
+        codigo_erp = _norm(data.get('codigo_erp'))
+        persona = None
+        if codigo_erp:
+            persona = Persona.objects.filter(codigo_erp=codigo_erp).first()
+        if persona is None:
+            persona = Persona.objects.filter(cedula=cedula).first()
+
+        defaults['cedula'] = cedula  # si la corrigieron, se actualiza en el mismo registro
+        if persona is None:
+            persona = Persona.objects.create(**defaults)
+            creado = True
+        else:
+            for _k, _v in defaults.items():
+                setattr(persona, _k, _v)
+            persona.save()
+            creado = False
+
         return Response(
             {'cedula': cedula, 'id': persona.id, 'creado': creado},
             status=status.HTTP_201_CREATED if creado else status.HTTP_200_OK
