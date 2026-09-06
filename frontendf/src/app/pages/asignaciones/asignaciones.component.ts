@@ -916,7 +916,16 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   private mostrarResumenImport(res: any): void {
-    const resumen = `Filas: ${res?.filas_validas || 0}/${res?.total_filas || 0}`
+    // Porcentaje de la carga. SIN errores => todo entro => 100% (N/N). El contador interno
+    // filas_validas es imperfecto, asi que solo lo usamos cuando SI hay avisos.
+    const _errCount = Array.isArray(res?.errores) ? res.errores.length : 0;
+    const _tot = Number(res?.total_filas || 0);
+    const _val = _errCount === 0 ? _tot : Number(res?.filas_validas || 0);
+    const _pct = _tot > 0 ? Math.round((_val / _tot) * 100) : 100;
+    const _pctColor = _pct >= 100 ? '#16a34a' : (_pct >= 90 ? '#0d6efd' : '#d97706');
+    const pctHtml = `<div style="font-size:36px;font-weight:800;color:${_pctColor};line-height:1;margin:2px 0 6px;">${_pct}%</div>`
+      + `<div style="font-size:12px;color:#6b7280;margin-bottom:10px;">${_val} de ${_tot} filas importadas</div>`;
+    const resumen = `Filas: ${_val}/${_tot}`
       + `, Personas creadas: ${res?.personas_creadas || 0}`
       + `, Puestos creados: ${res?.puestos_creados || 0}`
       + `, Horarios creados: ${res?.horarios_creados || 0}`
@@ -968,7 +977,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     Swal.fire({
       icon: 'success',
       title: 'Importación',
-      html: `${resumen}${erroresHtml}`
+      html: `${pctHtml}${resumen}${erroresHtml}`
         + (errores.length ? `<div style="margin-top:10px;"><button id="btnCopiarImport" type="button"
              style="cursor:pointer;border:1px solid #6d28d9;background:#f5f3ff;color:#6d28d9;
              border-radius:6px;padding:6px 14px;font-weight:600;">📋 Copiar avisos</button></div>` : ''),
