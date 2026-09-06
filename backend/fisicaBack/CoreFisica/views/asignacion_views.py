@@ -850,7 +850,7 @@ def asignar_servicio(request):
                 for _h in _PH.objects.filter(puesto_id=asignacion.puesto_id):
                     _t = (getattr(_h, 'turno', '') or '').strip().lower()
                     if (_tp.startswith('n') and _t.startswith('n')) or \
-                       (_tp.startswith('d') and (_t.startswith('d') or _t.startswith('a'))):
+                       (_tp.startswith('d') and _t.startswith(('d', 'a'))):
                         _ph = _h
                         break
                 if _ph and _ph.hora_ingreso and _ph.hora_salida:
@@ -1387,11 +1387,23 @@ def editar_servicio(request, id):
     # Detectar cambio de persona
     new_persona_raw = data.get('persona')
     try:
-        new_persona_id = int(new_persona_raw) if new_persona_raw not in [None, '', 'null'] else None
+        # 0 / '' / null / None => sin persona (se tratara como HUECA)
+        new_persona_id = int(new_persona_raw) if str(new_persona_raw).strip() not in ('', '0', 'null', 'none', 'None') else None
     except (TypeError, ValueError):
         new_persona_id = None
 
     persona_cambio = new_persona_id and new_persona_id != old_persona_id
+
+    # Si la asignacion queda SIN persona (se borro al editar), pasa a HUECA (puesto sin guardia).
+    persona_borrada = ('persona' in data) and new_persona_id is None and old_persona_id is not None
+    if persona_borrada:
+        data['persona'] = None
+        data['es_hueca'] = True
+        # El puesto queda vacante: limpiar el estado del reporte de esta asignacion.
+        ReporteAsistencia.objects.filter(asignacion=asignacion).update(
+            persona=None, estado='TURNO', estado_asistencia='',
+            reemplazo=None, descripcion=None, row_color=None
+        )
 
     if persona_cambio:
         try:
