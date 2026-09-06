@@ -379,8 +379,9 @@ def _cal_valor_ok(v, es_saca):
     if es_saca:
         # Sacafranco: acepta cualquier token valido (cobertura, base DB/NB, free).
         return tipo != 'invalid'
-    # Fijo: acepta solo tokens de COBERTURA (D/N + nominativo). No DB/NB (base).
-    return tipo == 'coverage'
+    # Fijo: acepta cobertura (D/N + nominativo) y BASE (DB/NB = trabaja su turno base en su
+    # propio puesto). El reporte los rutea por la primera letra (DB->Diurno, NB->Nocturno).
+    return tipo in ('coverage', 'base_free')
 
 
 def _detect_month_year_from_sheet(rows):
