@@ -703,6 +703,9 @@ def _build_reporte_asistencia_data(
     # NOTA: la cobertura de sacafranco NO se enruta aqui; se agrega mas abajo como
     # fila propia (independiente del fijo) desde su calendario semanal.
     dnf = _calendar_dnf_for_date(fecha_obj)
+    # Fijos que TRABAJAN ese dia (token D/N): nunca deben ocultarse ni convertirse en fila
+    # de cobertura de sacafranco (la cobertura solo aplica cuando el fijo esta de franco).
+    working_ids = {aid for aid, lt in dnf.items() if lt in ('D', 'N')} if fecha_obj else set()
     if fecha_obj:
         franco_ids = {aid for aid, lt in dnf.items() if lt == 'F'}
         if franco_ids:
@@ -725,6 +728,10 @@ def _build_reporte_asistencia_data(
                        .filter(id__in=Subquery(_cov_latest))
                        .values_list('asignacion_id', 'descripcion'))
                        if _is_auto_sacafranco_desc(desc)}
+        # No ocultar al fijo que SI trabaja ese dia (token D/N): la cobertura de sacafranco
+        # solo aplica cuando el fijo esta de FRANCO. Si trabaja, debe salir aunque exista un
+        # registro de cobertura (puede haber quedado de un estado anterior del calendario).
+        covered_ids -= working_ids
         if covered_ids:
             asig_qs = asig_qs.exclude(id__in=covered_ids)
 
@@ -852,6 +859,10 @@ def _build_reporte_asistencia_data(
         if p:
             personas_con_asignacion.add(p.id)
         override = overrides.get(asig.id)
+        # Si el fijo TRABAJA ese dia (token D/N), ignorar una cobertura AUTO de sacafranco
+        # (pudo quedar de cuando estaba de franco): se muestra al FIJO, no al reemplazo.
+        if override and asig.id in working_ids and _is_auto_sacafranco_desc(getattr(override, 'descripcion', '')):
+            override = None
 
         cliente_nombre = getattr(asig.cliente, 'nombre_comercial', '') if asig else ''
 
