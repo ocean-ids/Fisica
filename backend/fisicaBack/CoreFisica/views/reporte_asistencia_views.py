@@ -703,6 +703,8 @@ def _build_reporte_asistencia_data(
     # NOTA: la cobertura de sacafranco NO se enruta aqui; se agrega mas abajo como
     # fila propia (independiente del fijo) desde su calendario semanal.
     dnf = _calendar_dnf_for_date(fecha_obj)
+    # Etiqueta de turno segun la letra del token del dia (para la columna "Turno" del reporte).
+    _TURNO_LABEL = {'D': 'Diurno', 'N': 'Nocturno', 'T': 'Tarde', 'V': 'Veinticuatro'}
     # Fijos que TRABAJAN ese dia (token D/N): nunca deben ocultarse ni convertirse en fila
     # de cobertura de sacafranco (la cobertura solo aplica cuando el fijo esta de franco).
     working_ids = {aid for aid, lt in dnf.items() if lt in ('D', 'N')} if fecha_obj else set()
@@ -981,6 +983,7 @@ def _build_reporte_asistencia_data(
             'modificado_en': modificado_en_iso,
             'zona_titulo': zona_titulo,
             'provincia': provincia_nombre,
+            'turno': _TURNO_LABEL.get((dnf.get(asig.id) or '')[:1].upper(), ''),
         })
 
     # Filas de SACAFRANCO desde su calendario semanal, ruteadas por el token del dia.
@@ -1109,6 +1112,7 @@ def _build_reporte_asistencia_data(
                     'modificado_en': _sa_moden,
                     'zona_titulo': zona_val,
                     'provincia': provincia_val,
+                    'turno': _TURNO_LABEL.get((token_val[0] if token_val else ''), ''),
                 })
 
     if term:

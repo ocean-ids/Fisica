@@ -126,7 +126,9 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.setHoy();
-    this.filtroTurno = 'Diurno';
+    // Vista unica: sin filtro de turno. Se muestran todos los turnos y el turno de cada
+    // registro sale en su propia columna. Por eso filtroTurno queda vacio (no se envia).
+    this.filtroTurno = '';
     this.cargarZonas();
 
     const saved = localStorage.getItem('reporte_filtros');
@@ -134,8 +136,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       try {
         const f = JSON.parse(saved);
         // La fecha NO se restaura: el reporte siempre abre en HOY (evita confusión
-        // al volver a entrar y ver un día viejo). Sí se mantienen turno/zona/filas.
-        if (f.turno) this.filtroTurno = f.turno;
+        // al volver a entrar y ver un día viejo). Se mantiene zona/filas (turno ya no aplica).
         if (f.zona !== undefined) this.filtroZona = f.zona;
         if (f.pageSize) this.pageSize = f.pageSize;
       } catch {}
@@ -255,6 +256,17 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
   getRowColor(row: ReporteAsistenciaRow): string {
     return row.row_color || '';
+  }
+
+  // Color del badge de Jornada: fondos suaves con texto oscuro (se ve limpio y legible).
+  jornadaBadgeStyle(turno?: string): { [k: string]: string } {
+    switch (turno) {
+      case 'Diurno':       return { background: '#FEF3C7', color: '#92400E' }; // ámbar suave
+      case 'Nocturno':     return { background: '#E0E7FF', color: '#3730A3' }; // índigo suave
+      case 'Tarde':        return { background: '#FFEDD5', color: '#9A3412' }; // naranja suave
+      case 'Veinticuatro': return { background: '#CCFBF1', color: '#115E59' }; // teal suave
+      default:             return { background: '#E5E7EB', color: '#374151' }; // gris
+    }
   }
 
   abrirModalNuevaPersona(): void {

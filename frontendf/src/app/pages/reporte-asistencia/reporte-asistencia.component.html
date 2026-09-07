@@ -25,18 +25,8 @@
             </button>
         </div>
 
-        <div class="d-flex justify-content-center align-items-center flex-grow-1" style="flex-basis: 0;">
-            <mat-button-toggle-group
-                name="turnoFiltro"
-                [(ngModel)]="filtroTurno"
-                (change)="_saveFilters(); cargarReporte(true)"
-                aria-label="Filtro de turno">
-                <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
-                <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
-                <mat-button-toggle value="Tarde">Tarde</mat-button-toggle>
-                <mat-button-toggle value="Veinticuatro">Veinticuatro</mat-button-toggle>
-            </mat-button-toggle-group>
-        </div>
+        <!-- Filtro de turno eliminado: ahora es una sola vista con la columna "Turno". -->
+        <div class="d-flex justify-content-center align-items-center flex-grow-1" style="flex-basis: 0;"></div>
 
         <div class="d-flex justify-content-end align-items-center gap-2 flex-grow-1" style="flex-basis: 0;">
             <button
@@ -91,6 +81,7 @@
                     <th class="text-nowrap">Cliente</th>
                     <th class="text-nowrap">Puesto (Tipo)</th>
                     <th class="text-nowrap">Horario</th>
+                    <th class="text-nowrap">Jornada</th>
                     <th class="text-nowrap">Nombre y Apellidos</th>
                     <th class="text-nowrap">Asistencia</th>
                     <th class="text-nowrap d-none d-lg-table-cell">Reemplazo</th>
@@ -103,11 +94,11 @@
             <tbody>
                 <ng-container *ngFor="let zona of reporteAgrupado">
                     <tr class="zona-row">
-                        <td class="text-center" colspan="11">{{ getZonaTitulo(zona.zona) }}</td>
+                        <td class="text-center" colspan="12">{{ getZonaTitulo(zona.zona) }}</td>
                     </tr>
                     <ng-container *ngFor="let prov of zona.provincias">
                         <tr class="provincia-row">
-                            <td colspan="11">{{ prov.provincia }}</td>
+                            <td colspan="12">{{ prov.provincia }}</td>
                         </tr>
                         <ng-container *ngFor="let r of prov.rows">
                         <tr class="text-center align-middle" (dblclick)="onRowDoubleClick(r)">
@@ -117,6 +108,12 @@
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.instalacion_nombre || r.cliente || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto_tipo || r.puesto || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.horario || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)">
+                                <span *ngIf="r.turno" class="badge rounded-pill"
+                                      style="font-size:0.72rem; padding:5px 12px; font-weight:600;"
+                                      [ngStyle]="jornadaBadgeStyle(r.turno)">{{ r.turno }}</span>
+                                <span *ngIf="!r.turno">-</span>
+                            </td>
                             <td [style.backgroundColor]="getRowColor(r)">
                                 {{ r.nombre_apellidos || '-' }}
                                 <div *ngIf="r.sacafranco_fila_id">
@@ -163,7 +160,7 @@
                     </ng-container>
                 </ng-container>
                 <tr *ngIf="reporte.length === 0">
-                    <td colspan="11" class="text-center text-muted">Sin datos</td>
+                    <td colspan="12" class="text-center text-muted">Sin datos</td>
                 </tr>
             </tbody>
         </table>
