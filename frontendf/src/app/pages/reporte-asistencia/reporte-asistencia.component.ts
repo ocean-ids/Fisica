@@ -205,9 +205,28 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       .map((zona) => {
         const provincias = Object.keys(zonas[zona])
           .sort((a, b) => a.localeCompare(b))
-          .map((provincia) => ({ provincia, rows: zonas[zona][provincia] }));
+          .map((provincia) => ({ provincia, rows: this.ordenarPorJornada(zonas[zona][provincia]) }));
         return { zona, provincias };
       });
+  }
+
+  // Dentro de cada nominativo (codigo), ordena las filas por jornada: primero los Diurnos,
+  // luego Nocturnos, Tarde y Veinticuatro. Conserva el orden de aparicion de los nominativos
+  // y el orden original dentro de cada jornada (sort estable). Asi se ven agrupados y prolijos.
+  private ordenarPorJornada(rows: ReporteAsistenciaRow[]): ReporteAsistenciaRow[] {
+    const orden: Record<string, number> = { 'Diurno': 0, 'Nocturno': 1, 'Tarde': 2, 'Veinticuatro': 3 };
+    const grupos = new Map<string, ReporteAsistenciaRow[]>();
+    for (const r of rows) {
+      const key = (r.codigo || '').toString();
+      if (!grupos.has(key)) grupos.set(key, []);
+      grupos.get(key)!.push(r);
+    }
+    const out: ReporteAsistenciaRow[] = [];
+    for (const grupo of grupos.values()) {
+      grupo.sort((a, b) => (orden[a.turno || ''] ?? 9) - (orden[b.turno || ''] ?? 9));
+      out.push(...grupo);
+    }
+    return out;
   }
 
   private setHoy(): void {
