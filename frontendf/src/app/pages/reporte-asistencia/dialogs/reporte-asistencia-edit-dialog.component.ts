@@ -47,7 +47,7 @@ export class ReporteAsistenciaEditDialogComponent {
     'HUECA POR UNIDAD FIJA',
     'HUECA POR RENUNCIA',
   ];
-  readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL']);
+  readonly tiposReemplazoPermitidos = new Set(['FIJOS', 'SACAFRANCO','RETEN', 'CUSTODIO', 'EVENTUAL', 'SACAVACACIONES','SUPERVISOR MOTORIZADO', 'SUPERVISOR ZONAL', 'SUPERVISOR EVENTUAL']);
   descripcionesComunes: string[] = [];
 
   reemplazos: Persona[] = [];
@@ -325,11 +325,6 @@ export class ReporteAsistenciaEditDialogComponent {
 
   getReemplazosFiltrados(): Persona[] {
     let base = this.reemplazos;
-    const estadoActual = (this.form?.value?.estado || '').toString().toUpperCase();
-    // En ADICIONAL el reemplazo no puede ser EVENTUAL.
-    if (estadoActual === 'ADICIONAL') {
-      base = base.filter(p => (p.tipo || '').toString().toUpperCase() !== 'EVENTUAL');
-    }
 
     const currentValue = this.reemplazoCtrl.value;
     const query = typeof currentValue === 'string'

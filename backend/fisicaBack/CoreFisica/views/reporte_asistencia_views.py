@@ -1183,7 +1183,8 @@ def obtener_reporte_asistencia(request):
             page = 1
         if page_size < 1:
             page_size = 50
-        page_size = min(page_size, 200)
+        # Tope alto para permitir la opción "Todas" del frontend (centinela 100000).
+        page_size = min(page_size, 100000)
     except (TypeError, ValueError):
         return JsonResponse({'error': 'Parámetros de paginación inválidos'}, status=400)
 

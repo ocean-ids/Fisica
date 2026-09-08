@@ -51,7 +51,9 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   filtroZona = '';
 
   zonas: ZonaOperativa[] = [];
-  readonly pageSizeOptions = [25, 50, 100];
+  // Valor centinela para "Todas" (una sola página con todo el reporte).
+  readonly ALL_SIZE = 100000;
+  readonly pageSizeOptions = [25, 50, 100, this.ALL_SIZE];
   currentPage = 1;
   pageSize = 50;
   totalItems = 0;
@@ -586,6 +588,11 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     this.pageSize = size;
     this._saveFilters();
     this.cargarReporte(true);
+  }
+
+  // Etiqueta de cada opción del selector de filas ("Todas" para el centinela).
+  pageSizeLabel(opt: number): string {
+    return opt === this.ALL_SIZE ? 'Todas' : String(opt);
   }
 
   goToPage(page: number): void {

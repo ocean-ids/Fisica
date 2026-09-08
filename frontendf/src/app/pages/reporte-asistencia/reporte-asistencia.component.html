@@ -68,7 +68,7 @@
             <div class="d-flex align-items-center gap-2">
                 <label class="small text-muted mb-0">Filas</label>
                 <select class="form-select form-select-sm w-auto" [value]="pageSize" (change)="onPageSizeChange($event)">
-                    <option *ngFor="let opt of pageSizeOptions" [value]="opt">{{ opt }}</option>
+                    <option *ngFor="let opt of pageSizeOptions" [value]="opt">{{ pageSizeLabel(opt) }}</option>
                 </select>
             </div>
         </div>

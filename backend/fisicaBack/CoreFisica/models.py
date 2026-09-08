@@ -1151,8 +1151,9 @@ class ReporteAsistencia(models.Model):
         'EVENTUAL',
         'SUPERVISOR ZONAL',
         'SUPERVISOR MOTORIZADO',
+        'SUPERVISOR EVENTUAL',
         'SUPERVISOR DE ACOMPAÑAMIENTO',
-        
+
     ]
 
     asignacion = models.OneToOneField(
