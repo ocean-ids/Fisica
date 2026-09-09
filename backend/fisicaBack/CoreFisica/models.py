@@ -1033,6 +1033,26 @@ class Asignacion(models.Model):
     def __str__(self):
         return f"{self.persona} - {self.puesto} ({self.mes}/{self.anio})"
 
+
+class AsignacionPersonaPeriodo(models.Model):
+    """Historial de qué persona ocupó una asignación en cada rango de fechas.
+
+    Permite que, al cambiar el guardia de un puesto, los días PASADOS conserven a
+    la persona anterior y de la fecha del cambio en adelante quede la nueva.
+    Si una asignación no tiene períodos, el reporte usa Asignacion.persona (dato actual)."""
+    asignacion = models.ForeignKey('Asignacion', on_delete=models.CASCADE, related_name='periodos_persona')
+    persona = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    desde = models.DateField()
+    hasta = models.DateField(null=True, blank=True)  # None = vigente (sin fin)
+
+    class Meta:
+        ordering = ['asignacion_id', 'desde']
+        indexes = [models.Index(fields=['asignacion', 'desde'])]
+
+    def __str__(self):
+        return f"Periodo asig {self.asignacion_id}: persona {self.persona_id} [{self.desde}..{self.hasta or '∞'}]"
+
+
 class AsignacionSemanal(models.Model):
 
     asignacion = models.ForeignKey('Asignacion', on_delete=models.CASCADE, null=True, blank=True, related_name='semanales')

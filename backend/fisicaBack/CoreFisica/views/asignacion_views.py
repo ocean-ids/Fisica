@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django.http import JsonResponse
 from rest_framework import status
-from ..models import Asignacion, AsignacionSemanal, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, Provincia, Canton
+from ..models import Asignacion, AsignacionSemanal, AsignacionPersonaPeriodo, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, Provincia, Canton
 from django.db.models import Q, Max, Value
 from django.db.models.functions import Coalesce
 from django.db import transaction
@@ -1347,6 +1347,41 @@ def asignar_servicio(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+def _registrar_cambio_persona(asignacion, old_persona_id, new_persona_id, fecha_cambio):
+    """Registra el cambio de guardia con vigencia por fecha:
+    cierra el período de la persona anterior (hasta el día antes del cambio) y abre
+    el de la nueva (desde la fecha del cambio). Así los días pasados conservan al anterior.
+    Devuelve la fecha efectiva usada."""
+    mes_inicio = datetime.date(asignacion.anio, asignacion.mes, 1)
+    ayer = fecha_cambio - datetime.timedelta(days=1)
+
+    abierto = asignacion.periodos_persona.filter(hasta__isnull=True).order_by('desde').last()
+    if abierto:
+        if fecha_cambio > abierto.desde:
+            abierto.hasta = ayer
+            abierto.save(update_fields=['hasta'])
+        else:
+            # El cambio ocurre el mismo día en que empezó el período vigente:
+            # no hay pasado que preservar, solo se reasigna a la nueva persona.
+            abierto.persona_id = new_persona_id
+            abierto.save(update_fields=['persona'])
+            return fecha_cambio
+    else:
+        # Asignación sin períodos (dato previo a esta función): se crea el del anterior
+        # desde el inicio del mes hasta ayer, para conservar los días ya trabajados.
+        if old_persona_id and fecha_cambio > mes_inicio:
+            AsignacionPersonaPeriodo.objects.create(
+                asignacion=asignacion, persona_id=old_persona_id,
+                desde=mes_inicio, hasta=ayer,
+            )
+
+    AsignacionPersonaPeriodo.objects.create(
+        asignacion=asignacion, persona_id=new_persona_id,
+        desde=fecha_cambio, hasta=None,
+    )
+    return fecha_cambio
+
+
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def editar_servicio(request, id):
@@ -1408,6 +1443,15 @@ def editar_servicio(request, id):
     if persona_cambio:
         try:
             with transaction.atomic():
+                # Fecha efectiva del cambio: 'fecha_cambio' del request o HOY. Los días
+                # PASADOS conservan a la persona anterior; de esta fecha en adelante, la nueva.
+                fecha_cambio_raw = data.get('fecha_cambio')
+                try:
+                    fecha_cambio = (datetime.date.fromisoformat(str(fecha_cambio_raw))
+                                    if str(fecha_cambio_raw or '').strip() else timezone.localdate())
+                except ValueError:
+                    fecha_cambio = timezone.localdate()
+
                 # Si la nueva persona ya tiene asignación activa este mes en OTRO puesto,
                 # liberar ese puesto (la persona se mueve, su puesto anterior queda vacante).
                 otras = Asignacion.objects.filter(
@@ -1419,8 +1463,12 @@ def editar_servicio(request, id):
                 for otra in otras:
                     otra.persona = None
                     otra.save(update_fields=['persona'])
-                    # El puesto queda vacante: limpiar estado del reporte
-                    ReporteAsistencia.objects.filter(asignacion=otra).update(
+                    # El puesto que deja también conserva su historial: la persona que salía
+                    # queda en los días pasados; de la fecha del cambio en adelante, HUECA/vacante.
+                    _registrar_cambio_persona(otra, new_persona_id, None, fecha_cambio)
+                    ReporteAsistencia.objects.filter(
+                        asignacion=otra, fecha_reporte__gte=fecha_cambio
+                    ).update(
                         persona=None, estado='TURNO', estado_asistencia='',
                         reemplazo=None, descripcion=None, row_color=None
                     )
@@ -1442,8 +1490,13 @@ def editar_servicio(request, id):
                     except (TypeError, ValueError):
                         pass
                 asignacion.save()
-                # Nueva persona/puesto: resetear estado del reporte (no heredar el anterior)
-                ReporteAsistencia.objects.filter(asignacion=asignacion).update(
+                # Vigencia por fecha: registrar el cambio de guardia en esta asignación.
+                _registrar_cambio_persona(asignacion, old_persona_id, new_persona_id, fecha_cambio)
+                # Resetear el estado del reporte SOLO de la fecha del cambio en adelante
+                # (los días pasados se conservan intactos con la persona anterior).
+                ReporteAsistencia.objects.filter(
+                    asignacion=asignacion, fecha_reporte__gte=fecha_cambio
+                ).update(
                     persona_id=new_persona_id, puesto_id=asignacion.puesto_id,
                     estado='TURNO', estado_asistencia='',
                     reemplazo=None, descripcion=None, row_color=None

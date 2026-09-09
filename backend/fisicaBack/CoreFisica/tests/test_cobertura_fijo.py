@@ -21,8 +21,8 @@ class CoberturaFijoTests(TestCase):
         self.assertTrue(_cal_valor_ok('NK35', es_saca=False))
         self.assertTrue(_cal_valor_ok('D', es_saca=False))
         self.assertTrue(_cal_valor_ok('F', es_saca=False))
-        # Base (DB/NB) NO es cobertura -> el fijo no lo acepta.
-        self.assertFalse(_cal_valor_ok('DB', es_saca=False))
+        # Base (DB/NB) ahora SÍ se acepta en el fijo (reconocer tokens base).
+        self.assertTrue(_cal_valor_ok('DB', es_saca=False))
         # Basura -> no reconocido.
         self.assertFalse(_cal_valor_ok('XYZ', es_saca=False))
 

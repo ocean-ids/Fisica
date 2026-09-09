@@ -1,6 +1,6 @@
 """Vistas del Reporte de Asistencia: armado por día (rutea D/N/F del calendario), edición, historial y export Excel/PDF."""
 from django.http import JsonResponse
-from django.db.models import Q, Subquery
+from django.db.models import Q, Subquery, Prefetch
 from django.http import HttpResponse
 from django.utils import timezone
 from io import BytesIO
@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal, SacafrancoFilaSemanal, Instalacion, SacafrancoAsistencia, SacafrancoFila
+from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal, SacafrancoFilaSemanal, Instalacion, SacafrancoAsistencia, SacafrancoFila, AsignacionPersonaPeriodo
 import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from openpyxl.drawing.image import Image as XLImage
@@ -645,6 +645,9 @@ def _build_reporte_asistencia_data(
         'cliente', 'instalacion', 'instalacion__canton', 'instalacion__canton__provincia',
         'puesto', 'horario', 'persona',
         'instalacion__nominativo', 'instalacion__nominativo__zona',
+    ).prefetch_related(
+        # Períodos de vigencia por fecha: para resolver quién estaba en cada día.
+        Prefetch('periodos_persona', queryset=AsignacionPersonaPeriodo.objects.select_related('persona'))
     ).filter(
         # Incluye HUECAS (asignacion sin persona = puesto sin guardia): salen como "HUECA".
         Q(persona__isnull=True) | Q(persona__is_active=True),
@@ -856,8 +859,17 @@ def _build_reporte_asistencia_data(
                 _cov_ctx_cache[cod] = None
         return _cov_ctx_cache[cod]
 
+    _fecha_ref = fecha_obj or hoy  # fecha para resolver la vigencia por período
     for asig in asig_list:
+        # Persona vigente en la fecha del reporte (historial por período). Si la asignación
+        # no tiene períodos (dato previo), se usa Asignacion.persona (la actual).
         p = asig.persona   # None = HUECA (puesto sin guardia)
+        _periodos = list(asig.periodos_persona.all())
+        if _periodos:
+            for _per in _periodos:
+                if _per.desde <= _fecha_ref and (_per.hasta is None or _fecha_ref <= _per.hasta):
+                    p = _per.persona
+                    break
         if p:
             personas_con_asignacion.add(p.id)
         override = overrides.get(asig.id)
