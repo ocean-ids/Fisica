@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django.http import JsonResponse
 from rest_framework import status
-from ..models import Asignacion, AsignacionSemanal, AsignacionPersonaPeriodo, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, Provincia, Canton
+from ..models import Asignacion, AsignacionSemanal, AsignacionPersonaPeriodo, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, Provincia, Canton, EmpleadoOtrosDatos
 from django.db.models import Q, Max, Value
 from django.db.models.functions import Coalesce
 from django.db import transaction
@@ -2957,3 +2957,100 @@ def exportar_asignaciones_reimportable(request):
     )
     resp['Content-Disposition'] = f'attachment; filename="asignaciones_reimportable_{mes}_{anio}.xlsx"'
     return resp
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def eventual_datos(request, persona_id):
+    """Datos del eventual para el modal del módulo de Asignaciones (ver/editar).
+    Combina campos base de Persona con los bancarios de EmpleadoOtrosDatos."""
+    try:
+        persona = Persona.objects.select_related('provincia', 'canton').get(id=persona_id)
+    except Persona.DoesNotExist:
+        return Response({'error': 'Persona no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    od, _ = EmpleadoOtrosDatos.objects.get_or_create(persona=persona)
+
+    if request.method == 'PUT':
+        if not request.user.has_perm('CoreFisica.change_persona'):
+            return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+        data = request.data
+        if 'nombres' in data:
+            persona.nombres = str(data.get('nombres') or '').strip().upper()
+        if 'apellidos' in data:
+            persona.apellidos = str(data.get('apellidos') or '').strip().upper()
+        if 'fecha_ingreso' in data:
+            fi = str(data.get('fecha_ingreso') or '').strip()
+            try:
+                persona.fecha_ingreso = datetime.date.fromisoformat(fi) if fi else None
+            except ValueError:
+                pass
+        if 'provincia' in data:
+            prov = data.get('provincia')
+            try:
+                persona.provincia_id = (int(prov)
+                                        if str(prov).strip() not in ('', '0', 'null', 'none', 'None')
+                                        else None)
+            except (TypeError, ValueError):
+                persona.provincia_id = None
+        if 'canton' in data:
+            cant = data.get('canton')
+            try:
+                persona.canton_id = (int(cant)
+                                     if str(cant).strip() not in ('', '0', 'null', 'none', 'None')
+                                     else None)
+            except (TypeError, ValueError):
+                persona.canton_id = None
+        try:
+            persona.save()
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if 'banco' in data:
+            od.banco = str(data.get('banco') or '').strip()
+        if 'numero_cuenta' in data:
+            od.numero_cuenta = str(data.get('numero_cuenta') or '').strip()
+        if 'tipo_cuenta' in data:
+            od.tipo_cuenta = str(data.get('tipo_cuenta') or '').strip().upper()
+        od.save()
+
+    return Response({
+        'persona_id': persona.id,
+        'cedula': persona.cedula,
+        'nombres': persona.nombres,
+        'apellidos': persona.apellidos,
+        'tipo': persona.tipo,
+        'fecha_ingreso': persona.fecha_ingreso.isoformat() if persona.fecha_ingreso else None,
+        'provincia_id': persona.provincia_id,
+        'provincia_nombre': persona.provincia.nombre if persona.provincia else '',
+        'canton_id': persona.canton_id,
+        'canton_nombre': persona.canton.nombre if persona.canton else '',
+        'banco': od.banco,
+        'numero_cuenta': od.numero_cuenta,
+        'tipo_cuenta': od.tipo_cuenta,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def eventuales_lista(request):
+    """Lista de todos los eventuales (base) con sus datos bancarios, para el modal de Asignaciones."""
+    qs = (Persona.objects.filter(tipo='EVENTUAL', is_active=True)
+          .select_related('provincia', 'canton', 'otros_datos')
+          .order_by('apellidos', 'nombres'))
+    items = []
+    for p in qs:
+        od = getattr(p, 'otros_datos', None)
+        items.append({
+            'persona_id': p.id,
+            'cedula': p.cedula,
+            'nombres': p.nombres,
+            'apellidos': p.apellidos,
+            'fecha_ingreso': p.fecha_ingreso.isoformat() if p.fecha_ingreso else None,
+            'provincia_nombre': p.provincia.nombre if p.provincia else '',
+            'canton_nombre': p.canton.nombre if p.canton else '',
+            'banco': (od.banco if od else ''),
+            'numero_cuenta': (od.numero_cuenta if od else ''),
+            'tipo_cuenta': (od.tipo_cuenta if od else ''),
+        })
+    return Response({'results': items, 'total': len(items)}, status=status.HTTP_200_OK)

@@ -36,6 +36,8 @@ import { GlobalFilterStateService } from '../../services/global-filter-state.ser
 import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
 import { environment } from '@env/environment';
 import { CantonMixView, CantonViewsModalComponent, VistaTipo } from './canton-views-modal.component';
+import { EventualDatosDialogComponent } from './eventual-datos-dialog/eventual-datos-dialog.component';
+import { EventualesListaDialogComponent } from './eventuales-lista-dialog/eventuales-lista-dialog.component';
 
 @Component({
   selector: 'app-asignaciones',
@@ -754,6 +756,24 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         },
         error: (err) => console.error('Error al actualizar color de cédula:', err)
       });
+    });
+  }
+
+  // Abre la lista de todos los eventuales (base) para ver/editar sus datos.
+  abrirListaEventuales(): void {
+    this.dialog.open(EventualesListaDialogComponent, {
+      width: '900px',
+      maxWidth: '96vw',
+    });
+  }
+
+  // Abre el modal con los datos del eventual (ver/editar cuenta bancaria, provincia, etc.).
+  abrirDatosEventual(personaId?: number | null): void {
+    if (!personaId) { return; }
+    this.dialog.open(EventualDatosDialogComponent, {
+      width: '760px',
+      maxWidth: '95vw',
+      data: { personaId },
     });
   }
 

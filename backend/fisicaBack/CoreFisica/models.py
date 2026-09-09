@@ -709,6 +709,11 @@ class EmpleadoOtrosDatos(models.Model):
     cuenta_ahorros = models.CharField(max_length=30, blank=True, default='')
     cuenta_corriente = models.CharField(max_length=30, blank=True, default='')
 
+    # Cuenta bancaria unificada (base de eventuales): número + tipo (Ahorros/Corriente/Digital).
+    TIPO_CUENTA_CHOICES = [('AHORROS', 'Ahorros'), ('CORRIENTE', 'Corriente'), ('DIGITAL', 'Digital')]
+    numero_cuenta = models.CharField(max_length=30, blank=True, default='')
+    tipo_cuenta = models.CharField(max_length=12, blank=True, default='', choices=TIPO_CUENTA_CHOICES)
+
     # --- Vacaciones ---
     fecha_ini_vacaciones = models.DateField(null=True, blank=True)
     fecha_fin_vacaciones = models.DateField(null=True, blank=True)

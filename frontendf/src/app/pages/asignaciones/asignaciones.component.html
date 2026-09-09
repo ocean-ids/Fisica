@@ -51,6 +51,9 @@
       <button class="btn btn-outline-primary" type="button" (click)="abrirModalVistasCantones()">
         <i class="bi bi-layout-text-window-reverse"></i> Nueva vista
       </button>
+      <button class="btn btn-outline-success" type="button" (click)="abrirListaEventuales()" title="Base de eventuales">
+        <i class="bi bi-person-vcard"></i> Eventual
+      </button>
       <input type="file" #impFile class="d-none" accept=".xlsx" (change)="onFileSelected($event)">
       <button class="btn btn-outline-secondary" (click)="impFile.click()" title="Importar horario (Excel)">
         <i class="bi bi-upload"></i> Importar
@@ -233,6 +236,12 @@
                       </button>
                       <button class="btn btn-sm btn-outline-danger" (click)="eliminarAsignacion(row.asig)">
                         <i class="bi bi-trash"></i>
+                      </button>
+                      <button *ngIf="row.asig.persona_detalle?.tipo === 'EVENTUAL'"
+                        class="btn btn-sm btn-outline-success"
+                        (click)="abrirDatosEventual(row.asig.persona_detalle?.id)"
+                        title="Datos del eventual">
+                        Eventual
                       </button>
                     </div>
                   </td>
