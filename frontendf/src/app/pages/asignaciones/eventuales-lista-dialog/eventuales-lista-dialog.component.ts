@@ -41,7 +41,8 @@ import { EventualDatosDialogComponent } from '../eventual-datos-dialog/eventual-
               <td>{{ e.numero_cuenta || '-' }}</td>
               <td>{{ e.banco || '-' }}</td>
               <td>{{ tipoLabel(e.tipo_cuenta) }}</td>
-              <td>{{ e.provincia_nombre || '-' }}</td>
+              <!-- La columna "Provincia" muestra el cantón (así están los datos del eventual). -->
+              <td>{{ e.canton_nombre || '-' }}</td>
             </tr>
             <tr *ngIf="!filtrados().length">
               <td colspan="7" class="ev-vacio">Sin eventuales</td>
