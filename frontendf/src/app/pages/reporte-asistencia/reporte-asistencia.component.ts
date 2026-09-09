@@ -55,7 +55,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   readonly ALL_SIZE = 100000;
   readonly pageSizeOptions = [25, 50, 100, this.ALL_SIZE];
   currentPage = 1;
-  pageSize = 50;
+  pageSize = this.ALL_SIZE;   // por defecto: "Todas"
   totalItems = 0;
   totalPages = 1;
   filtroTexto = '';
@@ -293,7 +293,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   abrirModalNuevaPersona(): void {
       const dialogRef = this.dialog.open(PersonaFormComponent, {
         width: '600px',
-        data: {}
+        data: { soloBasicos: true }
       });
 
       dialogRef.afterClosed().subscribe(result => {

@@ -14,6 +14,22 @@
   margin-bottom: 15px;
 }
 
+/* Alta rápida (solo básicos): campos apilados a lo ancho del modal. */
+.pf-simple {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+  padding: 14px 4px 4px;
+  box-sizing: border-box;
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+@media (max-width: 520px) {
+  .pf-simple { grid-template-columns: 1fr; }
+}
+
 /* Título del modal compacto */
 h2[mat-dialog-title] { margin: 0 0 4px; padding: 8px 16px 0; font-size: 18px; }
 
@@ -23,6 +39,13 @@ mat-dialog-content {
   max-height: 74vh;     /* scroll interno estándar de Material (clickeable y estable) */
   overflow: auto;
   padding: 8px 16px;
+}
+
+/* Alta rápida: sin el ancho mínimo del formulario completo (el modal abre a 600px). */
+mat-dialog-content.pf-content-simple {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Pestañas estilo ERP */

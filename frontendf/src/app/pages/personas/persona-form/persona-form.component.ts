@@ -117,6 +117,8 @@ export class PersonaFormComponent implements OnInit {
     'OPERADOR CENTRO CONTROL',
     'SUPERVISOR CENTRO CONTROL',
   ];
+  // Alta rápida (desde el Reporte): solo eventuales.
+  tiposSimple: Persona['tipo'][] = ['EVENTUAL'];
 
   constructor(
     private fb: FormBuilder,
@@ -152,7 +154,7 @@ export class PersonaFormComponent implements OnInit {
       cedula: [p.cedula || '', [Validators.required, Validators.pattern('^[0-9]{1,10}$'), Validators.maxLength(10)]],
       nombres: [p.nombres || '', Validators.required],
       apellidos: [p.apellidos || '', Validators.required],
-      tipo: [p.tipo ?? 'FIJOS', Validators.required],
+      tipo: [{ value: p.tipo ?? (this.soloBasicos ? 'EVENTUAL' : 'FIJOS'), disabled: this.soloBasicos }, Validators.required],
       provincia: [p.provincia ?? null],
       canton: [p.canton ?? null],
       estado_empleado: [p.estado_empleado || 'ACTIVO'],
@@ -280,6 +282,11 @@ export class PersonaFormComponent implements OnInit {
       error: () => { this.clientes = []; }
     });
     if (p.cliente) this.loadInstalaciones(p.cliente, true);
+  }
+
+  // Alta rápida (desde el Reporte de Asistencia): solo cédula, nombres, apellidos y tipo.
+  get soloBasicos(): boolean {
+    return !!(this.persona as any)?.soloBasicos;
   }
 
   // Seguridad de Carga: registro de personal (sin "Tipo"/clasificación de turnos).
@@ -600,8 +607,11 @@ export class PersonaFormComponent implements OnInit {
 
   onSubmit(): void {
     if (this.personaForm.valid) {
+      // En alta rápida el "tipo" está deshabilitado (bloqueado en EVENTUAL);
+      // getRawValue lo incluye igual en el payload.
+      const values = this.soloBasicos ? this.personaForm.getRawValue() : this.personaForm.value;
       this.dialogRef.close({
-        ...this.personaForm.value,
+        ...values,
         _fotoFile: this.fotoFile,
         _documentos: this.documentos,
         _masReferencias: {

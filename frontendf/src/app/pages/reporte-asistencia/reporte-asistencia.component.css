@@ -3,6 +3,16 @@
 	text-align: left;
 }
 
+/* Botones de la barra superior: un poco más compactos que btn-sm. */
+.toolbar-btns .btn {
+	font-size: 0.78rem;
+	padding: 0.5rem 0.7rem;
+	line-height: 1.25;
+}
+.toolbar-btns .btn i {
+	font-size: 0.92rem;
+}
+
 .badge-turno-dobla {
 	background-color: #fd7e14;
 	color: #ffffff;

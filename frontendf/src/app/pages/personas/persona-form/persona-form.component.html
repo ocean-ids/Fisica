@@ -1,9 +1,42 @@
-<h2 mat-dialog-title>{{ persona.id ? 'Editar' : 'Nuevo' }} Empleado</h2>
+<h2 mat-dialog-title>{{ soloBasicos ? 'Nueva Persona' : (persona.id ? 'Editar Empleado' : 'Nuevo Empleado') }}</h2>
 
-<mat-dialog-content>
+<mat-dialog-content [class.pf-content-simple]="soloBasicos">
   <form [formGroup]="personaForm">
 
-    <mat-tab-group class="pf-tabs" animationDuration="0ms" mat-stretch-tabs="false">
+    <!-- ===== ALTA RÁPIDA (solo básicos): cédula, nombres, apellidos y tipo ===== -->
+    <div *ngIf="soloBasicos" class="pf-simple">
+      <!-- Fila 1: Cédula + Tipo -->
+      <mat-form-field appearance="outline">
+        <mat-label>Cédula</mat-label>
+        <input matInput formControlName="cedula" maxlength="10" required
+               inputmode="numeric" (keydown)="soloNumeros($event)">
+        <mat-error *ngIf="personaForm.get('cedula')?.hasError('required')">La cédula es requerida</mat-error>
+        <mat-error *ngIf="personaForm.get('cedula')?.hasError('pattern')">Sólo dígitos (máximo 10)</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select formControlName="tipo" required>
+          <mat-option *ngFor="let t of tiposSimple" [value]="t">{{ t }}</mat-option>
+        </mat-select>
+        <mat-error *ngIf="personaForm.get('tipo')?.hasError('required')">El tipo es requerido</mat-error>
+      </mat-form-field>
+
+      <!-- Fila 2: Nombres + Apellidos -->
+      <mat-form-field appearance="outline">
+        <mat-label>Nombres</mat-label>
+        <input matInput formControlName="nombres" required>
+        <mat-error *ngIf="personaForm.get('nombres')?.hasError('required')">El nombre es requerido</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Apellidos</mat-label>
+        <input matInput formControlName="apellidos" required>
+        <mat-error *ngIf="personaForm.get('apellidos')?.hasError('required')">El apellido es requerido</mat-error>
+      </mat-form-field>
+    </div>
+
+    <mat-tab-group *ngIf="!soloBasicos" class="pf-tabs" animationDuration="0ms" mat-stretch-tabs="false">
 
       <!-- ===================== DATOS GENERALES ===================== -->
       <mat-tab label="Datos Generales">
