@@ -298,9 +298,10 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
       dialogRef.afterClosed().subscribe(result => {
         if (!result) return;
-        this.personaService.createPersona(result).subscribe({
+        // Alta rápida del reporte: el eventual queda por validar y se notifica al validador.
+        this.personaService.createPersona({ ...result, requiere_validacion: true }).subscribe({
           next: () => {
-            Swal.fire({ icon: 'success', title: 'Persona creada', timer: 1200, showConfirmButton: false });
+            Swal.fire({ icon: 'success', title: 'Eventual creado', text: 'Quedó pendiente de validación.', timer: 1600, showConfirmButton: false });
             this.cargarReporte();
           },
           error: (err) => this.handleActionError(err, 'No se pudo crear persona')

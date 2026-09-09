@@ -576,7 +576,10 @@ class Persona(models.Model):
     # Estado del empleado (lo que se elige en el formulario). LIQUIDADO/SUSPENDIDO = deshabilitado.
     # is_active se sincroniza desde aquí en save(); todos los filtros del sistema siguen usando is_active.
     estado_empleado = models.CharField(max_length=12, choices=ESTADO_EMPLEADO_CHOICES, default='ACTIVO', db_index=True)
-    
+    # Validación: por defecto True (personas normales). El alta rápida de eventuales
+    # lo crea en False y genera una notificación al validador para que lo revise.
+    validado = models.BooleanField(default=True, db_index=True)
+
     fecha_nacimiento = models.DateField(null=True, blank=True)
     departamento = models.CharField(max_length=120, blank=True, default='')
     seccion = models.CharField(max_length=120, blank=True, default='')
@@ -1659,4 +1662,28 @@ class NovedadPuesto(models.Model):
     def __str__(self):
         return f"{self.fecha} | {self.turno} | {self.novedad} | {self.cliente_denominativo}"
 
+
+class NotificacionEventual(models.Model):
+    """Aviso a un usuario validador para revisar un eventual recién creado."""
+    destinatario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='notificaciones_eventual'
+    )
+    persona = models.ForeignKey(
+        'Persona', on_delete=models.CASCADE, related_name='notificaciones_validacion'
+    )
+    creada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+'
+    )
+    mensaje = models.CharField(max_length=255, blank=True, default='')
+    leida = models.BooleanField(default=False)
+    resuelta = models.BooleanField(default=False, db_index=True)
+    creada_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creada_en']
+
+    def __str__(self):
+        return f"NotificacionEventual({self.persona_id} -> {self.destinatario_id}, resuelta={self.resuelta})"
 

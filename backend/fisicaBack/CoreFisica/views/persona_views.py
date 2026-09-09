@@ -6,7 +6,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton, CoberturaSacafranco
+from django.contrib.auth import get_user_model
+from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton, CoberturaSacafranco, NotificacionEventual
 from ..utils import _strip_accents
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Border, Side, Alignment, Font, PatternFill
@@ -328,6 +329,29 @@ def _aplicar_campos_persona(persona, data):
             persona.cliente_id = None
 
 
+# Usuario que valida los eventuales creados desde el alta rápida del reporte.
+VALIDADOR_EVENTUAL_USERNAME = 'ggomez'
+
+
+def _notificar_validacion_eventual(persona, creado_por):
+    """Crea una notificación al validador para revisar un eventual recién creado.
+    Nunca rompe la creación de la persona: si algo falla, solo se registra en el log."""
+    try:
+        User = get_user_model()
+        validador = User.objects.filter(username=VALIDADOR_EVENTUAL_USERNAME).first()
+        if not validador:
+            logger.warning("Notificacion eventual: validador '%s' no existe", VALIDADOR_EVENTUAL_USERNAME)
+            return
+        NotificacionEventual.objects.create(
+            destinatario=validador,
+            persona=persona,
+            creada_por=creado_por if getattr(creado_por, 'is_authenticated', False) else None,
+            mensaje=f"Nuevo eventual por validar: {persona.nombres} {persona.apellidos} (CI {persona.cedula})",
+        )
+    except Exception:
+        logger.exception("No se pudo crear la notificacion de validacion de eventual")
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_persona(request):
@@ -353,6 +377,10 @@ def crear_persona(request):
     canton_token = data.get('canton') or data.get('canton_id')
     canton_id = _resolve_canton_id(canton_token, provincia_id)
 
+    # El alta rápida del reporte envía requiere_validacion=true: el eventual nace
+    # sin validar y se notifica al validador para que lo revise.
+    requiere_validacion = str(data.get('requiere_validacion') or '').strip().lower() in ('1', 'true', 'si', 'sí')
+
     try:
         persona = Persona(
             nombres=nombres,
@@ -363,7 +391,11 @@ def crear_persona(request):
             canton_id=canton_id,
         )
         _aplicar_campos_persona(persona, data)
+        if requiere_validacion:
+            persona.validado = False
         persona.save()
+        if requiere_validacion and (persona.tipo or '').upper() == 'EVENTUAL':
+            _notificar_validacion_eventual(persona, request.user)
         return JsonResponse({'message': 'Persona creada correctamente', 'id': persona.id}, status=201)
     except IntegrityError:
         return JsonResponse({'error': 'Cédula ya registrada'}, status=400)

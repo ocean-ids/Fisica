@@ -1,18 +1,23 @@
 import { Component, OnInit, HostListener } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { CommonModule } from '@angular/common';
+import { NotificacionService } from '../../services/notificacion.service';
+import { ValidarEventualesDialogComponent } from '../validar-eventuales-dialog/validar-eventuales-dialog.component';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, NavbarComponent, SidebarComponent, CommonModule],
+  imports: [RouterOutlet, NavbarComponent, SidebarComponent, CommonModule, MatDialogModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit {
   sidebarVisible: boolean = true;
   isMobile: boolean = false;
+
+  constructor(private dialog: MatDialog, private notifSvc: NotificacionService) {}
 
   ngOnInit(): void {
     this.isMobile = window.innerWidth < 992;
@@ -25,6 +30,26 @@ export class DashboardComponent implements OnInit {
         this.sidebarVisible = stored === 'true';
       }
     }
+
+    this.revisarEventualesPendientes();
+  }
+
+  // Al abrir la app: si el usuario tiene eventuales por validar, abre el modal.
+  private revisarEventualesPendientes(): void {
+    this.notifSvc.listarPendientes().subscribe({
+      next: (res) => {
+        const pendientes = res?.results || [];
+        if (pendientes.length) {
+          this.dialog.open(ValidarEventualesDialogComponent, {
+            width: '680px',
+            maxWidth: '95vw',
+            disableClose: false,
+            data: { notificaciones: pendientes },
+          });
+        }
+      },
+      error: () => { /* silencioso: no molestar si falla la consulta */ },
+    });
   }
 
   @HostListener('window:resize')

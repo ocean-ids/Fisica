@@ -45,6 +45,7 @@ from .views.reporte_pago_views import (
     detalle_persona_mes_reporte_pago,
     listar_tarifas, listar_tipos_servicio, crear_tarifa, actualizar_tarifa, eliminar_tarifa,
 )
+from .views.notificacion_views import listar_notificaciones_eventual, confirmar_notificacion_eventual
 
 
 
@@ -58,6 +59,8 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('user/', user_view),
     path('user/profile/', user_profile_view),
+    path('notificaciones-eventual/', listar_notificaciones_eventual),
+    path('notificaciones-eventual/<int:pk>/confirmar/', confirmar_notificacion_eventual),
     path('solicitar-reset-password/', solicitar_reset_password),
     path('reset-password/<str:uidb64>/<str:token>/', reset_password),
     path('crear-cliente/', crear_cliente),
