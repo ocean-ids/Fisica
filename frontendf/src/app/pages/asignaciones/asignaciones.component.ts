@@ -1605,12 +1605,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
 
     ref.afterClosed().subscribe(result => {
-      if (!result?.personaId) return;
+      if (!result) return;   // Cancelar. Sin persona (personaId null) = fila HUECA.
       const payload: any = {
         mes: this.mes,
         anio: this.anio,
         orden: (this.sacafrancoRows || []).length,
-        persona: result.personaId,
+        persona: result.personaId ?? null,
         hora_ingreso: result.horaIngreso || null,
         hora_salida: result.horaSalida || null
       };
@@ -2436,9 +2436,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     });
 
     ref.afterClosed().subscribe(result => {
-      if (!result?.personaId) return;
+      if (!result) return;   // Cancelar. Sin persona (personaId null) = fila HUECA.
       this.asignacionService.actualizarSacafrancoFila(fila.id as number, {
-        persona: result.personaId,
+        persona: result.personaId ?? null,
         hora_ingreso: result.horaIngreso || null,
         hora_salida: result.horaSalida || null
       } as any).subscribe({

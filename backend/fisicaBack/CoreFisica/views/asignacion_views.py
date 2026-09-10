@@ -728,9 +728,11 @@ def asignar_servicio(request):
         horario_id = data.get('horario')
 
         with transaction.atomic():
-            # 1. Vacar la asignación previa de la persona (en otro puesto este mes)
+            # 1. Vacar la asignación previa de la persona (en otro puesto este mes).
+            # Sin filtro de estado: la unicidad (persona, mes, anio) aplica a todas,
+            # así que una asignación inactiva "oculta" también bloquearía.
             old_p = Asignacion.objects.filter(
-                persona_id=persona_id, mes=mes_val, anio=anio_val, estado='ACTIVO'
+                persona_id=persona_id, mes=mes_val, anio=anio_val,
             ).exclude(puesto_id=puesto_id).first()
             if old_p:
                 old_p.persona = None
@@ -1454,11 +1456,12 @@ def editar_servicio(request, id):
 
                 # Si la nueva persona ya tiene asignación activa este mes en OTRO puesto,
                 # liberar ese puesto (la persona se mueve, su puesto anterior queda vacante).
+                # Incluye asignaciones NO activas: la regla de unicidad (persona, mes, anio)
+                # aplica a todas, así que una asignación inactiva "oculta" igual bloquearía.
                 otras = Asignacion.objects.filter(
                     persona_id=new_persona_id,
                     mes=asignacion.mes,
                     anio=asignacion.anio,
-                    estado='ACTIVO'
                 ).exclude(id=asignacion.id)
                 for otra in otras:
                     otra.persona = None

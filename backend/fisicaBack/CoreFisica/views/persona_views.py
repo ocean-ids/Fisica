@@ -8,7 +8,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton, CoberturaSacafranco, NotificacionEventual, ReporteAsistencia
+from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton, CoberturaSacafranco, NotificacionEventual, ReporteAsistencia, SacafrancoFila
 from ..utils import _strip_accents
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Border, Side, Alignment, Font, PatternFill
@@ -1182,6 +1182,12 @@ def disable_persona(request, id):
                 ReporteAsistencia.objects.filter(
                     asignacion=asig, fecha_reporte__gte=hoy
                 ).delete()
+
+            # Filas de SACAFRANCO de la persona: del mes actual en adelante quedan HUECA
+            # (persona=None). Los meses pasados conservan a la persona.
+            SacafrancoFila.objects.filter(persona_id=persona.id).filter(
+                Q(anio__gt=hoy.year) | Q(anio=hoy.year, mes__gte=hoy.month)
+            ).update(persona=None)
 
             persona.disable(by_user=request.user if request.user.is_authenticated else None)
         logger.info('Persona deshabilitada id=%s by=%s', id, getattr(request.user, 'username', None))

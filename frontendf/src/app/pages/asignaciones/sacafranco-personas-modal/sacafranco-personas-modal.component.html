@@ -1,9 +1,9 @@
-<h2 mat-dialog-title class="text-center">Seleccionar Persona Sacafranco</h2>
+<h2 mat-dialog-title class="text-center">Persona Sacafranco</h2>
 
 <mat-dialog-content>
     <div class="d-flex gap-2 mb-2">
         <mat-form-field appearance="outline" class="w-50 mt-2">
-            <mat-label >Hora ingreso</mat-label>
+            <mat-label>Hora ingreso</mat-label>
             <input matInput type="time" [(ngModel)]="horaIngreso" [ngModelOptions]="{standalone:true}" />
         </mat-form-field>
         <mat-form-field appearance="outline" class="w-50 mt-2">
@@ -11,46 +11,38 @@
             <input matInput type="time" [(ngModel)]="horaSalida" [ngModelOptions]="{standalone:true}" />
         </mat-form-field>
     </div>
-    <mat-form-field appearance="outline" class="w-100 mb-2">
-        <mat-label>Filtrar por nombre o apellido</mat-label>
+
+    <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Persona (sacafranco)</mat-label>
         <input
             matInput
-            [(ngModel)]="filtroNombre"
-            (ngModelChange)="onNombreFilterChange()"
-            placeholder="Ej: Alvarado"
-        />
-    </mat-form-field>
-    <div class="list-group" style="max-height: 320px; overflow: auto;">
-        <button
-            type="button"
-            class="list-group-item list-group-item-action"
-            *ngFor="let p of personasFiltradas"
-            (click)="selectPersona(p.id)"
-            [class.active]="selectedId === p.id"
-        >
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="fw-semibold">{{ p.apellidos }} {{ p.nombres }}</div>
-                    <small class="text-muted">{{ p.cedula }}</small>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-info text-dark" *ngIf="getProvincia(p)">{{ getProvincia(p) }}</span>
-                    <span class="badge" [ngClass]="isAssigned(p.id) ? 'bg-warning text-dark' : 'bg-success'">
-                        {{ isAssigned(p.id) ? 'Asignado' : 'Disponible' }}
-                    </span>
-                    <span class="badge bg-primary" *ngIf="p.tipo">{{ p.tipo }}</span>
-                </div>
-            </div>
+            [formControl]="personaCtrl"
+            [matAutocomplete]="auto"
+            placeholder="Escribe para buscar… (déjalo vacío para HUECA)" />
+        <button *ngIf="personaCtrl.value" matSuffix mat-icon-button type="button"
+                aria-label="Limpiar" (click)="limpiar()">
+            <mat-icon>close</mat-icon>
         </button>
-        <div class="text-muted p-2" *ngIf="!personasFiltradas.length">
-            No hay personas sacafranco para mostrar.
-        </div>
-    </div>
+        <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayPersona"
+                          (optionSelected)="onOptionSelected($event.option.value)">
+            <mat-option *ngFor="let p of personasFiltradas" [value]="p">
+                <span class="fw-semibold">{{ p.apellidos }} {{ p.nombres }}</span>
+                <small class="text-muted"> · {{ p.cedula }}</small>
+                <span class="badge ms-1" [ngClass]="isAssigned(p.id) ? 'bg-warning text-dark' : 'bg-success'"
+                      style="font-size:10px;">{{ isAssigned(p.id) ? 'Asignado' : 'Disponible' }}</span>
+            </mat-option>
+            <mat-option *ngIf="!personasFiltradas.length" disabled>Sin coincidencias</mat-option>
+        </mat-autocomplete>
+    </mat-form-field>
+
+    <p class="text-muted small mb-0">
+        Si no seleccionas a nadie, la fila se creará como <strong>HUECA</strong>.
+    </p>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
     <button mat-button (click)="cancel()">Cancelar</button>
-    <button mat-raised-button color="primary" (click)="confirm()" [disabled]="!selectedId">
-        Seleccionar
+    <button mat-raised-button color="primary" (click)="confirm()">
+        {{ selectedId ? 'Guardar' : 'Guardar como HUECA' }}
     </button>
 </mat-dialog-actions>

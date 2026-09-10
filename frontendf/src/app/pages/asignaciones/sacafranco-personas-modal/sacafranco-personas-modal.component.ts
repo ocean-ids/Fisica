@@ -1,114 +1,113 @@
 import { CommonModule } from '@angular/common';
 import { Component, Inject, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatIconModule } from '@angular/material/icon';
 import { Persona } from '../../../models/persona.model';
 import { PersonaService } from '../../../services/persona.service';
 
+type SacaResult = { personaId: number | null; cantonId: number | null; horaIngreso: string | null; horaSalida: string | null };
 
 @Component({
   selector: 'app-sacafranco-personas-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule],
+  imports: [
+    CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule, MatFormFieldModule,
+    MatInputModule, MatAutocompleteModule, MatButtonModule, MatIconModule,
+  ],
   templateUrl: './sacafranco-personas-modal.component.html',
   styleUrl: './sacafranco-personas-modal.component.css'
 })
 export class SacafrancoPersonasModalComponent implements OnInit {
-  personas: Persona[] = [];
   personasAll: Persona[] = [];
   personasFiltradas: Persona[] = [];
-  filtroNombre: string = '';
   selectedId: number | null = null;
-  cantones: Array<{ id: number | null; nombre: string }> = [];
-  selectedCantonId: number | null = null;
   assignedIds = new Set<number>();
   horaIngreso: string = '';
   horaSalida: string = '';
+  personaCtrl = new FormControl<Persona | string | null>('');
 
   constructor(
-    private dialogRef: MatDialogRef<SacafrancoPersonasModalComponent, { personaId: number; cantonId: number | null; horaIngreso: string | null; horaSalida: string | null } | null>,
+    private dialogRef: MatDialogRef<SacafrancoPersonasModalComponent, SacaResult | null>,
     private personaService: PersonaService,
     @Inject(MAT_DIALOG_DATA) public data: { personas?: Persona[]; assignedPersonaIds?: number[]; cantones?: Array<{ id: number | null; nombre: string }>; cantonId?: number | null; horaIngreso?: string | null; horaSalida?: string | null; selectedPersonaId?: number | null } | null
   ) {}
 
   private normalizeText(value: string | null | undefined): string {
     if (!value) return '';
-    return value
-      .toString()
-      .trim()
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, '');
+    return value.toString().trim().toUpperCase().normalize('NFD').replace(/[^A-Z0-9]+/g, '');
   }
 
-  private applyFilters(): void {
-    // Ya no se filtra por cantón: se muestran todas las personas sacafranco.
-    const all = this.personasAll || [];
-    const tokens = this.normalizeText(this.filtroNombre || '').split(/\s+/).filter(Boolean);
-    if (!tokens.length) {
-      this.personasFiltradas = all;
-      return;
-    }
-    this.personasFiltradas = all.filter(p => {
-      // Cada palabra debe estar en "nombres apellidos cédula" (cualquier orden).
+  private filtrar(q: string): void {
+    const tokens = (q || '').trim().split(/\s+/).map(t => this.normalizeText(t)).filter(Boolean);
+    if (!tokens.length) { this.personasFiltradas = this.personasAll; return; }
+    this.personasFiltradas = this.personasAll.filter(p => {
       const hay = this.normalizeText(`${p.nombres || ''} ${p.apellidos || ''} ${(p as any).cedula || ''}`);
       return tokens.every(t => hay.includes(t));
     });
-  }
-
-  getProvincia(p: Persona): string {
-    return ((p as any)?.provincia_nombre || '').toString();
-  }
-
-  onNombreFilterChange(): void {
-    this.selectedId = null;
-    this.applyFilters();
   }
 
   ngOnInit(): void {
     if (this.data?.assignedPersonaIds?.length) {
       this.assignedIds = new Set(this.data.assignedPersonaIds);
     }
-    if (this.data?.cantones?.length) {
-      this.cantones = this.data.cantones;
-    }
-    if (this.data?.cantonId !== undefined) {
-      this.selectedCantonId = this.data.cantonId ?? null;
-    }
     this.horaIngreso = (this.data?.horaIngreso || '').toString().slice(0, 5);
     this.horaSalida = (this.data?.horaSalida || '').toString().slice(0, 5);
-    if (this.data?.selectedPersonaId) {
-      this.selectedId = this.data.selectedPersonaId;
-    }
-    if (this.data?.personas && this.data.personas.length) {
-      this.personasAll = this.data.personas.filter(p => (p.tipo || '').toString().toUpperCase() === 'SACAFRANCO');
-      this.personas = this.personasAll;
-      this.applyFilters();
-      return;
-    }
-    
 
-    this.personaService.getPersonas({ tipo: 'SACAFRANCO' }).subscribe({
-      next: list => {
-        this.personasAll = list || [];
-        this.personas = this.personasAll;
-        this.applyFilters();
-      },
-      error: () => {
-        this.personasAll = [];
-        this.personas = [];
-        this.applyFilters();
+    const setup = (list: Persona[]) => {
+      this.personasAll = (list || []).filter(p => (p.tipo || '').toString().toUpperCase() === 'SACAFRANCO');
+      this.personasFiltradas = this.personasAll;
+      const preId = this.data?.selectedPersonaId ?? null;
+      if (preId) {
+        const sel = this.personasAll.find(p => p.id === preId);
+        if (sel) { this.selectedId = sel.id ?? null; this.personaCtrl.setValue(sel, { emitEvent: false }); }
+      }
+    };
+
+    if (this.data?.personas && this.data.personas.length) {
+      setup(this.data.personas);
+    } else {
+      this.personaService.getPersonas({ tipo: 'SACAFRANCO' }).subscribe({
+        next: list => setup(list || []),
+        error: () => setup([]),
+      });
+    }
+
+    // Al escribir: filtra y limpia la selección. Al elegir una opción: guarda su id.
+    this.personaCtrl.valueChanges.subscribe(v => {
+      if (typeof v === 'string') {
+        this.selectedId = null;
+        this.filtrar(v);
+      } else if (v) {
+        this.selectedId = (v as Persona).id ?? null;
+      } else {
+        this.selectedId = null;
+        this.filtrar('');
       }
     });
   }
 
+  displayPersona = (p: Persona | string | null): string => {
+    if (!p) return '';
+    if (typeof p === 'string') return p;
+    return `${p.apellidos || ''} ${p.nombres || ''}`.trim();
+  };
 
-  selectPersona(id: number | null | undefined): void {
-    if (!id) return;
-    this.selectedId = id;
+  onOptionSelected(p: Persona): void {
+    this.selectedId = p?.id ?? null;
+  }
+
+  limpiar(): void {
+    this.personaCtrl.setValue('');
+    this.selectedId = null;
+  }
+
+  getProvincia(p: Persona): string {
+    return ((p as any)?.provincia_nombre || '').toString();
   }
 
   isAssigned(personaId?: number | null): boolean {
@@ -116,8 +115,8 @@ export class SacafrancoPersonasModalComponent implements OnInit {
     return this.assignedIds.has(personaId);
   }
 
+  // Sin persona seleccionada => se guarda como HUECA (personaId = null).
   confirm(): void {
-    if (!this.selectedId) return;
     this.dialogRef.close({
       personaId: this.selectedId,
       cantonId: null,

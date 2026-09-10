@@ -1053,14 +1053,16 @@ def _build_reporte_asistencia_data(
                 if not token_val or token_val[0] not in _turno_letters:
                     continue
                 fila = getattr(srow, 'sacafranco_fila', None)
-                persona = getattr(fila, 'persona', None) if fila else None
-                if not fila or not persona:
+                if not fila:
                     continue
                 if fila.id in seen_fila_ids:
                     continue
                 seen_fila_ids.add(fila.id)
 
-                persona_nombre = f"{persona.nombres} {persona.apellidos}".strip()
+                # Sin persona -> la fila de sacafranco sale como HUECA (puesto sin cubrir),
+                # igual que una asignación vacante. Antes se saltaba y no aparecía.
+                persona = getattr(fila, 'persona', None)
+                persona_nombre = f"{persona.nombres} {persona.apellidos}".strip() if persona else ''
                 nominativo = token_val[1:].strip()
                 if nominativo in ('', 'B'):
                     codigo_val = 'BASE'
@@ -1104,6 +1106,12 @@ def _build_reporte_asistencia_data(
                         _sa_modpor = f"{_u.first_name} {_u.last_name}".strip() or _u.get_username()
                     _sa_moden = _sa.modificado_en.isoformat() if _sa.modificado_en else None
 
+                # HUECA estructural del sacafranco: sin persona y sin edición marcada ese día.
+                _saca_hueca = bool(getattr(_sa, 'hueca', False)) if _sa else False
+                if not persona and not _sa:
+                    _saca_hueca = True
+                    _sa_estado = 'FALTO'
+
                 data.append({
                     'asignacion_id': None,
                     'sacafranco_fila_id': fila.id,
@@ -1111,7 +1119,7 @@ def _build_reporte_asistencia_data(
                     'cliente': cliente_val,
                     'puesto': puesto_val,
                     'horario': horario_saca,
-                    'nombre_apellidos': persona_nombre or 'Libre en base',
+                    'nombre_apellidos': persona_nombre or 'HUECA',
                     'reemplazo_id': _sa_rem.id if _sa_rem else None,
                     'reemplazo': f"{_sa_rem.nombres} {_sa_rem.apellidos}".strip() if _sa_rem else '',
                     'estado_asistencia': _sa_estado,
@@ -1119,7 +1127,7 @@ def _build_reporte_asistencia_data(
                     'descripcion': (getattr(_sa, 'descripcion', '') or '') if _sa else '',
                     'modificado_por': _sa_modpor,
                     'row_color': (getattr(_sa, 'row_color', '') or '') if _sa else '',
-                    'hueca': bool(getattr(_sa, 'hueca', False)) if _sa else False,
+                    'hueca': _saca_hueca,
                     'hueca_motivo': (getattr(_sa, 'hueca_motivo', '') or '') if _sa else '',
                     'modificado_en': _sa_moden,
                     'zona_titulo': zona_val,
