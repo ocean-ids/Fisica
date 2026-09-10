@@ -64,6 +64,15 @@
                 <option [value]="''">Todas las zonas</option>
                 <option *ngFor="let z of zonas" [value]="z.nombre">{{ z.nombre }}</option>
             </select>
+
+            <!-- Filtro por jornada -->
+            <select
+                class="form-select form-select-sm w-auto"
+                [ngModel]="filtroJornada"
+                (change)="onJornadaChange($event)">
+                <option [value]="''">Todas las jornadas</option>
+                <option *ngFor="let j of jornadasFiltro" [value]="j">{{ j }}</option>
+            </select>
         </div>
 
     <div class="table-responsive" *ngIf="!loading">
@@ -74,7 +83,6 @@
                     <th class="text-nowrap">Cliente</th>
                     <th class="text-nowrap">Puesto (Tipo)</th>
                     <th class="text-nowrap">Horario</th>
-                    <th class="text-nowrap">Jornada</th>
                     <th class="text-nowrap">Nombre y Apellidos</th>
                     <th class="text-nowrap">Asistencia</th>
                     <th class="text-nowrap d-none d-lg-table-cell">Reemplazo</th>
@@ -87,11 +95,11 @@
             <tbody>
                 <ng-container *ngFor="let zona of reporteAgrupado">
                     <tr class="zona-row">
-                        <td class="text-center" colspan="12">{{ getZonaTitulo(zona.zona) }}</td>
+                        <td class="text-center" colspan="11">{{ getZonaTitulo(zona.zona) }}</td>
                     </tr>
                     <ng-container *ngFor="let prov of zona.provincias">
                         <tr class="provincia-row">
-                            <td colspan="12">{{ prov.provincia }}</td>
+                            <td colspan="11">{{ prov.provincia }}</td>
                         </tr>
                         <ng-container *ngFor="let r of prov.rows">
                         <tr class="text-center align-middle" (dblclick)="onRowDoubleClick(r)">
@@ -101,12 +109,6 @@
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.instalacion_nombre || r.cliente || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto_tipo || r.puesto || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.horario || '-' }}</td>
-                            <td [style.backgroundColor]="getRowColor(r)">
-                                <span *ngIf="r.turno" class="badge rounded-pill"
-                                      style="font-size:0.82rem; padding:5px 13px; font-weight:700;"
-                                      [ngStyle]="jornadaBadgeStyle(r.turno)">{{ r.turno }}</span>
-                                <span *ngIf="!r.turno">-</span>
-                            </td>
                             <td [style.backgroundColor]="getRowColor(r)">
                                 {{ r.nombre_apellidos || '-' }}
                                 <div *ngIf="r.sacafranco_fila_id">
@@ -153,7 +155,7 @@
                     </ng-container>
                 </ng-container>
                 <tr *ngIf="reporte.length === 0">
-                    <td colspan="12" class="text-center text-muted">Sin datos</td>
+                    <td colspan="11" class="text-center text-muted">Sin datos</td>
                 </tr>
             </tbody>
         </table>

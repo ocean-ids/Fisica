@@ -181,9 +181,22 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     return (zona || '').toUpperCase();
   }
 
+  // Filtro de jornada (client-side): '' = todas, o 'Diurno'/'Nocturno'/'Tarde'/'Veinticuatro'.
+  readonly jornadasFiltro = ['Diurno', 'Nocturno', 'Tarde', 'Veinticuatro'];
+  filtroJornada = '';
+
+  onJornadaChange(event: Event): void {
+    this.filtroJornada = (event.target as HTMLSelectElement).value || '';
+    this.reporteAgrupado = this.buildReporteAgrupado();
+  }
+
   private buildReporteAgrupado(): ReporteAsistenciaGrupoZona[] {
     const zonas: Record<string, Record<string, ReporteAsistenciaRow[]>> = {};
     for (const row of this.reporte) {
+      // Filtro por jornada (si hay uno activo).
+      if (this.filtroJornada && (row.turno || '') !== this.filtroJornada) {
+        continue;
+      }
       // Las filas de SACAFRANCO (cobertura y base) vienen con asignacion_id=null desde
       // el backend y deben mostrarse. Antes solo se mostraban las de "libre en base" y
       // se descartaban las de cobertura (S6, K66...). Ahora se muestra toda fila con
