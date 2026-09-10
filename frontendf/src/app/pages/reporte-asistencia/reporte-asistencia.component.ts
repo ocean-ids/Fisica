@@ -138,9 +138,10 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       try {
         const f = JSON.parse(saved);
         // La fecha NO se restaura: el reporte siempre abre en HOY (evita confusión
-        // al volver a entrar y ver un día viejo). Se mantiene zona/filas (turno ya no aplica).
+        // al volver a entrar y ver un día viejo). Se mantiene la zona.
+        // El tamaño de página ya no se restaura: el reporte SIEMPRE muestra todas las filas.
         if (f.zona !== undefined) this.filtroZona = f.zona;
-        if (f.pageSize) this.pageSize = f.pageSize;
+        this.pageSize = this.ALL_SIZE;
       } catch {}
     }
 
@@ -281,8 +282,10 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
   // Color del badge de Jornada: fondos suaves con texto oscuro (se ve limpio y legible).
   jornadaBadgeStyle(turno?: string): { [k: string]: string } {
+    // Suave, sin borde. Diurno con un tono un poco más marcado que el pastel original
+    // para que se aprecie sobre las filas amarillas.
     switch (turno) {
-      case 'Diurno':       return { background: '#FEF3C7', color: '#92400E' }; // ámbar suave
+      case 'Diurno':       return { background: '#FDE68A', color: '#78350F' }; // ámbar suave
       case 'Nocturno':     return { background: '#E0E7FF', color: '#3730A3' }; // índigo suave
       case 'Tarde':        return { background: '#FFEDD5', color: '#9A3412' }; // naranja suave
       case 'Veinticuatro': return { background: '#CCFBF1', color: '#115E59' }; // teal suave
