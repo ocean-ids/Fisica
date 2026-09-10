@@ -7,7 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.contrib.auth import get_user_model
-from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton, CoberturaSacafranco, NotificacionEventual
+from django.utils import timezone
+from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton, CoberturaSacafranco, NotificacionEventual, ReporteAsistencia
 from ..utils import _strip_accents
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Border, Side, Alignment, Font, PatternFill
@@ -1164,7 +1165,25 @@ def disable_persona(request, id):
         return JsonResponse({'status': 'already_disabled'}, status=200)
 
     try:
-        persona.disable(by_user=request.user if request.user.is_authenticated else None)
+        # Import local para evitar import circular (asignacion_views importa modelos, no personas).
+        from .asignacion_views import _registrar_cambio_persona
+        hoy = timezone.localdate()
+        with transaction.atomic():
+            # Las asignaciones ACTIVAS de la persona pasan a HUECA desde HOY.
+            # Los días pasados conservan a la persona (vigencia por fecha), hasta que
+            # se asigne a alguien nuevo. El reporte muestra HUECA solo desde hoy.
+            for asig in Asignacion.objects.filter(persona_id=persona.id, estado='ACTIVO'):
+                _registrar_cambio_persona(asig, persona.id, None, hoy)
+                asig.persona = None
+                asig.es_hueca = True
+                asig.save(update_fields=['persona', 'es_hueca'])
+                # Borrar el estado del reporte de HOY en adelante (los días pasados quedan
+                # intactos con la persona y su asistencia registrada).
+                ReporteAsistencia.objects.filter(
+                    asignacion=asig, fecha_reporte__gte=hoy
+                ).delete()
+
+            persona.disable(by_user=request.user if request.user.is_authenticated else None)
         logger.info('Persona deshabilitada id=%s by=%s', id, getattr(request.user, 'username', None))
         return JsonResponse({'status': 'disabled'}, status=200)
     except Exception:
