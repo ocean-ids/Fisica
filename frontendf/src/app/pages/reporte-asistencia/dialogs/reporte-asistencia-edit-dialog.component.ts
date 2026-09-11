@@ -442,17 +442,6 @@ export class ReporteAsistenciaEditDialogComponent {
       }
     }
 
-    // ADICIONAL no puede tener un reemplazo EVENTUAL.
-    if ((raw.estado || '').toString().toUpperCase() === 'ADICIONAL'
-        && this.reemplazoTipo === 'EVENTUAL') {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Reemplazo no válido para ADICIONAL',
-        text: 'En ADICIONAL el reemplazo no puede ser un EVENTUAL.',
-      });
-      return;
-    }
-
     // Si marca "Hueca", debe elegir un motivo.
     if (raw.hueca && !(raw.hueca_motivo || '').toString().trim()) {
       Swal.fire({
