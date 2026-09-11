@@ -137,15 +137,22 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
 
   actualizarInstalacion(id: number, data: any): void {
     const payload: any = {
-      codigo: data.codigo || '',
       nombre: data.nombre || '',
       cliente: data.cliente_id,
       direccion: data.direccion || '',
       sector: data.sector || '',
       provincia_id: data.provincia_id || data.provincia,
       canton_id: data.canton_id || data.canton,
-      zona_id: data.zona_id|| null,
     };
+    // El código y la zona están deshabilitados en el form (no se editan aquí).
+    // Solo se envían si traen valor; si no, se OMITEN para que el backend NO borre
+    // el código/nominativo ni la zona existentes (bug: al editar el nombre se perdía).
+    if (data.codigo != null && String(data.codigo).trim() !== '') {
+      payload.codigo = data.codigo;
+    }
+    if (data.zona_id != null && String(data.zona_id).trim() !== '') {
+      payload.zona_id = data.zona_id;
+    }
 
     this.instalacionService.updateInstalacion(id, payload).subscribe({
       next: (resp: any) => {

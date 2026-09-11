@@ -357,6 +357,10 @@ def actualizar_instalacion(request, id):
 
         if 'codigo' in data and data.get('codigo'):
             data['codigo'] = str(data.get('codigo')).strip().upper()
+        # No borrar el codigo (y con el, el nominativo) si viene vacio en una edicion:
+        # se ignora para conservar el codigo actual.
+        if 'codigo' in data and not str(data.get('codigo') or '').strip():
+            data.pop('codigo')
         if 'nombre' in data and data.get('nombre'):
             data['nombre'] = str(data.get('nombre')).strip().upper()
         if 'direccion' in data and data.get('direccion'):
