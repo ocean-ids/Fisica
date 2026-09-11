@@ -521,12 +521,16 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     // alterna ASISTIO <-> (vacio), igual que los fijos. Para FALTO/hueca se usa el lapiz.
     if (!row?.asignacion_id && row?.sacafranco_fila_id) {
       const siguiente: 'ASISTIO' | '' = (row.estado_asistencia === 'ASISTIO') ? '' : 'ASISTIO';
+      // Al marcar ASISTE la fila se pinta de amarillo automáticamente; al quitar, se limpia.
+      const colorSaca = siguiente === 'ASISTIO' ? '#fff8b3' : '';
       this.reporteSvc.updateSacafrancoAsistencia(row.sacafranco_fila_id, {
         fecha: this.filtroFecha || null,
         estado_asistencia: siguiente || null,
-      }).subscribe({
+        row_color: colorSaca,
+      } as any).subscribe({
         next: (res) => {
           row.estado_asistencia = res.estado_asistencia;
+          row.row_color = res.row_color ?? colorSaca;
           row.modificado_por = res.modificado_por;
           row.modificado_en = res.modificado_en;
         },
@@ -536,6 +540,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     }
     if (!row?.asignacion_id) return;
     const nuevo: 'ASISTIO' | null = (row.estado_asistencia === 'ASISTIO') ? null : 'ASISTIO';
+    // Al marcar ASISTE la fila se pinta de amarillo automáticamente; al quitar, se limpia.
+    const color = nuevo === 'ASISTIO' ? '#fff8b3' : '';
     const payload = {
       estado_asistencia: nuevo,
       estado: 'TURNO',
@@ -543,6 +549,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       descripcion: null,
       hueca: false,
       hueca_motivo: null,
+      row_color: color,
       fecha: this.filtroFecha || null,
     };
     this.reporteSvc.updateReporteAsistencia(row.asignacion_id, payload).subscribe({
@@ -554,6 +561,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
         row.descripcion = res.descripcion;
         row.hueca = res.hueca;
         row.hueca_motivo = res.hueca_motivo;
+        row.row_color = res.row_color ?? color;
         row.modificado_por = res.modificado_por;
         row.modificado_en = res.modificado_en;
       },
