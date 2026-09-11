@@ -65,12 +65,11 @@
                 <option *ngFor="let z of zonas" [value]="z.nombre">{{ z.nombre }}</option>
             </select>
 
-            <!-- Filtro por jornada -->
+            <!-- Filtro por jornada: solo Diurno (incluye Tarde) y Nocturno; Veinticuatro sale en ambos. -->
             <select
                 class="form-select form-select-sm w-auto"
                 [ngModel]="filtroJornada"
                 (change)="onJornadaChange($event)">
-                <option [value]="''">Todas las jornadas</option>
                 <option *ngFor="let j of jornadasFiltro" [value]="j">{{ j }}</option>
             </select>
         </div>

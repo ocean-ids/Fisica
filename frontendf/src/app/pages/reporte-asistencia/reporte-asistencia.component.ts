@@ -181,9 +181,10 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     return (zona || '').toUpperCase();
   }
 
-  // Filtro de jornada (client-side): '' = todas, o 'Diurno'/'Nocturno'/'Tarde'/'Veinticuatro'.
-  readonly jornadasFiltro = ['Diurno', 'Nocturno', 'Tarde'];
-  filtroJornada = '';
+  // Filtro de jornada (client-side): solo 'Diurno' o 'Nocturno' (no hay opcion "Todas").
+  // Diurno incluye la Tarde; Veinticuatro (V) sale en ambos. Por defecto: Diurno.
+  readonly jornadasFiltro = ['Diurno', 'Nocturno'];
+  filtroJornada = 'Diurno';
 
   onJornadaChange(event: Event): void {
     this.filtroJornada = (event.target as HTMLSelectElement).value || '';
@@ -193,14 +194,15 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   private buildReporteAgrupado(): ReporteAsistenciaGrupoZona[] {
     const zonas: Record<string, Record<string, ReporteAsistenciaRow[]>> = {};
     for (const row of this.reporte) {
-      // Filtro por jornada (si hay uno activo).
-      // La fila Veinticuatro (token V) cubre el dia completo, por eso aparece
-      // tanto al filtrar Diurno como Nocturno. Tarde solo muestra Tarde.
+      // Filtro por jornada (siempre activo: Diurno o Nocturno).
+      // - Veinticuatro (token V) cubre el dia completo -> aparece en Diurno y Nocturno.
+      // - Tarde se incluye dentro de Diurno.
       if (this.filtroJornada) {
         const t = (row.turno || '');
         const coincide =
           t === this.filtroJornada ||
-          ((this.filtroJornada === 'Diurno' || this.filtroJornada === 'Nocturno') && t === 'Veinticuatro');
+          t === 'Veinticuatro' ||
+          (this.filtroJornada === 'Diurno' && t === 'Tarde');
         if (!coincide) {
           continue;
         }
