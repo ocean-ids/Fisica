@@ -942,12 +942,9 @@ def _build_reporte_asistencia_data(
         estado = (getattr(override, 'estado', None) if override else None) or 'TURNO'
         descripcion = (override.descripcion or '') if override else ''
         hueca_val = bool(getattr(override, 'hueca', False)) if override else False
-        # HUECA estructural (puesto sin guardia, sin edicion manual): por defecto sale en
-        # FALTÓ con el check "Hueca" marcado, para que el supervisor solo ponga el motivo y
-        # al guardar pase al Reporte de Guardia (seccion HUECA).
-        if p is None and not override:
-            estado_asistencia = 'FALTO'
-            hueca_val = True
+        # Puesto sin guardia (HUECA): se muestra como "HUECA" en el nombre, pero la
+        # asistencia y el check "Hueca" quedan EN BLANCO para que el supervisor los marque
+        # (antes salía como FALTÓ + hueca marcada automáticamente).
         if auto_sacafranco:
             puesto_nombre = ''
             horario_str = ''
@@ -1106,11 +1103,9 @@ def _build_reporte_asistencia_data(
                         _sa_modpor = f"{_u.first_name} {_u.last_name}".strip() or _u.get_username()
                     _sa_moden = _sa.modificado_en.isoformat() if _sa.modificado_en else None
 
-                # HUECA estructural del sacafranco: sin persona y sin edición marcada ese día.
+                # Sacafranco sin persona: sale como "HUECA" en el nombre, pero la asistencia y
+                # el check "Hueca" quedan en blanco para que el supervisor los marque.
                 _saca_hueca = bool(getattr(_sa, 'hueca', False)) if _sa else False
-                if not persona and not _sa:
-                    _saca_hueca = True
-                    _sa_estado = 'FALTO'
 
                 data.append({
                     'asignacion_id': None,

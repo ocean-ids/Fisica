@@ -184,13 +184,13 @@ export class ReporteAsistenciaEditDialogComponent {
     this.aplicarBloqueoReemplazo(limpiar);
   }
 
-  // Habilita el Reemplazo solo si la asistencia es FALTO y ya se eligió un Estado.
+  // Habilita el Reemplazo cuando ya se eligió un Estado (ADICIONAL, DOBLA, etc.).
+  // El Estado solo se puede elegir con asistencia FALTO, así que basta con tener Estado.
   private aplicarBloqueoReemplazo(limpiar = false): void {
-    const esFalto = (this.form.get('estado_asistencia')?.value || '').toString().toUpperCase() === 'FALTO';
     const tieneEstado = !!this.form.get('estado')?.value;
     const reemplazoIdCtrl = this.form.get('reemplazo_id');
 
-    if (esFalto && tieneEstado) {
+    if (tieneEstado) {
       reemplazoIdCtrl?.enable({ emitEvent: false });
       this.reemplazoCtrl.enable({ emitEvent: false });
     } else {
