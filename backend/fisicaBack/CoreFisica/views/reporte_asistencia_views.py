@@ -901,7 +901,7 @@ def _build_reporte_asistencia_data(
             horario_str = f"{hi.strftime('%H:%M')} - {ho.strftime('%H:%M')}" if ho else hi.strftime('%H:%M')
         elif asig and asig.horario:
             horario_str = f"{asig.horario.hora_ingreso.strftime('%H:%M')} - {asig.horario.hora_salida.strftime('%H:%M')}"
-        nombre_apellidos = f"{p.nombres} {p.apellidos}".strip() if p else 'HUECA'
+        nombre_apellidos = f"{p.apellidos} {p.nombres}".strip() if p else 'HUECA'
         auto_sacafranco = _is_auto_sacafranco_desc(getattr(override, 'descripcion', '')) if override else False
         persona_cobertura = None
         if override:
@@ -909,7 +909,7 @@ def _build_reporte_asistencia_data(
             if not persona_cobertura and auto_sacafranco:
                 persona_cobertura = getattr(override, 'reemplazo', None)
         if auto_sacafranco and persona_cobertura:
-            nombre_apellidos = f"{persona_cobertura.nombres} {persona_cobertura.apellidos}".strip()
+            nombre_apellidos = f"{persona_cobertura.apellidos} {persona_cobertura.nombres}".strip()
         zona_titulo = ''
         provincia_nombre = ''
         if asig and asig.instalacion:
@@ -1059,7 +1059,7 @@ def _build_reporte_asistencia_data(
                 # Sin persona -> la fila de sacafranco sale como HUECA (puesto sin cubrir),
                 # igual que una asignación vacante. Antes se saltaba y no aparecía.
                 persona = getattr(fila, 'persona', None)
-                persona_nombre = f"{persona.nombres} {persona.apellidos}".strip() if persona else ''
+                persona_nombre = f"{persona.apellidos} {persona.nombres}".strip() if persona else ''
                 nominativo = token_val[1:].strip()
                 if nominativo in ('', 'B'):
                     codigo_val = 'BASE'
@@ -1816,7 +1816,7 @@ def exportar_reporte_asistencia_excel(request):
     zona = _normalize_zona_filter(request.GET.get('zona'))
     headers = [
         'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
-        'NOMBRE Y APELLIDOS', 'ASISTENCIA', 'REEMPLAZO', 'ESTADO', 'DESCRIPCIÓN',
+        'APELLIDOS Y NOMBRES', 'ASISTENCIA', 'REEMPLAZO', 'ESTADO', 'DESCRIPCIÓN',
     ]
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -1979,7 +1979,7 @@ def exportar_reporte_asistencia_pdf(request):
 
     headers = [
         'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
-        'NOMBRE Y APELLIDOS', 'ASISTENCIA', 'REEMPLAZO', 'ESTADO', 'DESCRIPCIÓN',
+        'APELLIDOS Y NOMBRES', 'ASISTENCIA', 'REEMPLAZO', 'ESTADO', 'DESCRIPCIÓN',
     ]
 
     col_widths = [0.75, 1.15, 1.1, 0.6, 1.75, 0.7, 0.8, 1.5, 1.0]
