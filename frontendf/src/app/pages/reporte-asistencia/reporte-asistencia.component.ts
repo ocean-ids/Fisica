@@ -182,7 +182,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   }
 
   // Filtro de jornada (client-side): '' = todas, o 'Diurno'/'Nocturno'/'Tarde'/'Veinticuatro'.
-  readonly jornadasFiltro = ['Diurno', 'Nocturno', 'Tarde', 'Veinticuatro'];
+  readonly jornadasFiltro = ['Diurno', 'Nocturno', 'Tarde'];
   filtroJornada = '';
 
   onJornadaChange(event: Event): void {
@@ -194,8 +194,16 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     const zonas: Record<string, Record<string, ReporteAsistenciaRow[]>> = {};
     for (const row of this.reporte) {
       // Filtro por jornada (si hay uno activo).
-      if (this.filtroJornada && (row.turno || '') !== this.filtroJornada) {
-        continue;
+      // La fila Veinticuatro (token V) cubre el dia completo, por eso aparece
+      // tanto al filtrar Diurno como Nocturno. Tarde solo muestra Tarde.
+      if (this.filtroJornada) {
+        const t = (row.turno || '');
+        const coincide =
+          t === this.filtroJornada ||
+          ((this.filtroJornada === 'Diurno' || this.filtroJornada === 'Nocturno') && t === 'Veinticuatro');
+        if (!coincide) {
+          continue;
+        }
       }
       // Las filas de SACAFRANCO (cobertura y base) vienen con asignacion_id=null desde
       // el backend y deben mostrarse. Antes solo se mostraban las de "libre en base" y
