@@ -128,6 +128,14 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.setHoy();
+    // La fecha se CONSERVA al refrescar (sessionStorage), pero al INICIAR SESION vuelve a
+    // HOY (el login limpia 'reporte_fecha'). Asi: si ves un dia y recargas, te quedas en
+    // ese dia; si entras de nuevo (login), abre en el dia actual.
+    const savedFecha = sessionStorage.getItem('reporte_fecha');
+    if (savedFecha) {
+      this.filtroFecha = savedFecha;
+      this.filtroFechaDisplay = savedFecha.split('-').reverse().join('/');
+    }
     // Vista unica: sin filtro de turno. Se muestran todos los turnos y el turno de cada
     // registro sale en su propia columna. Por eso filtroTurno queda vacio (no se envia).
     this.filtroTurno = '';
@@ -595,6 +603,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
   limpiarFiltros(): void {
     this.setHoy();
+    sessionStorage.removeItem('reporte_fecha');  // limpiar vuelve a HOY tambien tras refrescar
     this.filtroClienteId = '';
     this.filtroTurno = '';
     this.filtroZona = 'Zona 1';
@@ -606,6 +615,13 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     const iso = (event.target as HTMLInputElement).value;
     this.filtroFecha = iso || '';
     this.filtroFechaDisplay = iso ? iso.split('-').reverse().join('/') : '';
+    // Recordar la fecha SOLO para esta sesion del navegador (sobrevive al refresco;
+    // el login la limpia para volver a HOY).
+    if (iso) {
+      sessionStorage.setItem('reporte_fecha', iso);
+    } else {
+      sessionStorage.removeItem('reporte_fecha');
+    }
     this._saveFilters();
     this.cargarReporte(true);
   }

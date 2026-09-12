@@ -105,6 +105,9 @@ export class AuthService {
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('groups', JSON.stringify(response.user.groups ?? []));
         localStorage.setItem('permissions', JSON.stringify(response.user.permissions ?? []));
+        // Nueva sesion: el Reporte de Asistencia debe abrir en el dia ACTUAL
+        // (la fecha recordada solo aplica al refrescar dentro de la misma sesion).
+        sessionStorage.removeItem('reporte_fecha');
         this.isAuthenticatedSubject.next(true);
         this.resetInactivityTimer();
       })
