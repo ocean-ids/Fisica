@@ -402,6 +402,32 @@ def _build_resumen_asistencia(data):
     return asistencias, faltos
 
 
+def _rows_por_jornada(data, turno_val):
+    """Filas de la hoja/seccion DIURNO o NOCTURNO de los descargables (Excel/PDF).
+
+    - DIURNO  incluye Diurno + Tarde + Veinticuatro.
+    - NOCTURNO incluye Nocturno + Veinticuatro.
+    La fila Veinticuatro (token V) cubre el dia completo, por eso aparece en ambas
+    (igual que en la web). Asi el descargable no pierde las filas Tarde/Veinticuatro."""
+    if turno_val == 'Diurno':
+        permitidos = ('Diurno', 'Tarde', 'Veinticuatro')
+    else:
+        permitidos = ('Nocturno', 'Veinticuatro')
+    return [r for r in data if (r.get('turno') or '') in permitidos]
+
+
+def _col_cliente_descargable(item):
+    """Columna CLIENTE del descargable = igual que la web: el nombre de la INSTALACION
+    (si existe); si no, el cliente."""
+    return item.get('instalacion_nombre') or item.get('cliente') or ''
+
+
+def _col_puesto_descargable(item):
+    """Columna PUESTO del descargable = igual que la web ('Puesto (Tipo)'): el TIPO del
+    puesto (si existe); si no, el nombre del puesto."""
+    return item.get('puesto_tipo') or item.get('puesto') or ''
+
+
 def _build_resumen_asistencia_por_zona(data):
     evaluables = [item for item in data if item.get('asignacion_id')]
     zonas = {}
@@ -937,7 +963,15 @@ def _build_reporte_asistencia_data(
                 modificado_por_nombre = full_name or override.modificado_por.get_username()
             modificado_en_iso = override.modificado_en.isoformat() if override.modificado_en else None
 
-        codigo_instalacion = getattr(asig.instalacion, 'codigo', '') if asig and asig.instalacion else ''
+        # Nominativo: se usa el campo 'codigo' de la instalacion; si esta vacio (dato
+        # inconsistente) se cae al codigo del NOMINATIVO relacionado. Asi el nominativo
+        # no sale en blanco (ej. UPS CENTENARIO con codigo='' pero nominativo=S33).
+        codigo_instalacion = ''
+        if asig and asig.instalacion:
+            codigo_instalacion = (asig.instalacion.codigo or '')
+            if not codigo_instalacion:
+                _nom_inst = getattr(asig.instalacion, 'nominativo', None)
+                codigo_instalacion = (getattr(_nom_inst, 'codigo', '') or '') if _nom_inst else ''
         estado_asistencia = _normalize_estado_asistencia(getattr(override, 'estado_asistencia', '') if override else '')
         estado = (getattr(override, 'estado', None) if override else None) or 'TURNO'
         descripcion = (override.descripcion or '') if override else ''
@@ -1821,8 +1855,12 @@ def exportar_reporte_asistencia_excel(request):
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
+    # Se construye TODO el reporte una sola vez (sin filtro de turno) y cada hoja se
+    # arma filtrando por jornada: DIURNO = Diurno+Tarde+Veinticuatro, NOCTURNO = Nocturno+Veinticuatro.
+    data_all = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=None, zona=zona, q=q)
+
     def render_sheet(ws, turno_val):
-        data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno_val, zona=zona, q=q)
+        data = _rows_por_jornada(data_all, turno_val)
         header_ctx = _build_header_context(request, fecha, turno_val)
         asistencias, faltos = _build_resumen_asistencia(data)
         grouped = _group_reporte_por_zona_y_provincia(data)
@@ -1872,8 +1910,8 @@ def exportar_reporte_asistencia_excel(request):
                     row_fill = PatternFill(start_color=row_hex, end_color=row_hex, fill_type='solid') if row_hex else None
                     row_vals = [
                         item.get('codigo', ''),
-                        item.get('cliente', ''),
-                        item.get('puesto', ''),
+                        _col_cliente_descargable(item),
+                        _col_puesto_descargable(item),
                         item.get('horario', ''),
                         item.get('nombre_apellidos', ''),
                         'ASISTE' if item.get('estado_asistencia') == 'ASISTIO' else ('FALTO' if item.get('estado_asistencia') == 'FALTO' else ''),
@@ -1961,14 +1999,11 @@ def exportar_reporte_asistencia_pdf(request):
 
     fecha = request.GET.get('fecha')
     cliente_id = request.GET.get('cliente_id')
-    turno = request.GET.get('turno')
     q = (request.GET.get('q') or '').strip()
     zona = _normalize_zona_filter(request.GET.get('zona'))
-    data = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=turno, zona=zona, q=q)
-    header_ctx = _build_header_context(request, fecha, turno)
-    asistencias, faltos = _build_resumen_asistencia(data)
-    grouped = _group_reporte_por_zona_y_provincia(data)
-    zona_resumen = []
+    # Se construye TODO el reporte una sola vez (sin filtro de turno) y se imprime en dos
+    # secciones: DIURNO (Diurno+Tarde+Veinticuatro) y NOCTURNO (Nocturno+Veinticuatro).
+    data_all = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=None, zona=zona, q=q)
 
     output = BytesIO()
     p = canvas.Canvas(output, pagesize=landscape(letter))
@@ -1976,6 +2011,8 @@ def exportar_reporte_asistencia_pdf(request):
 
     x_margin = 0.5 * inch
     y_margin = 0.5 * inch
+
+    header_ctx = None  # se fija por seccion (Diurno/Nocturno); lo usa ensure_space en continuacion
 
     headers = [
         'NOMINATIVO', 'CLIENTE', 'PUESTO', 'HORARIO',
@@ -2032,80 +2069,91 @@ def exportar_reporte_asistencia_pdf(request):
 
         return y_bottom - 0.3 * inch
 
-    y = _draw_pdf_header(p, width, height, x_margin, y_margin, header_ctx)
-    y = _draw_pdf_table_headers(p, x_margin, y, headers, col_widths)
-    p.setFont('Helvetica', 6)
+    def render_section(turno_val):
+        nonlocal header_ctx
+        data = _rows_por_jornada(data_all, turno_val)
+        header_ctx = _build_header_context(request, fecha, turno_val)
+        grouped = _group_reporte_por_zona_y_provincia(data)
+        zona_resumen = []
 
-    for zona_group in grouped:
-        y = draw_group_row(y, _normalize_zona_label(zona_group['zona']), 8)
-        zona_items = []
-        for prov_group in zona_group['provincias']:
-            y = draw_group_row(y, str(prov_group['provincia']).upper(), 7)
-            for item in prov_group['rows']:
-                zona_items.append(item)
-                row_vals = [
-                    item.get('codigo', ''),
-                    item.get('cliente', ''),
-                    item.get('puesto', ''),
-                    item.get('horario', ''),
-                    item.get('nombre_apellidos', ''),
-                    'ASISTE' if item.get('estado_asistencia') == 'ASISTIO' else ('FALTO' if item.get('estado_asistencia') == 'FALTO' else ''),
-                    item.get('reemplazo', ''),
-                    item.get('estado', ''),
-                    _descripcion_con_hueca(item)[:240],
-                ]
+        y = _draw_pdf_header(p, width, height, x_margin, y_margin, header_ctx)
+        y = _draw_pdf_table_headers(p, x_margin, y, headers, col_widths)
+        p.setFont('Helvetica', 6)
 
-                # Envolver cada celda en varias líneas (no se corta el texto).
-                line_h = 0.12 * inch
-                cells_lines = [
-                    _wrap_text_to_width(str(v) if v is not None else '', col_widths[i] - 6, 'Helvetica', 6)
-                    for i, v in enumerate(row_vals)
-                ]
-                n_lines = max(len(cl) for cl in cells_lines)
-                row_h = n_lines * line_h
-                y = ensure_space(y, row_h + 0.10 * inch)
+        for zona_group in grouped:
+            y = draw_group_row(y, _normalize_zona_label(zona_group['zona']), 8)
+            zona_items = []
+            for prov_group in zona_group['provincias']:
+                y = draw_group_row(y, str(prov_group['provincia']).upper(), 7)
+                for item in prov_group['rows']:
+                    zona_items.append(item)
+                    row_vals = [
+                        item.get('codigo', ''),
+                        _col_cliente_descargable(item),
+                        _col_puesto_descargable(item),
+                        item.get('horario', ''),
+                        item.get('nombre_apellidos', ''),
+                        'ASISTE' if item.get('estado_asistencia') == 'ASISTIO' else ('FALTO' if item.get('estado_asistencia') == 'FALTO' else ''),
+                        item.get('reemplazo', ''),
+                        item.get('estado', ''),
+                        _descripcion_con_hueca(item)[:240],
+                    ]
 
-                row_hex = _normalize_hex_color(item.get('row_color'))
-                if row_hex:
-                    x_bg = x_margin
-                    bg_bottom = y - (n_lines - 1) * line_h - 0.05 * inch
-                    bg_h = row_h + 0.06 * inch
-                    p.saveState()
-                    p.setFillColor(colors.HexColor(f"#{row_hex}"))
-                    for w in col_widths:
-                        p.rect(x_bg, bg_bottom, w, bg_h, stroke=0, fill=1)
-                        x_bg += w
-                    p.restoreState()
+                    # Envolver cada celda en varias líneas (no se corta el texto).
+                    line_h = 0.12 * inch
+                    cells_lines = [
+                        _wrap_text_to_width(str(v) if v is not None else '', col_widths[i] - 6, 'Helvetica', 6)
+                        for i, v in enumerate(row_vals)
+                    ]
+                    n_lines = max(len(cl) for cl in cells_lines)
+                    row_h = n_lines * line_h
+                    y = ensure_space(y, row_h + 0.10 * inch)
 
-                x = x_margin
-                for i, lines in enumerate(cells_lines):
-                    ly = y
-                    for ln in lines:
-                        txt_w = pdfmetrics.stringWidth(ln, 'Helvetica', 6)
-                        p.drawString(x + max((col_widths[i] - txt_w) / 2, 0), ly, ln)
-                        ly -= line_h
-                    x += col_widths[i]
+                    row_hex = _normalize_hex_color(item.get('row_color'))
+                    if row_hex:
+                        x_bg = x_margin
+                        bg_bottom = y - (n_lines - 1) * line_h - 0.05 * inch
+                        bg_h = row_h + 0.06 * inch
+                        p.saveState()
+                        p.setFillColor(colors.HexColor(f"#{row_hex}"))
+                        for w in col_widths:
+                            p.rect(x_bg, bg_bottom, w, bg_h, stroke=0, fill=1)
+                            x_bg += w
+                        p.restoreState()
 
-                y -= row_h + 0.06 * inch
+                    x = x_margin
+                    for i, lines in enumerate(cells_lines):
+                        ly = y
+                        for ln in lines:
+                            txt_w = pdfmetrics.stringWidth(ln, 'Helvetica', 6)
+                            p.drawString(x + max((col_widths[i] - txt_w) / 2, 0), ly, ln)
+                            ly -= line_h
+                        x += col_widths[i]
 
-        zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
-        zona_resumen.append((zona_group['zona'], zona_asistencias, zona_faltos))
-        y = draw_resumen(y, zona_asistencias, zona_faltos)
+                    y -= row_h + 0.06 * inch
 
-    if zona_resumen:
-        y = ensure_space(y, 0.4 * inch)
-        p.setFont('Helvetica', 7)
-        for zona_label, zona_asistencias, zona_faltos in zona_resumen:
-            label = _format_zona_label(zona_label)
-            p.setFont('Helvetica-Bold', 7)
-            p.drawString(x_margin, y, f"{label}:")
+            zona_asistencias, zona_faltos = _build_resumen_asistencia(zona_items)
+            zona_resumen.append((zona_group['zona'], zona_asistencias, zona_faltos))
+            y = draw_resumen(y, zona_asistencias, zona_faltos)
+
+        if zona_resumen:
+            y = ensure_space(y, 0.4 * inch)
             p.setFont('Helvetica', 7)
-            p.drawString(x_margin + 1.0 * inch, y, f"Asistencias: {zona_asistencias}")
-            p.drawString(x_margin + 3.2 * inch, y, f"Faltas: {zona_faltos}")
-            y -= 0.18 * inch
-        y -= 0.1 * inch
+            for zona_label, zona_asistencias, zona_faltos in zona_resumen:
+                label = _format_zona_label(zona_label)
+                p.setFont('Helvetica-Bold', 7)
+                p.drawString(x_margin, y, f"{label}:")
+                p.setFont('Helvetica', 7)
+                p.drawString(x_margin + 1.0 * inch, y, f"Asistencias: {zona_asistencias}")
+                p.drawString(x_margin + 3.2 * inch, y, f"Faltas: {zona_faltos}")
+                y -= 0.18 * inch
+            y -= 0.1 * inch
 
-    p.showPage()
+        p.showPage()
+
+    # Dos secciones, igual que las dos hojas del Excel.
+    render_section('Diurno')
+    render_section('Nocturno')
     p.save()
 
     response = HttpResponse(content_type='application/pdf')
