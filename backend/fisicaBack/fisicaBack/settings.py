@@ -57,6 +57,13 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 15 * 1024 * 1024
 DEBUG = env_bool('DEBUG', default=False)
 
 ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', default='localhost,127.0.0.1')
+# En desarrollo (DEBUG) siempre se permiten los hosts locales y el del emulador Android
+# (10.0.2.2 = "localhost" del PC visto desde el emulador). Evita el error DisallowedHost
+# al probar la app movil contra el backend local. No afecta produccion (DEBUG=False).
+if DEBUG:
+    for _h in ('localhost', '127.0.0.1', '10.0.2.2'):
+        if _h not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(_h)
 CSRF_TRUSTED_ORIGINS = env_list(
     'CSRF_TRUSTED_ORIGINS',
     default='http://localhost:4200,http://localhost:5173,https://fisica.oceansecurity.net,http://fisica.oceansecurity.net'
