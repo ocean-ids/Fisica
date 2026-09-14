@@ -93,6 +93,21 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Descarga el Reporte de Guardia del día en formato FR (Excel).
+  descargarExcel(): void {
+    this.srv.exportarExcel(this.filtroFecha).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reporte_guardia_${this.filtroFecha}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: () => Swal.fire({ icon: 'error', title: 'No se pudo descargar el Excel' }),
+    });
+  }
+
   // Crear una fila manual en la sección indicada (botón "+" del encabezado).
   crearManual(seccion: string): void {
     this.abrirDialogEditor(null, seccion);

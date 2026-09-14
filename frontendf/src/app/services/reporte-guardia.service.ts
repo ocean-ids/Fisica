@@ -20,4 +20,5 @@ export class ReporteGuardiaService {
   actualizar(id: number, data: Partial<ReporteGuardia>): Observable<ReporteGuardia> { return this.api.put(`/reporte-guardia/${id}/`, data); }
   eliminar(id: number): Observable<any> { return this.api.delete(`/reporte-guardia/${id}/eliminar/`); }
   regenerar(fecha: string): Observable<any> { return this.api.post('/reporte-guardia/regenerar/', { fecha }); }
+  exportarExcel(fecha: string): Observable<Blob> { return this.api.getBlob('/reporte-guardia/exportar-excel/', { fecha }); }
 }

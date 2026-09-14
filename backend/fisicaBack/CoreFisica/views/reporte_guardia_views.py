@@ -1,14 +1,39 @@
 import datetime
+from io import BytesIO
 from django.db.models import Q
+from django.http import HttpResponse, JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+import openpyxl
+from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
+from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image as XLImage
 from ..models import ReporteGuardia, Asignacion
 from ..serializers import ReporteGuardiaSerializer
 
 TURNOS = ('Diurno', 'Nocturno')
+
+# Encabezado del formato FR REPORTE DE GUARDIA (para el descargable).
+FR_TITULO = 'FR REPORTE DE GUARDIA'
+FR_VERSION = '.03'
+FR_FECHA_APROBACION = '2021-12-14'
+# Anchos de columna A..H (tomados del formato FR original).
+FR_ANCHOS = {1: 9.3, 2: 5.3, 3: 50.3, 4: 35.1, 5: 56.3, 6: 52.3, 7: 28.0, 8: 21.4}
+
+# Secciones del FR, en orden. Cada columna extra: (encabezado, campo_modelo, col_ini, col_fin).
+# La última columna de cada sección se combina hasta H, igual que el formato original.
+FR_SECCIONES = [
+    ('DOBLADAS',     'DOBLADAS',     [('1 NOMBRE Y 2 APELLIDOS', 'persona_nombre', 5, 5), ('PROVIENE', 'proviene', 6, 6), ('VALOR', 'valor', 7, 8)]),
+    ('ADICIONALES',  'ADICIONALES',  [('1 NOMBRE Y 2 APELLIDOS', 'persona_nombre', 5, 5), ('PROVIENE', 'proviene', 6, 8)]),
+    ('ADELANTOS',    'ADELANTOS',    [('1 NOMBRE Y 2 APELLIDOS', 'persona_nombre', 5, 5), ('PROVIENE', 'proviene', 6, 6), ('TIPO', 'tipo', 7, 8)]),
+    ('NO_CUBIERTOS', 'NO CUBIERTOS', [('AUTORIZACION', 'autorizacion', 5, 5), ('MOTIVO', 'motivo', 6, 8)]),
+    ('FALTOS',       'FALTOS',       [('1 NOMBRE Y 2 APELLIDOS', 'persona_nombre', 5, 5), ('MOTIVO', 'motivo', 6, 8)]),
+    ('HUECA',        'HUECA',        [('MOTIVO', 'motivo', 5, 7), ('FECHA', 'fecha_evento', 8, 8)]),
+    ('APOYO',        'APOYO',        [('1 NOMBRE Y 2 APELLIDOS', 'persona_nombre', 5, 5), ('PROVIENE', 'proviene', 6, 6), ('MOTIVO', 'motivo', 7, 8)]),
+]
 
 # Campos de contenido que el usuario puede editar a mano en el reporte de guardia.
 EDITABLE_CONTENT_FIELDS = (
@@ -205,3 +230,175 @@ def regenerar_reporte_guardia(request):
         except Exception:
             pass
     return Response({'ok': True})
+
+
+
+def _fr_header_block(ws, top, fecha_obj, turno, border, logo_path):
+    """Bloque de encabezado FR (logo + titulo + version + FECHA/TURNO) de un turno.
+    Ocupa las filas top..top+5. Devuelve la fila de la primera seccion."""
+    bold16 = Font(bold=True, size=16)
+    reg11 = Font(size=11)
+    center = Alignment(horizontal='center', vertical='center')
+    for r in range(top, top + 4):
+        ws.row_dimensions[r].height = 21.6
+
+    # Logo (A:C, 4 filas)
+    ws.merge_cells(start_row=top, start_column=1, end_row=top + 3, end_column=3)
+    if logo_path:
+        try:
+            img = XLImage(str(logo_path))
+            img.width = 210
+            img.height = 76
+            ws.add_image(img, 'A%d' % top)
+        except Exception:
+            pass
+    # Titulo (D:F)
+    ws.merge_cells(start_row=top, start_column=4, end_row=top + 3, end_column=6)
+    tc = ws.cell(row=top, column=4, value=FR_TITULO)
+    tc.font = bold16
+    tc.alignment = center
+    # Version / Fecha de aprobacion (G/H)
+    ws.merge_cells(start_row=top, start_column=7, end_row=top + 1, end_column=7)
+    ws.merge_cells(start_row=top, start_column=8, end_row=top + 1, end_column=8)
+    ws.merge_cells(start_row=top + 2, start_column=7, end_row=top + 3, end_column=7)
+    ws.merge_cells(start_row=top + 2, start_column=8, end_row=top + 3, end_column=8)
+    ws.cell(row=top, column=7, value='Version:').font = reg11
+    ws.cell(row=top, column=8, value=FR_VERSION).font = reg11
+    ws.cell(row=top + 2, column=7, value='Fecha de aprobacion:').font = reg11
+    ws.cell(row=top + 2, column=8, value=FR_FECHA_APROBACION).font = reg11
+    for r in range(top, top + 4):
+        for c in range(1, 9):
+            ws.cell(row=r, column=c).border = border
+    for cc in (7, 8):
+        ws.cell(row=top, column=cc).alignment = center
+        ws.cell(row=top + 2, column=cc).alignment = center
+
+    # Fila FECHA / TURNO (top+5); top+4 queda en blanco
+    fr = top + 5
+    ws.merge_cells(start_row=fr, start_column=1, end_row=fr, end_column=2)
+    ws.merge_cells(start_row=fr, start_column=3, end_row=fr, end_column=5)
+    ws.merge_cells(start_row=fr, start_column=6, end_row=fr, end_column=8)
+    ws.cell(row=fr, column=1, value='FECHA: ').font = reg11
+    dc = ws.cell(row=fr, column=3, value=fecha_obj)
+    dc.number_format = 'yyyy-mm-dd'
+    ws.cell(row=fr, column=6, value='TURNO: %s' % turno.upper()).font = reg11
+    for c in range(1, 9):
+        cell = ws.cell(row=fr, column=c)
+        cell.border = border
+        cell.alignment = center
+    return fr + 1
+
+
+def _fr_write_secciones(ws, start_row, fecha_obj, turno, border):
+    """Escribe las 7 secciones del FR desde start_row. Devuelve la fila siguiente."""
+    reg11 = Font(size=11)
+    bold11 = Font(bold=True, size=11)
+    bold12 = Font(bold=True, size=12)
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    r = start_row
+    for seccion_key, etiqueta, extras in FR_SECCIONES:
+        header_row = r
+        # Encabezado de columnas
+        ws.cell(row=r, column=2, value='N°')
+        ws.cell(row=r, column=3, value='CLIENTE')
+        ws.cell(row=r, column=4, value='PUESTO')
+        for h, _campo, ci, cf in extras:
+            ws.cell(row=r, column=ci, value=h)
+            if cf > ci:
+                ws.merge_cells(start_row=r, start_column=ci, end_row=r, end_column=cf)
+        for c in range(2, 9):
+            cell = ws.cell(row=r, column=c)
+            cell.font = bold11
+            cell.alignment = center
+            cell.border = border
+        r += 1
+
+        filas = ReporteGuardia.objects.filter(
+            fecha=fecha_obj, turno=turno, seccion=seccion_key
+        ).order_by('orden', 'id')
+        for n, fila in enumerate(filas, start=1):
+            ws.cell(row=r, column=2, value=n)
+            ws.cell(row=r, column=3, value=fila.cliente or '')
+            ws.cell(row=r, column=4, value=fila.puesto or '')
+            for _h, campo, ci, cf in extras:
+                val = getattr(fila, campo, None)
+                if campo == 'valor':
+                    val = float(val) if val is not None else 0
+                elif campo == 'fecha_evento':
+                    pass
+                else:
+                    val = val or ''
+                cell = ws.cell(row=r, column=ci, value=val)
+                if campo == 'fecha_evento' and val:
+                    cell.number_format = 'yyyy-mm-dd'
+                if cf > ci:
+                    ws.merge_cells(start_row=r, start_column=ci, end_row=r, end_column=cf)
+            for c in range(2, 9):
+                cell = ws.cell(row=r, column=c)
+                cell.font = reg11
+                cell.alignment = center
+                cell.border = border
+            r += 1
+
+        last_row = r - 1
+        # Etiqueta de seccion en A, combinada verticalmente (header + filas de datos).
+        if last_row > header_row:
+            ws.merge_cells(start_row=header_row, start_column=1, end_row=last_row, end_column=1)
+        acell = ws.cell(row=header_row, column=1, value=etiqueta)
+        acell.font = bold12
+        acell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        for rr in range(header_row, last_row + 1):
+            ws.cell(row=rr, column=1).border = border
+    return r
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def exportar_reporte_guardia_excel(request):
+    """Descargable del Reporte de Guardia en formato FR (una hoja por dia, turnos
+    Diurno y Nocturno, con las 7 secciones). Parametro: ?fecha=YYYY-MM-DD."""
+    fecha = request.GET.get('fecha')
+    try:
+        fecha_obj = datetime.date.fromisoformat(str(fecha))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'fecha invalida'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from .reporte_asistencia_views import _find_logo_path
+    logo_path = _find_logo_path()
+
+    thin = Side(border_style='thin', color='000000')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    bold = Font(bold=True)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = fecha_obj.strftime('%d-%m-%Y')
+    for c, w in FR_ANCHOS.items():
+        ws.column_dimensions[get_column_letter(c)].width = w
+
+    def firmas(row):
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+        ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=6)
+        ws.merge_cells(start_row=row, start_column=7, end_row=row, end_column=8)
+        ws.cell(row=row, column=1, value='ELABORA:').font = bold
+        ws.cell(row=row, column=4, value='REVISA:').font = bold
+        ws.cell(row=row, column=7, value='AUTORIZA:').font = bold
+
+    # TURNO DIURNO
+    r = _fr_header_block(ws, 1, fecha_obj, 'Diurno', border, logo_path)
+    r = _fr_write_secciones(ws, r, fecha_obj, 'Diurno', border)
+    firmas(r + 1)
+
+    # TURNO NOCTURNO (nuevo bloque de encabezado con su logo)
+    top2 = r + 4
+    r = _fr_header_block(ws, top2, fecha_obj, 'Nocturno', border, logo_path)
+    r = _fr_write_secciones(ws, r, fecha_obj, 'Nocturno', border)
+    firmas(r + 1)
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="reporte_guardia_%s.xlsx"' % fecha_obj.isoformat()
+    out = BytesIO()
+    wb.save(out)
+    out.seek(0)
+    response.write(out.getvalue())
+    return response

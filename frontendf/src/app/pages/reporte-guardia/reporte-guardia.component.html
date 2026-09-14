@@ -12,10 +12,14 @@
         <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
       </mat-button-toggle-group>
     </div>
-    <div class="flex-grow-1 d-flex justify-content-end" style="flex-basis:0;">
+    <div class="flex-grow-1 d-flex justify-content-end gap-2" style="flex-basis:0;">
       <button type="button" class="btn btn-sm btn-outline-success" (click)="regenerar()" [disabled]="loading"
               title="Traer faltos, dobladas, adicionales y huecas desde la asistencia de este día">
         <i class="bi bi-arrow-repeat"></i> Regenerar desde asistencia
+      </button>
+      <button type="button" class="btn border-0 bg-transparent p-1" (click)="descargarExcel()" [disabled]="loading"
+              title="Descargar Excel (formato FR)" aria-label="Descargar Excel">
+        <img src="assets/images/excel-icon.png" alt="Descargar Excel" width="28" height="28" />
       </button>
     </div>
   </div>
