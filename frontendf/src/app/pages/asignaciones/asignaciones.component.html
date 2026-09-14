@@ -117,7 +117,11 @@
                   <div class="calendar-weeks calendar-header-weeks">
                     <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
                       <div class="calendar-week-grid" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
-                        <div class="calendar-day calendar-day-label" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
+                        <div class="calendar-day calendar-day-label"
+                             [class.day-pinned]="pinnedDay === ws + '|' + dayKey"
+                             (click)="toggleDayPin(ws + '|' + dayKey)"
+                             style="cursor: pointer;"
+                             *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
                           <div class="calendar-day-initial">{{ getDayInitial(dayKey) }}</div>
                           <div class="calendar-day-num">{{ (calendarWeekDayNumbers[ws] || {})[dayKey] || '' }}</div>
                         </div>
@@ -244,7 +248,7 @@
                       <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
                         <div class="calendar-week-grid" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
                           <ng-container *ngIf="getCalendarRow(row, ws) as calRow">
-                            <div class="calendar-day" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
+                            <div class="calendar-day" [class.day-pinned]="pinnedDay === ws + '|' + dayKey" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
                               <input
                                 type="text"
                                 maxlength="4"
@@ -330,7 +334,7 @@
                       <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
                         <div class="calendar-week-grid" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
                           <ng-container *ngIf="getCalendarRow(row, ws) as calRow">
-                            <div class="calendar-day" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
+                            <div class="calendar-day" [class.day-pinned]="pinnedDay === ws + '|' + dayKey" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
                               <input
                                 type="text"
                                 maxlength="12"

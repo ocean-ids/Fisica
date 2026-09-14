@@ -671,3 +671,16 @@ table.table {
   }
 }
 
+
+/* Resaltado de COLUMNA por día: clic en el encabezado del día (letra+número)
+   pinta esa columna hacia abajo. Se usa !important + especificidad para ganar
+   sobre los colores de celda (getCalendarCellClass) que también usan !important. */
+.calendar-day-label { cursor: pointer; border-radius: 4px; }
+.calendar-day-label:hover { background-color: #eef4fb; }
+.calendar-day-label.day-pinned { background-color: #ffe08a !important; box-shadow: 0 0 0 1px #f0c24b inset; }
+.calendar-day.day-pinned { background-color: #ffe08a !important; }
+.calendar-day.day-pinned .calendar-input {
+  background-color: #ffe08a !important;
+  background-image: none !important;
+  border-color: #f0c24b !important;
+}

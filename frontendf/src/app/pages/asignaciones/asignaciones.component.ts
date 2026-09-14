@@ -83,6 +83,14 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   showColumnMenu = false;
   weeksForMonth: string[] = [];
   calendarRowOrder: Array<number | string> = [];
+
+  // Columna (día) fijada al hacer clic en el encabezado del día; clic de nuevo la quita.
+  // Resalta ese día hacia abajo, para leer la columna completa de un vistazo.
+  pinnedDay: string | null = null;
+  toggleDayPin(dayKey: string): void {
+    if (!dayKey) { return; }
+    this.pinnedDay = this.pinnedDay === dayKey ? null : dayKey;
+  }
   displayRows: Array<
     { type: 'asignacion'; asig: Asignacion; isGroupedChild: boolean } |
     { type: 'sacafranco'; id: number; fila: SacafrancoFila } |
