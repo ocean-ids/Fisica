@@ -11,6 +11,9 @@ import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image as XLImage
+from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
+from openpyxl.drawing.xdr import XDRPositiveSize2D
+from openpyxl.utils.units import pixels_to_EMU
 from ..models import ReporteGuardia, Asignacion
 from ..serializers import ReporteGuardiaSerializer
 
@@ -20,8 +23,8 @@ TURNOS = ('Diurno', 'Nocturno')
 FR_TITULO = 'FR REPORTE DE GUARDIA'
 FR_VERSION = '.03'
 FR_FECHA_APROBACION = '2021-12-14'
-# Anchos de columna A..H (tomados del formato FR original).
-FR_ANCHOS = {1: 9.3, 2: 5.3, 3: 50.3, 4: 35.1, 5: 56.3, 6: 52.3, 7: 28.0, 8: 21.4}
+# Anchos de columna A..H. La A es angosta porque la etiqueta de seccion va rotada (vertical).
+FR_ANCHOS = {1: 5.0, 2: 5.3, 3: 50.3, 4: 35.1, 5: 56.3, 6: 52.3, 7: 28.0, 8: 21.4}
 
 # Secciones del FR, en orden. Cada columna extra: (encabezado, campo_modelo, col_ini, col_fin).
 # La última columna de cada sección se combina hasta H, igual que el formato original.
@@ -242,14 +245,30 @@ def _fr_header_block(ws, top, fecha_obj, turno, border, logo_path):
     for r in range(top, top + 4):
         ws.row_dimensions[r].height = 21.6
 
-    # Logo (A:C, 4 filas)
+    # Logo (A:C, 4 filas) — centrado dentro del rectangulo.
     ws.merge_cells(start_row=top, start_column=1, end_row=top + 3, end_column=3)
     if logo_path:
         try:
+            w_px, h_px = 150, 54
+            cols_px = [round(FR_ANCHOS[c] * 7) + 5 for c in (1, 2, 3)]  # ancho px de A,B,C
+            row_px = round(21.6 * 96 / 72)                              # alto px por fila
+            left_abs = max(int((sum(cols_px) - w_px) / 2), 0)          # x centrado (desde A)
+            top_abs = max(int((row_px * 4 - h_px) / 2), 0)             # y centrado (4 filas)
+            # Localizar en que columna/fila cae ese punto y el offset dentro de ella.
+            acol, cum = 0, 0
+            for i, wpx in enumerate(cols_px):
+                if left_abs < cum + wpx:
+                    acol, off_x = i, left_abs - cum
+                    break
+                cum += wpx
+            else:
+                acol, off_x = 2, 0
+            arow = top - 1 + (top_abs // row_px)
+            off_y = top_abs % row_px
             img = XLImage(str(logo_path))
-            img.width = 210
-            img.height = 76
-            ws.add_image(img, 'A%d' % top)
+            marker = AnchorMarker(col=acol, colOff=pixels_to_EMU(off_x), row=arow, rowOff=pixels_to_EMU(off_y))
+            img.anchor = OneCellAnchor(_from=marker, ext=XDRPositiveSize2D(pixels_to_EMU(w_px), pixels_to_EMU(h_px)))
+            ws.add_image(img)
         except Exception:
             pass
     # Titulo (D:F)
@@ -346,7 +365,8 @@ def _fr_write_secciones(ws, start_row, fecha_obj, turno, border):
             ws.merge_cells(start_row=header_row, start_column=1, end_row=last_row, end_column=1)
         acell = ws.cell(row=header_row, column=1, value=etiqueta)
         acell.font = bold12
-        acell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        # Rotada 90° (vertical), como el formato modelo; no se corta.
+        acell.alignment = Alignment(horizontal='center', vertical='center', text_rotation=90, wrap_text=False)
         for rr in range(header_row, last_row + 1):
             ws.cell(row=rr, column=1).border = border
     return r
