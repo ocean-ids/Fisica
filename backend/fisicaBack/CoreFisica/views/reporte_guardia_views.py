@@ -359,6 +359,15 @@ def _fr_write_secciones(ws, start_row, fecha_obj, turno, border):
                 cell.border = border
             r += 1
 
+        # Reservar un minimo de filas por seccion para que la etiqueta vertical (rotada)
+        # quepa completa aunque haya pocas/ninguna fila (como el formato FR original).
+        MIN_FILAS = 6
+        data_escritas = r - (header_row + 1)
+        for _ in range(max(MIN_FILAS - data_escritas, 0)):
+            for c in range(2, 9):
+                ws.cell(row=r, column=c).border = border
+            r += 1
+
         last_row = r - 1
         # Etiqueta de seccion en A, combinada verticalmente (header + filas de datos).
         if last_row > header_row:

@@ -80,6 +80,11 @@ def _format_fecha_reporte_es(fecha_obj):
 
 def _find_logo_path():
     this_file = Path(__file__).resolve()
+    # Logo incluido en el propio backend (existe también en el contenedor/servidor,
+    # donde la carpeta frontendf NO está). Se prueba primero.
+    backend_logo = this_file.parents[1] / 'assets' / 'logodescargable.jpg'
+    if backend_logo.exists():
+        return backend_logo
     root_candidates = [
         this_file.parents[i] for i in [4, 3] if i < len(this_file.parents)
     ] + [Path.cwd()]
