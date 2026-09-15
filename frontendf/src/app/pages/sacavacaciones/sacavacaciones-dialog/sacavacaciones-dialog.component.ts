@@ -8,7 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { Observable } from 'rxjs';
+import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
 import { debounceTime, startWith, map } from 'rxjs/operators';
 import { PersonaService } from '../../../services/persona.service';
 import { ReporteVacacionesService } from '../../../services/reporte-vacaciones.service';
@@ -33,6 +33,9 @@ interface DialogData {
 })
 export class SacavacacionesDialogComponent implements OnInit {
   personasAll: Persona[] = [];
+  private personas$ = new BehaviorSubject<Persona[]>([]);
+  // IDs de fijos con asignación activa; null = aún no cargado (se muestran todos).
+  private asignados$ = new BehaviorSubject<Set<number> | null>(null);
 
   // Autocargado desde la asignacion de la persona que sale de vacaciones.
   asignacionId: number | null = null;
@@ -162,10 +165,25 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.recalcularPendientes();
     });
 
-    this.personaSrv.getPersonas({}).subscribe((ps) => { this.personasAll = ps || []; });
-    this.saleFiltradas$ = this.filtro(this.saleCtrl);
+    this.personaSrv.getPersonas({}).subscribe((ps) => {
+      this.personasAll = ps || [];
+      this.personas$.next(this.personasAll);   // refresca las listas ya suscritas
+    });
+
+    // Solo los FIJOS con asignación activa pueden "salir de vacaciones".
+    const now = new Date();
+    this.vacSrv.personasAsignadas(now.getMonth() + 1, now.getFullYear()).subscribe({
+      next: (r) => this.asignados$.next(new Set((r?.persona_ids || []).map(Number))),
+      error: () => this.asignados$.next(null),   // si falla, no filtra (muestra todos)
+    });
+
+    // "Sale de vacaciones": solo fijos asignados (hasta que carguen, se muestran todos).
+    const salesSource$ = combineLatest([this.personas$, this.asignados$]).pipe(
+      map(([ps, set]) => (set == null ? ps : ps.filter(p => set.has(Number(p.id))))),
+    );
+    this.saleFiltradas$ = this.filtro(this.saleCtrl, salesSource$);
     // "Quién cubre": salen TODOS, pero los SACAVACACIONES primero.
-    this.cubreFiltradas$ = this.filtro(this.cubreCtrl, 'SACAVACACIONES');
+    this.cubreFiltradas$ = this.filtro(this.cubreCtrl, this.personas$, 'SACAVACACIONES');
 
     // "Días dados" arranca deshabilitado: primero hay que elegir el rango de vacaciones.
     // (En edición, si ya hay rango de vacaciones cargado, queda habilitado.)
@@ -174,20 +192,24 @@ export class SacavacacionesDialogComponent implements OnInit {
     }
   }
 
-  private filtro(ctrl: FormControl, prioriTipo?: string): Observable<Persona[]> {
-    return ctrl.valueChanges.pipe(
-      startWith(''),
-      debounceTime(120),
-      map((val: any) => {
+  private filtro(ctrl: FormControl, source$: Observable<Persona[]>, prioriTipo?: string): Observable<Persona[]> {
+    // Combina la lista de personas (que carga async) con lo que se escribe, así la
+    // lista se refresca al cargar las personas y aparece llena al abrir el panel.
+    return combineLatest([
+      source$,
+      ctrl.valueChanges.pipe(startWith(ctrl.value ?? '')),
+    ]).pipe(
+      debounceTime(80),
+      map(([personas, val]: [Persona[], any]) => {
         const q = (typeof val === 'string' ? val : this.displayPersona(val)).toLowerCase().trim();
         const tokens = q.split(/\s+/).filter(Boolean);
         // Todas las personas (o las que coinciden con la búsqueda; cada palabra en cualquier orden).
         let base = tokens.length
-          ? this.personasAll.filter(p => {
+          ? personas.filter(p => {
               const hay = `${p.nombres || ''} ${p.apellidos || ''} ${p.cedula || ''}`.toLowerCase();
               return tokens.every(t => hay.includes(t));
             })
-          : this.personasAll;
+          : personas;
         // Si hay un tipo prioritario, ese tipo va PRIMERO (pero salen TODOS).
         if (prioriTipo) {
           base = [...base].sort((a, b) => {
@@ -206,6 +228,27 @@ export class SacavacacionesDialogComponent implements OnInit {
     if (typeof p === 'string') { return p; }
     return `${p.nombres || ''} ${p.apellidos || ''}`.trim();
   };
+
+  // Limpiar (X) la persona que sale: borra selección y lo autocargado (puesto).
+  limpiarSale(ev?: Event): void {
+    ev?.stopPropagation();
+    this.saleCtrl.setValue('');
+    this.saleSel = null;
+    this.editSaleId = null;
+    this.asignacionId = null;
+    this.clienteNombre = '';
+    this.instalacionNombre = '';
+    this.puestoNombre = '';
+    this.asigError = '';
+  }
+
+  // Limpiar (X) el sacavacaciones (quién cubre).
+  limpiarCubre(ev?: Event): void {
+    ev?.stopPropagation();
+    this.cubreCtrl.setValue('');
+    this.cubreSel = null;
+    this.editCubreId = null;
+  }
 
   onSaleSel(p: Persona): void {
     this.saleSel = p;
@@ -284,10 +327,25 @@ export class SacavacacionesDialogComponent implements OnInit {
     return `${y}-${m}-${day}`;
   }
 
+  // "Días dados" no puede salirse del rango de vacaciones (ni empezar antes ni
+  // terminar después). Si se pasa, no se puede guardar.
+  get diasDadosExcede(): boolean {
+    if (!this.fechaHasta) { return false; }
+    if (this.fechaHastaPend && this.fechaHastaPend > this.fechaHasta) { return true; }
+    if (this.fechaDesde && this.fechaDesdePend && this.fechaDesdePend < this.fechaDesde) { return true; }
+    return false;
+  }
+
   get valido(): boolean {
-    // Debe haberse autocargado la asignación (puesto) de la persona que sale.
+    // Obligatorios: cliente/instalación/puesto (vienen de la asignación), persona que
+    // sale, sacavacaciones (quién cubre) y el rango de vacaciones.
+    // NO obligatorios: período y días dados.
     const tienePuesto = !!this.asignacionId || (this.esEdicion && !!this.clienteNombre);
-    return tienePuesto && (!!this.saleSel || (this.esEdicion && !!this.saleCtrl.value));
+    const tieneSale = !!this.saleSel || (this.esEdicion && !!this.saleCtrl.value);
+    const cv = this.cubreCtrl.value;
+    const tieneCubre = !!(typeof cv === 'string' ? cv.trim() : cv) || !!this.editCubreId;
+    const tieneVacaciones = !!this.fechaDesde && !!this.fechaHasta;
+    return tienePuesto && tieneSale && tieneCubre && tieneVacaciones && !this.diasDadosExcede;
   }
 
   guardar(): void {

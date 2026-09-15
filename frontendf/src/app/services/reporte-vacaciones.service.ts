@@ -13,6 +13,11 @@ export class ReporteVacacionesService {
     return this.api.get<ReporteVacaciones[]>('/reporte-vacaciones/');
   }
 
+  // IDs de personas (fijos) con asignacion activa en el mes/anio.
+  personasAsignadas(mes: number, anio: number): Observable<{ persona_ids: number[] }> {
+    return this.api.get(`/personas-asignadas/${mes}/${anio}/`);
+  }
+
   // Asignacion activa de una persona (cliente/instalacion/puesto) para autocargar en el form.
   asignacionDePersona(personaId: number): Observable<{
     asignacion_id: number; cliente: string; instalacion: string; puesto: string;

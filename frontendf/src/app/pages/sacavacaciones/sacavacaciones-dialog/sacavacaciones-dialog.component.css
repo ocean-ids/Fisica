@@ -43,6 +43,13 @@
   flex-direction: column;
 }
 
+/* Botón X para limpiar los autocompletes */
+.vac-x {
+  font-size: 20px;
+  line-height: 1;
+  color: #6c757d;
+}
+
 .vac-resumen {
   display: flex;
   gap: 16px;
