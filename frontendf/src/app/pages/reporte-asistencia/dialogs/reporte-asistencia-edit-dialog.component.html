@@ -25,7 +25,38 @@
 
   <form [formGroup]="form" class="editable-grid">
     <fieldset class="grupo-fila">
-      <mat-form-field appearance="outline" class="full-width">
+      <!-- HUECA: selector de persona que cubre (se muestra en Apellidos y Nombres). -->
+      <mat-form-field *ngIf="esHuecaEstructural" appearance="outline" class="full-width">
+        <mat-label>Apellidos y Nombres (cubre la hueca)</mat-label>
+        <input
+          type="text"
+          matInput
+          [formControl]="coberturaCtrl"
+          [matAutocomplete]="autoCobertura"
+          [readonly]="guardando || cargandoReemplazos"
+          placeholder="Escribe para elegir la persona"
+          style="text-transform: uppercase;"
+        >
+        <button *ngIf="coberturaCtrl.value" matSuffix mat-icon-button type="button"
+                aria-label="Limpiar" (click)="limpiarCobertura()">
+          <mat-icon>close</mat-icon>
+        </button>
+        <mat-autocomplete
+          #autoCobertura="matAutocomplete"
+          [displayWith]="displayReemplazo"
+          (optionSelected)="onCoberturaOptionSelected($event.option.value)"
+        >
+          <mat-option [value]="null">Sin persona (HUECA)</mat-option>
+          <mat-option *ngFor="let p of getCoberturaFiltrados()" [value]="p">
+            {{ getNombrePersona(p) }}
+            <span style="display:inline-block; font-size:10px; font-weight:700; padding:1px 7px; border-radius:10px; background:#eef2ff; color:#4338ca; margin-left:4px;">{{ p.tipo }}</span>
+          </mat-option>
+          <mat-option disabled *ngIf="!getCoberturaFiltrados().length">Sin coincidencias</mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+
+      <!-- Fila normal: nombre de solo lectura. -->
+      <mat-form-field *ngIf="!esHuecaEstructural" appearance="outline" class="full-width">
         <mat-label>Nombre y Apellidos</mat-label>
         <input matInput [value]="data.row.nombre_apellidos || '-'" readonly>
       </mat-form-field>

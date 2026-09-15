@@ -822,7 +822,7 @@ def _build_reporte_asistencia_data(
             latest_hist_ids = latest_hist_ids.filter(asignacion_id__in=asig_ids)
         latest_hist_ids = latest_hist_ids.order_by('asignacion_id', '-creado_en').distinct('asignacion_id').values('id')
 
-        hist_qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo')
+        hist_qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo', 'persona_cobertura')
         hist_qs = hist_qs.filter(id__in=Subquery(latest_hist_ids)).order_by('asignacion_id')
         for h in hist_qs:
             is_auto_sacafranco = _is_auto_sacafranco_desc(h.descripcion)
@@ -832,7 +832,7 @@ def _build_reporte_asistencia_data(
                 estado_asistencia=getattr(h, 'estado_asistencia', None),
                 descripcion=h.descripcion,
                 reemplazo=h.reemplazo,
-                persona_cobertura=h.reemplazo if is_auto_sacafranco else None,
+                persona_cobertura=h.persona_cobertura or (h.reemplazo if is_auto_sacafranco else None),
                 auto_sacafranco=is_auto_sacafranco,
                 modificado_por=h.usuario,
                 modificado_en=h.creado_en,
@@ -939,7 +939,9 @@ def _build_reporte_asistencia_data(
             persona_cobertura = getattr(override, 'persona_cobertura', None)
             if not persona_cobertura and auto_sacafranco:
                 persona_cobertura = getattr(override, 'reemplazo', None)
-        if auto_sacafranco and persona_cobertura:
+        # HUECA cubierta ese dia: la persona de cobertura se muestra como el guardia
+        # (en "Apellidos y Nombres"), o cobertura auto de sacafranco.
+        if persona_cobertura and (p is None or auto_sacafranco):
             nombre_apellidos = f"{persona_cobertura.apellidos} {persona_cobertura.nombres}".strip()
         zona_titulo = ''
         provincia_nombre = ''
@@ -1021,6 +1023,8 @@ def _build_reporte_asistencia_data(
             'cedula': getattr(p, 'cedula', '') or '',
             'reemplazo_id': reemplazo_id,
             'reemplazo': reemplazo_nombre,
+            'persona_cobertura_id': (persona_cobertura.id if persona_cobertura else None),
+            'es_hueca': (p is None),
             'estado_asistencia': estado_asistencia,
             'estado': estado,
             'descripcion': descripcion,
@@ -1666,6 +1670,18 @@ def insertar_reporte_asistencia(request, asignacion_id):
     if reemplazo_result != 'no-enviado':
         override.reemplazo = reemplazo_result
 
+    # Persona que cubre una HUECA ese día (se muestra en "Apellidos y Nombres" solo en el
+    # reporte del día; NO cambia la asignación, por eso el día siguiente vuelve a HUECA).
+    if 'persona_cobertura_id' in request.data:
+        _pc = request.data.get('persona_cobertura_id')
+        if _pc in (None, '', 'null'):
+            override.persona_cobertura = None
+        else:
+            try:
+                override.persona_cobertura = Persona.objects.filter(id=int(_pc)).first()
+            except (ValueError, TypeError):
+                override.persona_cobertura = None
+
     if request.user and request.user.is_authenticated:
         override.modificado_por = request.user
     override.fecha_reporte = fecha_reporte
@@ -1682,6 +1698,7 @@ def insertar_reporte_asistencia(request, asignacion_id):
             estado_asistencia=override.estado_asistencia,
             estado=override.estado,
             reemplazo=override.reemplazo,
+            persona_cobertura=override.persona_cobertura,
             descripcion=override.descripcion,
             row_color=override.row_color,
             hueca=bool(override.hueca),
@@ -1714,6 +1731,10 @@ def insertar_reporte_asistencia(request, asignacion_id):
     if override.reemplazo:
         reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
 
+    # Nombre a mostrar: si la HUECA tiene persona de cobertura, ese es el guardia del día.
+    pc = override.persona_cobertura
+    pc_nombre = f"{pc.apellidos} {pc.nombres}".strip() if pc else ''
+
     return JsonResponse({
         'codigo': override.codigo or '',
         'estado_asistencia': _normalize_estado_asistencia(override.estado_asistencia),
@@ -1721,6 +1742,8 @@ def insertar_reporte_asistencia(request, asignacion_id):
         'descripcion': override.descripcion or '',
         'reemplazo_id': override.reemplazo_id,
         'reemplazo': reemplazo_nombre,
+        'persona_cobertura_id': override.persona_cobertura_id,
+        'persona_cobertura': pc_nombre,
         'modificado_por': modificado_por_nombre,
         'row_color': override.row_color or '',
         'hueca': bool(override.hueca),

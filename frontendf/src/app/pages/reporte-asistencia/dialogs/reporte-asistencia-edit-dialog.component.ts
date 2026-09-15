@@ -10,7 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { ReporteAsistenciaService } from '../../../services/reporte-asistencia.service';
-import { ReporteAsistenciaRow, UpdateReporteAsistenciaPayload } from '../../../models';
+import { ReporteAsistenciaRow } from '../../../models';
 import { PersonaService } from '../../../services/persona.service';
 import { Persona } from '../../../models';
 import Swal from 'sweetalert2';
@@ -52,6 +52,9 @@ export class ReporteAsistenciaEditDialogComponent {
 
   reemplazos: Persona[] = [];
   reemplazoCtrl = new FormControl<Persona | string | null>('');
+  // Persona que cubre una HUECA (se muestra en "Apellidos y Nombres"). Solo para huecas.
+  coberturaCtrl = new FormControl<Persona | string | null>('');
+  coberturaSel: number | null = null;
   reemplazosOcupadosIds = new Set<number>();
   personasAsignadasIds = new Set<number>();
   personasFrancoIds = new Set<number>();
@@ -120,6 +123,16 @@ export class ReporteAsistenciaEditDialogComponent {
       }
     });
 
+    // HUECA: precargar la persona de cobertura (si ya tenía una asignada ese día).
+    this.coberturaSel = (data?.row as any)?.persona_cobertura_id ?? null;
+    if (this.esHuecaEstructural && this.coberturaSel) {
+      this.coberturaCtrl.setValue(data?.row?.nombre_apellidos || '', { emitEvent: false });
+    }
+    this.coberturaCtrl.valueChanges.subscribe((value) => {
+      // Si el usuario escribe texto (no eligió opción), se limpia la selección.
+      if (typeof value === 'string') { this.coberturaSel = null; }
+    });
+
     // Estado y Reemplazo solo se habilitan cuando la asistencia es FALTO.
     // Inicial: solo bloquea/habilita (sin limpiar, para no borrar datos existentes al abrir).
     this.aplicarBloqueoAsistencia(this.form.get('estado_asistencia')?.value, false);
@@ -146,6 +159,25 @@ export class ReporteAsistenciaEditDialogComponent {
     const estadoCtrl = this.form.get('estado');
     const huecaCtrl = this.form.get('hueca');
     const motivoCtrl = this.form.get('hueca_motivo');
+
+    // HUECA estructural: la persona va en "Apellidos y Nombres" (cobertura). Aquí:
+    // - Reemplazo y Estado: DESHABILITADOS (no se usan en hueca).
+    // - Check "Hueca" y Motivo: HABILITADOS, para que la hueca salga en Reporte de Guardia.
+    if (this.esHuecaEstructural) {
+      estadoCtrl?.disable({ emitEvent: false });
+      estadoCtrl?.clearValidators();
+      estadoCtrl?.updateValueAndValidity({ emitEvent: false });
+      this.form.get('reemplazo_id')?.disable({ emitEvent: false });
+      this.reemplazoCtrl.disable({ emitEvent: false });
+      huecaCtrl?.enable({ emitEvent: false });
+      if (huecaCtrl?.value) {
+        motivoCtrl?.enable({ emitEvent: false });
+      } else {
+        if (limpiar) { motivoCtrl?.setValue('', { emitEvent: false }); }
+        motivoCtrl?.disable({ emitEvent: false });
+      }
+      return;
+    }
 
     // Check "Hueca": solo disponible si la asistencia es FALTO.
     if (esFalto) {
@@ -296,6 +328,19 @@ export class ReporteAsistenciaEditDialogComponent {
     this.form.get('reemplazo_id')?.setValue(null);
   }
 
+  // HUECA: elegir / limpiar la persona que cubre (se muestra en "Apellidos y Nombres").
+  onCoberturaOptionSelected(value: Persona | null): void {
+    this.coberturaSel = value?.id ?? null;
+    // Al elegir a la persona que cubre la hueca, se marca ASISTE automáticamente.
+    if (value?.id) {
+      this.form.get('estado_asistencia')?.setValue('ASISTIO');
+    }
+  }
+  limpiarCobertura(): void {
+    this.coberturaCtrl.setValue('', { emitEvent: false });
+    this.coberturaSel = null;
+  }
+
   onReemplazoOptionSelected(value: Persona | null): void {
     if (value?.id && this.reemplazosOcupadosIds.has(Number(value.id))) {
       Swal.fire({
@@ -324,12 +369,22 @@ export class ReporteAsistenciaEditDialogComponent {
   }
 
   getReemplazosFiltrados(): Persona[] {
-    let base = this.reemplazos;
-
     const currentValue = this.reemplazoCtrl.value;
     const query = typeof currentValue === 'string'
       ? currentValue
       : (currentValue ? this.getNombrePersona(currentValue) : '');
+    return this.filtrarPersonas(query);
+  }
+
+  // Filtro de personas para el selector de cobertura de HUECA (mismo listado).
+  getCoberturaFiltrados(): Persona[] {
+    const v = this.coberturaCtrl.value;
+    const query = typeof v === 'string' ? v : (v ? this.getNombrePersona(v) : '');
+    return this.filtrarPersonas(query);
+  }
+
+  private filtrarPersonas(query: string): Persona[] {
+    const base = this.reemplazos;
     // Separar por espacios ANTES de normalizar (normalizeText quita los espacios).
     // Cada palabra debe estar en "nombres apellidos cedula tipo" (en cualquier orden),
     // asi "hector castro" (primer nombre + primer apellido) tambien coincide.
@@ -403,6 +458,18 @@ export class ReporteAsistenciaEditDialogComponent {
     return !this.data?.row?.asignacion_id && !!this.data?.row?.sacafranco_fila_id;
   }
 
+  // HUECA estructural: puesto sin persona fija ese dia (nombre "HUECA"). Se permite
+  // asignarle una persona (cobertura) y marcar ASISTE SOLO en el reporte de ese dia;
+  // no toca Asignaciones, asi que el dia siguiente vuelve a salir HUECA.
+  get esHuecaEstructural(): boolean {
+    const r: any = this.data?.row;
+    if (!r?.asignacion_id) { return false; }
+    // es_hueca (backend: puesto sin persona) o el nombre "HUECA". Se usa es_hueca porque una
+    // hueca ya cubierta muestra el nombre de la persona, no "HUECA".
+    return !!r?.es_hueca
+      || (r?.nombre_apellidos || '').toString().trim().toUpperCase() === 'HUECA';
+  }
+
   get coberturaFaltoIncompleta(): boolean {
     // El sacafranco no requiere cobertura (estado/reemplazo) para marcar FALTO.
     if (this.esSacafranco) { return false; }
@@ -452,7 +519,7 @@ export class ReporteAsistenciaEditDialogComponent {
       return;
     }
 
-    const payload: UpdateReporteAsistenciaPayload = {
+    const payload: any = {
       estado: raw.estado || null,
       estado_asistencia: raw.estado_asistencia || null,
       reemplazo_id: raw.reemplazo_id === '' ? null : raw.reemplazo_id,
@@ -461,6 +528,34 @@ export class ReporteAsistenciaEditDialogComponent {
       hueca_motivo: raw.hueca ? (raw.hueca_motivo || null) : null,
       fecha: this.data?.fecha || null
     };
+
+    // HUECA: la persona elegida en "Apellidos y Nombres" se guarda como cobertura del día
+    // (solo en el reporte de ese día; no toca Asignaciones). Una hueca NO es ADICIONAL: TURNO.
+    if (this.esHuecaEstructural) {
+      const cv: any = this.coberturaCtrl.value;
+      let pcId: number | null = null;
+      if (cv && typeof cv === 'object' && cv.id) {
+        pcId = cv.id;                    // eligió una persona de la lista
+      } else if (this.coberturaSel) {
+        pcId = this.coberturaSel;
+      } else if (typeof cv === 'string' && cv.trim()) {
+        // Escribió el nombre pero no lo eligió de la lista: intentar resolverlo exacto.
+        const q = this.normalizeText(cv);
+        const match = this.reemplazos.filter(p => this.normalizeText(this.getNombrePersona(p)) === q);
+        if (match.length === 1) { pcId = match[0].id as number; }
+        else {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Elige la persona de la lista',
+            text: 'Escribe en "Apellidos y Nombres" y selecciona a la persona de las sugerencias que aparecen.',
+          });
+          return;
+        }
+      }
+      payload.persona_cobertura_id = pcId;
+      payload.estado = null;
+      payload.reemplazo_id = null;
+    }
 
     this.guardando = true;
     this.error = '';

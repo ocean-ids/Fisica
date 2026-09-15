@@ -487,7 +487,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
     const abrir = (assignedPersonaIds: number[], francoPersonaIds: number[]) => {
       const dialogRef = this.dialog.open(ReporteAsistenciaEditDialogComponent, {
-        width: '700px',
+        width: '880px',
         maxWidth: '95vw',
         data: {
           row: { ...row },
@@ -528,6 +528,12 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       row.row_color = (res.row_color ?? row.row_color);
       row.modificado_por = res.modificado_por;
       row.modificado_en = res.modificado_en;
+      // HUECA cubierta: refrescar el nombre con la persona de cobertura (o volver a "HUECA"
+      // si se quitó), para que la tabla se actualice al instante sin recargar.
+      if ((row as any).es_hueca) {
+        (row as any).persona_cobertura_id = res.persona_cobertura_id ?? null;
+        row.nombre_apellidos = res.persona_cobertura || 'HUECA';
+      }
     });
   }
 
@@ -671,6 +677,15 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     if (value === 'RETEN') return 'badge bg-secondary';
     if (value === 'CUSTODIO') return 'badge bg-info';
     return 'badge bg-secondary';
+  }
+
+  // Texto de la columna "Descripción": si la fila es hueca, antepone el motivo al texto
+  // (así el motivo de la hueca se ve también en la web, igual que en el descargable).
+  descripcionMostrar(r: any): string {
+    const desc = (r?.descripcion || '').toString().trim();
+    const motivo = (r?.hueca && r?.hueca_motivo) ? (r.hueca_motivo || '').toString().trim() : '';
+    if (motivo) { return desc ? `${motivo} · ${desc}` : motivo; }
+    return desc || '-';
   }
   
 

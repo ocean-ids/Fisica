@@ -1216,6 +1216,13 @@ class ReporteAsistencia(models.Model):
         related_name='reportes_como_reemplazo',
         limit_choices_to={'tipo__in': TIPOS_REEMPLAZO}
     )
+    # Persona que cubrió una HUECA ese día. Se muestra como el guardia en "Apellidos y
+    # Nombres" SOLO en el reporte de ese día; NO cambia la asignación (que sigue HUECA),
+    # por eso el día siguiente el puesto vuelve a salir HUECA.
+    persona_cobertura = models.ForeignKey(
+        Persona, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='reportes_como_cobertura_hueca'
+    )
     descripcion = models.CharField(max_length=200, blank=True, null=True)
 
     # HUECA marcada a mano en el diálogo → se refleja en Reporte de Guardia (sección HUECA).
@@ -1260,6 +1267,9 @@ class ReporteAsistenciaHistorial(models.Model):
     estado = models.CharField(max_length=12, blank=True, null=True)
     estado_asistencia = models.CharField(max_length=10, blank=True, null=True)
     reemplazo = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True)
+    # Persona que cubrió una HUECA ese día (por fecha, para que el reporte de esa fecha
+    # muestre a esa persona en "Apellidos y Nombres"). No cambia la asignación.
+    persona_cobertura = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True, related_name='historial_cobertura_hueca')
     descripcion = models.CharField(max_length=200, blank=True, null=True)
     row_color = models.CharField(max_length=7, blank=True, null=True)
     # Hueca por fecha: se guarda en el historial para que el reporte de una fecha

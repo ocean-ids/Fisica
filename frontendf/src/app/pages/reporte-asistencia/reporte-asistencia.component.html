@@ -126,7 +126,7 @@
                             </td>
                             
                             <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">
-                                {{ r.descripcion || '-' }}
+                                {{ descripcionMostrar(r) }}
                             </td>
                             <td class="text-start d-none d-lg-table-cell" style="font-size: 0.85rem;" [style.backgroundColor]="getRowColor(r)">
                                 <div><strong>{{ r.modificado_por || '-' }}</strong></div>
