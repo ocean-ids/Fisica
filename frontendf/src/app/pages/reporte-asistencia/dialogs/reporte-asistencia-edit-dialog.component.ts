@@ -470,6 +470,46 @@ export class ReporteAsistenciaEditDialogComponent {
       || (r?.nombre_apellidos || '').toString().trim().toUpperCase() === 'HUECA';
   }
 
+  // El botón Guardar se habilita solo cuando el formulario tiene lo mínimo:
+  // - Primero hay que marcar la ASISTENCIA (ASISTE o FALTÓ).
+  // - Si es FALTÓ (normal), además el estado (cómo se cubrió) y el reemplazo.
+  // - Si marca Hueca, exige el motivo.
+  get puedeGuardar(): boolean {
+    if (this.guardando) { return false; }
+    const raw = this.form?.getRawValue?.() || ({} as any);
+
+    // HUECA estructural: puede guardar (poner cobertura o marcar hueca+motivo).
+    if (this.esHuecaEstructural) {
+      if (raw.hueca && !(raw.hueca_motivo || '').toString().trim()) { return false; }
+      return true;
+    }
+
+    // Debe marcar la asistencia antes de poder guardar.
+    const asistencia = (raw.estado_asistencia || '').toString().toUpperCase();
+    if (asistencia !== 'ASISTIO' && asistencia !== 'FALTO') { return false; }
+
+    if (asistencia === 'FALTO') {
+      // FALTÓ normal: exige estado + reemplazo (salvo hueca pura o sacafranco).
+      if (this.coberturaFaltoIncompleta) { return false; }
+      // Si marcó hueca, exige motivo.
+      if (raw.hueca && !(raw.hueca_motivo || '').toString().trim()) { return false; }
+    }
+    return true;
+  }
+
+  // Mensaje (tooltip) que explica por qué el botón está deshabilitado.
+  get tituloGuardar(): string {
+    if (this.guardando || this.esHuecaEstructural) { return ''; }
+    const asistencia = (this.form?.value?.estado_asistencia || '').toString().toUpperCase();
+    if (asistencia !== 'ASISTIO' && asistencia !== 'FALTO') {
+      return 'Primero marca la asistencia (ASISTE o FALTÓ)';
+    }
+    if (asistencia === 'FALTO' && this.coberturaFaltoIncompleta) {
+      return 'FALTÓ: elige el estado (cómo se cubrió) y el reemplazo';
+    }
+    return '';
+  }
+
   get coberturaFaltoIncompleta(): boolean {
     // El sacafranco no requiere cobertura (estado/reemplazo) para marcar FALTO.
     if (this.esSacafranco) { return false; }
