@@ -81,7 +81,7 @@ export class SacavacacionesComponent implements OnInit {
 
   private abrirDialog(row: ReporteVacaciones | null): void {
     const ref = this.dialog.open(SacavacacionesDialogComponent, {
-      width: '560px',
+      width: '710px',
       maxWidth: '95vw',
       // Al crear, el calendario se abre en el año del filtro (para no caer en el actual).
       data: { row: row || undefined, anioDefecto: this.anioFiltro || null },

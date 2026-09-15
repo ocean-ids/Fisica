@@ -1,74 +1,99 @@
 <h2 mat-dialog-title>{{ esEdicion ? 'Editar vacaciones' : 'Nuevo registro de vacaciones' }}</h2>
 
 <mat-dialog-content class="vac-form">
-  <mat-form-field appearance="outline">
-    <mat-label>Cliente</mat-label>
-    <mat-select [(ngModel)]="clienteId">
-      <mat-option *ngFor="let c of clientes" [value]="c.id">{{ c.nombre_comercial }}</mat-option>
-    </mat-select>
-  </mat-form-field>
+  <!-- Fila 1: Cliente | Instalación (autocargados) -->
+  <div class="vac-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Cliente</mat-label>
+      <input matInput [value]="clienteNombre" readonly placeholder="Se autocarga al elegir la persona">
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Instalación</mat-label>
+      <input matInput [value]="instalacionNombre" readonly placeholder="Se autocarga">
+    </mat-form-field>
+  </div>
 
-  <mat-form-field appearance="outline">
-    <mat-label>Sale de vacaciones</mat-label>
-    <input type="text" matInput [formControl]="saleCtrl" [matAutocomplete]="autoSale"
-           placeholder="Selecciona o escribe para filtrar…">
-    <mat-autocomplete #autoSale="matAutocomplete" [displayWith]="displayPersona"
-                      (optionSelected)="onSaleSel($event.option.value)">
-      <mat-option *ngFor="let p of saleFiltradas$ | async" [value]="p">
-        {{ p.nombres }} {{ p.apellidos }} <small class="text-muted">— {{ p.cedula }}</small>
-      </mat-option>
-    </mat-autocomplete>
-  </mat-form-field>
-
-  <mat-form-field appearance="outline">
-    <mat-label>Período</mat-label>
-    <mat-select [(ngModel)]="periodo">
-      <mat-option *ngFor="let p of periodos" [value]="p">{{ p }}</mat-option>
-      <mat-option [value]="OTRO">Otro…</mat-option>
-    </mat-select>
-  </mat-form-field>
+  <!-- Fila 2: Puesto | Período -->
+  <div class="vac-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Puesto</mat-label>
+      <input matInput [value]="puestoNombre" readonly placeholder="Se autocarga">
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Período</mat-label>
+      <mat-select [(ngModel)]="periodo">
+        <mat-option *ngFor="let p of periodos" [value]="p">{{ p }}</mat-option>
+        <mat-option [value]="OTRO">Otro…</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
 
   <mat-form-field appearance="outline" *ngIf="periodo === OTRO">
     <mat-label>Período (escribir)</mat-label>
     <input matInput [(ngModel)]="periodoManual" placeholder="ej. 2022 - 2023">
   </mat-form-field>
 
-  <mat-form-field appearance="outline">
-    <mat-label>Sacavacaciones (quién cubre)</mat-label>
-    <input type="text" matInput [formControl]="cubreCtrl" [matAutocomplete]="autoCubre"
-           placeholder="Selecciona, escribe, o deja en N/A">
-    <mat-autocomplete #autoCubre="matAutocomplete" [displayWith]="displayPersona"
-                      (optionSelected)="onCubreSel($event.option.value)">
-      <mat-option *ngFor="let p of cubreFiltradas$ | async" [value]="p">
-        {{ p.nombres }} {{ p.apellidos }} <small class="text-muted">— {{ p.cedula }}</small>
-      </mat-option>
-    </mat-autocomplete>
-  </mat-form-field>
-
-  <mat-form-field appearance="outline">
-    <mat-label>Vacaciones (Desde – Hasta)</mat-label>
-    <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker">
-      <input matStartDate formControlName="start" placeholder="Desde">
-      <input matEndDate formControlName="end" placeholder="Hasta">
-    </mat-date-range-input>
-    <mat-datepicker-toggle matIconSuffix [for]="rangoPicker"></mat-datepicker-toggle>
-    <mat-date-range-picker #rangoPicker [startAt]="startAt"></mat-date-range-picker>
-  </mat-form-field>
-  <div class="vac-resumen">
-    <span><strong>Días:</strong> {{ dias || 0 }}</span>
+  <!-- Fila 3: Sale de vacaciones | Sacavacaciones -->
+  <div class="vac-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Sale de vacaciones</mat-label>
+      <input type="text" matInput [formControl]="saleCtrl" [matAutocomplete]="autoSale"
+             placeholder="Selecciona o escribe para filtrar…">
+      <mat-autocomplete #autoSale="matAutocomplete" [displayWith]="displayPersona"
+                        (optionSelected)="onSaleSel($event.option.value)">
+        <mat-option *ngFor="let p of saleFiltradas$ | async" [value]="p">
+          {{ p.nombres }} {{ p.apellidos }} <small class="text-muted">— {{ p.cedula }}</small>
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Sacavacaciones (quién cubre)</mat-label>
+      <input type="text" matInput [formControl]="cubreCtrl" [matAutocomplete]="autoCubre"
+             placeholder="Selecciona, escribe, o deja en N/A">
+      <mat-autocomplete #autoCubre="matAutocomplete" [displayWith]="displayPersona"
+                        (optionSelected)="onCubreSel($event.option.value)">
+        <mat-option *ngFor="let p of cubreFiltradas$ | async" [value]="p">
+          {{ p.nombres }} {{ p.apellidos }} <small class="text-muted">— {{ p.cedula }}</small>
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
   </div>
 
-  <mat-form-field appearance="outline">
-    <mat-label>Días pendientes (Desde – Hasta)</mat-label>
-    <mat-date-range-input [formGroup]="rangoPendForm" [rangePicker]="rangoPendPicker">
-      <input matStartDate formControlName="start" placeholder="Desde">
-      <input matEndDate formControlName="end" placeholder="Hasta">
-    </mat-date-range-input>
-    <mat-datepicker-toggle matIconSuffix [for]="rangoPendPicker"></mat-datepicker-toggle>
-    <mat-date-range-picker #rangoPendPicker [startAt]="startAt"></mat-date-range-picker>
-  </mat-form-field>
-  <div class="vac-resumen">
-    <span><strong>Días pendientes:</strong> {{ diasPend || 0 }}</span>
+  <!-- Autocargado desde la asignación de la persona que sale de vacaciones -->
+  <div *ngIf="cargandoAsig" class="text-muted" style="font-size:12px; margin:-4px 0 6px;">Cargando puesto…</div>
+  <div *ngIf="asigError" class="text-danger" style="font-size:12px; margin:-4px 0 6px;">{{ asigError }}</div>
+
+  <!-- Fila 4: Días (vacaciones) | Días pendientes (días dados) -->
+  <div class="vac-row">
+    <div class="vac-col">
+      <mat-form-field appearance="outline">
+        <mat-label>Vacaciones (Desde – Hasta)</mat-label>
+        <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker">
+          <input matStartDate formControlName="start" placeholder="Desde">
+          <input matEndDate formControlName="end" placeholder="Hasta">
+        </mat-date-range-input>
+        <mat-datepicker-toggle matIconSuffix [for]="rangoPicker"></mat-datepicker-toggle>
+        <mat-date-range-picker #rangoPicker [startAt]="startAt"></mat-date-range-picker>
+      </mat-form-field>
+      <div class="vac-resumen">
+        <span><strong>Días:</strong> {{ dias || 0 }}</span>
+      </div>
+    </div>
+
+    <div class="vac-col">
+      <mat-form-field appearance="outline">
+        <mat-label>Días dados (Desde – Hasta)</mat-label>
+        <mat-date-range-input [formGroup]="rangoPendForm" [rangePicker]="rangoPendPicker">
+          <input matStartDate formControlName="start" placeholder="Desde">
+          <input matEndDate formControlName="end" placeholder="Hasta">
+        </mat-date-range-input>
+        <mat-datepicker-toggle matIconSuffix [for]="rangoPendPicker"></mat-datepicker-toggle>
+        <mat-date-range-picker #rangoPendPicker [startAt]="startAt"></mat-date-range-picker>
+      </mat-form-field>
+      <div class="vac-resumen">
+        <span><strong>Días pendientes:</strong> {{ diasPend || 0 }}</span>
+      </div>
+    </div>
   </div>
 </mat-dialog-content>
 

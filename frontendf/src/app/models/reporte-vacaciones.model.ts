@@ -1,6 +1,9 @@
 export interface ReporteVacaciones {
   id?: number;
   cliente?: string;
+  asignacion?: number | null;
+  instalacion?: string;
+  puesto?: string;
   persona_sale?: string;
   persona_sale_ref?: number | null;
   periodo?: string;

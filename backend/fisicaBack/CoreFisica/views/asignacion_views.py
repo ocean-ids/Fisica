@@ -3057,3 +3057,32 @@ def eventuales_lista(request):
             'tipo_cuenta': (od.tipo_cuenta if od else ''),
         })
     return Response({'results': items, 'total': len(items)}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def asignacion_de_persona(request, persona_id):
+    """Asignacion activa de una persona (para el modulo Sacavacaciones): al elegir la
+    persona que sale de vacaciones se autocarga su cliente/instalacion/puesto.
+    Devuelve la asignacion del MES ACTUAL (donde esta hoy); si no hay, la mas reciente
+    que no sea futura; y como ultimo recurso, la mas reciente."""
+    hoy = timezone.localdate()
+    base = (Asignacion.objects
+            .select_related('cliente', 'instalacion', 'puesto')
+            .filter(persona_id=persona_id, estado='ACTIVO'))
+    asig = (base.filter(anio=hoy.year, mes=hoy.month).order_by('-id').first()
+            or base.filter(Q(anio__lt=hoy.year) | Q(anio=hoy.year, mes__lte=hoy.month))
+                   .order_by('-anio', '-mes', '-id').first()
+            or base.order_by('-anio', '-mes', '-id').first())
+    if not asig:
+        return Response({'error': 'La persona no tiene una asignacion activa.'},
+                        status=status.HTTP_404_NOT_FOUND)
+    puesto_nombre = getattr(asig.puesto, 'nombre', '') or getattr(asig.puesto, 'tipo', '') or ''
+    return Response({
+        'asignacion_id': asig.id,
+        'cliente': getattr(asig.cliente, 'nombre_comercial', '') or '',
+        'instalacion': getattr(asig.instalacion, 'nombre', '') or '',
+        'puesto': puesto_nombre,
+        'anio': asig.anio,
+        'mes': asig.mes,
+    }, status=status.HTTP_200_OK)

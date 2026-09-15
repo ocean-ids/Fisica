@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal, SacafrancoFilaSemanal, Instalacion, SacafrancoAsistencia, SacafrancoFila, AsignacionPersonaPeriodo
+from ..models import Asignacion, Persona, ReporteAsistencia, ReporteAsistenciaHistorial, AsignacionSemanal, SacafrancoFilaSemanal, Instalacion, SacafrancoAsistencia, SacafrancoFila, AsignacionPersonaPeriodo, ReporteVacaciones
 import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from openpyxl.drawing.image import Image as XLImage
@@ -891,6 +891,34 @@ def _build_reporte_asistencia_data(
         return _cov_ctx_cache[cod]
 
     _fecha_ref = fecha_obj or hoy  # fecha para resolver la vigencia por período
+
+    # SACAVACACIONES: durante el rango de vacaciones (o el rango pendiente), el titular
+    # del puesto se reemplaza por el SUPLENTE en el Reporte de Asistencia (no toca
+    # Asignaciones). El match es por (puesto + persona que sale), asi cruza de mes.
+    # Mapa: (puesto_id, persona_sale_id) -> persona suplente.
+    sacavac_map = {}
+    try:
+        _in_main = (
+            Q(fecha_desde__isnull=False, fecha_desde__lte=_fecha_ref)
+            & (Q(fecha_hasta__isnull=True) | Q(fecha_hasta__gte=_fecha_ref))
+        )
+        _in_pend = (
+            Q(fecha_desde_pendiente__isnull=False, fecha_desde_pendiente__lte=_fecha_ref)
+            & (Q(fecha_hasta_pendiente__isnull=True) | Q(fecha_hasta_pendiente__gte=_fecha_ref))
+        )
+        _sv_qs = (ReporteVacaciones.objects
+                  .select_related('sacavacaciones_ref', 'asignacion')
+                  .filter(sacavacaciones_ref__isnull=False,
+                          persona_sale_ref__isnull=False,
+                          asignacion__isnull=False)
+                  .filter(_in_main | _in_pend))
+        for _sv in _sv_qs:
+            _pid = getattr(_sv.asignacion, 'puesto_id', None)
+            if _pid:
+                sacavac_map[(_pid, _sv.persona_sale_ref_id)] = _sv.sacavacaciones_ref
+    except Exception:
+        sacavac_map = {}
+
     for asig in asig_list:
         # Persona vigente en la fecha del reporte (historial por período). Si la asignación
         # no tiene períodos (dato previo), se usa Asignacion.persona (la actual).
@@ -901,6 +929,12 @@ def _build_reporte_asistencia_data(
                 if _per.desde <= _fecha_ref and (_per.hasta is None or _fecha_ref <= _per.hasta):
                     p = _per.persona
                     break
+        # SACAVACACIONES: si el titular esta de vacaciones ese dia, lo cubre el suplente
+        # (solo en el reporte). El puesto muestra al suplente; el titular no sale ese dia.
+        if p is not None and sacavac_map:
+            _sup = sacavac_map.get((getattr(asig, 'puesto_id', None), p.id))
+            if _sup is not None:
+                p = _sup
         if p:
             personas_con_asignacion.add(p.id)
         override = overrides.get(asig.id)

@@ -10,9 +10,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { Observable } from 'rxjs';
 import { debounceTime, startWith, map } from 'rxjs/operators';
-import { ClienteService } from '../../../services/cliente.service';
 import { PersonaService } from '../../../services/persona.service';
-import { Cliente } from '../../../models';
+import { ReporteVacacionesService } from '../../../services/reporte-vacaciones.service';
 import { Persona } from '../../../models/persona.model';
 import { ReporteVacaciones } from '../../../models/reporte-vacaciones.model';
 
@@ -33,9 +32,15 @@ interface DialogData {
   styleUrl: './sacavacaciones-dialog.component.css',
 })
 export class SacavacacionesDialogComponent implements OnInit {
-  clientes: Cliente[] = [];
   personasAll: Persona[] = [];
-  clienteId: number | null = null;
+
+  // Autocargado desde la asignacion de la persona que sale de vacaciones.
+  asignacionId: number | null = null;
+  clienteNombre = '';
+  instalacionNombre = '';
+  puestoNombre = '';
+  cargandoAsig = false;
+  asigError = '';
 
   // Persona que sale de vacaciones
   saleCtrl = new FormControl<any>('');
@@ -78,8 +83,8 @@ export class SacavacacionesDialogComponent implements OnInit {
   constructor(
     private ref: MatDialogRef<SacavacacionesDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: DialogData,
-    private clienteSrv: ClienteService,
     private personaSrv: PersonaService,
+    private vacSrv: ReporteVacacionesService,
   ) {}
 
   ngOnInit(): void {
@@ -119,27 +124,25 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.editCubreId = row.sacavacaciones_ref ?? null;
       if (row.persona_sale) { this.saleCtrl.setValue(row.persona_sale); }
       if (row.sacavacaciones) { this.cubreCtrl.setValue(row.sacavacaciones); }
+      // Datos del puesto ya guardados (autocargados al crear).
+      this.asignacionId = row.asignacion ?? null;
+      this.clienteNombre = row.cliente || '';
+      this.instalacionNombre = row.instalacion || '';
+      this.puestoNombre = row.puesto || '';
     }
-
-    this.clienteSrv.getClientes().subscribe((cs) => {
-      this.clientes = cs || [];
-      if (row?.cliente) {
-        const c = this.clientes.find(x => x.nombre_comercial === row.cliente);
-        if (c) { this.clienteId = c.id!; }
-      }
-    });
 
     // Vacaciones: el rango se fija con dos clics (inicio + fin que elige el usuario).
     this.rangoForm.valueChanges.subscribe((v) => {
       this.fechaDesde = v.start ?? null;
       this.fechaHasta = v.end ?? null;
       this.calcularDias();
+      this.recalcularPendientes();   // el total cambió: recalcular pendientes
     });
-    // Rango de días pendientes.
+    // Rango de días DADOS (lo que sí se le dio): días pendientes = total − dados.
     this.rangoPendForm.valueChanges.subscribe((v) => {
       this.fechaDesdePend = v.start ?? null;
       this.fechaHastaPend = v.end ?? null;
-      this.diasPend = this._diasInclusive(this.fechaDesdePend, this.fechaHastaPend);
+      this.recalcularPendientes();
     });
 
     this.personaSrv.getPersonas({}).subscribe((ps) => { this.personasAll = ps || []; });
@@ -181,12 +184,41 @@ export class SacavacacionesDialogComponent implements OnInit {
     return `${p.nombres || ''} ${p.apellidos || ''}`.trim();
   };
 
-  onSaleSel(p: Persona): void { this.saleSel = p; }
+  onSaleSel(p: Persona): void {
+    this.saleSel = p;
+    // Autocargar cliente / instalacion / puesto desde la asignacion activa de la persona.
+    this.asignacionId = null;
+    this.clienteNombre = '';
+    this.instalacionNombre = '';
+    this.puestoNombre = '';
+    this.asigError = '';
+    if (!p?.id) { return; }
+    this.cargandoAsig = true;
+    this.vacSrv.asignacionDePersona(p.id).subscribe({
+      next: (r) => {
+        this.asignacionId = r.asignacion_id;
+        this.clienteNombre = r.cliente || '';
+        this.instalacionNombre = r.instalacion || '';
+        this.puestoNombre = r.puesto || '';
+      },
+      error: () => {
+        this.asigError = 'Esta persona no tiene una asignación activa (no se puede cubrir un puesto).';
+      },
+      complete: () => { this.cargandoAsig = false; },
+    });
+  }
   onCubreSel(p: Persona): void { this.cubreSel = p; }
 
-  // Los calendarios se abren en el año del registro (1 de enero de ese año).
-  get startAt(): Date | null {
-    return this.anio ? new Date(this.anio, 0, 1) : null;
+  // Los calendarios se abren: en edición, en la fecha ya guardada; al crear, en HOY
+  // (para que el usuario elija fechas del período vigente, no de enero).
+  get startAt(): Date {
+    if (this.fechaDesde) { return this.fechaDesde; }
+    const hoy = new Date();
+    // Si el año del registro difiere del actual, abrir en ese año pero en el mes de hoy.
+    if (this.anio && this.anio !== hoy.getFullYear()) {
+      return new Date(this.anio, hoy.getMonth(), 1);
+    }
+    return hoy;
   }
 
   fmt(d: Date | null): string {
@@ -207,6 +239,13 @@ export class SacavacacionesDialogComponent implements OnInit {
     this.dias = this._diasInclusive(this.fechaDesde, this.fechaHasta);
   }
 
+  // Días pendientes = total de vacaciones − días DADOS (el 2º rango).
+  // Si no hay 2º rango, no hay pendientes (0).
+  recalcularPendientes(): void {
+    const dados = this._diasInclusive(this.fechaDesdePend, this.fechaHastaPend);
+    this.diasPend = dados > 0 ? Math.max(0, (this.dias || 0) - dados) : 0;
+  }
+
   // 'YYYY-MM-DD' (texto del backend) -> Date local. Y viceversa (sin corrimiento
   // de zona horaria).
   private _fromISO(s: any): Date | null {
@@ -223,13 +262,17 @@ export class SacavacacionesDialogComponent implements OnInit {
   }
 
   get valido(): boolean {
-    return !!this.clienteId && (!!this.saleSel || (this.esEdicion && !!this.saleCtrl.value));
+    // Debe haberse autocargado la asignación (puesto) de la persona que sale.
+    const tienePuesto = !!this.asignacionId || (this.esEdicion && !!this.clienteNombre);
+    return tienePuesto && (!!this.saleSel || (this.esEdicion && !!this.saleCtrl.value));
   }
 
   guardar(): void {
-    const cli = this.clientes.find(c => c.id === this.clienteId);
     const out: any = {
-      cliente: cli?.nombre_comercial || '',
+      cliente: this.clienteNombre || '',
+      asignacion: this.asignacionId,
+      instalacion: this.instalacionNombre || '',
+      puesto: this.puestoNombre || '',
       anio: this.anio || null,
       periodo: (this.periodo === this.OTRO ? this.periodoManual : this.periodo || '').trim(),
       fecha_desde: this._toISO(this.fechaDesde),

@@ -13,6 +13,14 @@ export class ReporteVacacionesService {
     return this.api.get<ReporteVacaciones[]>('/reporte-vacaciones/');
   }
 
+  // Asignacion activa de una persona (cliente/instalacion/puesto) para autocargar en el form.
+  asignacionDePersona(personaId: number): Observable<{
+    asignacion_id: number; cliente: string; instalacion: string; puesto: string;
+    anio: number; mes: number;
+  }> {
+    return this.api.get(`/asignaciones/de-persona/${personaId}/`);
+  }
+
   crear(data: ReporteVacaciones): Observable<ReporteVacaciones> {
     return this.api.post('/reporte-vacaciones/crear/', data);
   }

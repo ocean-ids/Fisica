@@ -1423,6 +1423,16 @@ class ReporteGuardia(models.Model):
 class ReporteVacaciones(models.Model):
     """Una fila del REPORTE DE VACACIONES DEL PERSONAL (carga manual, CRUD)."""
     cliente = models.CharField(max_length=120, blank=True, default='')
+    # Puesto (asignacion) del titular que sale de vacaciones. Sirve para reemplazarlo por
+    # el SACAVACACIONES en el Reporte de Asistencia durante el rango (NO toca Asignaciones).
+    # El match en el reporte es por (puesto + persona que sale), asi cruza de mes sin problema.
+    asignacion = models.ForeignKey(
+        'Asignacion', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sacavacaciones_cobertura'
+    )
+    # Nombres de instalacion/puesto (para mostrar/exportar sin joins).
+    instalacion = models.CharField(max_length=160, blank=True, default='')
+    puesto = models.CharField(max_length=160, blank=True, default='')
     # SALE DE VACACIONES: persona que se va de vacaciones.
     persona_sale = models.CharField(max_length=160, blank=True, default='')
     persona_sale_ref = models.ForeignKey(
