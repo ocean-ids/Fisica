@@ -484,9 +484,13 @@ export class ReporteAsistenciaEditDialogComponent {
       return true;
     }
 
-    // Debe marcar la asistencia antes de poder guardar.
+    // Debe marcar la asistencia antes de poder guardar... salvo que haya escrito una
+    // descripción (una novedad/observación se puede guardar sin marcar asistencia).
     const asistencia = (raw.estado_asistencia || '').toString().toUpperCase();
-    if (asistencia !== 'ASISTIO' && asistencia !== 'FALTO') { return false; }
+    const tieneDescripcion = !!(raw.descripcion || '').toString().trim();
+    if (asistencia !== 'ASISTIO' && asistencia !== 'FALTO') {
+      return tieneDescripcion;
+    }
 
     if (asistencia === 'FALTO') {
       // FALTÓ normal: exige estado + reemplazo (salvo hueca pura o sacafranco).
@@ -501,8 +505,9 @@ export class ReporteAsistenciaEditDialogComponent {
   get tituloGuardar(): string {
     if (this.guardando || this.esHuecaEstructural) { return ''; }
     const asistencia = (this.form?.value?.estado_asistencia || '').toString().toUpperCase();
-    if (asistencia !== 'ASISTIO' && asistencia !== 'FALTO') {
-      return 'Primero marca la asistencia (ASISTE o FALTÓ)';
+    const tieneDescripcion = !!(this.form?.value?.descripcion || '').toString().trim();
+    if (asistencia !== 'ASISTIO' && asistencia !== 'FALTO' && !tieneDescripcion) {
+      return 'Marca la asistencia (ASISTE o FALTÓ) o escribe una descripción';
     }
     if (asistencia === 'FALTO' && this.coberturaFaltoIncompleta) {
       return 'FALTÓ: elige el estado (cómo se cubrió) y el reemplazo';
