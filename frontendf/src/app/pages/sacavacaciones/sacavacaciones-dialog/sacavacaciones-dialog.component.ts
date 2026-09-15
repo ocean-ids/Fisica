@@ -136,6 +136,23 @@ export class SacavacacionesDialogComponent implements OnInit {
       this.fechaDesde = v.start ?? null;
       this.fechaHasta = v.end ?? null;
       this.calcularDias();
+      const vacCompleto = !!this.fechaDesde && !!this.fechaHasta;
+      if (vacCompleto) {
+        // Ya se eligió el rango de vacaciones: se habilita "Días dados" y su inicio
+        // se autocarga con el MISMO día de inicio de las vacaciones.
+        this.rangoPendForm.enable({ emitEvent: false });
+        const pendStart = this.rangoPendForm.get('start')?.value;
+        const distinto = !pendStart || pendStart.getTime() !== this.fechaDesde!.getTime();
+        if (distinto) {
+          this.rangoPendForm.get('start')?.setValue(this.fechaDesde);  // dispara recalc
+        }
+      } else {
+        // Sin rango de vacaciones: "Días dados" deshabilitado y limpio.
+        this.rangoPendForm.reset({ start: null, end: null }, { emitEvent: false });
+        this.rangoPendForm.disable({ emitEvent: false });
+        this.fechaDesdePend = null;
+        this.fechaHastaPend = null;
+      }
       this.recalcularPendientes();   // el total cambió: recalcular pendientes
     });
     // Rango de días DADOS (lo que sí se le dio): días pendientes = total − dados.
@@ -149,6 +166,12 @@ export class SacavacacionesDialogComponent implements OnInit {
     this.saleFiltradas$ = this.filtro(this.saleCtrl);
     // "Quién cubre": salen TODOS, pero los SACAVACACIONES primero.
     this.cubreFiltradas$ = this.filtro(this.cubreCtrl, 'SACAVACACIONES');
+
+    // "Días dados" arranca deshabilitado: primero hay que elegir el rango de vacaciones.
+    // (En edición, si ya hay rango de vacaciones cargado, queda habilitado.)
+    if (!(this.fechaDesde && this.fechaHasta)) {
+      this.rangoPendForm.disable({ emitEvent: false });
+    }
   }
 
   private filtro(ctrl: FormControl, prioriTipo?: string): Observable<Persona[]> {
