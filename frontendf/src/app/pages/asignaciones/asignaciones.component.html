@@ -329,7 +329,7 @@
                       </button>
                     </div>
                   </td>
-                  <td class="calendar-cell calendar-col align-middle bg-warning-subtle">
+                  <td class="calendar-cell calendar-col align-middle overflow-hidden bg-warning-subtle">
                     <div class="calendar-weeks">
                       <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
                         <div class="calendar-week-grid" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
