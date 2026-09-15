@@ -27,6 +27,13 @@ export class ReporteAsistenciaService {
     return this.apiService.get<ReporteAsistenciaHistorialItem[]>(`/reporte-asistencia/${asignacionId}/historial/`, params);
   }
 
+  // Historial del PUESTO (por registro): titular(es) con rangos + cambios por día. mes = 'YYYY-MM'.
+  getHistorialPuesto(asignacionId: number, mes?: string) {
+    const params: any = {};
+    if (mes) { params.mes = mes; }
+    return this.apiService.get<any>(`/reporte-asistencia/${asignacionId}/historial-puesto/`, params);
+  }
+
   getDescripciones(){
     return this.apiService.get<string[]>('/reporte-asistencia/descripciones/');
   }

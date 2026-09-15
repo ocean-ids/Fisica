@@ -1864,6 +1864,99 @@ def historial_reporte_asistencia(request, asignacion_id):
 
     return JsonResponse(data, safe=False, status=status.HTTP_200_OK)
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def historial_puesto_reporte(request, asignacion_id):
+    """Historial del PUESTO: las PERSONAS que han sido titular del puesto (agrupadas por
+    persona) con los meses en que estuvieron. Toma todas las asignaciones del mismo
+    puesto (una por mes) y las agrupa por persona, mas reciente primero."""
+    if not request.user.has_perm('CoreFisica.view_reporteasistencia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    asig = Asignacion.objects.select_related('persona', 'cliente', 'instalacion', 'puesto').filter(id=asignacion_id).first()
+    if not asig:
+        return JsonResponse({'error': 'Asignacion no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    def _nom(p):
+        return f"{p.apellidos} {p.nombres}".strip() if p else 'HUECA'
+
+    _MESES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+              'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
+    def _fdmy(d):
+        return d.strftime('%d/%m/%Y') if d else ''
+
+    def _month_bounds(anio, mes):
+        if not anio or not mes:
+            return None, None
+        ini = datetime.date(anio, mes, 1)
+        if mes == 12:
+            fin = datetime.date(anio, 12, 31)
+        else:
+            fin = datetime.date(anio, mes + 1, 1) - datetime.timedelta(days=1)
+        return ini, fin
+
+    # Todas las asignaciones del MISMO puesto (una por mes/anio).
+    if asig.puesto_id:
+        asigs = list(
+            Asignacion.objects.select_related('persona')
+            .filter(puesto_id=asig.puesto_id).order_by('-anio', '-mes', '-id')
+        )
+    else:
+        asigs = [asig]
+    asig_ids = [a.id for a in asigs]
+
+    # Vigencia por fecha dentro de cada asignacion (titular exacto por dia).
+    periodos_por_asig = {}
+    for per in (AsignacionPersonaPeriodo.objects.select_related('persona')
+                .filter(asignacion_id__in=asig_ids)):
+        periodos_por_asig.setdefault(per.asignacion_id, []).append(per)
+
+    # Agrupar por persona: cada una con su rango real de fechas (desde/hasta) en el puesto.
+    grupos = {}
+
+    def _acumular(nombre, desde, hasta):
+        g = grupos.setdefault(nombre, {'persona': nombre, 'desde': None, 'hasta': None})
+        if desde and (g['desde'] is None or desde < g['desde']):
+            g['desde'] = desde
+        # hasta None = periodo abierto (aun vigente); se representa como fecha muy futura.
+        h = hasta if hasta is not None else datetime.date.max
+        if g['hasta'] is None or h > g['hasta']:
+            g['hasta'] = h
+
+    for a in asigs:
+        ini_m, fin_m = _month_bounds(a.anio, a.mes)
+        pers = periodos_por_asig.get(a.id)
+        if pers:
+            for per in pers:
+                _acumular(_nom(per.persona), per.desde or ini_m, per.hasta if per.hasta is not None else fin_m)
+        else:
+            _acumular(_nom(a.persona), ini_m, fin_m)
+
+    # "Hasta" no pasa del dia actual (no muestra fechas futuras).
+    hoy = timezone.localdate()
+
+    por_persona = []
+    for g in sorted(grupos.values(), key=lambda x: (x['hasta'] or datetime.date.min), reverse=True):
+        hasta_real = g['hasta']
+        if hasta_real is None or hasta_real > hoy:
+            hasta_real = hoy
+        por_persona.append({
+            'persona': g['persona'],
+            'desde': _fdmy(g['desde']),
+            'hasta': _fdmy(hasta_real),
+        })
+
+    return JsonResponse({
+        'codigo': getattr(asig.instalacion, 'codigo', '') or '',
+        'cliente': getattr(asig.cliente, 'nombre_comercial', '') or '',
+        'instalacion': getattr(asig.instalacion, 'nombre', '') or '',
+        'puesto': getattr(asig.puesto, 'nombre', '') or getattr(asig.puesto, 'tipo', '') or '',
+        'por_persona': por_persona,
+    }, status=status.HTTP_200_OK)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def exportar_reporte_asistencia_excel(request):
