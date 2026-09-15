@@ -363,7 +363,13 @@ table.table {
 
 .calendar-day {
   width: 100%;
-  min-width: 18px;
+  /* border-box: el borde de 1px NO suma ancho, asi el cuerpo mide igual que el header
+     (sin borde) y las columnas coinciden exacto. */
+  box-sizing: border-box;
+  /* min-width:0 + overflow hidden: el contenido largo (tokens de sacafranco) NO ensancha
+     la columna; el ancho lo fija la grilla (minmax(18px,1fr)) igual para todas las filas. */
+  min-width: 0;
+  overflow: hidden;
   height: 100%;
   min-height: 18px;
   /* rayas finas entre días en el cuerpo (inputs) */
@@ -386,6 +392,9 @@ table.table {
 
 .calendar-input {
   width: 100%;
+  min-width: 0;                 /* que el input pueda encoger bajo su contenido (no ensancha) */
+  overflow: hidden;
+  text-overflow: clip;
   height: 100%;
   border: 0;
   padding: 0;
@@ -418,7 +427,9 @@ table.table {
 .sacafranco-row .calendar-cell {
   height: 45px;
   max-height: 45px;
-  padding: 2px !important;
+  /* padding 0 como las celdas de fijos, para que las columnas queden alineadas
+     (antes tenia 2px y esa separacion corria/estrechaba la fila de sacafranco). */
+  padding: 0 !important;
 }
 
 .sacafranco-row .calendar-day {
@@ -675,12 +686,13 @@ table.table {
 /* Resaltado de COLUMNA por día: clic en el encabezado del día (letra+número)
    pinta esa columna hacia abajo. Se usa !important + especificidad para ganar
    sobre los colores de celda (getCalendarCellClass) que también usan !important. */
-.calendar-day-label { cursor: pointer; border-radius: 4px; }
+.calendar-day-label { cursor: pointer; }
 .calendar-day-label:hover { background-color: #eef4fb; }
-.calendar-day-label.day-pinned { background-color: #ffe08a !important; box-shadow: 0 0 0 1px #f0c24b inset; }
-.calendar-day.day-pinned { background-color: #ffe08a !important; }
-.calendar-day.day-pinned .calendar-input {
-  background-color: #ffe08a !important;
+/* El encabezado del dia SOLO dispara el resaltado (no se pinta, evita el desalineo del
+   header). Se resaltan unicamente las celdas del CUERPO de esa columna (:not label). */
+.calendar-day.day-pinned:not(.calendar-day-label) { background-color: #fff29a !important; }
+.calendar-day.day-pinned:not(.calendar-day-label) .calendar-input {
+  background-color: #fff29a !important;
   background-image: none !important;
-  border-color: #f0c24b !important;
+  border-color: #fff29a !important;
 }
