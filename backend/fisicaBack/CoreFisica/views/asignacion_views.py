@@ -844,6 +844,28 @@ def asignar_servicio(request):
                 )
     except Exception:
         pass
+
+    # Aviso CLARO si la persona ya tiene asignación este mes (salvo reasignación).
+    # Evita el error crudo de la BD y dice quién y dónde.
+    if _tiene_persona and not reasignar:
+        try:
+            _pid = int(data.get('persona'))
+            _m = int(data.get('mes')); _y = int(data.get('anio'))
+            ya = (Asignacion.objects.select_related('instalacion', 'puesto', 'persona')
+                  .filter(persona_id=_pid, mes=_m, anio=_y).first())
+            if ya:
+                _inst = getattr(ya.instalacion, 'nombre', '') or ''
+                _pue = getattr(ya.puesto, 'nombre', '') or getattr(ya.puesto, 'tipo', '') or ''
+                _per = ya.persona
+                _nom = f"{_per.apellidos} {_per.nombres}".strip() if _per else 'Esta persona'
+                _donde = ' · '.join([x for x in [_inst, _pue] if x]) or 'otro puesto'
+                return Response(
+                    {'error': f'{_nom} ya tiene asignación este mes en {_donde}. Usa "Reasignar" para moverla.'},
+                    status=status.HTTP_409_CONFLICT
+                )
+        except (TypeError, ValueError):
+            pass
+
     serializer = AsignacionSerializer(data=data)
     if serializer.is_valid():
         asignacion = serializer.save()
@@ -1940,6 +1962,30 @@ def sacafranco_filas(request):
 
     if not request.user.has_perm('CoreFisica.add_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    # Aviso CLARO: la persona no puede estar dos veces como sacafranco el mismo mes,
+    # ni ser sacafranco si ya es FIJO (tiene asignación) ese mes.
+    _pid = request.data.get('persona')
+    if _pid not in (None, '', 'null'):
+        try:
+            _pid = int(_pid)
+            _m = int(request.data.get('mes')); _y = int(request.data.get('anio'))
+            _per = Persona.objects.filter(id=_pid).first()
+            _nom = f"{_per.apellidos} {_per.nombres}".strip() if _per else 'Esta persona'
+            if SacafrancoFila.objects.filter(persona_id=_pid, mes=_m, anio=_y).exists():
+                return Response({'error': f'{_nom} ya está como SACAFRANCO este mes.'},
+                                status=status.HTTP_409_CONFLICT)
+            _asig = (Asignacion.objects.select_related('instalacion', 'puesto')
+                     .filter(persona_id=_pid, mes=_m, anio=_y).first())
+            if _asig:
+                _inst = getattr(_asig.instalacion, 'nombre', '') or ''
+                _pue = getattr(_asig.puesto, 'nombre', '') or getattr(_asig.puesto, 'tipo', '') or ''
+                _donde = ' · '.join([x for x in [_inst, _pue] if x]) or 'un puesto'
+                return Response({'error': f'{_nom} ya tiene asignación (fijo) este mes en {_donde}; no puede ser sacafranco.'},
+                                status=status.HTTP_409_CONFLICT)
+        except (TypeError, ValueError):
+            pass
+
     serializer = SacafrancoFilaSerializer(data=request.data)
     if serializer.is_valid():
         fila = serializer.save()

@@ -1665,7 +1665,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           this.loadCalendarWeeks();
           this.openSacafrancoSequenceModal(fila);
         },
-        error: err => console.error('Error al crear fila sacafranco', err)
+        error: err => {
+          console.error('Error al crear fila sacafranco', err);
+          const m = err?.error?.error || err?.error?.detail || 'No se pudo crear la fila de sacafranco.';
+          Swal.fire({ icon: 'warning', title: 'No se pudo crear', text: m });
+        }
       });
     });
   }
@@ -2401,6 +2405,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     let creadas = 0;
     let fallidas = 0;
     let ultimaId: number | null = null;
+    const errores: string[] = [];
 
     const crearUno = (i: number): void => {
       if (i >= ids.length) {
@@ -2413,7 +2418,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         Swal.fire({
           icon: fallidas ? 'warning' : 'success',
           title: fallidas ? 'Asignaciones parciales' : 'Asignaciones creadas',
-          text: `${creadas} creada(s)` + (fallidas ? `, ${fallidas} con error` : ''),
+          html: `${creadas} creada(s)` + (fallidas ? `, ${fallidas} con error` : '')
+            + (errores.length ? `<hr><div style="text-align:left; font-size:13px;">${errores.map(e => '• ' + e).join('<br>')}</div>` : ''),
           timer: fallidas ? undefined : 1400,
           showConfirmButton: !!fallidas,
         });
@@ -2424,7 +2430,12 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       if (turnoPref) { payload.turno_preferido = turnoPref; }
       this.asignacionService.crearAsignacion(payload).subscribe({
         next: (c: any) => { creadas++; if (c?.id) { ultimaId = c.id; } crearUno(i + 1); },
-        error: () => { fallidas++; crearUno(i + 1); },
+        error: (err: any) => {
+          fallidas++;
+          const m = err?.error?.error || err?.error?.detail;
+          if (m) { errores.push(m); }
+          crearUno(i + 1);
+        },
       });
     };
     crearUno(0);
@@ -2836,8 +2847,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       },
       error: err => {
         console.error(err);
-        const detail = err?.error ? JSON.stringify(err.error) : 'No se pudo crear la asignación';
-        Swal.fire({ icon: 'error', title: 'Error', text: detail });
+        const detail = err?.error?.error || err?.error?.detail
+          || (err?.error ? JSON.stringify(err.error) : 'No se pudo crear la asignación');
+        Swal.fire({ icon: 'warning', title: 'No se pudo crear', text: detail });
         this.isSaving = false;
       }
     });
