@@ -1573,12 +1573,22 @@ def crear_o_actualizar_asignacion_semanal(request):
 
     try:
         with transaction.atomic():
+            # La asignación enviada debe existir. Si el calendario del navegador quedó
+            # con un id viejo (la asignación se eliminó o se regeneró el mes), evitamos
+            # la violación de llave foránea y avisamos para que recargue.
+            src_asig = Asignacion.objects.select_related('persona').filter(id=asignacion_id).first()
+            if not src_asig:
+                return Response(
+                    {'error': 'Esta asignación ya no existe (se eliminó o se regeneró el mes). '
+                              'Recarga la página para actualizar el calendario.'},
+                    status=status.HTTP_409_CONFLICT
+                )
+
             # Si existe una asignación de la misma persona para el mes/año de week_start,
             # usar ese ID para que la secuencia aplicada por rango continúe en meses siguientes.
             effective_asignacion_id = asignacion_id
             effective_puesto_id = puesto_id
-            try:
-                src_asig = Asignacion.objects.select_related('persona').get(id=asignacion_id)
+            if src_asig.persona_id:
                 target_asig = Asignacion.objects.filter(
                     persona_id=src_asig.persona_id,
                     mes=ws.month,
@@ -1588,8 +1598,6 @@ def crear_o_actualizar_asignacion_semanal(request):
                 if target_asig:
                     effective_asignacion_id = target_asig.id
                     effective_puesto_id = target_asig.puesto_id or puesto_id
-            except Exception:
-                pass
 
             # preparar defaults solo con los días que vienen en el payload
             defaults = {}

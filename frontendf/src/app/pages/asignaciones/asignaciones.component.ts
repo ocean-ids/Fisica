@@ -1251,6 +1251,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     if (!row || row.type !== 'asignacion') return;
     const calRow = this.getCalendarRow(row, weekStart);
     if (!calRow) return;
+    const prevValue = calRow[dayKey] || '';
     const v = value ? String(value).toUpperCase().slice(0, 4) : '';
     calRow[dayKey] = v;
     const asignacionId = row.asig?.id ?? null;
@@ -1269,7 +1270,23 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     };
     this.asignacionCalendarioService.crearAsignacionCalendario(payload).subscribe({
       next: () => {},
-      error: () => {}
+      error: (err) => {
+        // Revertir el valor optimista de la celda.
+        calRow[dayKey] = prevValue;
+        // 409: la asignación ya no existe (el calendario quedó con un id viejo). Se
+        // recarga para actualizar y así no vuelve a fallar.
+        if (err?.status === 409) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Calendario desactualizado',
+            text: err?.error?.error || 'Esta asignación ya no existe. Se recargará el calendario.',
+          });
+          this.cargarAsignaciones();
+          this.loadCalendarWeeks();
+        } else {
+          console.error('Error al guardar la celda del calendario', err);
+        }
+      }
     });
   }
 
