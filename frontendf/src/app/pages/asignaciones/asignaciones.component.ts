@@ -1098,6 +1098,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
             : mixedView
               ? { canton_ids: selectedViewCantons.join(',') }
               : (cantonId != null ? { canton_id: cantonId } : {});
+          // Vista (pestaña) activa: así el sacafranco sellado a esta vista sale SOLO aquí,
+          // no repetido en otras vistas que compartan cantón/cliente.
+          if (activeView?.id) { sacafrancoParams.vista_id = activeView.id; }
           // La búsqueda es local (scroll + resaltado), no se filtra el sacafranco.
           return this.asignacionService
             .obtenerSacafrancoFilas(this.mes, this.anio, sacafrancoParams)

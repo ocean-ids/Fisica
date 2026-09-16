@@ -1887,6 +1887,16 @@ def sacafranco_filas(request):
             except (TypeError, ValueError):
                 return Response({'error': 'Provincia invalida'}, status=status.HTTP_400_BAD_REQUEST)
             qs = qs.filter(Q(provincia_id=provincia_val) | Q(persona__provincia_id=provincia_val))
+
+        # VISTA (pestaña) activa: una fila sellada a una vista se muestra SOLO en esa
+        # vista (aunque su cantón/cliente coincida con otra). Las filas sin vista
+        # (legado/manuales) siguen por su cantón/cliente. Elimina la repeticion entre vistas.
+        vista_id = request.GET.get('vista_id')
+        if vista_id:
+            try:
+                qs = qs.filter(Q(vista_id=int(vista_id)) | Q(vista__isnull=True))
+            except (TypeError, ValueError):
+                pass
         # Búsqueda de texto: filtrar sacafranco por su persona (nombre/apellido/cédula),
         # insensible a acentos. Así no aparecen siempre al buscar un cliente/instalación.
         q = (request.GET.get('q') or '').strip()
@@ -2215,7 +2225,7 @@ def exportar_asignaciones_excel(request):
             qs = qs.exclude(cliente_id__in=_clientes_empresa)
         return list(qs)
 
-    def build_sacafranco(cliente_ids=None, canton_ids=None, tipos=None):
+    def build_sacafranco(cliente_ids=None, canton_ids=None, tipos=None, vista_id=None):
         # En vista por TIPO de persona no se muestran filas de sacafranco.
         if tipos:
             return []
@@ -2241,6 +2251,9 @@ def exportar_asignaciones_excel(request):
                 Q(cantones__overlap=canton_ids)
                 | (sin_scope & Q(persona__canton_id__in=canton_ids))
             )
+        # Vista activa: la fila sellada a una vista sale SOLO en esa vista.
+        if vista_id:
+            sac_qs = sac_qs.filter(Q(vista_id=vista_id) | Q(vista__isnull=True))
         return list(sac_qs.order_by(Coalesce('provincia_id', Value(999999)), 'orden', 'id'))
 
     # Una entrada por cada vista creada (ordenadas por nombre, igual que en la UI).
@@ -2251,6 +2264,7 @@ def exportar_asignaciones_excel(request):
         _ktids = [int(c) for c in (_v.cantones or []) if str(c).strip()] if _v.tipo == 'canton' else []
         _tps = [str(t).strip().upper() for t in (_v.tipos or []) if str(t).strip()] if _v.tipo == 'persona_tipo' else []
         view_specs.append({
+            'id': _v.id,
             'nombre': _v.nombre,
             'cliente_ids': _cids,
             'instalacion_ids': _iids,
@@ -2266,7 +2280,8 @@ def exportar_asignaciones_excel(request):
             canton_ids=_s['canton_ids'], tipos=_s['tipos']
         )
         _sl = build_sacafranco(
-            cliente_ids=_s['cliente_ids'], canton_ids=_s['canton_ids'], tipos=_s['tipos']
+            cliente_ids=_s['cliente_ids'], canton_ids=_s['canton_ids'], tipos=_s['tipos'],
+            vista_id=_s['id']
         )
         view_data.append((_s['nombre'], _al, _sl))
 

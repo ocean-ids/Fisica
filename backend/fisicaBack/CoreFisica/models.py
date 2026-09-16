@@ -932,6 +932,10 @@ class SacafrancoFila(models.Model):
     # es "heredada" y se muestra por el cantón de su persona (compatibilidad).
     cantones = ArrayField(models.IntegerField(), default=list, blank=True)
     clientes = ArrayField(models.IntegerField(), default=list, blank=True)
+    # Vista (pestaña) donde se importó/creó: si está seteada, la fila se muestra
+    # SOLO en esa vista (evita que salga repetida en otras vistas que compartan
+    # cantón/cliente). Si es NULL, cae al scope por cantones/clientes (compatibilidad).
+    vista = models.ForeignKey('VistaCanton', null=True, blank=True, on_delete=models.SET_NULL, related_name='sacafrancos')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

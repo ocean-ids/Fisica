@@ -1981,10 +1981,12 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                 # aparezca UNA sola vez y no se repita en cada página/vista de cantón.
                 # Las vistas de CLIENTE (empresa) sí mantienen su scope de cliente (una
                 # empresa = una vista, no hay repetición por página).
+                # Se sella la VISTA (best) en la fila: así se muestra SOLO en esa pestaña
+                # y no se repite en otras vistas que compartan cantón/cliente.
                 if best is not None and best.tipo == 'cliente':
                     stamp_cli = sorted(set(best.clientes or []))
                     SacafrancoFila.objects.filter(id__in=set(_sheet_saca_ids)).update(
-                        cantones=[], clientes=stamp_cli,
+                        cantones=[], clientes=stamp_cli, vista=best,
                     )
                 else:
                     # Vista de cantón (o sin match): un cantón por fila = el de la persona;
@@ -1996,7 +1998,8 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         _one = _pc if (_pc and (_pc in view_cants or not view_cants)) else _fallback
                         _f.cantones = [_one] if _one else []
                         _f.clientes = []
-                        _f.save(update_fields=['cantones', 'clientes'])
+                        _f.vista = best if (best and best.tipo == 'canton') else None
+                        _f.save(update_fields=['cantones', 'clientes', 'vista'])
 
         if _quiere_desactivar_sobrantes(request):
             # (a+b) Sobrantes EN BLOQUE: toda asignacion ACTIVA en los periodos tocados
