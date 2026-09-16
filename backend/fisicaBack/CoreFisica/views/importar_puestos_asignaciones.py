@@ -1977,15 +1977,26 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
                         score = 0
                     if score > best_score:
                         best, best_score = v, score
-                if best is not None and best.tipo == 'canton':
-                    stamp_cant, stamp_cli = sorted(set(best.cantones or [])), []
-                elif best is not None and best.tipo == 'cliente':
-                    stamp_cant, stamp_cli = [], sorted(set(best.clientes or []))
+                # Cada sacafranco se sella a UN SOLO cantón (el de la persona), para que
+                # aparezca UNA sola vez y no se repita en cada página/vista de cantón.
+                # Las vistas de CLIENTE (empresa) sí mantienen su scope de cliente (una
+                # empresa = una vista, no hay repetición por página).
+                if best is not None and best.tipo == 'cliente':
+                    stamp_cli = sorted(set(best.clientes or []))
+                    SacafrancoFila.objects.filter(id__in=set(_sheet_saca_ids)).update(
+                        cantones=[], clientes=stamp_cli,
+                    )
                 else:
-                    stamp_cant, stamp_cli = sorted(cant_set), []
-                SacafrancoFila.objects.filter(id__in=set(_sheet_saca_ids)).update(
-                    cantones=stamp_cant, clientes=stamp_cli,
-                )
+                    # Vista de cantón (o sin match): un cantón por fila = el de la persona;
+                    # si la persona no tiene cantón, se usa el primero de la hoja.
+                    view_cants = set(best.cantones or []) if (best and best.tipo == 'canton') else set(cant_set)
+                    _fallback = sorted(view_cants)[0] if view_cants else None
+                    for _f in SacafrancoFila.objects.filter(id__in=set(_sheet_saca_ids)).select_related('persona'):
+                        _pc = getattr(_f.persona, 'canton_id', None)
+                        _one = _pc if (_pc and (_pc in view_cants or not view_cants)) else _fallback
+                        _f.cantones = [_one] if _one else []
+                        _f.clientes = []
+                        _f.save(update_fields=['cantones', 'clientes'])
 
         if _quiere_desactivar_sobrantes(request):
             # (a+b) Sobrantes EN BLOQUE: toda asignacion ACTIVA en los periodos tocados
