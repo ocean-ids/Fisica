@@ -18,6 +18,8 @@ export interface ReporteAsistenciaRow {
   row_color?: string | null;
   hueca?: boolean;
   hueca_motivo?: string;
+  es_hueca?: boolean;
+  persona_cobertura_id?: number | null;
   modificado_en?: string | null;
   zona_titulo?: string;
   provincia?: string;

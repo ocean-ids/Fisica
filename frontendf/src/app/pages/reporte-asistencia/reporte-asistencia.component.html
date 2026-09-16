@@ -115,9 +115,9 @@
                                 </div>
                             </td>
                             <td [style.backgroundColor]="getRowColor(r)"
-                                [style.cursor]="(r.asignacion_id || r.sacafranco_fila_id) ? 'pointer' : 'default'"
-                                [title]="(r.asignacion_id || r.sacafranco_fila_id) ? 'Clic para marcar ASISTE (clic de nuevo para quitar). Para FALTÓ usa el lápiz.' : ''"
-                                (click)="(r.asignacion_id || r.sacafranco_fila_id) && marcarAsiste(r); $event.stopPropagation()">
+                                [style.cursor]="((r.asignacion_id || r.sacafranco_fila_id) && !r.es_hueca) ? 'pointer' : 'default'"
+                                [title]="r.es_hueca ? 'HUECA: usa el lápiz para asignar el reemplazo (no se marca ASISTE aquí)' : ((r.asignacion_id || r.sacafranco_fila_id) ? 'Clic para marcar ASISTE (clic de nuevo para quitar). Para FALTÓ usa el lápiz.' : '')"
+                                (click)="(r.asignacion_id || r.sacafranco_fila_id) && !r.es_hueca && marcarAsiste(r); $event.stopPropagation()">
                                 <span [class]="estadoAsistenciaClass(r.estado_asistencia)">{{ estadoAsistenciaLabel(r.estado_asistencia) }}</span>
                             </td>
                             <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">{{ r.reemplazo || '-' }}</td>

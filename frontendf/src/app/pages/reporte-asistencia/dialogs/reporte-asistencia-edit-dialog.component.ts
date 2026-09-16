@@ -160,33 +160,32 @@ export class ReporteAsistenciaEditDialogComponent {
     const huecaCtrl = this.form.get('hueca');
     const motivoCtrl = this.form.get('hueca_motivo');
 
-    // HUECA estructural: la persona va en "Apellidos y Nombres" (cobertura). Aquí:
-    // - Reemplazo y Estado: DESHABILITADOS (no se usan en hueca).
-    // - Check "Hueca" y Motivo: HABILITADOS, para que la hueca salga en Reporte de Guardia.
+    // HUECA estructural: la fila sigue siendo "HUECA" (nombre solo lectura). Aquí:
+    // - Asistencia y Estado: DESHABILITADOS (no se usan/necesitan en hueca).
+    // - Check "Hueca": marcado por defecto.
+    // - Motivo y Reemplazo: HABILITADOS y OBLIGATORIOS (sin reemplazo no deja guardar).
     if (this.esHuecaEstructural) {
-      estadoCtrl?.disable({ emitEvent: false });
+      const asisCtrl = this.form.get('estado_asistencia');
+      asisCtrl?.setValue(null, { emitEvent: false });
+      asisCtrl?.disable({ emitEvent: false });
+      estadoCtrl?.setValue(null, { emitEvent: false });
       estadoCtrl?.clearValidators();
+      estadoCtrl?.disable({ emitEvent: false });
       estadoCtrl?.updateValueAndValidity({ emitEvent: false });
-      this.form.get('reemplazo_id')?.disable({ emitEvent: false });
-      this.reemplazoCtrl.disable({ emitEvent: false });
+      // Check "Hueca" marcado por defecto.
+      if (!huecaCtrl?.value) { huecaCtrl?.setValue(true, { emitEvent: false }); }
       huecaCtrl?.enable({ emitEvent: false });
-      if (huecaCtrl?.value) {
-        motivoCtrl?.enable({ emitEvent: false });
-      } else {
-        if (limpiar) { motivoCtrl?.setValue('', { emitEvent: false }); }
-        motivoCtrl?.disable({ emitEvent: false });
-      }
+      motivoCtrl?.enable({ emitEvent: false });
+      this.form.get('reemplazo_id')?.enable({ emitEvent: false });
+      this.reemplazoCtrl.enable({ emitEvent: false });
       return;
     }
 
-    // Check "Hueca": solo disponible si la asistencia es FALTO.
-    if (esFalto) {
-      huecaCtrl?.enable({ emitEvent: false });
-    } else {
-      if (limpiar) { huecaCtrl?.setValue(false, { emitEvent: false }); }
-      huecaCtrl?.disable({ emitEvent: false });
-    }
-    const esHueca = esFalto && !!huecaCtrl?.value;
+    // Check "Hueca": NO se usa en filas normales (solo en huecas estructurales).
+    // Siempre deshabilitado, tanto en ASISTE como en FALTÓ.
+    if (limpiar) { huecaCtrl?.setValue(false, { emitEvent: false }); }
+    huecaCtrl?.disable({ emitEvent: false });
+    const esHueca = false;
 
     // Estado: habilitado si es FALTO (NO se bloquea por hueca; se puede usar igual).
     if (esFalto) {
@@ -478,10 +477,11 @@ export class ReporteAsistenciaEditDialogComponent {
     if (this.guardando) { return false; }
     const raw = this.form?.getRawValue?.() || ({} as any);
 
-    // HUECA estructural: puede guardar (poner cobertura o marcar hueca+motivo).
+    // HUECA estructural: exige MOTIVO y REEMPLAZO (sin reemplazo no deja guardar).
     if (this.esHuecaEstructural) {
-      if (raw.hueca && !(raw.hueca_motivo || '').toString().trim()) { return false; }
-      return true;
+      const tieneMotivo = !!(raw.hueca_motivo || '').toString().trim();
+      const tieneReemplazo = !!raw.reemplazo_id;
+      return tieneMotivo && tieneReemplazo;
     }
 
     // Debe marcar la asistencia antes de poder guardar... salvo que haya escrito una
@@ -503,7 +503,16 @@ export class ReporteAsistenciaEditDialogComponent {
 
   // Mensaje (tooltip) que explica por qué el botón está deshabilitado.
   get tituloGuardar(): string {
-    if (this.guardando || this.esHuecaEstructural) { return ''; }
+    if (this.guardando) { return ''; }
+    if (this.esHuecaEstructural) {
+      const raw = this.form?.getRawValue?.() || ({} as any);
+      const faltaMotivo = !(raw.hueca_motivo || '').toString().trim();
+      const faltaReemplazo = !raw.reemplazo_id;
+      if (faltaMotivo || faltaReemplazo) {
+        return 'HUECA: elige el motivo y el reemplazo (quién cubre)';
+      }
+      return '';
+    }
     const asistencia = (this.form?.value?.estado_asistencia || '').toString().toUpperCase();
     const tieneDescripcion = !!(this.form?.value?.descripcion || '').toString().trim();
     if (asistencia !== 'ASISTIO' && asistencia !== 'FALTO' && !tieneDescripcion) {
@@ -554,8 +563,20 @@ export class ReporteAsistenciaEditDialogComponent {
       }
     }
 
-    // Si marca "Hueca", debe elegir un motivo.
-    if (raw.hueca && !(raw.hueca_motivo || '').toString().trim()) {
+    // HUECA: exige MOTIVO y REEMPLAZO (quién cubre) antes de guardar.
+    if (this.esHuecaEstructural) {
+      const faltaMotivo = !(raw.hueca_motivo || '').toString().trim();
+      const faltaReemplazo = !(raw.reemplazo_id);
+      if (faltaMotivo || faltaReemplazo) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Completa la hueca',
+          text: 'En una HUECA debes elegir el MOTIVO y el REEMPLAZO (quién cubre) antes de guardar.',
+        });
+        return;
+      }
+    } else if (raw.hueca && !(raw.hueca_motivo || '').toString().trim()) {
+      // Fila normal marcada como hueca: exige motivo.
       Swal.fire({
         icon: 'warning',
         title: 'Falta el motivo de la hueca',
@@ -574,32 +595,13 @@ export class ReporteAsistenciaEditDialogComponent {
       fecha: this.data?.fecha || null
     };
 
-    // HUECA: la persona elegida en "Apellidos y Nombres" se guarda como cobertura del día
-    // (solo en el reporte de ese día; no toca Asignaciones). Una hueca NO es ADICIONAL: TURNO.
+    // HUECA estructural: la fila sigue como "HUECA"; el REEMPLAZO cubre. Sin estado ni
+    // asistencia, sin persona_cobertura. No toca Asignaciones.
     if (this.esHuecaEstructural) {
-      const cv: any = this.coberturaCtrl.value;
-      let pcId: number | null = null;
-      if (cv && typeof cv === 'object' && cv.id) {
-        pcId = cv.id;                    // eligió una persona de la lista
-      } else if (this.coberturaSel) {
-        pcId = this.coberturaSel;
-      } else if (typeof cv === 'string' && cv.trim()) {
-        // Escribió el nombre pero no lo eligió de la lista: intentar resolverlo exacto.
-        const q = this.normalizeText(cv);
-        const match = this.reemplazos.filter(p => this.normalizeText(this.getNombrePersona(p)) === q);
-        if (match.length === 1) { pcId = match[0].id as number; }
-        else {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Elige la persona de la lista',
-            text: 'Escribe en "Apellidos y Nombres" y selecciona a la persona de las sugerencias que aparecen.',
-          });
-          return;
-        }
-      }
-      payload.persona_cobertura_id = pcId;
       payload.estado = null;
-      payload.reemplazo_id = null;
+      payload.estado_asistencia = null;
+      payload.persona_cobertura_id = null;
+      payload.hueca = true;
     }
 
     this.guardando = true;

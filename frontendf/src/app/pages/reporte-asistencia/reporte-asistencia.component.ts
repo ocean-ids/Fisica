@@ -541,6 +541,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   // formulario). Alterna: vacio/FALTO -> ASISTE, y ASISTE -> vacio. Guarda al instante.
   // Para FALTO (que necesita cobertura/reemplazo) se sigue usando el lapiz.
   marcarAsiste(row: ReporteAsistenciaRow): void {
+    // HUECA: no se marca ASISTE aquí; se cubre con un reemplazo desde el lápiz (diálogo).
+    if ((row as any)?.es_hueca) { return; }
     // SACAFRANCO: no tiene asignacion; la asistencia se guarda por su fila. El clic
     // alterna ASISTIO <-> (vacio), igual que los fijos. Para FALTO/hueca se usa el lapiz.
     if (!row?.asignacion_id && row?.sacafranco_fila_id) {
