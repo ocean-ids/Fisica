@@ -665,12 +665,25 @@ def _build_reporte_asistencia_data(
     # Solo considerar overrides de asignaciones activas
     reporte_qs = reporte_qs.filter(asignacion__estado='ACTIVO')
     historial_asig_ids_qs = ReporteAsistenciaHistorial.objects.none().values('asignacion_id')
+    # Asignaciones que YA tienen datos guardados ese día (historial u override), sin
+    # importar su estado: aunque el puesto se haya CERRADO (estado=INACTIVO) después, el
+    # historial del reporte de los días pasados NO debe desaparecer.
+    datos_ese_dia_ids = set()
     if fecha_obj:
         reporte_qs = reporte_qs.filter(fecha_reporte=fecha_obj)
         historial_asig_ids_qs = ReporteAsistenciaHistorial.objects.filter(
             fecha_reporte=fecha_obj,
             asignacion__estado='ACTIVO'
         ).values('asignacion_id').distinct()
+        datos_ese_dia_ids = set(
+            ReporteAsistenciaHistorial.objects.filter(fecha_reporte=fecha_obj)
+            .values_list('asignacion_id', flat=True)
+        )
+        datos_ese_dia_ids |= set(
+            ReporteAsistencia.objects.filter(fecha_reporte=fecha_obj)
+            .values_list('asignacion_id', flat=True)
+        )
+        datos_ese_dia_ids.discard(None)
 
     asig_qs = Asignacion.objects.select_related(
         'cliente', 'instalacion', 'instalacion__canton', 'instalacion__canton__provincia',
@@ -682,7 +695,9 @@ def _build_reporte_asistencia_data(
     ).filter(
         # Incluye HUECAS (asignacion sin persona = puesto sin guardia): salen como "HUECA".
         Q(persona__isnull=True) | Q(persona__is_active=True),
-        estado='ACTIVO'
+    ).filter(
+        # ACTIVAS, o CERRADAS pero con datos guardados ese día (preservar historial pasado).
+        Q(estado='ACTIVO') | Q(id__in=datos_ese_dia_ids)
     )
     # Los sacafrancos se muestran como fila propia (desde SacafrancoFilaSemanal, mas abajo), por
     # eso se excluye aqui su Asignacion. PERO una persona registrada como tipo SACAFRANCO pero
@@ -698,12 +713,16 @@ def _build_reporte_asistencia_data(
         # las asignaciones proyectadas de los meses siguientes (sept, oct...) en la vista
         # "todos". Ahora se restringe siempre al mes de la fecha.
         if fecha_obj >= hoy:
-            asig_qs = asig_qs.filter(mes=fecha_obj.month, anio=fecha_obj.year)
+            asig_qs = asig_qs.filter(
+                Q(mes=fecha_obj.month, anio=fecha_obj.year) |
+                Q(id__in=datos_ese_dia_ids)
+            )
             asig_qs = asig_qs.filter(
                 Q(fecha__gte=fecha_obj, fecha__lte=fin_anio_actual) |
                 Q(fecha__isnull=True) |
                 Q(id__in=reporte_qs.values('asignacion_id')) |
-                Q(id__in=historial_asig_ids_qs)
+                Q(id__in=historial_asig_ids_qs) |
+                Q(id__in=datos_ese_dia_ids)
             )
         else:
             # Fecha pasada: incluir asignaciones del mes/año exacto, las recurrentes
@@ -718,7 +737,8 @@ def _build_reporte_asistencia_data(
                     (Q(end_date__isnull=True) | Q(end_date__gte=fecha_obj))
                 ) |
                 Q(id__in=reporte_qs.values('asignacion_id')) |
-                Q(id__in=historial_asig_ids_qs)
+                Q(id__in=historial_asig_ids_qs) |
+                Q(id__in=datos_ese_dia_ids)
             )
     if cliente_id:
         asig_qs = asig_qs.filter(cliente_id=cliente_id)
