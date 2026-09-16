@@ -26,6 +26,7 @@ export interface Asignacion{
     orden?: number;
     cedula_color?: string;
     es_hueca?: boolean;
+    vacaciones?: { desde: string; hasta: string; dias: number; texto: string } | null;
 }
 
 export interface SacafrancoFila {

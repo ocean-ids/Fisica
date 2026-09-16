@@ -42,6 +42,9 @@ class AsignacionSerializer(serializers.ModelSerializer):
     start_date = serializers.DateField(required=False, allow_null=True)
     end_date = serializers.DateField(required=False, allow_null=True)
     cedula_color = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    # Vacaciones vigentes de la persona (badge en el grid). Se llena desde el contexto
+    # 'vacaciones_map' (una sola consulta en la vista); None si no aplica.
+    vacaciones = serializers.SerializerMethodField(read_only=True)
 
     def get_persona_detalle(self, obj):
         if not obj.persona:
@@ -55,6 +58,12 @@ class AsignacionSerializer(serializers.ModelSerializer):
             'provincia': obj.persona.provincia_id,
             'canton': obj.persona.canton_id
         }
+
+    def get_vacaciones(self, obj):
+        vac_map = self.context.get('vacaciones_map') if self.context else None
+        if not vac_map or not getattr(obj, 'persona_id', None):
+            return None
+        return vac_map.get(obj.persona_id)
 
     def get_cliente_detalle(self, obj):
         return {
@@ -143,6 +152,8 @@ class AsignacionLiteSerializer(serializers.ModelSerializer):
     start_date = serializers.DateField(required=False, allow_null=True)
     end_date = serializers.DateField(required=False, allow_null=True)
     cedula_color = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    # Vacaciones vigentes (badge en el grid). Se llena desde el contexto 'vacaciones_map'.
+    vacaciones = serializers.SerializerMethodField(read_only=True)
 
     def get_persona_detalle(self, obj):
         if not obj.persona:
@@ -157,6 +168,12 @@ class AsignacionLiteSerializer(serializers.ModelSerializer):
             'canton': obj.persona.canton_id,
             'is_active': getattr(obj.persona, 'is_active', True)
         }
+
+    def get_vacaciones(self, obj):
+        vac_map = self.context.get('vacaciones_map') if self.context else None
+        if not vac_map or not getattr(obj, 'persona_id', None):
+            return None
+        return vac_map.get(obj.persona_id)
 
     def get_cliente_detalle(self, obj):
         return {
@@ -247,7 +264,8 @@ class AsignacionLiteSerializer(serializers.ModelSerializer):
             'cliente_detalle',
             'instalacion_detalle',
             'puesto_detalle',
-            'horario_detalle'
+            'horario_detalle',
+            'vacaciones'
         ]
 
 

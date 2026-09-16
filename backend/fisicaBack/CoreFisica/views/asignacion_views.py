@@ -281,6 +281,28 @@ def obtener_asignaciones(request, mes=None, anio=None):
     # si el usuario no tiene permiso para ver asignaciones, devolver error 403 antes de procesar parámetros
     if not request.user.has_perm('CoreFisica.view_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    # Mapa de VACACIONES vigentes (badge en el grid): persona_id -> {desde,hasta,texto}.
+    # Solo las que aún no terminan (fecha_hasta >= hoy), para que el badge desaparezca
+    # cuando pasan los días. Una sola consulta; se pasa por contexto al serializer.
+    from ..models import ReporteVacaciones
+    _hoy_vac = timezone.localdate()
+    vacaciones_map = {}
+    for _v in (ReporteVacaciones.objects
+               .filter(persona_sale_ref__isnull=False, fecha_desde__isnull=False,
+                       fecha_hasta__isnull=False, fecha_hasta__gte=_hoy_vac)
+               .order_by('fecha_desde')):
+        _pid = _v.persona_sale_ref_id
+        if _pid in vacaciones_map:
+            continue
+        _dias = _v.dias or ((_v.fecha_hasta - _v.fecha_desde).days + 1)
+        vacaciones_map[_pid] = {
+            'desde': _v.fecha_desde.isoformat(),
+            'hasta': _v.fecha_hasta.isoformat(),
+            'dias': _dias,
+            'texto': f"VACACIONES {_v.fecha_desde.strftime('%d/%m')}–{_v.fecha_hasta.strftime('%d/%m')}",
+        }
+    _ser_ctx = {'vacaciones_map': vacaciones_map}
     # obtener parametros de filtro: mes, año, instalacion_id, cliente_id, q (texto libre para buscar en varios campos)
     instalacion_id = request.GET.get('instalacion_id')
     #cliente_id se puede recibir como query param o como parte de la ruta (en este caso se prioriza el query param para mantener consistencia con otros filtros)
@@ -432,7 +454,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
     # Así el usuario ve todo lo que coincide, venga de un cantón o de una vista de empresa,
     # y nunca cae en una página vacía.
     if q and not cliente_ids and not canton_ids:
-        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True, context=_ser_ctx)
         return Response({
             'results': serializer.data,
             'canton_page': 1,
@@ -448,7 +470,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
     # Es ADITIVA (no excluye empresas ni los saca de sus cantones): se devuelve antes
     # de la exclusión de empresas para que aparezcan todos los del tipo.
     if tipos:
-        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True, context=_ser_ctx)
         return Response({
             'results': serializer.data,
             'canton_page': 1,
@@ -486,7 +508,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
     # Vista por empresa: devolver TODAS las asignaciones de esos clientes (lista plana,
     # sin paginar por cantón). El frontend la trata como una vista (igual que canton_ids).
     if cliente_ids:
-        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True, context=_ser_ctx)
         return Response({
             'results': serializer.data,
             'canton_page': 1,
@@ -581,7 +603,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
         else:
             asignaciones = asignaciones.filter(instalacion__canton_id=canton_id)
 
-        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True, context=_ser_ctx)
         return Response({
             'results': serializer.data,
             'canton_page': cant_page,
@@ -631,7 +653,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
             nombre = (canton_map_full.get(cid) or '').strip()
             canton_options_full.append({'id': cid, 'nombre': nombre or f'CANTON {cid}'})
 
-        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True, context=_ser_ctx)
         return Response({
             'results': serializer.data,
             'canton_page': 1,
@@ -658,7 +680,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
         start = (page - 1) * size
         end = start + size
         asignaciones = asignaciones[start:end]
-        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+        serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True, context=_ser_ctx)
         return Response({
             'total': total,
             'page': page,
@@ -666,7 +688,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
             'results': serializer.data
         })
 
-    serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True)
+    serializer = (AsignacionLiteSerializer if lite else AsignacionSerializer)(asignaciones, many=True, context=_ser_ctx)
     return Response(serializer.data)
 
 
