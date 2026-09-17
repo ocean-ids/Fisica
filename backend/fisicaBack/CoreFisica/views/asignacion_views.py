@@ -1975,8 +1975,11 @@ def sacafranco_filas(request):
             if SacafrancoFila.objects.filter(persona_id=_pid, mes=_m, anio=_y).exists():
                 return Response({'error': f'{_nom} ya está como SACAFRANCO este mes.'},
                                 status=status.HTTP_409_CONFLICT)
+            # Solo bloquea si el fijo está ACTIVO y en un puesto abierto (uno INACTIVO no
+            # sale en ninguna vista, así que la persona está libre para ser sacafranco).
             _asig = (Asignacion.objects.select_related('instalacion', 'puesto')
-                     .filter(persona_id=_pid, mes=_m, anio=_y).first())
+                     .filter(persona_id=_pid, mes=_m, anio=_y, estado='ACTIVO')
+                     .exclude(puesto__activo=False).first())
             if _asig:
                 _inst = getattr(_asig.instalacion, 'nombre', '') or ''
                 _pue = getattr(_asig.puesto, 'nombre', '') or getattr(_asig.puesto, 'tipo', '') or ''
