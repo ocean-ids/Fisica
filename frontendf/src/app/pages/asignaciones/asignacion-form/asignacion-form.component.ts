@@ -43,6 +43,9 @@ export interface AsignacionFormResult {
   // Paralelo a personaIds: turno elegido de cada persona ('Diurno'|'Nocturno'|null) para
   // puestos día/noche. null = sin turno específico (el calendario se llena como siempre).
   turnosPreferidos?: (string | null)[];
+  // Cupos LIBRES del puesto (capacidad − ocupados). Los cupos que no se llenen con
+  // persona se crean como HUECA hasta completar el puesto.
+  cupos?: number;
 }
 
 @Component({
@@ -598,6 +601,7 @@ export class AsignacionFormComponent implements OnInit {
         turnosPreferidos: this.personasSeleccionadas.map(
           p => this.hasTurnoSelector() ? (this.turnoPorPersona[p.id as number] || null) : null
         ),
+        cupos: this.cuposDisponibles(),
       });
       return;
     }

@@ -2372,19 +2372,24 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         const pares = result.personaIds
           .map((id, i) => ({ id, turno: turnos[i] ?? null }))
           .filter((p): p is { id: number; turno: string | null } => !!p.id);
-        this.crearAsignacionesDesdeForm(pares.map(p => p.id), pares.map(p => p.turno));
+        this.crearAsignacionesDesdeForm(pares.map(p => p.id), pares.map(p => p.turno), result.cupos);
       } else {
         this.guardarAsignacion();
       }
     });
   }
 
-  // Crea 1..N asignaciones para el mismo cliente/instalacion/puesto, una por persona.
-  // 0 o 1 persona -> flujo normal (incluye HUECA, conflictos y "Aplicar secuencia").
-  // 2+ personas -> se crean en lote (sin abrir "Aplicar secuencia" por cada una).
-  private crearAsignacionesDesdeForm(personaIds: number[], turnos: (string | null)[] = []): void {
+  // Crea asignaciones para el mismo cliente/instalacion/puesto llenando el puesto hasta
+  // su capacidad: las personas elegidas van con nombre y los cupos LIBRES que queden se
+  // crean como HUECA (persona null). Ej: puesto de 3, 1 persona -> 1 persona + 2 HUECA.
+  private crearAsignacionesDesdeForm(personaIds: number[], turnos: (string | null)[] = [], cupos?: number): void {
     const ids = (personaIds || []).filter(Boolean);
-    if (ids.length <= 1) {
+    // Cupos libres a llenar (al menos las personas elegidas). Los que no son persona = HUECA.
+    const totalCupos = Math.max(Number(cupos) || 0, ids.length);
+    const huecas = Math.max(0, totalCupos - ids.length);
+
+    // Caso simple (1 persona sola, sin huecas que crear): flujo normal (conflicto/reasignar).
+    if (ids.length <= 1 && huecas === 0) {
       this.asignacionActual.persona = ids[0] || 0;
       this.guardarAsignacion();
       return;
@@ -2407,35 +2412,48 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       end_date: null,
     } as any;
 
+    // Slots del puesto: primero personas, luego HUECAS hasta completar los cupos.
+    const slots: Array<{ persona: number | null; turno: string | null; hueca: boolean }> = [
+      ...ids.map((id, i) => ({ persona: id, turno: turnos[i] ?? null, hueca: false })),
+      ...Array.from({ length: huecas }, () => ({ persona: null, turno: null, hueca: true })),
+    ];
+
     this.isSaving = true;
     let creadas = 0;
+    let huecasCreadas = 0;
     let fallidas = 0;
     let ultimaId: number | null = null;
     const errores: string[] = [];
 
     const crearUno = (i: number): void => {
-      if (i >= ids.length) {
+      if (i >= slots.length) {
         this.cargarAsignaciones();
         this.resetAsignacionState();
         this.loadCalendarWeeks();
         this.asignacionService.notifyAsignacionesChanged();
         this.isSaving = false;
         if (ultimaId) { this.scrollAFilaNuevaPendiente = { type: 'asignacion', id: ultimaId }; }
+        const partes = [`${creadas} con persona`];
+        if (huecasCreadas) { partes.push(`${huecasCreadas} HUECA`); }
         Swal.fire({
           icon: fallidas ? 'warning' : 'success',
           title: fallidas ? 'Asignaciones parciales' : 'Asignaciones creadas',
-          html: `${creadas} creada(s)` + (fallidas ? `, ${fallidas} con error` : '')
+          html: partes.join(' + ') + (fallidas ? `, ${fallidas} con error` : '')
             + (errores.length ? `<hr><div style="text-align:left; font-size:13px;">${errores.map(e => '• ' + e).join('<br>')}</div>` : ''),
           timer: fallidas ? undefined : 1400,
           showConfirmButton: !!fallidas,
         });
         return;
       }
-      const payload = { ...base, persona: ids[i], es_hueca: false } as any;
-      const turnoPref = turnos[i];
-      if (turnoPref) { payload.turno_preferido = turnoPref; }
+      const slot = slots[i];
+      const payload = { ...base, persona: slot.persona, es_hueca: slot.hueca } as any;
+      if (slot.turno) { payload.turno_preferido = slot.turno; }
       this.asignacionService.crearAsignacion(payload).subscribe({
-        next: (c: any) => { creadas++; if (c?.id) { ultimaId = c.id; } crearUno(i + 1); },
+        next: (c: any) => {
+          if (slot.hueca) { huecasCreadas++; } else { creadas++; }
+          if (c?.id) { ultimaId = c.id; }
+          crearUno(i + 1);
+        },
         error: (err: any) => {
           fallidas++;
           const m = err?.error?.error || err?.error?.detail;
