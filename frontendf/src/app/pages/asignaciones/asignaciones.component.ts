@@ -1643,14 +1643,15 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         hora_salida: result.horaSalida || null
       };
 
-      // Atar la fila a la vista donde se crea, para que salga SOLO ahí.
+      // Atar la fila a la VISTA donde se crea, para que salga SOLO ahí (aunque otra
+      // vista comparta cantón/cliente). Y un SOLO cantón, para no repetir por página.
       const activeView = this.getActiveView();
+      if (activeView?.id) { payload.vista = activeView.id; }
       if (activeView?.tipo === 'cliente') {
         payload.clientes = activeView.clienteIds || [];
-      } else if (activeView?.tipo === 'canton') {
-        payload.cantones = activeView.cantonIds || [];
       } else {
-        const cantonId = result.cantonId ?? this.selectedCantonId;
+        const cantonId = result.cantonId ?? this.selectedCantonId
+          ?? (activeView?.tipo === 'canton' ? (activeView.cantonIds || [])[0] : null);
         if (cantonId != null) {
           payload.cantones = [cantonId];
         }

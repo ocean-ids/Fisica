@@ -87,3 +87,37 @@ class SacafrancoVistaTests(TestCase):
         ids = self._ids({'canton_ids': str(self.canton.id)})
         self.assertIn(self.fila_A.id, ids)
         self.assertIn(self.fila_legado.id, ids)
+
+    def test_crear_manual_queda_solo_en_su_vista(self):
+        # Crear un sacafranco A MANO (POST) con vista = A y un cantón compartido.
+        p3 = Persona.objects.create(nombres='CARL', apellidos='TRES', cedula='0333333333',
+                                    tipo='SACAFRANCO', canton=self.canton)
+        resp = self.client.post(
+            '/api/sacafranco-filas/',
+            data=json.dumps({
+                'persona': p3.id, 'mes': self.mes, 'anio': self.anio, 'orden': 99,
+                'vista': self.vistaA.id, 'cantones': [self.canton.id],
+            }),
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.access}',
+        )
+        self.assertEqual(resp.status_code, 201, resp.content)
+        creado = resp.json()
+        nueva_id = creado['id']
+        # Se guardó con la vista y un SOLO cantón.
+        self.assertEqual(creado.get('vista'), self.vistaA.id)
+        self.assertEqual(creado.get('cantones'), [self.canton.id])
+        # Sale en la vista A, pero NO en la vista B (aunque comparten cantón).
+        self.assertIn(nueva_id, self._ids({'canton_ids': str(self.canton.id), 'vista_id': self.vistaA.id}))
+        self.assertNotIn(nueva_id, self._ids({'canton_ids': str(self.canton.id), 'vista_id': self.vistaB.id}))
+
+    def test_crear_manual_persona_ya_sacafranco_bloqueada(self):
+        # p1 ya tiene fila de sacafranco este mes -> el backend debe bloquear con 409.
+        resp = self.client.post(
+            '/api/sacafranco-filas/',
+            data=json.dumps({'persona': self.p1.id, 'mes': self.mes, 'anio': self.anio}),
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.access}',
+        )
+        self.assertEqual(resp.status_code, 409, resp.content)
+        self.assertIn('SACAFRANCO', (resp.json().get('error') or '').upper())
