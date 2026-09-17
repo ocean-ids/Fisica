@@ -117,6 +117,14 @@ export class AsignacionService {
     );
   }
 
+  // IDs de personas que ya son SACAFRANCO ese mes (todas las vistas), para marcar
+  // "Asignado" en el selector aunque estén en otra vista.
+  obtenerSacafrancoPersonas(mes: number, anio: number): Observable<number[]> {
+    return this.apiService.get<any>(`/sacafranco-personas/${mes}/${anio}/`).pipe(
+      map(response => (response?.persona_ids ?? []) as number[])
+    );
+  }
+
   // Asignados (ocupados ese día) + los que están en FRANCO ese día (disponibles).
   obtenerAsignadosYFranco(mes: number, anio: number, fecha?: string): Observable<{ asignados: number[]; franco: number[] }> {
     let params = new HttpParams();

@@ -411,6 +411,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   private matchNavSub?: Subscription;
   // IDs de personas con asignación activa este mes en CUALQUIER cantón (no solo el cargado).
   private personasAsignadasGlobal: number[] = [];
+  private sacafrancoAsignadosGlobal: number[] = [];
   // Cupos ocupados por puesto en el mes (todos los cantones), para el contador del modal.
   private puestosOcupacionGlobal: { [puestoId: number]: number } = {};
   columnasOcultas: string[] = [];
@@ -1861,13 +1862,17 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   private getAssignedSacafrancoPersonaIds(): number[] {
-    // Filas del módulo sacafranco
+    // Filas del módulo sacafranco (vista actual)
     const enFilas = (this.sacafrancoRows || [])
       .map(r => r?.persona || r?.persona_detalle?.id)
       .filter((id): id is number => !!id);
-    // Incluir también a quien ya tenga una asignación regular (local + otros cantones),
-    // para que un SACAFRANCO asignado a un puesto salga "Asignado" y no "Disponible".
-    return Array.from(new Set([...enFilas, ...this.getAssignedPersonaIds()]));
+    // Sacafranco de TODAS las vistas del mes (para que uno ya sacafranco en otra vista
+    // salga "Asignado" y no "Disponible") + quien ya tenga asignación regular (fijo).
+    return Array.from(new Set([
+      ...enFilas,
+      ...(this.sacafrancoAsignadosGlobal || []),
+      ...this.getAssignedPersonaIds(),
+    ]));
   }
 
   private buildProvinciaSortOrderFromRows(rows: Array<any>): void {
@@ -2597,6 +2602,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.asignacionService.obtenerPersonasAsignadas(this.mes, this.anio).subscribe({
       next: ids => this.personasAsignadasGlobal = ids || [],
       error: () => this.personasAsignadasGlobal = []
+    });
+    // Sacafranco de TODAS las vistas del mes (para el badge "Asignado" del selector).
+    this.asignacionService.obtenerSacafrancoPersonas(this.mes, this.anio).subscribe({
+      next: ids => this.sacafrancoAsignadosGlobal = ids || [],
+      error: () => this.sacafrancoAsignadosGlobal = []
     });
     this.asignacionService.obtenerPuestosOcupacion(this.mes, this.anio).subscribe({
       next: mapa => this.puestosOcupacionGlobal = mapa || {},

@@ -2814,6 +2814,22 @@ def asignaciones_vacantes(request, mes, anio):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def sacafranco_personas_mes(request, mes, anio):
+    """IDs de personas que YA tienen una fila de SACAFRANCO en el mes (TODAS las vistas).
+    Sirve para marcar 'Asignado' en el selector aunque estén en otra vista/cantón."""
+    if not request.user.has_perm('CoreFisica.view_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        mes = int(mes); anio = int(anio)
+    except (TypeError, ValueError):
+        return Response({'error': 'mes o anio invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+    ids = list(SacafrancoFila.objects.filter(mes=mes, anio=anio, persona__isnull=False)
+               .values_list('persona_id', flat=True).distinct())
+    return JsonResponse({'persona_ids': ids}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def personas_asignadas(request, mes, anio):
     """Devuelve los IDs de personas con asignación activa en el mes (todos los cantones)."""
     if not request.user.has_perm('CoreFisica.view_asignacion'):
