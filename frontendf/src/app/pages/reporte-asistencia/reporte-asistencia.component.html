@@ -123,7 +123,7 @@
                             <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">{{ r.reemplazo || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">
                                 <span *ngIf="estadoMostrar(r)" [class]="estadoClass(estadoMostrar(r))">{{ estadoMostrar(r) }}</span>
-                                <span *ngIf="!estadoMostrar(r)">-</span>
+                                <span *ngIf="!estadoMostrar(r)" class="badge bg-secondary">-</span>
                             </td>
                             
                             <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">
