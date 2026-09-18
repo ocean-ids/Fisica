@@ -41,8 +41,6 @@ export class ReporteAsistenciaEditDialogComponent {
   readonly estadosDisponibles = ['ADICIONAL', 'ADEL/TURNO', 'DOBLA', 'FR/TRABAJADO'];
   readonly estadosAsistenciaDisponibles: Array<'ASISTIO' | 'FALTO'> = ['ASISTIO', 'FALTO'];
   readonly huecaMotivos = [
-    'HUECA POR MOVIMIENTO INTERNO',
-    'HUECA POR SACAFRANCO',
     'HUECA POR ADELANTO DE TURNO',
     'HUECA POR UNIDAD FIJA',
     'HUECA POR RENUNCIA',
