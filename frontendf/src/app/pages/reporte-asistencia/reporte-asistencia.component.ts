@@ -669,6 +669,17 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     this.goToPage(this.currentPage + 1);
   }
 
+  // Estado a mostrar en la grilla: "TURNO" (estado normal) queda VACÍO hasta que se
+  // marque ASISTE. Los demás estados (ADICIONAL, DOBLA, ADEL/TURNO, EVENTUAL, etc.) se
+  // muestran siempre.
+  estadoMostrar(r: any): string {
+    const e = (r?.estado || '').toString().trim();
+    if (e.toUpperCase() === 'TURNO') {
+      return (r?.estado_asistencia || '').toString().toUpperCase() === 'ASISTIO' ? e : '';
+    }
+    return e;
+  }
+
   estadoClass(estado?: string): string {
     const value = (estado || '').trim().toUpperCase();
     if (value === 'TURNO') return 'badge bg-success';
