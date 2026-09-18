@@ -1,8 +1,8 @@
 <h2 mat-dialog-title>Historial</h2>
 
 <mat-dialog-content>
-  <!-- Selector de vista (la vista "Por puesto" no aplica a sacafranco) -->
-  <div class="d-flex justify-content-center mb-3" *ngIf="!esSacafranco">
+  <!-- Selector de vista -->
+  <div class="d-flex justify-content-center mb-3">
     <div class="btn-group btn-group-sm" role="group">
       <button type="button" class="btn"
               [class.btn-primary]="vista === 'mod'" [class.btn-outline-primary]="vista !== 'mod'"
@@ -41,8 +41,36 @@
     <div *ngIf="loadingPuesto" class="text-center py-3 text-muted">Cargando…</div>
     <div *ngIf="errorPuesto" class="text-danger py-2">{{ errorPuesto }}</div>
 
-    <ng-container *ngIf="!loadingPuesto && !errorPuesto">
-      <!-- Personas que han sido titular del puesto, con los meses en que estuvieron -->
+    <!-- SACAFRANCO: puestos/nominativos que ha cubierto (con fechas) -->
+    <ng-container *ngIf="!loadingPuesto && !errorPuesto && esSacafranco">
+      <h6 class="fw-bold mt-1 mb-2">Puestos cubiertos</h6>
+      <table class="table table-sm table-bordered align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Cliente</th>
+            <th>Puesto</th>
+            <th style="width:90px;">Turno</th>
+            <th style="width:120px;">Desde</th>
+            <th style="width:120px;">Hasta</th>
+            <th style="width:70px;">Días</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of porPuestoSaca">
+            <td>{{ p.cliente || '—' }}</td>
+            <td>{{ p.puesto || '—' }}</td>
+            <td>{{ p.turno || '—' }}</td>
+            <td>{{ p.desde || '—' }}</td>
+            <td>{{ p.hasta || '—' }}</td>
+            <td class="text-center">{{ p.dias }}</td>
+          </tr>
+          <tr *ngIf="!porPuestoSaca.length"><td colspan="6" class="text-center text-muted">Sin coberturas registradas</td></tr>
+        </tbody>
+      </table>
+    </ng-container>
+
+    <!-- FIJO: personas que han sido titular del puesto -->
+    <ng-container *ngIf="!loadingPuesto && !errorPuesto && !esSacafranco">
       <h6 class="fw-bold mt-1 mb-2">Personas en este puesto</h6>
       <table class="table table-sm table-bordered align-middle">
         <thead class="table-light">

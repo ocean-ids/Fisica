@@ -2077,6 +2077,81 @@ def historial_puesto_reporte(request, asignacion_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def historial_puesto_sacafranco(request, sacafranco_fila_id):
+    """Historial 'Por puesto' de un SACAFRANCO: los puestos/nominativos que ha cubierto
+    (según su token diario) agrupados con su rango de fechas y días. El sacafranco no
+    tiene puesto fijo: flota cubriendo francos, por eso se listan las coberturas."""
+    if not request.user.has_perm('CoreFisica.view_reporteasistencia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    from ..models import SacafrancoFila, SacafrancoFilaSemanal, Instalacion
+    from .asignacion_semanal_views import _parse_sacafranco_token
+
+    fila = SacafrancoFila.objects.select_related('persona').filter(id=sacafranco_fila_id).first()
+    if not fila:
+        return JsonResponse({'error': 'Sacafranco no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    persona = fila.persona
+    cabecera = (f"{persona.apellidos} {persona.nombres}".strip() if persona else 'HUECA') + ' · Sacafranco'
+
+    semanales = list(SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id=sacafranco_fila_id))
+    by_ws = {s.week_start: s for s in semanales}
+
+    inst_cache = {}
+    def _resolve(code):
+        if code not in inst_cache:
+            inst = Instalacion.objects.select_related('cliente').filter(codigo__iexact=code).first()
+            if inst:
+                inst_cache[code] = (getattr(inst.cliente, 'nombre_comercial', '') or '', inst.nombre or '')
+            else:
+                inst_cache[code] = ('', code)
+        return inst_cache[code]
+
+    day_field_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
+    grupos = {}  # (cliente, puesto, turno) -> {desde, hasta, dias}
+
+    if by_ws:
+        d = min(by_ws)
+        end = max(by_ws) + datetime.timedelta(days=6)
+        while d <= end:
+            # Misma resolución de token por fecha que _sacafranco_token_for_date.
+            month_base = d.replace(day=1)
+            ws_month = month_base + datetime.timedelta(days=((d.day - 1) // 7) * 7)
+            ws_iso = d - datetime.timedelta(days=d.weekday())
+            sem = by_ws.get(ws_month) or by_ws.get(ws_iso)
+            if sem:
+                token = str(getattr(sem, day_field_map[d.weekday()], '') or '').strip().upper()
+                _t, turno, code, _i, _p = _parse_sacafranco_token(token)
+                if turno in ('Diurno', 'Nocturno'):
+                    if code and code != 'BASE':
+                        cliente, puesto = _resolve(code)
+                    else:
+                        cliente, puesto = 'SEGURIDAD FISICA', 'BASE'
+                    key = (cliente, puesto, turno)
+                    g = grupos.setdefault(key, {
+                        'cliente': cliente, 'puesto': puesto, 'turno': turno,
+                        'desde': d, 'hasta': d, 'dias': 0,
+                    })
+                    if d < g['desde']:
+                        g['desde'] = d
+                    if d > g['hasta']:
+                        g['hasta'] = d
+                    g['dias'] += 1
+            d += datetime.timedelta(days=1)
+
+    def _fdmy(x):
+        return x.strftime('%d/%m/%Y') if x else ''
+
+    por_puesto = sorted(grupos.values(), key=lambda x: x['hasta'], reverse=True)
+    data = [{
+        'cliente': g['cliente'], 'puesto': g['puesto'], 'turno': g['turno'],
+        'desde': _fdmy(g['desde']), 'hasta': _fdmy(g['hasta']), 'dias': g['dias'],
+    } for g in por_puesto]
+
+    return JsonResponse({'cabecera': cabecera, 'por_puesto': data}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def exportar_reporte_asistencia_excel(request):
     if not request.user.has_perm('CoreFisica.export_reporte_asistencia'):
         return JsonResponse({'error': 'No autorizado'}, status=403)

@@ -30,6 +30,8 @@ export class ReporteAsistenciaHistorialDialogComponent implements OnInit {
   errorPuesto = '';
   cabecera = '';
   porPersona: PersonaPuesto[] = [];
+  // Sacafranco: puestos/nominativos que ha cubierto (con fechas).
+  porPuestoSaca: Array<{ cliente: string; puesto: string; turno: string; desde: string; hasta: string; dias: number }> = [];
 
   constructor(
     private reporteSvc: ReporteAsistenciaService,
@@ -75,9 +77,27 @@ export class ReporteAsistenciaHistorialDialogComponent implements OnInit {
   }
 
   cargarPuesto(): void {
-    if (!this.data?.asignacionId) { return; }
     this.loadingPuesto = true;
     this.errorPuesto = '';
+
+    // Sacafranco: "Por puesto" = puestos que ha cubierto (no tiene puesto/asignación fija).
+    if (this.esSacafranco) {
+      this.reporteSvc.getHistorialPuestoSacafranco(this.data.sacafrancoFilaId!).subscribe({
+        next: (r: any) => {
+          this.cabecera = r?.cabecera || '';
+          this.porPuestoSaca = r?.por_puesto || [];
+          this.puestoCargado = true;
+        },
+        error: (err: any) => {
+          console.error('Error al cargar puestos cubiertos del sacafranco', err);
+          this.errorPuesto = 'No se pudo cargar los puestos cubiertos.';
+        },
+        complete: () => { this.loadingPuesto = false; }
+      });
+      return;
+    }
+
+    if (!this.data?.asignacionId) { this.loadingPuesto = false; return; }
     this.reporteSvc.getHistorialPuesto(this.data.asignacionId).subscribe({
       next: (r: any) => {
         this.cabecera = [r?.codigo, r?.instalacion || r?.cliente, r?.puesto].filter(Boolean).join(' · ');

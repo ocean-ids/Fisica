@@ -38,6 +38,11 @@ export class ReporteAsistenciaService {
     return this.apiService.get<any>(`/reporte-asistencia/${asignacionId}/historial-puesto/`, params);
   }
 
+  // Historial "Por puesto" de un sacafranco: los puestos/nominativos que ha cubierto.
+  getHistorialPuestoSacafranco(sacafrancoFilaId: number) {
+    return this.apiService.get<any>(`/reporte-asistencia/sacafranco/${sacafrancoFilaId}/historial-puesto/`);
+  }
+
   getDescripciones(){
     return this.apiService.get<string[]>('/reporte-asistencia/descripciones/');
   }
