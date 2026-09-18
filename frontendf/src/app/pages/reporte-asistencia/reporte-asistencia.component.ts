@@ -596,13 +596,14 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   }
 
   abrirHistorialModal(row: ReporteAsistenciaRow): void {
-    if (!row?.asignacion_id) return;
+    if (!row?.asignacion_id && !row?.sacafranco_fila_id) return;
 
     this.dialog.open(ReporteAsistenciaHistorialDialogComponent, {
       width: '720px',
       maxWidth: '95vw',
       data: {
-        asignacionId: row.asignacion_id,
+        asignacionId: row.asignacion_id || undefined,
+        sacafrancoFilaId: row.sacafranco_fila_id || undefined,
         codigo: row.codigo || null,
         fecha: this.filtroFecha || null
       }

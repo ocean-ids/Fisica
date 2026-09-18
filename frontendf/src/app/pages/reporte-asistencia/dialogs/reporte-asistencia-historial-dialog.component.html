@@ -1,8 +1,8 @@
 <h2 mat-dialog-title>Historial</h2>
 
 <mat-dialog-content>
-  <!-- Selector de vista -->
-  <div class="d-flex justify-content-center mb-3">
+  <!-- Selector de vista (la vista "Por puesto" no aplica a sacafranco) -->
+  <div class="d-flex justify-content-center mb-3" *ngIf="!esSacafranco">
     <div class="btn-group btn-group-sm" role="group">
       <button type="button" class="btn"
               [class.btn-primary]="vista === 'mod'" [class.btn-outline-primary]="vista !== 'mod'"

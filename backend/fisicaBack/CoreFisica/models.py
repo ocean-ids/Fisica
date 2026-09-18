@@ -977,6 +977,32 @@ class SacafrancoAsistencia(models.Model):
         return f"AsistSaca fila={self.sacafranco_fila_id} {self.fecha} {self.estado_asistencia}"
 
 
+class SacafrancoAsistenciaHistorial(models.Model):
+    """Un registro por cada edición de la asistencia de un sacafranco (para el 'Historial'
+    del reporte de asistencia). El sacafranco no tiene Asignacion: se referencia por
+    SacafrancoFila + fecha."""
+    sacafranco_fila = models.ForeignKey(
+        SacafrancoFila, on_delete=models.CASCADE, related_name='historial_asistencia'
+    )
+    fecha_reporte = models.DateField(null=True, blank=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    estado = models.CharField(max_length=30, blank=True, default='')
+    estado_asistencia = models.CharField(max_length=10, blank=True, default='')
+    reemplazo = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    descripcion = models.TextField(blank=True, default='')
+    row_color = models.CharField(max_length=20, blank=True, default='')
+    hueca = models.BooleanField(default=False)
+    hueca_motivo = models.CharField(max_length=255, blank=True, default='')
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado_en']
+        indexes = [models.Index(fields=['sacafranco_fila', 'fecha_reporte'])]
+
+    def __str__(self):
+        return f"HistSaca fila={self.sacafranco_fila_id} {self.fecha_reporte} {self.estado_asistencia}"
+
+
 class Asignacion(models.Model):
     ESTADO_CHOICES = [
         ('ACTIVO', 'ACTIVO'),

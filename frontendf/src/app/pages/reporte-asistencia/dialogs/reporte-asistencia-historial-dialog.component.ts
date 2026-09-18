@@ -34,14 +34,15 @@ export class ReporteAsistenciaHistorialDialogComponent implements OnInit {
   constructor(
     private reporteSvc: ReporteAsistenciaService,
     private dialogRef: MatDialogRef<ReporteAsistenciaHistorialDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { asignacionId: number; codigo?: string | null; fecha?: string | null }
+    @Inject(MAT_DIALOG_DATA) public data: { asignacionId?: number; sacafrancoFilaId?: number; codigo?: string | null; fecha?: string | null }
   ) {}
 
   ngOnInit(): void {
-    const id = this.data?.asignacionId;
-    if (!id) {
+    const asigId = this.data?.asignacionId;
+    const sacaId = this.data?.sacafrancoFilaId;
+    if (!asigId && !sacaId) {
       this.loading = false;
-      this.error = 'No se encontro la asignacion.';
+      this.error = 'No se encontro el registro.';
       return;
     }
 
@@ -49,7 +50,10 @@ export class ReporteAsistenciaHistorialDialogComponent implements OnInit {
     if (this.data?.fecha) {
       params.fecha = this.data.fecha;
     }
-    this.reporteSvc.getReporteAsistenciaHistorial(id, params).subscribe({
+    const obs = sacaId
+      ? this.reporteSvc.getSacafrancoHistorial(sacaId, params)
+      : this.reporteSvc.getReporteAsistenciaHistorial(asigId!, params);
+    obs.subscribe({
       next: (items) => {
         this.historial = items || [];
       },
@@ -86,6 +90,11 @@ export class ReporteAsistenciaHistorialDialogComponent implements OnInit {
       },
       complete: () => { this.loadingPuesto = false; }
     });
+  }
+
+  // La vista "Por puesto" no aplica a sacafranco (no tiene asignación/puesto propio).
+  get esSacafranco(): boolean {
+    return !!this.data?.sacafrancoFilaId && !this.data?.asignacionId;
   }
 
   cerrar(): void {

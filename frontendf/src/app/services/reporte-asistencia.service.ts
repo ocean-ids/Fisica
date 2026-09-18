@@ -27,6 +27,10 @@ export class ReporteAsistenciaService {
     return this.apiService.get<ReporteAsistenciaHistorialItem[]>(`/reporte-asistencia/${asignacionId}/historial/`, params);
   }
 
+  getSacafrancoHistorial(sacafrancoFilaId: number, params?: any) {
+    return this.apiService.get<ReporteAsistenciaHistorialItem[]>(`/reporte-asistencia/sacafranco/${sacafrancoFilaId}/historial/`, params);
+  }
+
   // Historial del PUESTO (por registro): titular(es) con rangos + cambios por día. mes = 'YYYY-MM'.
   getHistorialPuesto(asignacionId: number, mes?: string) {
     const params: any = {};

@@ -1858,6 +1858,24 @@ def marcar_sacafranco_asistencia(request, sacafranco_fila_id):
     obj.modificado_por = request.user
     obj.save()
 
+    # Historial: un registro por cada edición (para el botón "Historial" del reporte).
+    try:
+        from ..models import SacafrancoAsistenciaHistorial
+        SacafrancoAsistenciaHistorial.objects.create(
+            sacafranco_fila=fila,
+            fecha_reporte=fecha,
+            usuario=request.user if request.user and request.user.is_authenticated else None,
+            estado=obj.estado,
+            estado_asistencia=obj.estado_asistencia,
+            reemplazo=obj.reemplazo,
+            descripcion=obj.descripcion,
+            row_color=obj.row_color,
+            hueca=bool(obj.hueca),
+            hueca_motivo=obj.hueca_motivo or '',
+        )
+    except Exception:
+        pass
+
     # Reflejar en el REPORTE DE GUARDIA (Faltos/Dobladas/Adicionales/Hueca).
     try:
         _sync_reporte_guardia_sacafranco(obj, fecha)
@@ -1922,6 +1940,46 @@ def historial_reporte_asistencia(request, asignacion_id):
             'creado_en': h.creado_en.isoformat() if h.creado_en else None,
         })
 
+    return JsonResponse(data, safe=False, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def historial_sacafranco_asistencia(request, sacafranco_fila_id):
+    """Historial de modificaciones de la asistencia de un sacafranco (por fila + fecha)."""
+    if not request.user.has_perm('CoreFisica.view_reporteasistencia'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    from ..models import SacafrancoAsistenciaHistorial
+
+    fecha = request.GET.get('fecha')
+    qs = SacafrancoAsistenciaHistorial.objects.select_related('usuario', 'reemplazo').filter(
+        sacafranco_fila_id=sacafranco_fila_id
+    )
+    if fecha:
+        try:
+            qs = qs.filter(fecha_reporte=datetime.date.fromisoformat(str(fecha)))
+        except ValueError:
+            pass
+
+    data = []
+    for h in qs:
+        usuario_nombre = ''
+        if h.usuario:
+            usuario_nombre = f"{h.usuario.first_name} {h.usuario.last_name}".strip() or h.usuario.get_username()
+        reemplazo_nombre = ''
+        if h.reemplazo:
+            reemplazo_nombre = f"{h.reemplazo.nombres} {h.reemplazo.apellidos}".strip()
+        data.append({
+            'fecha_reporte': h.fecha_reporte.isoformat() if h.fecha_reporte else None,
+            'usuario': usuario_nombre,
+            'codigo': '',
+            'estado_asistencia': _normalize_estado_asistencia(h.estado_asistencia),
+            'estado': h.estado or '',
+            'reemplazo': reemplazo_nombre,
+            'descripcion': h.descripcion or '',
+            'row_color': h.row_color or '',
+            'creado_en': h.creado_en.isoformat() if h.creado_en else None,
+        })
     return JsonResponse(data, safe=False, status=status.HTTP_200_OK)
 
 
