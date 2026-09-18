@@ -1400,6 +1400,9 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
         'DOBLA': 'DOBLADAS', 'DOBLADO': 'DOBLADAS',
         'ADICIONAL': 'ADICIONALES',
         'ADEL/TURNO': 'ADELANTOS',
+        # EVENTUAL: el reemplazo eventual cubre el falto -> DOBLADAS (proviene=EVENTUAL,
+        # se autocompleta con el tipo de la persona).
+        'EVENTUAL': 'DOBLADAS',
     }
     seccion_reemplazo = mapa.get(estado)
     if seccion_reemplazo and override.reemplazo:
@@ -1615,7 +1618,7 @@ def _sync_reporte_guardia_sacafranco(sa, fecha_reporte):
     if (sa.estado_asistencia or '').upper() == 'FALTO':
         filas.append(('FALTOS', persona, 'FALTO'))
     estado = (sa.estado or '').upper()
-    mapa = {'DOBLA': 'DOBLADAS', 'DOBLADO': 'DOBLADAS', 'ADICIONAL': 'ADICIONALES', 'ADEL/TURNO': 'ADELANTOS'}
+    mapa = {'DOBLA': 'DOBLADAS', 'DOBLADO': 'DOBLADAS', 'ADICIONAL': 'ADICIONALES', 'ADEL/TURNO': 'ADELANTOS', 'EVENTUAL': 'DOBLADAS'}
     seccion_reemplazo = mapa.get(estado)
     rem = getattr(sa, 'reemplazo', None)
     if seccion_reemplazo and rem:
