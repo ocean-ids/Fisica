@@ -1422,8 +1422,9 @@ class ReporteGuardia(models.Model):
     sacafranco_fila = models.ForeignKey('SacafrancoFila', on_delete=models.SET_NULL, null=True, blank=True, related_name='reporte_guardia')
     auto = models.BooleanField(default=False)
 
-    # PROVIENE = tipo de la persona (se autocompleta al elegir la persona)
-    proviene = models.CharField(max_length=40, blank=True, default='')
+    # PROVIENE = tipo de la persona (se autocompleta al elegir la persona), o para
+    # FR/TRABAJADO el origen "FT-<cliente>-<puesto>" (puede ser largo).
+    proviene = models.CharField(max_length=200, blank=True, default='')
 
     # Columnas que aparecen según la sección
     valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)   # Dobladas

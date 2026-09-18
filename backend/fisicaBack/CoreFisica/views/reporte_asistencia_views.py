@@ -1525,6 +1525,7 @@ def _sync_frtrabajado_dobladas(override, asignacion, fecha_reporte):
         proviene = '-'.join([x for x in ['FT', _cli, _pue] if x])
     else:
         proviene = 'FT'
+    proviene = proviene[:200]   # el campo admite 200; evita el error de longitud
 
     qs.delete()
     ReporteGuardia.objects.create(

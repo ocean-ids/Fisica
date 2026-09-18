@@ -174,12 +174,10 @@ export class ReporteAsistenciaEditDialogComponent {
       const asisCtrl = this.form.get('estado_asistencia');
       asisCtrl?.setValue(null, { emitEvent: false });
       asisCtrl?.disable({ emitEvent: false });
-      // Motivo "ADELANTO DE TURNO": el Estado se HABILITA y queda fijo en ADEL/TURNO
-      // (así en Reporte de Guardia sale la hueca + el adelanto, y NO como falta).
-      // Con cualquier otro motivo el Estado se deshabilita (la hueca no usa estado).
+      // El Estado se HABILITA en cualquier hueca CON motivo (todas las opciones), y queda
+      // en "Seleccione" hasta que el usuario escoja. Sin motivo elegido, se deshabilita.
       const motivoAct = (motivoCtrl?.value || '').toString().trim().toUpperCase();
-      if (motivoAct === 'HUECA POR ADELANTO DE TURNO') {
-        estadoCtrl?.setValue('ADEL/TURNO', { emitEvent: false });
+      if (motivoAct) {
         estadoCtrl?.enable({ emitEvent: false });
       } else {
         estadoCtrl?.setValue(null, { emitEvent: false });
@@ -497,17 +495,6 @@ export class ReporteAsistenciaEditDialogComponent {
     return false;
   }
 
-  // Hueca cuyo motivo es "ADELANTO DE TURNO": el Estado se habilita y queda fijo en ADEL/TURNO.
-  get esHuecaAdelanto(): boolean {
-    return this.esHuecaEstructural &&
-      (this.form?.get('hueca_motivo')?.value || '').toString().trim().toUpperCase() === 'HUECA POR ADELANTO DE TURNO';
-  }
-
-  // Opciones del select de Estado: en una hueca por adelanto solo se permite ADEL/TURNO.
-  get estadosParaSelect(): string[] {
-    return this.esHuecaAdelanto ? ['ADEL/TURNO'] : this.estadosDisponibles;
-  }
-
   // El botón Guardar se habilita solo cuando el formulario tiene lo mínimo:
   // - Primero hay que marcar la ASISTENCIA (ASISTE o FALTÓ).
   // - Si es FALTÓ (normal), además el estado (cómo se cubrió) y el reemplazo.
@@ -637,9 +624,9 @@ export class ReporteAsistenciaEditDialogComponent {
     // HUECA estructural: la fila sigue como "HUECA"; el REEMPLAZO cubre. Sin estado ni
     // asistencia, sin persona_cobertura. No toca Asignaciones.
     if (this.esHuecaEstructural) {
-      // Hueca por adelanto: conserva ADEL/TURNO (se refleja en Reporte de Guardia como
-      // adelanto, no como falta). Cualquier otra hueca no usa estado.
-      payload.estado = this.esHuecaAdelanto ? 'ADEL/TURNO' : null;
+      // Cualquier hueca conserva el Estado elegido (habilitado al elegir motivo); ese
+      // estado define la sección en Reporte de Guardia (ADELANTOS/DOBLADAS/etc.).
+      payload.estado = raw.estado || null;
       payload.estado_asistencia = null;
       payload.persona_cobertura_id = null;
       payload.hueca = true;

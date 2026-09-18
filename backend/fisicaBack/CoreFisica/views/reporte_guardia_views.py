@@ -210,7 +210,7 @@ def regenerar_reporte_guardia(request):
 
     from .reporte_asistencia_views import (
         _sync_reporte_guardia, _sync_reporte_guardia_sacafranco,
-        _sync_hueca_reporte_guardia_sacafranco,
+        _sync_hueca_reporte_guardia_sacafranco, _sync_frtrabajado_dobladas,
     )
     from ..models import ReporteAsistencia, SacafrancoAsistencia
 
@@ -222,6 +222,12 @@ def regenerar_reporte_guardia(request):
             continue
         try:
             _sync_reporte_guardia(ov, ov.asignacion, fecha_obj)
+        except Exception:
+            pass
+        # FR/TRABAJADO -> DOBLADAS (fila manual). Se reconstruye aquí para que un registro
+        # que no se guardó bien también aparezca al regenerar.
+        try:
+            _sync_frtrabajado_dobladas(ov, ov.asignacion, fecha_obj)
         except Exception:
             pass
 
