@@ -489,12 +489,10 @@ export class ReporteAsistenciaEditDialogComponent {
     if (r?.asignacion_id) {
       return !!r?.es_hueca || esNombreHueca;
     }
-    // Sacafranco: TODA fila de sacafranco es una "hueca por sacafranco" (cubre el franco
-    // del titular), tenga persona asignada o salga como "HUECA". Se trata igual que la
-    // hueca de fijos: check "Hueca" marcado por defecto, asistencia/estado deshabilitados
-    // y, al guardar, exige motivo + reemplazo.
+    // Sacafranco: solo es hueca cuando la fila NO tiene persona (sale como "HUECA").
+    // Un sacafranco con persona asignada NO es hueca: se marca su asistencia normal.
     if (r?.sacafranco_fila_id) {
-      return true;
+      return esNombreHueca;
     }
     return false;
   }
