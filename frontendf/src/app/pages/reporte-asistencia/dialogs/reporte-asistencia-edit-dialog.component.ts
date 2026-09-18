@@ -189,8 +189,9 @@ export class ReporteAsistenciaEditDialogComponent {
       if (!huecaCtrl?.value) { huecaCtrl?.setValue(true, { emitEvent: false }); }
       huecaCtrl?.enable({ emitEvent: false });
       motivoCtrl?.enable({ emitEvent: false });
-      this.form.get('reemplazo_id')?.enable({ emitEvent: false });
-      this.reemplazoCtrl.enable({ emitEvent: false });
+      // Orden: Motivo -> Estado -> Reemplazo. El Reemplazo se habilita solo cuando ya
+      // hay un Estado elegido (igual que en las filas normales).
+      this.aplicarBloqueoReemplazo(limpiar);
       return;
     }
 
