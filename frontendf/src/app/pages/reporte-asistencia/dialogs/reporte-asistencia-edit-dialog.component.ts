@@ -460,11 +460,20 @@ export class ReporteAsistenciaEditDialogComponent {
   // no toca Asignaciones, asi que el dia siguiente vuelve a salir HUECA.
   get esHuecaEstructural(): boolean {
     const r: any = this.data?.row;
-    if (!r?.asignacion_id) { return false; }
-    // es_hueca (backend: puesto sin persona) o el nombre "HUECA". Se usa es_hueca porque una
-    // hueca ya cubierta muestra el nombre de la persona, no "HUECA".
-    return !!r?.es_hueca
-      || (r?.nombre_apellidos || '').toString().trim().toUpperCase() === 'HUECA';
+    const esNombreHueca = (r?.nombre_apellidos || '').toString().trim().toUpperCase() === 'HUECA';
+    // Fijo: es_hueca (backend: puesto sin persona) o el nombre "HUECA". Se usa es_hueca
+    // porque una hueca ya cubierta muestra el nombre de la persona, no "HUECA".
+    if (r?.asignacion_id) {
+      return !!r?.es_hueca || esNombreHueca;
+    }
+    // Sacafranco: TODA fila de sacafranco es una "hueca por sacafranco" (cubre el franco
+    // del titular), tenga persona asignada o salga como "HUECA". Se trata igual que la
+    // hueca de fijos: check "Hueca" marcado por defecto, asistencia/estado deshabilitados
+    // y, al guardar, exige motivo + reemplazo.
+    if (r?.sacafranco_fila_id) {
+      return true;
+    }
+    return false;
   }
 
   // El botón Guardar se habilita solo cuando el formulario tiene lo mínimo:
