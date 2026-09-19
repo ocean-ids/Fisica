@@ -435,10 +435,27 @@ class ReporteGuardiaSerializer(serializers.ModelSerializer):
 
 
 class ReporteVacacionesSerializer(serializers.ModelSerializer):
+    # Nombre para MOSTRAR con apellidos primero (viene de la persona referenciada; si no
+    # hay ref, cae al texto guardado). No afecta lo que se guarda.
+    persona_sale_display = serializers.SerializerMethodField()
+    sacavacaciones_display = serializers.SerializerMethodField()
+
     class Meta:
         model = ReporteVacaciones
         fields = '__all__'
         read_only_fields = ('created_at', 'updated_at')
+
+    def get_persona_sale_display(self, obj):
+        p = getattr(obj, 'persona_sale_ref', None)
+        if p:
+            return f"{p.apellidos} {p.nombres}".strip()
+        return obj.persona_sale or ''
+
+    def get_sacavacaciones_display(self, obj):
+        p = getattr(obj, 'sacavacaciones_ref', None)
+        if p:
+            return f"{p.apellidos} {p.nombres}".strip()
+        return obj.sacavacaciones or ''
         # En filas auto, proviene se autocompleta en el save() del modelo desde
         # persona_ref.tipo. En filas manuales (APOYO) se puede escribir a mano.
 

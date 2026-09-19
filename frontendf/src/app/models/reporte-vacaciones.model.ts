@@ -5,9 +5,11 @@ export interface ReporteVacaciones {
   instalacion?: string;
   puesto?: string;
   persona_sale?: string;
+  persona_sale_display?: string;   // apellidos + nombres (solo lectura, para la lista)
   persona_sale_ref?: number | null;
   periodo?: string;
   sacavacaciones?: string;
+  sacavacaciones_display?: string; // apellidos + nombres (solo lectura, para la lista)
   sacavacaciones_ref?: number | null;
   fecha_desde?: string | null;
   fecha_hasta?: string | null;

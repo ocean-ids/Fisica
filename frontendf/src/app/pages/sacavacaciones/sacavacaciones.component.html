@@ -26,7 +26,6 @@
         <th>Desde</th>
         <th>Hasta</th>
         <th>Días</th>
-        <th>Pend. Desde</th>
         <th>Pend. Hasta</th>
         <th>Días pend.</th>
         <th style="width:100px">Acción</th>
@@ -36,13 +35,12 @@
       <tr *ngFor="let f of filasFiltradas; let i = index">
         <td>{{ i + 1 }}</td>
         <td>{{ f.cliente }}</td>
-        <td>{{ f.persona_sale }}</td>
+        <td>{{ f.persona_sale_display || f.persona_sale }}</td>
         <td>{{ f.periodo }}</td>
-        <td>{{ f.sacavacaciones || 'N/A' }}</td>
+        <td>{{ f.sacavacaciones_display || f.sacavacaciones || 'N/A' }}</td>
         <td>{{ fechaDMA(f.fecha_desde) }}</td>
         <td>{{ fechaDMA(f.fecha_hasta) }}</td>
         <td>{{ f.dias }}</td>
-        <td>{{ fechaDMA(f.fecha_desde_pendiente) }}</td>
         <td>{{ fechaDMA(f.fecha_hasta_pendiente) }}</td>
         <td>{{ f.dias_pendientes || 0 }}</td>
         <td>
