@@ -1,7 +1,47 @@
 <h2 mat-dialog-title>{{ esEdicion ? 'Editar vacaciones' : 'Nuevo registro de vacaciones' }}</h2>
 
 <mat-dialog-content class="vac-form">
-  <!-- Fila 1: Cliente | Instalación (autocargados) -->
+  <!-- Fila 1: Sale de vacaciones | Sacavacaciones (se eligen primero; autocargan el puesto) -->
+  <div class="vac-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Sale de vacaciones</mat-label>
+      <input type="text" matInput required [formControl]="saleCtrl" [matAutocomplete]="autoSale"
+             #trigSale="matAutocompleteTrigger" (focus)="trigSale.openPanel()"
+             placeholder="Toca para ver la lista o escribe para filtrar…">
+      <button matSuffix mat-icon-button type="button" *ngIf="saleCtrl.value"
+              (click)="limpiarSale($event)" aria-label="Limpiar">
+        <span class="vac-x">×</span>
+      </button>
+      <mat-autocomplete #autoSale="matAutocomplete" [displayWith]="displayPersona"
+                        (optionSelected)="onSaleSel($event.option.value)">
+        <mat-option *ngFor="let p of saleFiltradas$ | async" [value]="p">
+          {{ p.apellidos }} {{ p.nombres }} <small class="text-muted">— {{ p.cedula }}</small>
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Sacavacaciones (quién cubre)</mat-label>
+      <input type="text" matInput required [formControl]="cubreCtrl" [matAutocomplete]="autoCubre"
+             #trigCubre="matAutocompleteTrigger" (focus)="trigCubre.openPanel()"
+             placeholder="Toca para ver la lista o escribe para filtrar…">
+      <button matSuffix mat-icon-button type="button" *ngIf="cubreCtrl.value"
+              (click)="limpiarCubre($event)" aria-label="Limpiar">
+        <span class="vac-x">×</span>
+      </button>
+      <mat-autocomplete #autoCubre="matAutocomplete" [displayWith]="displayPersona"
+                        (optionSelected)="onCubreSel($event.option.value)">
+        <mat-option *ngFor="let p of cubreFiltradas$ | async" [value]="p">
+          {{ p.apellidos }} {{ p.nombres }} <small class="text-muted">— {{ p.cedula }}</small>
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+  </div>
+
+  <!-- Autocargado desde la asignación de la persona que sale de vacaciones -->
+  <div *ngIf="cargandoAsig" class="text-muted" style="font-size:12px; margin:-4px 0 6px;">Cargando puesto…</div>
+  <div *ngIf="asigError" class="text-danger" style="font-size:12px; margin:-4px 0 6px;">{{ asigError }}</div>
+
+  <!-- Fila 2: Cliente | Instalación (autocargados) -->
   <div class="vac-row">
     <mat-form-field appearance="outline">
       <mat-label>Cliente</mat-label>
@@ -15,7 +55,7 @@
     </mat-form-field>
   </div>
 
-  <!-- Fila 2: Puesto | Período -->
+  <!-- Fila 3: Puesto | Período -->
   <div class="vac-row">
     <mat-form-field appearance="outline">
       <mat-label>Puesto</mat-label>
@@ -35,46 +75,6 @@
     <mat-label>Período (escribir)</mat-label>
     <input matInput [(ngModel)]="periodoManual" placeholder="ej. 2022 - 2023">
   </mat-form-field>
-
-  <!-- Fila 3: Sale de vacaciones | Sacavacaciones -->
-  <div class="vac-row">
-    <mat-form-field appearance="outline">
-      <mat-label>Sale de vacaciones</mat-label>
-      <input type="text" matInput required [formControl]="saleCtrl" [matAutocomplete]="autoSale"
-             #trigSale="matAutocompleteTrigger" (focus)="trigSale.openPanel()"
-             placeholder="Toca para ver la lista o escribe para filtrar…">
-      <button matSuffix mat-icon-button type="button" *ngIf="saleCtrl.value"
-              (click)="limpiarSale($event)" aria-label="Limpiar">
-        <span class="vac-x">×</span>
-      </button>
-      <mat-autocomplete #autoSale="matAutocomplete" [displayWith]="displayPersona"
-                        (optionSelected)="onSaleSel($event.option.value)">
-        <mat-option *ngFor="let p of saleFiltradas$ | async" [value]="p">
-          {{ p.nombres }} {{ p.apellidos }} <small class="text-muted">— {{ p.cedula }}</small>
-        </mat-option>
-      </mat-autocomplete>
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Sacavacaciones (quién cubre)</mat-label>
-      <input type="text" matInput required [formControl]="cubreCtrl" [matAutocomplete]="autoCubre"
-             #trigCubre="matAutocompleteTrigger" (focus)="trigCubre.openPanel()"
-             placeholder="Toca para ver la lista o escribe para filtrar…">
-      <button matSuffix mat-icon-button type="button" *ngIf="cubreCtrl.value"
-              (click)="limpiarCubre($event)" aria-label="Limpiar">
-        <span class="vac-x">×</span>
-      </button>
-      <mat-autocomplete #autoCubre="matAutocomplete" [displayWith]="displayPersona"
-                        (optionSelected)="onCubreSel($event.option.value)">
-        <mat-option *ngFor="let p of cubreFiltradas$ | async" [value]="p">
-          {{ p.nombres }} {{ p.apellidos }} <small class="text-muted">— {{ p.cedula }}</small>
-        </mat-option>
-      </mat-autocomplete>
-    </mat-form-field>
-  </div>
-
-  <!-- Autocargado desde la asignación de la persona que sale de vacaciones -->
-  <div *ngIf="cargandoAsig" class="text-muted" style="font-size:12px; margin:-4px 0 6px;">Cargando puesto…</div>
-  <div *ngIf="asigError" class="text-danger" style="font-size:12px; margin:-4px 0 6px;">{{ asigError }}</div>
 
   <!-- Fila 4: Días (vacaciones) | Días pendientes (días dados) -->
   <div class="vac-row">

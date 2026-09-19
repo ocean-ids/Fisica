@@ -177,9 +177,12 @@ export class SacavacacionesDialogComponent implements OnInit {
       error: () => this.asignados$.next(null),   // si falla, no filtra (muestra todos)
     });
 
-    // "Sale de vacaciones": solo fijos asignados (hasta que carguen, se muestran todos).
+    // "Sale de vacaciones": fijos con asignación activa + sacafranco (que no tienen
+    // asignación fija: al salir de vacaciones el suplente ocupa sus turnos).
     const salesSource$ = combineLatest([this.personas$, this.asignados$]).pipe(
-      map(([ps, set]) => (set == null ? ps : ps.filter(p => set.has(Number(p.id))))),
+      map(([ps, set]) => (set == null ? ps : ps.filter(p =>
+        set.has(Number(p.id)) || String(p.tipo || '').toUpperCase() === 'SACAFRANCO'
+      ))),
     );
     this.saleFiltradas$ = this.filtro(this.saleCtrl, salesSource$);
     // "Quién cubre": salen TODOS, pero los SACAVACACIONES primero.
@@ -226,7 +229,7 @@ export class SacavacacionesDialogComponent implements OnInit {
   displayPersona = (p: any): string => {
     if (!p) { return ''; }
     if (typeof p === 'string') { return p; }
-    return `${p.nombres || ''} ${p.apellidos || ''}`.trim();
+    return `${p.apellidos || ''} ${p.nombres || ''}`.trim();
   };
 
   // Limpiar (X) la persona que sale: borra selección y lo autocargado (puesto).
@@ -259,6 +262,14 @@ export class SacavacacionesDialogComponent implements OnInit {
     this.puestoNombre = '';
     this.asigError = '';
     if (!p?.id) { return; }
+    // SACAFRANCO: no tiene puesto fijo (flota cubriendo francos). Al salir de vacaciones,
+    // el suplente ocupa SUS turnos. Cliente = OCEANSECURITY; instalación/puesto vacíos.
+    if (String(p.tipo || '').toUpperCase() === 'SACAFRANCO') {
+      this.clienteNombre = 'OCEANSECURITY';
+      this.instalacionNombre = '';
+      this.puestoNombre = '';
+      return;
+    }
     this.cargandoAsig = true;
     this.vacSrv.asignacionDePersona(p.id).subscribe({
       next: (r) => {
@@ -340,7 +351,8 @@ export class SacavacacionesDialogComponent implements OnInit {
     // Obligatorios: cliente/instalación/puesto (vienen de la asignación), persona que
     // sale, sacavacaciones (quién cubre) y el rango de vacaciones.
     // NO obligatorios: período y días dados.
-    const tienePuesto = !!this.asignacionId || (this.esEdicion && !!this.clienteNombre);
+    // Fijo: tiene asignación. Sacafranco: no tiene asignación pero sí cliente (OCEANSECURITY).
+    const tienePuesto = !!this.asignacionId || !!this.clienteNombre;
     const tieneSale = !!this.saleSel || (this.esEdicion && !!this.saleCtrl.value);
     const cv = this.cubreCtrl.value;
     const tieneCubre = !!(typeof cv === 'string' ? cv.trim() : cv) || !!this.editCubreId;

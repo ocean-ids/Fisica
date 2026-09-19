@@ -939,6 +939,22 @@ def _build_reporte_asistencia_data(
     except Exception:
         sacavac_map = {}
 
+    # SACAVACACIONES de un SACAFRANCO: el sacafranco no tiene asignación (puesto fijo);
+    # va por su fila de sacafranco. Mapa: persona_sale (sacafranco) -> suplente, para
+    # reemplazarlo en la sección de sacafranco del reporte durante el rango.
+    sacavac_saca_map = {}
+    try:
+        _sv_saca = (ReporteVacaciones.objects
+                    .select_related('sacavacaciones_ref')
+                    .filter(sacavacaciones_ref__isnull=False,
+                            persona_sale_ref__isnull=False,
+                            asignacion__isnull=True)
+                    .filter(_in_main | _in_pend))
+        for _sv in _sv_saca:
+            sacavac_saca_map[_sv.persona_sale_ref_id] = _sv.sacavacaciones_ref
+    except Exception:
+        sacavac_saca_map = {}
+
     for asig in asig_list:
         # Persona vigente en la fecha del reporte (historial por período). Si la asignación
         # no tiene períodos (dato previo), se usa Asignacion.persona (la actual).
@@ -1156,6 +1172,12 @@ def _build_reporte_asistencia_data(
                 # Sin persona -> la fila de sacafranco sale como HUECA (puesto sin cubrir),
                 # igual que una asignación vacante. Antes se saltaba y no aparecía.
                 persona = getattr(fila, 'persona', None)
+                # SACAVACACIONES de un sacafranco: si el titular del sacafranco está de
+                # vacaciones ese día, el suplente ocupa sus turnos (solo en el reporte).
+                if persona is not None and sacavac_saca_map:
+                    _sup_saca = sacavac_saca_map.get(persona.id)
+                    if _sup_saca is not None:
+                        persona = _sup_saca
                 persona_nombre = f"{persona.apellidos} {persona.nombres}".strip() if persona else ''
                 nominativo = token_val[1:].strip()
                 if nominativo in ('', 'B'):

@@ -54,7 +54,8 @@
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
-  font-size: 14px;
+  font-size: 17px;
+  font-weight: 600;
   padding: 4px 2px 2px;
 }
 .vac-resumen strong {
