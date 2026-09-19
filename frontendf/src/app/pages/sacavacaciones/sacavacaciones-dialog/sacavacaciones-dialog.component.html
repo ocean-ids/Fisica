@@ -50,7 +50,8 @@
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Instalación</mat-label>
-      <input matInput required [ngModel]="instalacionNombre" [ngModelOptions]="{standalone:true}" readonly
+      <!-- No obligatorio en sacafranco (no tiene instalación fija). -->
+      <input matInput [required]="!!asignacionId" [ngModel]="instalacionNombre" [ngModelOptions]="{standalone:true}" readonly
              placeholder="Se autocarga">
     </mat-form-field>
   </div>
@@ -59,7 +60,8 @@
   <div class="vac-row">
     <mat-form-field appearance="outline">
       <mat-label>Puesto</mat-label>
-      <input matInput required [ngModel]="puestoNombre" [ngModelOptions]="{standalone:true}" readonly
+      <!-- No obligatorio en sacafranco (no tiene puesto fijo). -->
+      <input matInput [required]="!!asignacionId" [ngModel]="puestoNombre" [ngModelOptions]="{standalone:true}" readonly
              placeholder="Se autocarga">
     </mat-form-field>
     <mat-form-field appearance="outline">
