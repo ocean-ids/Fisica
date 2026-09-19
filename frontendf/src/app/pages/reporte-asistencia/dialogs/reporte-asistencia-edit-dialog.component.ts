@@ -167,13 +167,13 @@ export class ReporteAsistenciaEditDialogComponent {
     const motivoCtrl = this.form.get('hueca_motivo');
 
     // HUECA estructural: la fila sigue siendo "HUECA" (nombre solo lectura). Aquí:
-    // - Asistencia y Estado: DESHABILITADOS (no se usan/necesitan en hueca).
+    // - Asistencia: OPCIONAL y habilitada (se puede marcar ASISTE/FALTÓ para que se
+    //   refleje en la reportería; no obliga a nada).
     // - Check "Hueca": marcado por defecto.
     // - Motivo y Reemplazo: HABILITADOS y OBLIGATORIOS (sin reemplazo no deja guardar).
     if (this.esHuecaEstructural) {
       const asisCtrl = this.form.get('estado_asistencia');
-      asisCtrl?.setValue(null, { emitEvent: false });
-      asisCtrl?.disable({ emitEvent: false });
+      asisCtrl?.enable({ emitEvent: false });
       // El Estado se HABILITA en cualquier hueca CON motivo (todas las opciones), y queda
       // en "Seleccione" hasta que el usuario escoja. Sin motivo elegido, se deshabilita.
       const motivoAct = (motivoCtrl?.value || '').toString().trim().toUpperCase();
@@ -494,6 +494,11 @@ export class ReporteAsistenciaEditDialogComponent {
       return esNombreHueca;
     }
     return false;
+  }
+
+  // Opciones de Asistencia: en una hueca solo se permite FALTÓ (no ASISTE).
+  get asistenciasDisponibles(): Array<'ASISTIO' | 'FALTO'> {
+    return this.esHuecaEstructural ? ['FALTO'] : this.estadosAsistenciaDisponibles;
   }
 
   // El botón Guardar se habilita solo cuando el formulario tiene lo mínimo:

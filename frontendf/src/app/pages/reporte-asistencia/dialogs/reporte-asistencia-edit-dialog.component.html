@@ -35,7 +35,7 @@
         <mat-label>Asistencia</mat-label>
         <mat-select formControlName="estado_asistencia" [disabled]="guardando">
           <mat-option [value]="null">Seleccione</mat-option>
-          <mat-option *ngFor="let estado of estadosAsistenciaDisponibles" [value]="estado">
+          <mat-option *ngFor="let estado of asistenciasDisponibles" [value]="estado">
             {{ estado === 'ASISTIO' ? 'ASISTE' : 'FALTO' }}
           </mat-option>
         </mat-select>
