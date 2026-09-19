@@ -195,11 +195,16 @@ export class ReporteAsistenciaEditDialogComponent {
       return;
     }
 
-    // Check "Hueca": NO se usa en filas normales (solo en huecas estructurales).
-    // Siempre deshabilitado, tanto en ASISTE como en FALTÓ.
-    if (limpiar) { huecaCtrl?.setValue(false, { emitEvent: false }); }
-    huecaCtrl?.disable({ emitEvent: false });
-    const esHueca = false;
+    // Check "Hueca" en filas normales: OPCIONAL, disponible solo cuando la asistencia es
+    // FALTÓ (el puesto pudo quedar hueco ese día). Desmarcado por defecto; el motivo es
+    // opcional. Si no es FALTÓ, no aplica: se desmarca y deshabilita.
+    if (esFalto) {
+      huecaCtrl?.enable({ emitEvent: false });
+    } else {
+      huecaCtrl?.setValue(false, { emitEvent: false });
+      huecaCtrl?.disable({ emitEvent: false });
+    }
+    const esHueca = !!huecaCtrl?.value;
 
     // Estado: habilitado si es FALTO (NO se bloquea por hueca; se puede usar igual).
     if (esFalto) {
@@ -527,8 +532,7 @@ export class ReporteAsistenciaEditDialogComponent {
     if (asistencia === 'FALTO') {
       // FALTÓ normal: exige estado + reemplazo (salvo hueca pura o sacafranco).
       if (this.coberturaFaltoIncompleta) { return false; }
-      // Si marcó hueca, exige motivo.
-      if (raw.hueca && !(raw.hueca_motivo || '').toString().trim()) { return false; }
+      // En fila normal, marcar "Hueca" y su motivo son OPCIONALES (no bloquean el guardado).
     }
     return true;
   }
@@ -607,15 +611,8 @@ export class ReporteAsistenciaEditDialogComponent {
         });
         return;
       }
-    } else if (raw.hueca && !(raw.hueca_motivo || '').toString().trim()) {
-      // Fila normal marcada como hueca: exige motivo.
-      Swal.fire({
-        icon: 'warning',
-        title: 'Falta el motivo de la hueca',
-        text: 'Marcaste "Hueca", elige el motivo para que se refleje en Reporte de Guardia.',
-      });
-      return;
     }
+    // En fila normal, marcar "Hueca" y su motivo son OPCIONALES: no se exige nada.
 
     const payload: any = {
       estado: raw.estado || null,
