@@ -1750,10 +1750,11 @@ def insertar_reporte_asistencia(request, asignacion_id):
     if reemplazo_result != 'no-enviado':
         override.reemplazo = reemplazo_result
 
-    # HUECA (puesto sin persona fija): no puede marcarse ASISTE "sola". Solo tiene sentido
-    # si hay un REEMPLAZO que la cubre. Si llega ASISTE sin reemplazo (p. ej. el check
-    # rápido de la tabla), se ignora la asistencia. Vale aunque el frontend sea viejo.
-    if asignacion.persona_id is None and not override.reemplazo:
+    # HUECA (puesto sin persona fija): no puede marcarse ASISTE "sola" (sin reemplazo que
+    # la cubra). Pero SÍ puede marcarse FALTÓ (el puesto quedó sin cubrir ese día). Solo se
+    # ignora un ASISTE sin reemplazo (p. ej. el check rápido de la tabla).
+    if (asignacion.persona_id is None and not override.reemplazo
+            and (override.estado_asistencia or '').strip().upper() != 'FALTO'):
         override.estado_asistencia = None
 
     # Persona que cubre una HUECA ese día (se muestra en "Apellidos y Nombres" solo en el
