@@ -18,8 +18,10 @@ from ..serializers import ReporteVacacionesSerializer
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def listar_reporte_vacaciones(request):
-    """Lista los registros del reporte de vacaciones (orden: más recientes primero)."""
-    qs = ReporteVacaciones.objects.select_related('persona_sale_ref', 'sacavacaciones_ref').all()
+    """Lista los registros del reporte de vacaciones (el creado más reciente primero)."""
+    qs = (ReporteVacaciones.objects
+          .select_related('persona_sale_ref', 'sacavacaciones_ref')
+          .order_by('-created_at', '-id'))
     return Response(ReporteVacacionesSerializer(qs, many=True).data)
 
 
