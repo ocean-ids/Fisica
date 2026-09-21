@@ -14,10 +14,12 @@ import { PersonaService } from '../../../services/persona.service';
 import { ReporteVacacionesService } from '../../../services/reporte-vacaciones.service';
 import { Persona } from '../../../models/persona.model';
 import { ReporteVacaciones } from '../../../models/reporte-vacaciones.model';
+import Swal from 'sweetalert2';
 
 interface DialogData {
   row?: ReporteVacaciones;   // presente = edición
   anioDefecto?: number | null;
+  existentes?: ReporteVacaciones[];   // otros registros BACKUP (para avisar duplicados)
 }
 
 /**
@@ -71,6 +73,7 @@ export class EventualesDialogComponent implements OnInit {
   anio: number | null = null;
   private editSaleId: number | null = null;
   private editCubreId: number | null = null;
+  private existentes: ReporteVacaciones[] = [];
 
   constructor(
     private ref: MatDialogRef<EventualesDialogComponent>,
@@ -80,6 +83,7 @@ export class EventualesDialogComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.existentes = this.data?.existentes || [];
     const row = this.data?.row;
     this.esEdicion = !!row?.id;
     if (this.esEdicion) {
@@ -106,6 +110,7 @@ export class EventualesDialogComponent implements OnInit {
       this.fechaDesde = v.start ?? null;
       this.fechaHasta = v.end ?? null;
       this.calcularDias();
+      this.checkEventualOcupado();   // al fijar el rango, revisa si el eventual se solapa
     });
 
     this.personaSrv.getPersonas({}).subscribe((ps) => {
@@ -208,7 +213,39 @@ export class EventualesDialogComponent implements OnInit {
       complete: () => { this.cargandoAsig = false; },
     });
   }
-  onCubreSel(p: Persona): void { this.cubreSel = p; }
+  onCubreSel(p: Persona): void {
+    this.cubreSel = p;
+    this.checkEventualOcupado();
+  }
+
+  // Avisa (SweetAlert2) si el eventual elegido ya está cubriendo otro puesto en fechas
+  // que se solapan con el rango actual (evita doble asignación del mismo eventual).
+  private checkEventualOcupado(): void {
+    const evId = this.cubreSel?.id ?? this.editCubreId;
+    if (!evId || !this.fechaDesde || !this.fechaHasta) { return; }
+    const conflicto = this.existentes.find(f =>
+      f.id !== this.data?.row?.id &&
+      f.sacavacaciones_ref === evId &&
+      this._solapa(this._fromISO(f.fecha_desde), this._fromISO(f.fecha_hasta), this.fechaDesde, this.fechaHasta),
+    );
+    if (conflicto) {
+      const donde = [conflicto.cliente, conflicto.instalacion, conflicto.puesto].filter(Boolean).join(' · ') || 'otro puesto';
+      const nombre = (this.cubreSel ? `${this.cubreSel.apellidos} ${this.cubreSel.nombres}` : 'El eventual').trim();
+      Swal.fire({
+        icon: 'warning',
+        title: 'Eventual ya asignado',
+        html: `<b>${nombre}</b> ya está cubriendo en:<br><b>${donde}</b><br>` +
+              `del ${this.fmt(this._fromISO(conflicto.fecha_desde))} al ${this.fmt(this._fromISO(conflicto.fecha_hasta))}.` +
+              `<br><br>Elige otro eventual o ajusta las fechas.`,
+      });
+    }
+  }
+
+  // ¿Los rangos [a1,a2] y [b1,b2] se solapan?
+  private _solapa(a1: Date | null, a2: Date | null, b1: Date | null, b2: Date | null): boolean {
+    if (!a1 || !a2 || !b1 || !b2) { return false; }
+    return a1.getTime() <= b2.getTime() && b1.getTime() <= a2.getTime();
+  }
 
   get startAt(): Date {
     if (this.fechaDesde) { return this.fechaDesde; }
@@ -217,6 +254,13 @@ export class EventualesDialogComponent implements OnInit {
       return new Date(this.anio, hoy.getMonth(), 1);
     }
     return hoy;
+  }
+
+  fmt(d: Date | null): string {
+    if (!d) { return '—'; }
+    const day = String(d.getDate()).padStart(2, '0');
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}/${m}/${d.getFullYear()}`;
   }
 
   private _diasInclusive(d1: Date | null, d2: Date | null): number {

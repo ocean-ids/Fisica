@@ -71,7 +71,9 @@ export class EventualesComponent implements OnInit {
     const ref = this.dialog.open(EventualesDialogComponent, {
       width: '710px',
       maxWidth: '95vw',
-      data: { row: row || undefined, anioDefecto: this.anioFiltro || null },
+      // Se pasan los registros existentes para avisar si el eventual ya cubre otro puesto
+      // en fechas que se solapan.
+      data: { row: row || undefined, anioDefecto: this.anioFiltro || null, existentes: this.filas },
     });
     ref.afterClosed().subscribe((res) => {
       if (!res) { return; }

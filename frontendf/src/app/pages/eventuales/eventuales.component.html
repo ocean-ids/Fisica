@@ -17,6 +17,8 @@
       <tr>
         <th style="width:40px">Nº</th>
         <th>Cliente</th>
+        <th>Instalación</th>
+        <th>Puesto</th>
         <th>Fijos</th>
         <th>Eventual</th>
         <th>Desde</th>
@@ -29,6 +31,8 @@
       <tr *ngFor="let f of filasFiltradas; let i = index">
         <td>{{ i + 1 }}</td>
         <td>{{ f.cliente }}</td>
+        <td>{{ f.instalacion || '—' }}</td>
+        <td>{{ f.puesto || '—' }}</td>
         <td>{{ f.persona_sale_display || f.persona_sale }}</td>
         <td>{{ f.sacavacaciones_display || f.sacavacaciones || 'N/A' }}</td>
         <td>{{ fechaDMA(f.fecha_desde) }}</td>
@@ -46,7 +50,7 @@
         </td>
       </tr>
       <tr *ngIf="!filasFiltradas.length">
-        <td colspan="8" class="text-center text-muted">Sin registros de eventuales.</td>
+        <td colspan="10" class="text-center text-muted">Sin registros de eventuales.</td>
       </tr>
     </tbody>
   </table>
