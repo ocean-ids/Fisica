@@ -1,0 +1,91 @@
+<h2 mat-dialog-title>{{ esEdicion ? 'Editar eventual (backup)' : 'Nuevo registro de eventual (backup)' }}</h2>
+
+<mat-dialog-content class="vac-form">
+  <!-- Fila 1: Fijos (quien sale) | Eventual (quien cubre) -->
+  <div class="vac-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Fijos</mat-label>
+      <input type="text" matInput required [formControl]="saleCtrl" [matAutocomplete]="autoSale"
+             #trigSale="matAutocompleteTrigger" (focus)="trigSale.openPanel()"
+             placeholder="Toca para ver la lista o escribe para filtrar…">
+      <button matSuffix mat-icon-button type="button" *ngIf="saleCtrl.value"
+              (click)="limpiarSale($event)" aria-label="Limpiar">
+        <span class="vac-x">×</span>
+      </button>
+      <mat-autocomplete #autoSale="matAutocomplete" [displayWith]="displayPersona"
+                        (optionSelected)="onSaleSel($event.option.value)">
+        <mat-option *ngFor="let p of saleFiltradas$ | async" [value]="p">
+          {{ p.apellidos }} {{ p.nombres }} <small class="text-muted">— {{ p.cedula }} · {{ p.tipo }}</small>
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Eventual (quién cubre)</mat-label>
+      <input type="text" matInput required [formControl]="cubreCtrl" [matAutocomplete]="autoCubre"
+             #trigCubre="matAutocompleteTrigger" (focus)="trigCubre.openPanel()"
+             placeholder="Toca para ver la lista o escribe para filtrar…">
+      <button matSuffix mat-icon-button type="button" *ngIf="cubreCtrl.value"
+              (click)="limpiarCubre($event)" aria-label="Limpiar">
+        <span class="vac-x">×</span>
+      </button>
+      <mat-autocomplete #autoCubre="matAutocomplete" [displayWith]="displayPersona"
+                        (optionSelected)="onCubreSel($event.option.value)">
+        <mat-option *ngFor="let p of cubreFiltradas$ | async" [value]="p">
+          {{ p.apellidos }} {{ p.nombres }} <small class="text-muted">— {{ p.cedula }}</small>
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+  </div>
+
+  <!-- Autocargado desde la asignación del fijo que sale -->
+  <div *ngIf="cargandoAsig" class="text-muted" style="font-size:12px; margin:-4px 0 6px;">Cargando puesto…</div>
+  <div *ngIf="asigError" class="text-danger" style="font-size:12px; margin:-4px 0 6px;">{{ asigError }}</div>
+
+  <!-- Fila 2: Cliente | Instalación (autocargados) -->
+  <div class="vac-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Cliente</mat-label>
+      <input matInput [ngModel]="clienteNombre" [ngModelOptions]="{standalone:true}" readonly
+             placeholder="Se autocarga al elegir el fijo">
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Instalación</mat-label>
+      <input matInput [ngModel]="instalacionNombre" [ngModelOptions]="{standalone:true}" readonly
+             placeholder="Se autocarga">
+    </mat-form-field>
+  </div>
+
+  <!-- Fila 3: Puesto -->
+  <div class="vac-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Puesto</mat-label>
+      <input matInput [ngModel]="puestoNombre" [ngModelOptions]="{standalone:true}" readonly
+             placeholder="Se autocarga">
+    </mat-form-field>
+    <div></div>
+  </div>
+
+  <!-- Fila 4: Backup (Desde – Hasta) -->
+  <div class="vac-row">
+    <div class="vac-col">
+      <mat-form-field appearance="outline">
+        <mat-label>Backup (Desde – Hasta)</mat-label>
+        <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker" required>
+          <input matStartDate formControlName="start" placeholder="Desde" required>
+          <input matEndDate formControlName="end" placeholder="Hasta" required>
+        </mat-date-range-input>
+        <mat-datepicker-toggle matIconSuffix [for]="rangoPicker"></mat-datepicker-toggle>
+        <mat-date-range-picker #rangoPicker [startAt]="startAt"></mat-date-range-picker>
+      </mat-form-field>
+      <div class="vac-resumen">
+        <span><strong>Días:</strong> {{ dias || 0 }}</span>
+      </div>
+    </div>
+    <div class="vac-col"></div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="guardar()" [disabled]="!valido">Guardar</button>
+</mat-dialog-actions>

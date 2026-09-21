@@ -1,5 +1,6 @@
 export interface ReporteVacaciones {
   id?: number;
+  tipo?: 'VACACIONES' | 'BACKUP';   // VACACIONES = sacavacaciones; BACKUP = eventuales
   cliente?: string;
   asignacion?: number | null;
   instalacion?: string;

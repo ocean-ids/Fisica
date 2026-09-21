@@ -20,6 +20,7 @@ export class SidebarComponent implements OnInit {
       key: 'asignaciones', path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'assignment_ind', permission: 'CoreFisica.view_asignacion',
       children: [
         { key: 'sacavacaciones', path: '/dashboard/sacavacaciones', label: 'Sacavacaciones', permission: 'CoreFisica.view_asignacion' },
+        { key: 'eventuales', path: '/dashboard/eventuales', label: 'Eventuales', permission: 'CoreFisica.view_asignacion' },
       ],
     },
     { key: 'reporte-asistencia', path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'how_to_reg', permission: 'CoreFisica.view_reporteasistencia' },

@@ -2,33 +2,28 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
-import { HttpClient } from '@angular/common/http';
-import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
-import { environment } from '@env/environment';
 import { ReporteVacacionesService } from '../../services/reporte-vacaciones.service';
 import { ReporteVacaciones } from '../../models/reporte-vacaciones.model';
-import { SacavacacionesDialogComponent } from './sacavacaciones-dialog/sacavacaciones-dialog.component';
+import { EventualesDialogComponent } from './eventuales-dialog/eventuales-dialog.component';
 
 @Component({
-  selector: 'app-sacavacaciones',
+  selector: 'app-eventuales',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './sacavacaciones.component.html',
-  styleUrl: './sacavacaciones.component.css',
+  templateUrl: './eventuales.component.html',
+  styleUrl: './eventuales.component.css',
 })
-export class SacavacacionesComponent implements OnInit {
+export class EventualesComponent implements OnInit {
   filas: ReporteVacaciones[] = [];
   loading = false;
 
-  // Filtro por año del "Desde" (0 = Todos), año actual por defecto.
   anioFiltro: number = new Date().getFullYear();
   anios: number[] = [];
 
   constructor(
     private srv: ReporteVacacionesService,
     private dialog: MatDialog,
-    private http: HttpClient,
   ) {}
 
   ngOnInit(): void {
@@ -37,10 +32,9 @@ export class SacavacacionesComponent implements OnInit {
 
   cargar(): void {
     this.loading = true;
-    this.srv.listar('VACACIONES').subscribe({
+    this.srv.listar('BACKUP').subscribe({
       next: (rows) => {
         this.filas = rows || [];
-        // Años disponibles según el campo 'anio' (con respaldo a la fecha "Desde").
         const set = new Set<number>();
         for (const f of this.filas) {
           const y = f.anio ?? this._anio(f.fecha_desde);
@@ -59,7 +53,6 @@ export class SacavacacionesComponent implements OnInit {
     return Number.isFinite(y) ? y : null;
   }
 
-  // Filas mostradas según el año elegido (0 = Todos).
   get filasFiltradas(): ReporteVacaciones[] {
     if (!this.anioFiltro) { return this.filas; }
     return this.filas.filter(f => (f.anio ?? this._anio(f.fecha_desde)) === this.anioFiltro);
@@ -71,24 +64,18 @@ export class SacavacacionesComponent implements OnInit {
     return (y && m && d) ? `${d}/${m}/${y}` : String(v);
   }
 
-  crear(): void {
-    this.abrirDialog(null);
-  }
-
-  editar(f: ReporteVacaciones): void {
-    this.abrirDialog(f);
-  }
+  crear(): void { this.abrirDialog(null); }
+  editar(f: ReporteVacaciones): void { this.abrirDialog(f); }
 
   private abrirDialog(row: ReporteVacaciones | null): void {
-    const ref = this.dialog.open(SacavacacionesDialogComponent, {
+    const ref = this.dialog.open(EventualesDialogComponent, {
       width: '710px',
       maxWidth: '95vw',
-      // Al crear, el calendario se abre en el año del filtro (para no caer en el actual).
       data: { row: row || undefined, anioDefecto: this.anioFiltro || null },
     });
     ref.afterClosed().subscribe((res) => {
       if (!res) { return; }
-      res.tipo = 'VACACIONES';
+      res.tipo = 'BACKUP';
       if (row?.id) {
         this.srv.actualizar(row.id, res).subscribe({ next: () => this.cargar(), error: () => this.cargar() });
       } else {
@@ -110,14 +97,6 @@ export class SacavacacionesComponent implements OnInit {
       if (r.isConfirmed) {
         this.srv.eliminar(f.id!).subscribe({ next: () => this.cargar(), error: () => this.cargar() });
       }
-    });
-  }
-
-  exportar(): void {
-    const url = `${environment.apiUrl}/reporte-vacaciones/exportar-excel/`;
-    this.http.get(url, { responseType: 'blob' }).subscribe({
-      next: (blob) => saveAs(blob, 'reporte_vacaciones.xlsx'),
-      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo descargar el reporte' }),
     });
   }
 }

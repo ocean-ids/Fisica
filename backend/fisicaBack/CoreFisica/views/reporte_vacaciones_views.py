@@ -18,10 +18,14 @@ from ..serializers import ReporteVacacionesSerializer
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def listar_reporte_vacaciones(request):
-    """Lista los registros del reporte de vacaciones (el creado más reciente primero)."""
+    """Lista los registros del reporte de vacaciones (el creado más reciente primero).
+    Filtra por ?tipo= (VACACIONES / BACKUP); sin el parámetro devuelve todos."""
     qs = (ReporteVacaciones.objects
           .select_related('persona_sale_ref', 'sacavacaciones_ref')
           .order_by('-created_at', '-id'))
+    tipo = (request.GET.get('tipo') or '').strip().upper()
+    if tipo:
+        qs = qs.filter(tipo=tipo)
     return Response(ReporteVacacionesSerializer(qs, many=True).data)
 
 
