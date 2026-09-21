@@ -338,6 +338,17 @@ def obtener_asignaciones(request, mes=None, anio=None):
     tipos: list[str] = [t.strip().upper() for t in tipos_raw.split(',') if t.strip()] if tipos_raw else []
     #q es un texto libre q se busca
     q = (request.GET.get('q') or '').strip()
+    # HISTORIAL POR DÍA (opcional): si llega ?dia=YYYY-MM-DD, la grilla muestra el estado
+    # de ESE día: oculta puestos aún no creados (vigente_desde > dia) o ya cerrados
+    # (end_date < dia) y resuelve la persona/hueca de ese día por período. Sin 'dia', la
+    # grilla se comporta EXACTAMENTE igual que antes (estado actual del mes).
+    dia_raw = (request.GET.get('dia') or '').strip()
+    dia_obj = None
+    if dia_raw:
+        try:
+            dia_obj = datetime.date.fromisoformat(dia_raw)
+        except (TypeError, ValueError):
+            return Response({'error': 'dia invalido (use YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
     # si se proporcionan mes y año, filtrar asignaciones activas que correspondan al mes/año o que sean recurrentes y tengan rango de fechas que incluya el mes/año. Si no se proporcionan mes/año, devolver todas las asignaciones activas. En ambos casos, excluir personas de tipo SACAFRANCO y ordenar por orden y id para mantener un orden consistente.   
     base_qs = Asignacion.objects.filter(
         estado='ACTIVO'
@@ -389,6 +400,25 @@ def obtener_asignaciones(request, mes=None, anio=None):
         'orden',
         'id'
     )
+
+    # Historial por día: recortar por fecha de alta/cierre y resolver persona/hueca por
+    # período (se inyecta al serializer vía contexto). Solo actúa si llegó ?dia=.
+    if dia_obj:
+        asignaciones = asignaciones.exclude(
+            vigente_desde__isnull=False, vigente_desde__gt=dia_obj
+        ).exclude(
+            end_date__isnull=False, end_date__lt=dia_obj
+        )
+        periodos_map = {}
+        for _per in (AsignacionPersonaPeriodo.objects
+                     .filter(asignacion__in=asignaciones, desde__lte=dia_obj)
+                     .select_related('persona')
+                     .order_by('asignacion_id', 'desde')):
+            periodos_map.setdefault(_per.asignacion_id, []).append(
+                (_per.desde, _per.hasta, _per.persona)
+            )
+        _ser_ctx['dia'] = dia_obj
+        _ser_ctx['periodos_map'] = periodos_map
     # si se proporciona cliente_id, filtrar por cliente_id despues de filtrar por mes/año para optimizar la consulta y evitar crear filas semanales innecesarias para clientes no relacionados. Si se proporciona instalacion_id, filtrar por instalacion_id después de filtrar por mes/año para optimizar la consulta y evitar crear filas semanales innecesarias para instalaciones no relacionadas. Si se proporciona un término de búsqueda q, aplicarlo a campos relevantes de asignación, persona y puesto para facilitar búsqueda rápida. Esto se hace después de filtrar por mes/año para optimizar la consulta y evitar aplicar filtros de texto a asignaciones que no corresponden al periodo seleccionado.
     if cliente_id:
         asignaciones = asignaciones.filter(cliente_id=cliente_id)
@@ -869,6 +899,18 @@ def asignar_servicio(request):
     serializer = AsignacionSerializer(data=data)
     if serializer.is_valid():
         asignacion = serializer.save()
+        # Historial por día: fecha de alta del puesto. Si se crea en el MES EN CURSO,
+        # se marca con la fecha de HOY para que NO aparezca en los días anteriores del
+        # reporte (un puesto creado el 21 no sale el 20). Para meses pasados/futuros se
+        # deja NULL = vigente todo el mes (setup normal de un mes completo, sin corte).
+        try:
+            _hoy = timezone.localdate()
+            if (int(asignacion.mes) == _hoy.month and int(asignacion.anio) == _hoy.year
+                    and _hoy.day > 1 and not asignacion.vigente_desde):
+                asignacion.vigente_desde = _hoy
+                asignacion.save(update_fields=['vigente_desde'])
+        except Exception:
+            pass
         # Si la asignación es recurrente y no tiene start_date, fijar start_date al primer día del mes de la asignación
         try:
             if getattr(asignacion, 'recurring', False) and not getattr(asignacion, 'start_date', None):

@@ -539,25 +539,42 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.cargarAsignaciones();
   }
 
-  // onDateChange maneja el selector de fecha (día/mes/año). Solo recarga si cambió
-  // el mes/año; cambiar únicamente el día no recarga (el calendario es por mes).
+  // onDateChange maneja el selector de fecha (día/mes/año). Al elegir un DÍA, la grilla
+  // pasa a "historial por día": muestra el estado de ESE día (persona/hueca de ese día y
+  // oculta puestos aún no creados). Si se limpia la fecha, vuelve al estado actual.
   onDateChange(): void {
-    if (!this.dateValue) return;
+    if (!this.dateValue) {
+      // Se limpió el selector: volver al estado actual del mes.
+      if (this.dia) {
+        this.dia = null;
+        this.cargarAsignaciones();
+      }
+      return;
+    }
     const parts = this.dateValue.split('-');
     if (parts.length !== 3) return;
     const y = Number(parts[0]);
     const m = Number(parts[1]);
-    if (!y || !m) return;
-    const changed = (y !== this.anio) || (m !== this.mes);
+    const d = Number(parts[2]);
+    if (!y || !m || !d) return;
+    const monthChanged = (y !== this.anio) || (m !== this.mes);
     this.anio = y;
     this.mes = m;
+    this.dia = this.dateValue;   // activa el modo historial por día
     this.monthValue = `${y}-${String(m).padStart(2, '0')}`;
-    if (changed) {
+    if (monthChanged) {
       this.provinciaPage = 1;
       this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
       this.buildCalendarWeekDayKeys();
-      this.cargarAsignaciones();
     }
+    this.cargarAsignaciones();
+  }
+
+  // Sale del "historial por día" y vuelve al estado actual del mes.
+  salirModoDia(): void {
+    this.dia = null;
+    this.dateValue = '';
+    this.cargarAsignaciones();
   }
 
   //onFiltroChange se encarga de manejar el cambio en el filtro de texto, recargando las asignaciones para reflejar el nuevo filtro aplicado y actualizando los calendarios para mostrar la información filtrada correctamente
@@ -1049,6 +1066,11 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     // Vista plana (no paginar por cantón): cantones (2+), empresa o tipo de persona.
     const flatView = isClienteView || isTipoView || mixedView;
     params.lite = true;
+    // Historial por día: si hay un día elegido, el backend muestra el estado de ese día
+    // (persona/hueca de ese día y oculta puestos aún no creados). Sin día, estado actual.
+    if (this.dia) {
+      params.dia = this.dia;
+    }
 
     if (isClienteView) {
       params.cliente_ids = clienteIdsCsv;

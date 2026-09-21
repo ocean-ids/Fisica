@@ -1058,6 +1058,12 @@ class Asignacion(models.Model):
         default='ACTIVO'
     )
 
+    # Fecha de alta del puesto/asignación dentro del mes. Permite el "historial por
+    # día": un puesto creado a mitad de mes NO debe aparecer en la reportería de los
+    # días ANTERIORES a su creación. NULL = sin fecha de alta (dato antiguo / no
+    # aplica el corte): la asignación se considera vigente todo el mes, como antes.
+    vigente_desde = models.DateField(null=True, blank=True)
+
     class Meta:
         unique_together = ('persona', 'mes', 'anio')
         permissions = [

@@ -154,20 +154,52 @@ class AsignacionLiteSerializer(serializers.ModelSerializer):
     cedula_color = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     # Vacaciones vigentes (badge en el grid). Se llena desde el contexto 'vacaciones_map'.
     vacaciones = serializers.SerializerMethodField(read_only=True)
+    # HUECA por día: cuando el contexto trae 'dia', se resuelve por el historial de
+    # períodos; sin 'dia' devuelve el valor actual del modelo (comportamiento intacto).
+    es_hueca = serializers.SerializerMethodField(read_only=True)
+
+    def _resolver_persona_dia(self, obj):
+        """Persona vigente en el día del contexto (historial por período), MISMA lógica
+        que el reporte de asistencia: por defecto la persona actual; solo si un período
+        cubre el día se usa la histórica. Sin contexto 'dia' -> persona actual."""
+        dia = self.context.get('dia') if self.context else None
+        if not dia:
+            return obj.persona
+        pmap = self.context.get('periodos_map') if self.context else None
+        periodos = pmap.get(obj.id) if pmap else None
+        if not periodos:
+            return obj.persona
+        for desde, hasta, persona in periodos:
+            if desde <= dia and (hasta is None or dia <= hasta):
+                return persona
+        return obj.persona
 
     def get_persona_detalle(self, obj):
-        if not obj.persona:
+        p = self._resolver_persona_dia(obj)
+        if not p:
             return None
         return {
-            'id': obj.persona.id,
-            'nombres': obj.persona.nombres,
-            'apellidos': obj.persona.apellidos,
-            'cedula': obj.persona.cedula,
-            'tipo': obj.persona.tipo,
-            'provincia': obj.persona.provincia_id,
-            'canton': obj.persona.canton_id,
-            'is_active': getattr(obj.persona, 'is_active', True)
+            'id': p.id,
+            'nombres': p.nombres,
+            'apellidos': p.apellidos,
+            'cedula': p.cedula,
+            'tipo': p.tipo,
+            'provincia': p.provincia_id,
+            'canton': p.canton_id,
+            'is_active': getattr(p, 'is_active', True)
         }
+
+    def get_es_hueca(self, obj):
+        # Sin contexto de día: valor actual del modelo (intacto).
+        dia = self.context.get('dia') if self.context else None
+        if not dia:
+            return obj.es_hueca
+        # Con día: si ese día había alguien, NO es hueca; si estaba sin persona,
+        # conserva el flag actual (una HUECA sigue HUECA; una vacante sigue vacante).
+        p = self._resolver_persona_dia(obj)
+        if p is not None:
+            return False
+        return obj.es_hueca
 
     def get_vacaciones(self, obj):
         vac_map = self.context.get('vacaciones_map') if self.context else None

@@ -84,20 +84,20 @@ class VigenciaPersonaTests(TestCase):
     def test_reporte_resuelve_persona_por_fecha(self):
         self._cambiar_a_beto()
 
-        # Día pasado (5) -> ANA UNO
+        # Día pasado (5) -> UNO ANA (apellidos primero)
         r5 = self.client.get(
             f'/api/reporte-asistencia/?fecha={self.dia5.isoformat()}',
             HTTP_AUTHORIZATION=f'Bearer {self.access}',
         ).json()
         fila5 = next((x for x in r5.get('results', []) if x.get('asignacion_id') == self.asig.id), None)
         self.assertIsNotNone(fila5, 'La asignación debe aparecer en el día 5')
-        self.assertEqual(fila5['nombre_apellidos'], 'ANA UNO')
+        self.assertEqual(fila5['nombre_apellidos'], 'UNO ANA')
 
-        # Día del cambio en adelante (20) -> BETO DOS
+        # Día del cambio en adelante (20) -> DOS BETO (apellidos primero)
         r20 = self.client.get(
             f'/api/reporte-asistencia/?fecha={self.dia20.isoformat()}',
             HTTP_AUTHORIZATION=f'Bearer {self.access}',
         ).json()
         fila20 = next((x for x in r20.get('results', []) if x.get('asignacion_id') == self.asig.id), None)
         self.assertIsNotNone(fila20, 'La asignación debe aparecer en el día 20')
-        self.assertEqual(fila20['nombre_apellidos'], 'BETO DOS')
+        self.assertEqual(fila20['nombre_apellidos'], 'DOS BETO')

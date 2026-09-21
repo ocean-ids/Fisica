@@ -89,7 +89,7 @@ class DesactivarHuecaTests(TestCase):
                              HTTP_AUTHORIZATION=f'Bearer {self.access}').json()
         fila5 = next((x for x in r5.get('results', []) if x.get('asignacion_id') == self.asig.id), None)
         self.assertIsNotNone(fila5, 'La asignación debe seguir apareciendo el día pasado')
-        self.assertEqual(fila5['nombre_apellidos'], 'ANA UNO')
+        self.assertEqual(fila5['nombre_apellidos'], 'UNO ANA')
         self.assertFalse(fila5.get('hueca'))
 
         r15 = self.client.get(f'/api/reporte-asistencia/?fecha={self.dia15.isoformat()}',
@@ -97,4 +97,6 @@ class DesactivarHuecaTests(TestCase):
         fila15 = next((x for x in r15.get('results', []) if x.get('asignacion_id') == self.asig.id), None)
         self.assertIsNotNone(fila15, 'La asignación debe aparecer hoy como HUECA')
         self.assertEqual(fila15['nombre_apellidos'], 'HUECA')
-        self.assertTrue(fila15.get('hueca'))
+        # 'es_hueca' es la hueca RESUELTA POR DÍA (persona=None ese día): debe ser True.
+        # 'hueca' (check manual con motivo) queda False porque no se guardó nada a mano.
+        self.assertTrue(fila15.get('es_hueca'))

@@ -71,6 +71,10 @@ def _sync_no_cubiertos(fecha, turno):
     ).filter(
         Q(mes=mes, anio=anio) |
         (Q(recurring=True) & Q(start_date__lte=month_end) & (Q(end_date__isnull=True) | Q(end_date__gte=month_start)))
+    ).exclude(
+        # Historial por día: una vacante con fecha de alta no aparece en días anteriores
+        # a su creación. NULL = sin corte (vigente todo el mes, como antes).
+        vigente_desde__isnull=False, vigente_desde__gt=fecha_obj
     )
 
     dnf = _calendar_dnf_for_date(fecha_obj)      # {asignacion_id: 'D'|'N'|'F'}

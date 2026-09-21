@@ -752,6 +752,14 @@ def _build_reporte_asistencia_data(
     if fecha_obj:
         asig_qs = asig_qs.exclude(end_date__isnull=False, end_date__lt=fecha_obj)
 
+    # Historial por día (alta del puesto): una asignación con fecha de alta
+    # (vigente_desde) NO debe mostrarse en fechas ANTERIORES a su creación. Así, un
+    # puesto/hueca creado a mitad de mes no aparece en los días previos. vigente_desde
+    # NULL = dato sin fecha de alta -> se considera vigente todo el mes (comportamiento
+    # anterior intacto).
+    if fecha_obj:
+        asig_qs = asig_qs.exclude(vigente_desde__isnull=False, vigente_desde__gt=fecha_obj)
+
     # Ruteo por el calendario del día (D/N), no por la config de turno del puesto.
     # D -> Diurno, N -> Nocturno. Los francos (F) NO aparecen en el reporte.
     # NOTA: la cobertura de sacafranco NO se enruta aqui; se agrega mas abajo como
