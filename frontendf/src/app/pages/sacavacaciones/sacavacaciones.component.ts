@@ -37,7 +37,7 @@ export class SacavacacionesComponent implements OnInit {
 
   cargar(): void {
     this.loading = true;
-    this.srv.listar('VACACIONES').subscribe({
+    this.srv.listar().subscribe({
       next: (rows) => {
         this.filas = rows || [];
         // Años disponibles según el campo 'anio' (con respaldo a la fecha "Desde").
@@ -88,7 +88,6 @@ export class SacavacacionesComponent implements OnInit {
     });
     ref.afterClosed().subscribe((res) => {
       if (!res) { return; }
-      res.tipo = 'VACACIONES';
       if (row?.id) {
         this.srv.actualizar(row.id, res).subscribe({ next: () => this.cargar(), error: () => this.cargar() });
       } else {

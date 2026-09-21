@@ -1452,15 +1452,7 @@ class ReporteGuardia(models.Model):
 
 
 class ReporteVacaciones(models.Model):
-    """Una fila del REPORTE DE VACACIONES DEL PERSONAL (carga manual, CRUD).
-
-    Se reutiliza para dos módulos con el mismo mecanismo de reemplazo en el Reporte de
-    Asistencia (el suplente cubre al titular durante el rango, sin tocar Asignaciones):
-      - VACACIONES: sacavacaciones (un fijo sale de vacaciones, lo cubre un sacavacaciones).
-      - BACKUP: eventuales (un fijo/sacafranco sale, lo cubre un EVENTUAL). Sin período/días.
-    """
-    TIPO_CHOICES = [('VACACIONES', 'Vacaciones'), ('BACKUP', 'Backup')]
-    tipo = models.CharField(max_length=12, choices=TIPO_CHOICES, default='VACACIONES', db_index=True)
+    """Una fila del REPORTE DE VACACIONES DEL PERSONAL (carga manual, CRUD)."""
     cliente = models.CharField(max_length=120, blank=True, default='')
     # Puesto (asignacion) del titular que sale de vacaciones. Sirve para reemplazarlo por
     # el SACAVACACIONES en el Reporte de Asistencia durante el rango (NO toca Asignaciones).

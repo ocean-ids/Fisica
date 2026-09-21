@@ -9,9 +9,8 @@ import { ReporteVacaciones } from '../models/reporte-vacaciones.model';
 export class ReporteVacacionesService {
   constructor(private api: ApiService) {}
 
-  listar(tipo?: 'VACACIONES' | 'BACKUP'): Observable<ReporteVacaciones[]> {
-    const qs = tipo ? `?tipo=${tipo}` : '';
-    return this.api.get<ReporteVacaciones[]>(`/reporte-vacaciones/${qs}`);
+  listar(): Observable<ReporteVacaciones[]> {
+    return this.api.get<ReporteVacaciones[]>('/reporte-vacaciones/');
   }
 
   // IDs de personas (fijos) con asignacion activa en el mes/anio.
