@@ -29,10 +29,11 @@ export class ZonasNominativosDialogComponent implements OnInit {
   zonaEditNumero: number | null = null;
   zonaEditNombre = '';
 
-  // crear ZONA DE AGRUPACION (agrupa nominativos existentes; al borrarla, vuelven)
+  // crear/editar ZONA DE AGRUPACION (agrupa nominativos existentes; al borrarla, vuelven)
   modoAgrupacion = false;
   agrupNombre = '';
   agrupSel = new Set<number>();
+  agrupEditId: number | null = null;   // set = editando los miembros de una agrupación existente
 
   // form nominativo (crear/editar)
   nomEditId: number | null = null;
@@ -130,15 +131,33 @@ export class ZonasNominativosDialogComponent implements OnInit {
   // ---- Zona de AGRUPACION ----
   abrirAgrupacion(): void {
     this.modoAgrupacion = true; this.agrupNombre = ''; this.agrupSel = new Set<number>();
+    this.agrupEditId = null;
   }
   cancelarAgrupacion(): void {
     this.modoAgrupacion = false; this.agrupNombre = ''; this.agrupSel = new Set<number>();
+    this.agrupEditId = null;
   }
   toggleAgrup(id: number): void {
     if (this.agrupSel.has(id)) this.agrupSel.delete(id); else this.agrupSel.add(id);
   }
   crearAgrupacion(): void {
     const ids = Array.from(this.agrupSel);
+    // EDICIÓN de miembros de una agrupación existente.
+    if (this.agrupEditId != null) {
+      const nombre = (this.agrupNombre || '').trim();
+      this.svc.actualizarZona(this.agrupEditId, { nombre, nominativo_ids: ids }).subscribe({
+        next: (res: any) => {
+          Swal.fire('Agrupación actualizada',
+            `Agregados: ${res?.nominativos_movidos ?? 0} · Quitados: ${res?.nominativos_restaurados ?? 0}`,
+            'success');
+          this.cancelarAgrupacion();
+          this.cargarTodo();
+        },
+        error: (e) => this.err(e),
+      });
+      return;
+    }
+    // CREACIÓN de una agrupación nueva.
     if (!ids.length) { Swal.fire('Selecciona nominativos', 'Elige al menos uno para agrupar', 'info'); return; }
     const numero = this.siguienteNumeroZona();
     const nombre = (this.agrupNombre || '').trim() || `AGRUPACION ${numero}`;
@@ -155,6 +174,15 @@ export class ZonasNominativosDialogComponent implements OnInit {
   }
 
   editarZona(z: ZonaOperativa): void {
+    // Agrupación: se editan sus MIEMBROS (agregar/quitar nominativos) + nombre.
+    if (z.es_agrupacion) {
+      this.agrupEditId = z.id;
+      this.agrupNombre = z.nombre;
+      this.agrupSel = new Set<number>(this.nominativos.filter(n => n.zona === z.id).map(n => n.id));
+      this.modoAgrupacion = true;
+      return;
+    }
+    // Zona normal: edición en línea de número/nombre.
     this.zonaEditId = z.id; this.zonaEditNumero = z.numero; this.zonaEditNombre = z.nombre;
   }
   cancelarEditZona(): void { this.zonaEditId = null; }

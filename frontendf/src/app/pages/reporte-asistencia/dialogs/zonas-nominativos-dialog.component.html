@@ -46,11 +46,11 @@
         </button>
       </div>
 
-      <!-- Crear ZONA DE AGRUPACION: agrupa nominativos existentes; al borrarla vuelven -->
+      <!-- Crear/Editar ZONA DE AGRUPACION: agrupa nominativos existentes; al borrarla vuelven -->
       <div class="zn-agrup mt-2" *ngIf="modoAgrupacion">
-        <div class="fw-bold small mb-1">Nueva zona de agrupación</div>
+        <div class="fw-bold small mb-1">{{ agrupEditId ? 'Editar zona de agrupación' : 'Nueva zona de agrupación' }}</div>
         <input class="form-control form-control-sm mb-1" placeholder="Nombre (opcional)" [(ngModel)]="agrupNombre">
-        <div class="small text-muted mb-1">Marca los nominativos a agrupar (volverán a su zona al borrar la agrupación):</div>
+        <div class="small text-muted mb-1">Marca/desmarca los nominativos (los que quites volverán a su zona original):</div>
         <div style="max-height:180px; overflow:auto; border:1px solid #eee; padding:4px; border-radius:4px;">
           <div class="form-check" *ngFor="let n of nominativos">
             <input class="form-check-input" type="checkbox" [id]="'agr-'+n.id"
@@ -62,7 +62,7 @@
           <div *ngIf="!nominativos.length" class="text-muted small">Sin nominativos (usa el buscador).</div>
         </div>
         <div class="mt-2">
-          <button class="btn btn-info btn-sm" (click)="crearAgrupacion()">Crear agrupación ({{ agrupSel.size }})</button>
+          <button class="btn btn-info btn-sm" (click)="crearAgrupacion()">{{ agrupEditId ? 'Guardar cambios' : 'Crear agrupación' }} ({{ agrupSel.size }})</button>
           <button class="btn btn-secondary btn-sm ms-1" (click)="cancelarAgrupacion()">Cancelar</button>
         </div>
       </div>

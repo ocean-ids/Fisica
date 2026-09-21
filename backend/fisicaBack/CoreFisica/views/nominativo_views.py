@@ -112,7 +112,43 @@ def actualizar_zona_operativa(request, id):
     if 'nombre' in data:
         zona.nombre = str(data.get('nombre') or '').strip()
     zona.save()
-    return JsonResponse(ZonaOperativaSerializer(zona).data)
+
+    # AGRUPACION: si viene 'nominativo_ids', reconciliar los miembros (agregar/quitar).
+    # - Nominativo nuevo (marcado) -> se mueve a la agrupacion guardando su zona original.
+    # - Nominativo quitado (desmarcado) -> vuelve a su zona anterior.
+    movidos = 0
+    restaurados = 0
+    if zona.es_agrupacion and isinstance(data.get('nominativo_ids'), list):
+        from django.db import transaction
+        target = set()
+        for x in data.get('nominativo_ids'):
+            try:
+                target.add(int(x))
+            except (TypeError, ValueError):
+                pass
+        with transaction.atomic():
+            actuales = list(Nominativo.objects.select_related('zona').filter(zona=zona))
+            actuales_ids = {n.id for n in actuales}
+            # AGREGAR: en target y no eran miembros.
+            for nom in (Nominativo.objects.select_related('zona')
+                        .filter(id__in=(target - actuales_ids)).exclude(zona_id=zona.id)):
+                if not nom.zona.es_agrupacion:
+                    nom.zona_anterior = nom.zona
+                nom.zona = zona
+                nom.save(update_fields=['zona', 'zona_anterior'])
+                movidos += 1
+            # QUITAR: eran miembros y ya no estan en target -> vuelven a su zona anterior.
+            for nom in actuales:
+                if nom.id not in target and nom.zona_anterior_id:
+                    nom.zona = nom.zona_anterior
+                    nom.zona_anterior = None
+                    nom.save(update_fields=['zona', 'zona_anterior'])
+                    restaurados += 1
+
+    out = ZonaOperativaSerializer(zona).data
+    out['nominativos_movidos'] = movidos
+    out['nominativos_restaurados'] = restaurados
+    return JsonResponse(out)
 
 
 @api_view(['DELETE'])

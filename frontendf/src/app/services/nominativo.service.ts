@@ -33,7 +33,7 @@ export class NominativoService {
   crearZona(data: { numero: number; nombre?: string; es_agrupacion?: boolean; nominativo_ids?: number[] }) {
     return this.api.post<ZonaOperativa>('/zonas-operativas/crear/', data);
   }
-  actualizarZona(id: number, data: { numero?: number; nombre?: string }) {
+  actualizarZona(id: number, data: { numero?: number; nombre?: string; nominativo_ids?: number[] }) {
     return this.api.put<ZonaOperativa>(`/zonas-operativas/${id}/`, data);
   }
   eliminarZona(id: number) {
