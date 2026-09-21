@@ -64,6 +64,15 @@ if DEBUG:
     for _h in ('localhost', '127.0.0.1', '10.0.2.2'):
         if _h not in ALLOWED_HOSTS:
             ALLOWED_HOSTS.append(_h)
+    # IPs LAN de esta maquina (para probar la app movil REAL en la misma WiFi, ej.
+    # http://192.168.x.x:8000). Se detectan solas, asi no importa si la IP cambia.
+    try:
+        import socket as _socket
+        for _ip in _socket.gethostbyname_ex(_socket.gethostname())[2]:
+            if _ip not in ALLOWED_HOSTS:
+                ALLOWED_HOSTS.append(_ip)
+    except Exception:
+        pass
 CSRF_TRUSTED_ORIGINS = env_list(
     'CSRF_TRUSTED_ORIGINS',
     default='http://localhost:4200,http://localhost:5173,https://fisica.oceansecurity.net,http://fisica.oceansecurity.net'
