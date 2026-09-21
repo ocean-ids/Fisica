@@ -214,8 +214,12 @@ def regenerar_reporte_guardia(request):
     )
     from ..models import ReporteAsistencia, SacafrancoAsistencia
 
+    # Se incluyen TODAS las asignaciones con datos guardados ese día (tengan estado ACTIVO
+    # o INACTIVO), igual que el Reporte de Asistencia: un puesto cerrado (INACTIVO) con
+    # FALTO/hueca/FR-TRABAJADO ese día debe reflejarse en el Reporte de Guardia. Antes solo
+    # se procesaban las ACTIVO, por eso esos registros no generaban FALTOS/DOBLADAS/HUECA.
     overrides = ReporteAsistencia.objects.select_related('asignacion').filter(
-        fecha_reporte=fecha_obj, asignacion__estado='ACTIVO'
+        fecha_reporte=fecha_obj, asignacion__isnull=False
     )
     for ov in overrides:
         if not ov.asignacion:
