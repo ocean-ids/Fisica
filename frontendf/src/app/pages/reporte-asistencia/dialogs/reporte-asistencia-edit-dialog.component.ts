@@ -630,7 +630,8 @@ export class ReporteAsistenciaEditDialogComponent {
       // Cualquier hueca conserva el Estado elegido (habilitado al elegir motivo); ese
       // estado define la sección en Reporte de Guardia (ADELANTOS/DOBLADAS/etc.).
       payload.estado = raw.estado || null;
-      payload.estado_asistencia = null;
+      // La asistencia en huecas es OPCIONAL (solo FALTÓ); si se marcó, se conserva.
+      payload.estado_asistencia = raw.estado_asistencia || null;
       payload.persona_cobertura_id = null;
       payload.hueca = true;
     }
