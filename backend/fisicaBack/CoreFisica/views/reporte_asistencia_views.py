@@ -216,8 +216,10 @@ def _draw_pdf_header(p, width, height, x_margin, y_margin, ctx):
     top_h = 0.95 * inch
     info_h = 0.32 * inch
 
-    logo_w = 1.8 * inch
-    title_w = 4.8 * inch
+    # Anchos proporcionales al ancho de la tabla (mismas proporciones que el diseño original
+    # en horizontal): logo 0.18, título 0.48, meta (Versión/Fecha) el resto ~0.34.
+    logo_w = table_w * 0.18
+    title_w = table_w * 0.48
 
     x_logo = x_margin
     x_title = x_logo + logo_w
@@ -269,8 +271,10 @@ def _draw_pdf_header(p, width, height, x_margin, y_margin, ctx):
     info_top = top - top_h
     p.rect(x_margin, info_top - info_h, table_w, info_h, stroke=1, fill=0)
 
-    info_a_w = 2.8 * inch
-    info_b_w = 2.3 * inch
+    # FECHA (0.28) | TURNO (0.23) | OPERADOR DE CONSOLA (resto ~0.49, el más ancho porque
+    # el nombre del operador es largo).
+    info_a_w = table_w * 0.28
+    info_b_w = table_w * 0.23
     x_info_b = x_margin + info_a_w
     x_info_c = x_info_b + info_b_w
 
@@ -281,7 +285,11 @@ def _draw_pdf_header(p, width, height, x_margin, y_margin, ctx):
     text_y = info_top - 0.22 * inch
     p.drawString(x_margin + 8, text_y, f"FECHA: {ctx['fecha_reporte']}")
     p.drawString(x_info_b + 8, text_y, f"TURNO: {ctx['turno'].upper()}")
-    p.drawString(x_info_c + 8, text_y, f"OPERADOR DE CONSOLA: {ctx['operador_consola']}")
+    # OPERADOR: se recorta al ancho de su columna para que el nombre no se salga de la hoja.
+    _op_txt = f"OPERADOR DE CONSOLA: {ctx['operador_consola']}"
+    _op_maxw = (x_margin + table_w) - x_info_c - 12
+    _op_txt = _fit_text_to_width(_op_txt, _op_maxw, 'Helvetica-Bold', 10)
+    p.drawString(x_info_c + 8, text_y, _op_txt)
 
     return info_top - info_h - 0.2 * inch
 
@@ -2438,6 +2446,7 @@ def exportar_reporte_asistencia_pdf(request):
     data_all = _build_reporte_asistencia_data(fecha=fecha, cliente_id=cliente_id, turno=None, zona=zona, q=q)
 
     output = BytesIO()
+    # PDF en HORIZONTAL (carta landscape).
     p = canvas.Canvas(output, pagesize=landscape(letter))
     width, height = landscape(letter)
 
@@ -2453,15 +2462,20 @@ def exportar_reporte_asistencia_pdf(request):
 
     col_widths = [0.75, 1.15, 1.1, 0.6, 1.75, 0.7, 0.8, 1.5, 1.0]
     col_widths = [w * inch for w in col_widths]
+    # Escalar las columnas para que quepan en el ancho disponible (clave en vertical).
+    _avail = width - (2 * x_margin)
+    _sumw = sum(col_widths)
+    if _sumw > _avail:
+        _scale = _avail / _sumw
+        col_widths = [w * _scale for w in col_widths]
 
     def ensure_space(y_cursor, needed_height):
         if y_cursor < y_margin + needed_height:
+            # Nueva página SIN repetir el encabezado ni las columnas: solo salen en la
+            # primera hoja de cada sección (Diurno/Nocturno). Se continúa desde arriba.
             p.showPage()
-            page_width, page_height = landscape(letter)
-            new_y = _draw_pdf_header(p, page_width, page_height, x_margin, y_margin, header_ctx)
-            new_y = _draw_pdf_table_headers(p, x_margin, new_y, headers, col_widths)
             p.setFont('Helvetica', 6)
-            return new_y
+            return height - y_margin
         return y_cursor
 
     def draw_group_row(y_cursor, text, font_size=7):
