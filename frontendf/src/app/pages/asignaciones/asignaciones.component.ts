@@ -570,13 +570,6 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     this.cargarAsignaciones();
   }
 
-  // Sale del "historial por día" y vuelve al estado actual del mes.
-  salirModoDia(): void {
-    this.dia = null;
-    this.dateValue = '';
-    this.cargarAsignaciones();
-  }
-
   //onFiltroChange se encarga de manejar el cambio en el filtro de texto, recargando las asignaciones para reflejar el nuevo filtro aplicado y actualizando los calendarios para mostrar la información filtrada correctamente
   // La búsqueda NO filtra (no oculta los demás registros): solo lleva el scroll
   // hasta el primer registro que coincide y lo resalta, para ubicarlo y arrastrarlo.
