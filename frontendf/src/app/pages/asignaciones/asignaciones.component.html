@@ -54,6 +54,10 @@
       <button class="btn btn-outline-success" type="button" (click)="abrirListaEventuales()" title="Base de eventuales">
         <i class="bi bi-person-vcard"></i> Eventual
       </button>
+      <button class="btn btn-outline-dark" type="button" (click)="abrirHistorialMes()"
+              title="Historial de movimientos del mes (por día)">
+        <i class="bi bi-clock-history"></i> Historial
+      </button>
       <input type="file" #impFile class="d-none" accept=".xlsx" (change)="onFileSelected($event)">
       <button class="btn btn-outline-secondary" (click)="impFile.click()" title="Importar horario (Excel)">
         <i class="bi bi-upload"></i> Importar
@@ -61,10 +65,6 @@
       <button class="btn btn-outline-success" (click)="descargarReporteExcel()" title="Descargar Excel" aria-label="Descargar Excel">
         <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
         Descargar
-      </button>
-      <button class="btn btn-outline-dark" type="button" (click)="abrirHistorialMes()"
-              title="Historial de movimientos del mes (por día)">
-        <i class="bi bi-clock-history"></i> Historial
       </button>
     </div>
   </div>

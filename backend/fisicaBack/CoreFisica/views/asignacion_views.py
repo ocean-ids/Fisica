@@ -1620,24 +1620,28 @@ def guardar_orden_asignacion(request):
     ordenes = request.data.get('ordenes', [])
 
     #itera sobre la lista de ordenes y para cada una intenta obtener la asignación por id, si existe actualiza su campo orden con el valor que viene en la petición y guarda la asignación. Si no existe, continúa con la siguiente orden sin hacer nada. Al final retorna un mensaje de éxito indicando que el orden se actualizó correctamente.
-    for item in ordenes:
-        try:
-            asignacion = Asignacion.objects.get(id=item['id'])
-            asignacion.orden = item['orden']
-            asignacion.save()
-        except Asignacion.DoesNotExist:
-            continue
+    # Reordenar NO es un movimiento de negocio: se silencia la auditoría para que no
+    # ensucie el "Historial del mes" con decenas de "Editó" por cambio de posición.
+    from ..audit import suppress_audit
+    with suppress_audit():
+        for item in ordenes:
+            try:
+                asignacion = Asignacion.objects.get(id=item['id'])
+                asignacion.orden = item['orden']
+                asignacion.save(update_fields=['orden'])
+            except Asignacion.DoesNotExist:
+                continue
 
-    # Propagar el nuevo orden de PUESTOS a los meses SIGUIENTES (no afecta meses pasados).
-    # Se permutan los puestos reordenados dentro de los mismos "slots" de orden que ya
-    # ocupan en los meses futuros, para no alterar el orden de otros clientes.
-    try:
-        ref_mes = int(request.data.get('mes')) if request.data.get('mes') else None
-        ref_anio = int(request.data.get('anio')) if request.data.get('anio') else None
-    except (TypeError, ValueError):
-        ref_mes = ref_anio = None
-    if ref_mes and ref_anio and ordenes:
-        _propagar_orden_puestos_a_futuros(ordenes, ref_mes, ref_anio)
+        # Propagar el nuevo orden de PUESTOS a los meses SIGUIENTES (no afecta meses pasados).
+        # Se permutan los puestos reordenados dentro de los mismos "slots" de orden que ya
+        # ocupan en los meses futuros, para no alterar el orden de otros clientes.
+        try:
+            ref_mes = int(request.data.get('mes')) if request.data.get('mes') else None
+            ref_anio = int(request.data.get('anio')) if request.data.get('anio') else None
+        except (TypeError, ValueError):
+            ref_mes = ref_anio = None
+        if ref_mes and ref_anio and ordenes:
+            _propagar_orden_puestos_a_futuros(ordenes, ref_mes, ref_anio)
 
     return Response({'mensaje': 'Orden actualizado correctamente'})
 
@@ -3251,7 +3255,9 @@ def historial_asignaciones_mes(request, mes, anio):
         return f"{pp.apellidos} {pp.nombres}".strip() if pp else 'HUECA'
 
     def _puesto_lbl(asig):
-        return (getattr(asig.puesto, 'nombre', '') or getattr(asig.puesto, 'tipo', '') or 'Puesto')
+        # Siempre el NOMBRE del puesto (igual que Puesto.__str__ y que las eliminaciones),
+        # para que sea consistente. No se usa el 'tipo' como etiqueta.
+        return (getattr(asig.puesto, 'nombre', '') or '')
 
     def _cliente_lbl(asig):
         return (getattr(asig.cliente, 'nombre_comercial', '') or '')
@@ -3281,37 +3287,8 @@ def historial_asignaciones_mes(request, mes, anio):
     def _item(dia, **kw):
         dias.setdefault(dia, {'fecha': dia, 'items': []})['items'].append(kw)
 
-    # 1) PUESTOS creados / eliminados (del AuditLog). Se omiten los UPDATE genéricos
-    # (reordenamientos, etc.) porque generan ruido; los cambios de persona/hueca se
-    # muestran de forma estructurada abajo (con antes → después).
-    patron = f"({mes}/{anio})"
-    logs = (AuditLog.objects
-            .filter(modelo='Asignacion', objeto_repr__contains=patron, accion__in=['CREATE', 'DELETE'])
-            .select_related('usuario')
-            .order_by('-creado_en'))
-    for lg in logs:
-        loc = timezone.localtime(lg.creado_en)
-        dia = loc.date().isoformat()
-        if lg.usuario:
-            usuario = (f"{lg.usuario.first_name} {lg.usuario.last_name}".strip()
-                       or lg.usuario.get_username())
-        else:
-            usuario = lg.usuario_str or 'Sistema'
-        asig = asig_map.get(int(lg.objeto_id)) if str(lg.objeto_id).isdigit() else None
-        if asig:
-            cliente, puesto = _cliente_lbl(asig), _puesto_lbl(asig)
-            persona = _nom(asig.persona)
-        else:
-            persona, puesto = _parse_repr(lg.objeto_repr)
-            cliente = ''
-        _item(dia,
-              hora=loc.strftime('%H:%M'), usuario=usuario,
-              accion=('Puesto creado' if lg.accion == 'CREATE' else 'Puesto eliminado'),
-              accion_key=lg.accion, cliente=cliente, puesto=puesto,
-              antes='', despues='', persona=persona)
-
-    # 2) CAMBIOS DE GUARDIA (quién estaba antes → quién quedó después), del historial de
-    # períodos. Cada frontera de período (salvo el primero) es un cambio en su fecha.
+    # 1) CAMBIOS DE PERSONA por período: {(asig_id, fecha_efecto): (antes, despues, cliente, puesto)}.
+    periodo_changes = {}
     for asig in (Asignacion.objects
                  .filter(mes=mes, anio=anio)
                  .select_related('cliente', 'puesto')
@@ -3320,12 +3297,73 @@ def historial_asignaciones_mes(request, mes, anio):
         if len(periodos) < 2:
             continue
         for i in range(1, len(periodos)):
-            _item(periodos[i].desde.isoformat(),
-                  hora='', usuario='',
-                  accion='Cambio de guardia', accion_key='CAMBIO',
-                  cliente=_cliente_lbl(asig), puesto=_puesto_lbl(asig),
-                  antes=_nom(periodos[i - 1].persona), despues=_nom(periodos[i].persona),
-                  persona='')
+            key = (asig.id, periodos[i].desde.isoformat())
+            periodo_changes[key] = (
+                _nom(periodos[i - 1].persona), _nom(periodos[i].persona),
+                _cliente_lbl(asig), _puesto_lbl(asig),
+            )
+
+    # 2) AuditLog: crear / editar / eliminar. Un UPDATE que coincide con un cambio de persona
+    # (mismo puesto, mismo día) se muestra como "Cambio de guardia" (antes → después); los
+    # demás UPDATE salen como "Editó". Los reordenamientos NO llegan aquí (auditoría
+    # silenciada al reordenar).
+    patron = f"({mes}/{anio})"
+    logs = (AuditLog.objects
+            .filter(modelo='Asignacion', objeto_repr__contains=patron,
+                    accion__in=['CREATE', 'UPDATE', 'DELETE'])
+            .select_related('usuario')
+            .order_by('-creado_en'))
+    usados = set()
+    for lg in logs:
+        loc = timezone.localtime(lg.creado_en)
+        dia = loc.date().isoformat()
+        hora = loc.strftime('%H:%M')
+        if lg.usuario:
+            usuario = (f"{lg.usuario.first_name} {lg.usuario.last_name}".strip()
+                       or lg.usuario.get_username())
+        else:
+            usuario = lg.usuario_str or 'Sistema'
+        oid = int(lg.objeto_id) if str(lg.objeto_id).isdigit() else None
+        asig = asig_map.get(oid) if oid else None
+
+        if lg.accion == 'CREATE':
+            if asig:
+                _item(dia, hora=hora, usuario=usuario, accion='Puesto creado', accion_key='CREATE',
+                      cliente=_cliente_lbl(asig), puesto=_puesto_lbl(asig),
+                      antes='', despues='', persona=_nom(asig.persona))
+            else:
+                per, pue = _parse_repr(lg.objeto_repr)
+                _item(dia, hora=hora, usuario=usuario, accion='Puesto creado', accion_key='CREATE',
+                      cliente='', puesto=pue, antes='', despues='', persona=per)
+        elif lg.accion == 'DELETE':
+            per, pue = _parse_repr(lg.objeto_repr)
+            _item(dia, hora=hora, usuario=usuario, accion='Puesto eliminado', accion_key='DELETE',
+                  cliente=(_cliente_lbl(asig) if asig else ''),
+                  puesto=(_puesto_lbl(asig) if asig else pue),
+                  antes='', despues='', persona=per)
+        else:  # UPDATE
+            key = (oid, dia) if oid else None
+            if key and key in periodo_changes and key not in usados:
+                antes, despues, cli, pue = periodo_changes[key]
+                usados.add(key)
+                _item(dia, hora=hora, usuario=usuario, accion='Cambio de guardia', accion_key='CAMBIO',
+                      cliente=cli, puesto=pue, antes=antes, despues=despues, persona='')
+            else:
+                if asig:
+                    cli, pue, per = _cliente_lbl(asig), _puesto_lbl(asig), _nom(asig.persona)
+                else:
+                    per, pue = _parse_repr(lg.objeto_repr); cli = ''
+                _item(dia, hora=hora, usuario=usuario, accion='Editó', accion_key='UPDATE',
+                      cliente=cli, puesto=pue, antes='', despues='', persona=per)
+
+    # 3) Cambios de persona cuya fecha de efecto NO coincidió con ningún UPDATE (p. ej.
+    # fecha_cambio en el pasado): se agregan en su fecha de efecto.
+    for key, (antes, despues, cli, pue) in periodo_changes.items():
+        if key in usados:
+            continue
+        _asig_id, desde = key
+        _item(desde, hora='', usuario='', accion='Cambio de guardia', accion_key='CAMBIO',
+              cliente=cli, puesto=pue, antes=antes, despues=despues, persona='')
 
     # Ordenar items por hora (los cambios de guardia, sin hora, al final) y días recientes primero.
     total = 0

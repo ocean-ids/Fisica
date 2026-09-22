@@ -37,7 +37,7 @@ interface HistDia { fecha: string; items: HistItem[]; }
           <span class="hist-badge" [ngClass]="claseAccion(it.accion_key)">{{ it.accion }}</span>
           <span class="hist-puesto">
             <span class="hist-puesto-nom">{{ it.puesto || '—' }}</span>
-            <span class="hist-cliente" *ngIf="it.cliente">{{ it.cliente }}</span>
+            <span class="hist-cliente" *ngIf="it.cliente && it.cliente !== it.puesto">{{ it.cliente }}</span>
           </span>
           <span class="hist-detalle">
             <ng-container *ngIf="it.accion_key === 'CAMBIO'">
