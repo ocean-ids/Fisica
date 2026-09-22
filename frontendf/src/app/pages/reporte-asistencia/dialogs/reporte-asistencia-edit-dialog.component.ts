@@ -129,9 +129,11 @@ export class ReporteAsistenciaEditDialogComponent {
       }
     });
 
-    // HUECA: precargar la persona de cobertura (si ya tenía una asignada ese día).
+    // Precargar la persona de cobertura / guardia del día (si ya había una ese día).
+    // En filas normales, "Apellidos y Nombres" ES el selector: muestra el nombre actual
+    // (titular o el guardia del día ya elegido) para poder cambiarlo.
     this.coberturaSel = (data?.row as any)?.persona_cobertura_id ?? null;
-    if (this.esHuecaEstructural && this.coberturaSel) {
+    if (this.esFilaNormal || this.coberturaSel) {
       this.coberturaCtrl.setValue(data?.row?.nombre_apellidos || '', { emitEvent: false });
     }
     this.coberturaCtrl.valueChanges.subscribe((value) => {
@@ -302,6 +304,18 @@ export class ReporteAsistenciaEditDialogComponent {
     return `${p.nombres || ''} ${p.apellidos || ''}`.trim();
   }
 
+  // Apellidos primero (para el selector "Apellidos y Nombres").
+  getApellidosNombres(p: Persona): string {
+    return `${p.apellidos || ''} ${p.nombres || ''}`.trim();
+  }
+
+  // Display del selector de guardia del día: apellidos primero (o el texto tal cual).
+  displayCobertura = (value: Persona | string | null): string => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    return this.getApellidosNombres(value);
+  };
+
   esReemplazoOcupado(p: Persona): boolean {
     if (!p?.id) return false;
     // Solo se bloquea si ya está usado como reemplazo en OTRO registro del reporte.
@@ -321,7 +335,7 @@ export class ReporteAsistenciaEditDialogComponent {
   colorReemplazo(p: Persona): string {
     const e = this.estadoReemplazo(p);
     if (e === 'EN USO') return '#dc3545';    // rojo: bloqueado (ya es reemplazo)
-    if (e === 'ASIGNADO') return '#d97706';  // ámbar: asignado pero elegible
+    if (e === 'ASIGNADO') return '#0891b2';  // celeste: movimiento interno (asignado, elegible)
     return '#198754';                        // verde: disponible
   }
 
@@ -357,6 +371,20 @@ export class ReporteAsistenciaEditDialogComponent {
   limpiarCobertura(): void {
     this.coberturaCtrl.setValue('', { emitEvent: false });
     this.coberturaSel = null;
+  }
+
+  // Volver al titular: quita el guardia del día elegido (movimiento interno). Al guardar,
+  // persona_cobertura queda null y el reporte vuelve a mostrar al titular.
+  volverATitular(): void {
+    this.coberturaSel = null;
+    this.coberturaCtrl.setValue('', { emitEvent: false });
+  }
+
+  // Etiqueta del estado del reemplazo. "ASIGNADO" (tiene puesto) se muestra como
+  // "MOVIMIENTO INTERNO" en el Reporte de Asistencia (es lo que ocurre al usarlo aquí).
+  etiquetaEstadoReemplazo(p: Persona): string {
+    const e = this.estadoReemplazo(p);
+    return e === 'ASIGNADO' ? 'MOVIMIENTO INTERNO' : e;
   }
 
   onReemplazoOptionSelected(value: Persona | null): void {
@@ -400,11 +428,27 @@ export class ReporteAsistenciaEditDialogComponent {
     return base;
   }
 
-  // Filtro de personas para el selector de cobertura de HUECA (mismo listado).
+  // Selector de "Apellidos y Nombres" (movimiento interno): personal operativo que se
+  // puede mover a este puesto. FIJOS solo si YA tienen asignación (un puesto). SACAFRANCO
+  // siempre (trabajan por su ficha de sacafranco, no por Asignacion, así que no entran en
+  // personasAsignadasIds pero igual son operativos).
   getCoberturaFiltrados(): Persona[] {
     const v = this.coberturaCtrl.value;
     const query = typeof v === 'string' ? v : (v ? this.getNombrePersona(v) : '');
-    return this.filtrarPersonas(query);
+    return this.filtrarPersonas(query).filter((p) => {
+      const tipo = String(p?.tipo || '').toUpperCase();
+      if (tipo === 'SACAFRANCO') { return true; }
+      if (tipo === 'FIJOS') { return !!p?.id && this.personasAsignadasIds.has(Number(p.id)); }
+      return false;
+    });
+  }
+
+  // ¿Se muestra el badge "MOVIMIENTO INTERNO" para esta persona en el selector?
+  // Sí para fijos con asignación (titulares de otro puesto) y para sacafrancos.
+  esMovimientoInterno(p: Persona): boolean {
+    const tipo = String(p?.tipo || '').toUpperCase();
+    if (tipo === 'SACAFRANCO') { return true; }
+    return !!p?.id && this.personasAsignadasIds.has(Number(p.id));
   }
 
   private filtrarPersonas(query: string): Persona[] {
@@ -504,6 +548,12 @@ export class ReporteAsistenciaEditDialogComponent {
   // Opciones de Asistencia: en una hueca solo se permite FALTÓ (no ASISTE).
   get asistenciasDisponibles(): Array<'ASISTIO' | 'FALTO'> {
     return this.esHuecaEstructural ? ['FALTO'] : this.estadosAsistenciaDisponibles;
+  }
+
+  // Fila normal (puesto con titular, ni hueca ni sacafranco): permite MOVIMIENTO INTERNO
+  // (cambiar el guardia del día solo en el reporte, sin tocar la asignación).
+  get esFilaNormal(): boolean {
+    return !!this.data?.row?.asignacion_id && !this.esHuecaEstructural && !this.esSacafranco;
   }
 
   // El botón Guardar se habilita solo cuando el formulario tiene lo mínimo:
@@ -634,6 +684,13 @@ export class ReporteAsistenciaEditDialogComponent {
       payload.estado_asistencia = raw.estado_asistencia || null;
       payload.persona_cobertura_id = null;
       payload.hueca = true;
+    }
+
+    // MOVIMIENTO INTERNO (fila normal): el guardia que realmente cubrió ese día se guarda
+    // como persona_cobertura, SOLO en el reporte de ese día (no cambia la asignación). Si
+    // queda vacío, se limpia (vuelve a mostrar al titular).
+    if (this.esFilaNormal) {
+      payload.persona_cobertura_id = this.coberturaSel ?? null;
     }
 
     this.guardando = true;

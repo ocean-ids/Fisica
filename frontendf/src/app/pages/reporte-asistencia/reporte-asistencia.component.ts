@@ -528,11 +528,15 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       row.row_color = (res.row_color ?? row.row_color);
       row.modificado_por = res.modificado_por;
       row.modificado_en = res.modificado_en;
-      // HUECA cubierta: refrescar el nombre con la persona de cobertura (o volver a "HUECA"
-      // si se quitó), para que la tabla se actualice al instante sin recargar.
+      // Cobertura / movimiento interno: refrescar el nombre mostrado y el badge al instante
+      // (sin recargar). Aplica a HUECA cubierta y a filas normales con guardia del día.
+      (row as any).persona_cobertura_id = res.persona_cobertura_id ?? null;
       if ((row as any).es_hueca) {
-        (row as any).persona_cobertura_id = res.persona_cobertura_id ?? null;
         row.nombre_apellidos = res.persona_cobertura || 'HUECA';
+      } else {
+        // Fila normal: el backend devuelve el nombre efectivo (guardia del día o titular).
+        if (res.nombre_apellidos) { row.nombre_apellidos = res.nombre_apellidos; }
+        (row as any).movimiento_interno = !!res.movimiento_interno;
       }
     });
   }

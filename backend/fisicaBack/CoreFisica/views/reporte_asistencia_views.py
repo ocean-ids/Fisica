@@ -963,6 +963,10 @@ def _build_reporte_asistencia_data(
     except Exception:
         sacavac_saca_map = {}
 
+    # Cache: ¿la persona (guardia de movimiento interno) es titular de un puesto ese mes?
+    # Sirve para marcar el badge "MOVIMIENTO INTERNO" sin repetir consultas.
+    _mov_interno_cache = {}
+
     for asig in asig_list:
         # Persona vigente en la fecha del reporte (historial por período). Si la asignación
         # no tiene períodos (dato previo), se usa Asignacion.persona (la actual).
@@ -1019,8 +1023,23 @@ def _build_reporte_asistencia_data(
                 persona_cobertura = getattr(override, 'reemplazo', None)
         # HUECA cubierta ese dia: la persona de cobertura se muestra como el guardia
         # (en "Apellidos y Nombres"), o cobertura auto de sacafranco.
+        mov_interno = False
         if persona_cobertura and (p is None or auto_sacafranco):
             nombre_apellidos = f"{persona_cobertura.apellidos} {persona_cobertura.nombres}".strip()
+        elif persona_cobertura and p is not None and not auto_sacafranco:
+            # MOVIMIENTO INTERNO: el titular fue reemplazado ese dia por otro guardia SOLO
+            # en el reporte (no cambia la asignacion). Si ese guardia es titular de otro
+            # puesto ese mes, se marca el badge "MOVIMIENTO INTERNO".
+            nombre_apellidos = f"{persona_cobertura.apellidos} {persona_cobertura.nombres}".strip()
+            _pcid = getattr(persona_cobertura, 'id', None)
+            # Sacafranco: operativo por su ficha (no por Asignacion) -> siempre mov. interno.
+            mov_interno = getattr(persona_cobertura, 'tipo', '') == 'SACAFRANCO'
+            if not mov_interno and fecha_obj and _pcid:
+                if _pcid not in _mov_interno_cache:
+                    _mov_interno_cache[_pcid] = Asignacion.objects.filter(
+                        persona_id=_pcid, mes=fecha_obj.month, anio=fecha_obj.year, estado='ACTIVO'
+                    ).exists()
+                mov_interno = _mov_interno_cache[_pcid]
         zona_titulo = ''
         provincia_nombre = ''
         if asig and asig.instalacion:
@@ -1103,6 +1122,7 @@ def _build_reporte_asistencia_data(
             'reemplazo': reemplazo_nombre,
             'persona_cobertura_id': (persona_cobertura.id if persona_cobertura else None),
             'es_hueca': (p is None),
+            'movimiento_interno': mov_interno,
             'estado_asistencia': estado_asistencia,
             'estado': estado,
             'descripcion': descripcion,
@@ -1826,9 +1846,24 @@ def insertar_reporte_asistencia(request, asignacion_id):
     if override.reemplazo:
         reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
 
-    # Nombre a mostrar: si la HUECA tiene persona de cobertura, ese es el guardia del día.
+    # Nombre a mostrar: si hay persona de cobertura (HUECA cubierta o MOVIMIENTO INTERNO),
+    # ese es el guardia del día; si no, el titular de la asignación (o HUECA).
     pc = override.persona_cobertura
     pc_nombre = f"{pc.apellidos} {pc.nombres}".strip() if pc else ''
+    if pc:
+        nombre_efectivo = pc_nombre
+    elif asignacion.persona:
+        nombre_efectivo = f"{asignacion.persona.apellidos} {asignacion.persona.nombres}".strip()
+    else:
+        nombre_efectivo = 'HUECA'
+    # MOVIMIENTO INTERNO: el guardia del día es titular de otro puesto ese mes, o es
+    # un SACAFRANCO (operativo por su ficha).
+    mov_interno = bool(pc) and (
+        getattr(pc, 'tipo', '') == 'SACAFRANCO'
+        or Asignacion.objects.filter(
+            persona_id=pc.id, mes=asignacion.mes, anio=asignacion.anio, estado='ACTIVO'
+        ).exists()
+    )
 
     return JsonResponse({
         'codigo': override.codigo or '',
@@ -1839,6 +1874,8 @@ def insertar_reporte_asistencia(request, asignacion_id):
         'reemplazo': reemplazo_nombre,
         'persona_cobertura_id': override.persona_cobertura_id,
         'persona_cobertura': pc_nombre,
+        'nombre_apellidos': nombre_efectivo,
+        'movimiento_interno': mov_interno,
         'modificado_por': modificado_por_nombre,
         'row_color': override.row_color or '',
         'hueca': bool(override.hueca),

@@ -113,6 +113,9 @@
                                 <div *ngIf="r.sacafranco_fila_id">
                                     <span class="badge rounded-pill bg-primary mt-1" style="font-size:0.6rem; letter-spacing:0.5px;">SACAFRANCO</span>
                                 </div>
+                                <div *ngIf="r.movimiento_interno">
+                                    <span class="badge rounded-pill bg-info text-dark mt-1" style="font-size:0.6rem; letter-spacing:0.5px;" title="Este guardia es titular de otro puesto: cubrió aquí por movimiento interno (solo en el reporte de este día)">MOVIMIENTO INTERNO</span>
+                                </div>
                             </td>
                             <td [style.backgroundColor]="getRowColor(r)"
                                 [style.cursor]="((r.asignacion_id || r.sacafranco_fila_id) && !r.es_hueca) ? 'pointer' : 'default'"

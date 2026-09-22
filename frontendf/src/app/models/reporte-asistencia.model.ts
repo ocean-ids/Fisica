@@ -20,6 +20,8 @@ export interface ReporteAsistenciaRow {
   hueca_motivo?: string;
   es_hueca?: boolean;
   persona_cobertura_id?: number | null;
+  // Movimiento interno: el guardia mostrado es titular de otro puesto y cubrió aquí ese día.
+  movimiento_interno?: boolean;
   modificado_en?: string | null;
   zona_titulo?: string;
   provincia?: string;

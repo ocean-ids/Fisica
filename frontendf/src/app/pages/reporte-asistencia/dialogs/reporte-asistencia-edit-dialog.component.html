@@ -25,10 +25,46 @@
 
   <form [formGroup]="form" class="editable-grid">
     <fieldset class="grupo-fila">
-      <!-- Nombre de solo lectura (en una HUECA muestra "HUECA"; el reemplazo la cubre). -->
-      <mat-form-field appearance="outline" class="full-width">
+      <!-- HUECA / sacafranco: nombre de solo lectura (tienen su propio flujo con Reemplazo). -->
+      <mat-form-field *ngIf="!esFilaNormal" appearance="outline" class="full-width">
         <mat-label>Apellidos y Nombres</mat-label>
         <input matInput [value]="data.row.nombre_apellidos || '-'" readonly>
+      </mat-form-field>
+
+      <!-- Fila normal: se puede ELEGIR el guardia del día (movimiento interno) aquí mismo.
+           Solo cambia el reporte de ese día; NO toca Asignaciones. Los nombres que ya están
+           asignados a un puesto salen con el badge "MOVIMIENTO INTERNO". -->
+      <mat-form-field *ngIf="esFilaNormal" appearance="outline" class="full-width">
+        <mat-label>Apellidos y Nombres</mat-label>
+        <input
+          type="text"
+          matInput
+          [formControl]="coberturaCtrl"
+          [matAutocomplete]="autoCobertura"
+          [readonly]="guardando || cargandoReemplazos"
+          placeholder="Escribe para buscar al guardia del día"
+          style="text-transform: uppercase;"
+        >
+        <button *ngIf="coberturaCtrl.value" matSuffix mat-icon-button type="button"
+                aria-label="Borrar" title="Borrar (volver al titular)"
+                (click)="volverATitular()">
+          <mat-icon>close</mat-icon>
+        </button>
+        <mat-autocomplete
+          #autoCobertura="matAutocomplete"
+          [displayWith]="displayCobertura"
+          (optionSelected)="onCoberturaOptionSelected($event.option.value)"
+        >
+          <mat-option *ngFor="let p of getCoberturaFiltrados()" [value]="p">
+            {{ getApellidosNombres(p) }}
+            <span *ngIf="p.cedula" style="font-size:11px; color:#6b7280; margin-left:6px;">{{ p.cedula }}</span>
+            <span style="display:inline-block; font-size:10px; font-weight:700; padding:1px 7px; border-radius:10px; background:#eef2ff; color:#4338ca; margin-left:4px;">{{ p.tipo }}</span>
+            <span *ngIf="esMovimientoInterno(p)"
+                  class="badge rounded-pill bg-info text-dark"
+                  style="font-size:10px; font-weight:700; margin-left:6px;">MOVIMIENTO INTERNO</span>
+          </mat-option>
+          <mat-option disabled *ngIf="!getCoberturaFiltrados().length">Sin coincidencias</mat-option>
+        </mat-autocomplete>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
@@ -79,7 +115,7 @@
         <mat-option *ngFor="let p of getReemplazosFiltrados()" [value]="p" [disabled]="esReemplazoOcupado(p)">
           {{ getNombrePersona(p) }}
           <span style="display:inline-block; font-size:10px; font-weight:700; padding:1px 7px; border-radius:10px; background:#eef2ff; color:#4338ca; margin-left:4px;">{{ p.tipo }}</span>
-          <span [style.color]="colorReemplazo(p)" style="font-size:11px; font-weight:600; margin-left:4px;">· {{ estadoReemplazo(p) }}</span>
+          <span [style.color]="colorReemplazo(p)" style="font-size:11px; font-weight:600; margin-left:4px;">· {{ etiquetaEstadoReemplazo(p) }}</span>
         </mat-option>
         <mat-option disabled *ngIf="!getReemplazosFiltrados().length">Sin coincidencias</mat-option>
       </mat-autocomplete>
