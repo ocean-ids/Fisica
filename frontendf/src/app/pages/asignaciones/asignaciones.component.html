@@ -62,6 +62,10 @@
         <img src="assets/images/excel-icon.png" alt="Excel" width="15" height="15" style="margin-right:6px;" />
         Descargar
       </button>
+      <button class="btn btn-outline-dark" type="button" (click)="abrirHistorialMes()"
+              title="Historial de movimientos del mes (por día)">
+        <i class="bi bi-clock-history"></i> Historial
+      </button>
     </div>
   </div>
   <div class="row asig-row g-0" [ngClass]="{ 'justify-content-center': !displayRows.length }">

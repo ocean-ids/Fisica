@@ -83,6 +83,18 @@ export class AsignacionService {
     return this.apiService.delete<any>(`/eliminar-asignacion/${id}/`);
   }
 
+  // Historial de movimientos (crear/editar/eliminar) de las asignaciones de un mes,
+  // agrupado por día (viene del AuditLog).
+  historialMes(mes: number, anio: number): Observable<{
+    mes: number; anio: number; total: number;
+    dias: Array<{ fecha: string; items: Array<{
+      hora: string; usuario: string; accion: string; accion_key: string;
+      cliente: string; puesto: string; antes: string; despues: string; persona: string;
+    }> }>;
+  }> {
+    return this.apiService.get<any>(`/asignaciones/historial-mes/${mes}/${anio}/`);
+  }
+
   guardarOrden(ordenes: {id: number, orden: number}[], mes?: number, anio?: number): Observable<any>{
     return this.apiService.post<any>(`/guardar-orden-asignacion/`, { ordenes, mes, anio });
   }

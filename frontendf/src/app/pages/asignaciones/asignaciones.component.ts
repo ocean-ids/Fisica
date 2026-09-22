@@ -38,6 +38,7 @@ import { environment } from '@env/environment';
 import { CantonMixView, CantonViewsModalComponent, VistaTipo } from './canton-views-modal.component';
 import { EventualDatosDialogComponent } from './eventual-datos-dialog/eventual-datos-dialog.component';
 import { EventualesListaDialogComponent } from './eventuales-lista-dialog/eventuales-lista-dialog.component';
+import { HistorialMesDialogComponent } from './historial-mes-dialog/historial-mes-dialog.component';
 
 @Component({
   selector: 'app-asignaciones',
@@ -522,6 +523,16 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     }
     this.provinciaPage = 1;
     this.cargarAsignaciones();
+  }
+
+  // Abre el modal "Historial del mes": movimientos (crear/editar/eliminar puestos)
+  // agrupados por día, del mes que se está viendo.
+  abrirHistorialMes(): void {
+    this.dialog.open(HistorialMesDialogComponent, {
+      width: '820px',
+      maxWidth: '95vw',
+      data: { mes: this.mes, anio: this.anio },
+    });
   }
 
   // onMonthChange se encarga de manejar el cambio de mes en el calendario, actualizando el estado del componente y recargando las asignaciones para reflejar el nuevo mes seleccionado

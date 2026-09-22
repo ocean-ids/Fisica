@@ -3230,3 +3230,110 @@ def asignacion_de_persona(request, persona_id):
         'anio': asig.anio,
         'mes': asig.mes,
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def historial_asignaciones_mes(request, mes, anio):
+    """Historial de movimientos (crear/editar/eliminar) de las asignaciones de un mes,
+    agrupado por DÍA en que se hizo el cambio. Lee del AuditLog (auditoría automática):
+    quién, qué acción y a qué puesto/persona, con hora."""
+    if not request.user.has_perm('CoreFisica.view_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    try:
+        mes = int(mes); anio = int(anio)
+    except (TypeError, ValueError):
+        return Response({'error': 'mes o anio invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from ..models import AuditLog
+
+    def _nom(pp):
+        return f"{pp.apellidos} {pp.nombres}".strip() if pp else 'HUECA'
+
+    def _puesto_lbl(asig):
+        return (getattr(asig.puesto, 'nombre', '') or getattr(asig.puesto, 'tipo', '') or 'Puesto')
+
+    def _cliente_lbl(asig):
+        return (getattr(asig.cliente, 'nombre_comercial', '') or '')
+
+    def _parse_repr(repr_str):
+        """objeto_repr = 'PERSONA - PUESTO (m/a)'. Devuelve (persona, puesto) estructurado
+        para las filas cuyo objeto ya no existe (eliminaciones)."""
+        s = (repr_str or '').strip()
+        if '(' in s:
+            s = s[:s.rfind('(')].strip()
+        persona, puesto = '', s
+        if ' - ' in s:
+            persona, puesto = s.split(' - ', 1)
+            persona, puesto = persona.strip(), puesto.strip()
+        if persona in ('None', ''):
+            persona = 'HUECA'
+        return persona, puesto
+
+    # Mapa de asignaciones existentes del mes (para estructurar cliente/puesto).
+    asig_map = {
+        a.id: a for a in Asignacion.objects.filter(mes=mes, anio=anio)
+        .select_related('cliente', 'puesto')
+    }
+
+    dias = {}
+
+    def _item(dia, **kw):
+        dias.setdefault(dia, {'fecha': dia, 'items': []})['items'].append(kw)
+
+    # 1) PUESTOS creados / eliminados (del AuditLog). Se omiten los UPDATE genéricos
+    # (reordenamientos, etc.) porque generan ruido; los cambios de persona/hueca se
+    # muestran de forma estructurada abajo (con antes → después).
+    patron = f"({mes}/{anio})"
+    logs = (AuditLog.objects
+            .filter(modelo='Asignacion', objeto_repr__contains=patron, accion__in=['CREATE', 'DELETE'])
+            .select_related('usuario')
+            .order_by('-creado_en'))
+    for lg in logs:
+        loc = timezone.localtime(lg.creado_en)
+        dia = loc.date().isoformat()
+        if lg.usuario:
+            usuario = (f"{lg.usuario.first_name} {lg.usuario.last_name}".strip()
+                       or lg.usuario.get_username())
+        else:
+            usuario = lg.usuario_str or 'Sistema'
+        asig = asig_map.get(int(lg.objeto_id)) if str(lg.objeto_id).isdigit() else None
+        if asig:
+            cliente, puesto = _cliente_lbl(asig), _puesto_lbl(asig)
+            persona = _nom(asig.persona)
+        else:
+            persona, puesto = _parse_repr(lg.objeto_repr)
+            cliente = ''
+        _item(dia,
+              hora=loc.strftime('%H:%M'), usuario=usuario,
+              accion=('Puesto creado' if lg.accion == 'CREATE' else 'Puesto eliminado'),
+              accion_key=lg.accion, cliente=cliente, puesto=puesto,
+              antes='', despues='', persona=persona)
+
+    # 2) CAMBIOS DE GUARDIA (quién estaba antes → quién quedó después), del historial de
+    # períodos. Cada frontera de período (salvo el primero) es un cambio en su fecha.
+    for asig in (Asignacion.objects
+                 .filter(mes=mes, anio=anio)
+                 .select_related('cliente', 'puesto')
+                 .prefetch_related('periodos_persona__persona')):
+        periodos = list(asig.periodos_persona.all())  # ordenados por 'desde' (Meta.ordering)
+        if len(periodos) < 2:
+            continue
+        for i in range(1, len(periodos)):
+            _item(periodos[i].desde.isoformat(),
+                  hora='', usuario='',
+                  accion='Cambio de guardia', accion_key='CAMBIO',
+                  cliente=_cliente_lbl(asig), puesto=_puesto_lbl(asig),
+                  antes=_nom(periodos[i - 1].persona), despues=_nom(periodos[i].persona),
+                  persona='')
+
+    # Ordenar items por hora (los cambios de guardia, sin hora, al final) y días recientes primero.
+    total = 0
+    for grupo in dias.values():
+        grupo['items'].sort(key=lambda it: it.get('hora') or '', reverse=True)
+        total += len(grupo['items'])
+    dias_list = sorted(dias.values(), key=lambda x: x['fecha'], reverse=True)
+    return JsonResponse(
+        {'mes': mes, 'anio': anio, 'total': total, 'dias': dias_list},
+        status=status.HTTP_200_OK,
+    )
