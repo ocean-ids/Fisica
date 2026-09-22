@@ -99,6 +99,53 @@ class MovimientoInternoTests(TestCase):
         self.assertEqual(fila['nombre_apellidos'], 'TITULAR JUAN')
         self.assertFalse(fila['movimiento_interno'])
 
+    def test_hueca_con_persona_y_asiste_por_endpoint(self):
+        # Una HUECA (puesto sin titular) puede recibir un guardia del día y marcar ASISTE,
+        # sin reemplazo. El ASISTE NO se borra y el reporte muestra a esa persona.
+        User.objects.create_superuser(username='hk_user', password='HkPass123!', email='h@e.com')
+        resp = self.client.post('/api/login/',
+                                data=json.dumps({'username': 'hk_user', 'password': 'HkPass123!'}),
+                                content_type='application/json')
+        access = resp.json().get('access')
+
+        puesto_h = Puesto.objects.create(instalacion=self.inst_a, nombre='PUESTO HUECA')
+        hueca = Asignacion.objects.create(
+            persona=None, cliente=self.cliente, instalacion=self.inst_a,
+            puesto=puesto_h, mes=self.mes, anio=self.anio, estado='ACTIVO', es_hueca=True,
+        )
+        payload = {
+            'estado_asistencia': 'ASISTIO',
+            'hueca': True,
+            'fecha': self.dia.isoformat(),
+            'persona_cobertura_id': self.pedro.id,
+        }
+        r = self.client.put(f'/api/reporte-asistencia/{hueca.id}/',
+                            data=json.dumps(payload), content_type='application/json',
+                            HTTP_AUTHORIZATION=f'Bearer {access}')
+        self.assertIn(r.status_code, (200, 201))
+        ov = ReporteAsistencia.objects.get(asignacion=hueca)
+        # El ASISTE se conserva (antes se borraba por no tener reemplazo).
+        self.assertEqual(ov.estado_asistencia, 'ASISTIO')
+        self.assertEqual(ov.persona_cobertura_id, self.pedro.id)
+        # La asignación sigue siendo hueca (persona=None): no se tocó.
+        hueca.refresh_from_db()
+        self.assertIsNone(hueca.persona_id)
+
+        # El reporte del día muestra a la persona asignada.
+        res = _build_reporte_asistencia_data(fecha=self.dia.isoformat(), turno=None)
+        data = res[0] if isinstance(res, tuple) else res
+        fh = next((x for x in data if x.get('asignacion_id') == hueca.id), None)
+        self.assertIsNotNone(fh)
+        self.assertEqual(fh['nombre_apellidos'], 'PEREZ PEDRO')
+
+        # Al DÍA SIGUIENTE (sin cobertura ese día) el puesto vuelve a salir como HUECA.
+        dia6 = datetime.date(self.anio, self.mes, 6)
+        res6 = _build_reporte_asistencia_data(fecha=dia6.isoformat(), turno=None)
+        data6 = res6[0] if isinstance(res6, tuple) else res6
+        fh6 = next((x for x in data6 if x.get('asignacion_id') == hueca.id), None)
+        self.assertIsNotNone(fh6)
+        self.assertEqual(fh6['nombre_apellidos'], 'HUECA')
+
     def test_solo_afecta_ese_dia(self):
         # El movimiento interno del día 5 NO afecta al día 6: ese día vuelve el titular.
         self._override_cobertura(self.pedro)   # guardia del día SOLO para self.dia (día 5)

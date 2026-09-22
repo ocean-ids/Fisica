@@ -1794,15 +1794,9 @@ def insertar_reporte_asistencia(request, asignacion_id):
     if reemplazo_result != 'no-enviado':
         override.reemplazo = reemplazo_result
 
-    # HUECA (puesto sin persona fija): no puede marcarse ASISTE "sola" (sin reemplazo que
-    # la cubra). Pero SÍ puede marcarse FALTÓ (el puesto quedó sin cubrir ese día). Solo se
-    # ignora un ASISTE sin reemplazo (p. ej. el check rápido de la tabla).
-    if (asignacion.persona_id is None and not override.reemplazo
-            and (override.estado_asistencia or '').strip().upper() != 'FALTO'):
-        override.estado_asistencia = None
-
-    # Persona que cubre una HUECA ese día (se muestra en "Apellidos y Nombres" solo en el
-    # reporte del día; NO cambia la asignación, por eso el día siguiente vuelve a HUECA).
+    # Persona que cubre una HUECA / guardia del día (movimiento interno). Se muestra en
+    # "Apellidos y Nombres" solo en el reporte del día; NO cambia la asignación, por eso el
+    # día siguiente vuelve a la HUECA / titular. Se resuelve ANTES del guard de abajo.
     if 'persona_cobertura_id' in request.data:
         _pc = request.data.get('persona_cobertura_id')
         if _pc in (None, '', 'null'):
@@ -1812,6 +1806,14 @@ def insertar_reporte_asistencia(request, asignacion_id):
                 override.persona_cobertura = Persona.objects.filter(id=int(_pc)).first()
             except (ValueError, TypeError):
                 override.persona_cobertura = None
+
+    # HUECA (puesto sin persona fija): no puede marcarse ASISTE "sola", sin nadie que la
+    # cubra. Pero SÍ si hay reemplazo O un guardia del día (persona_cobertura); y SÍ puede
+    # marcarse FALTÓ (quedó sin cubrir). Solo se ignora un ASISTE sin cobertura alguna.
+    if (asignacion.persona_id is None and not override.reemplazo
+            and not override.persona_cobertura
+            and (override.estado_asistencia or '').strip().upper() != 'FALTO'):
+        override.estado_asistencia = None
 
     if request.user and request.user.is_authenticated:
         override.modificado_por = request.user

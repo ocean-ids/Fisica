@@ -141,6 +141,12 @@ export class ReporteAsistenciaEditDialogComponent {
       if (typeof value === 'string') { this.coberturaSel = null; }
     });
 
+    // HUECA: se abre MARCADA por defecto (sigue siendo una hueca), salvo que ya tenga un
+    // guardia del día asignado (ahí se respeta lo guardado). El usuario puede desmarcarla.
+    if (this.esHuecaEstructural && !this.coberturaSel && !(data?.row?.hueca)) {
+      this.form.get('hueca')?.setValue(true, { emitEvent: false });
+    }
+
     // Estado y Reemplazo solo se habilitan cuando la asistencia es FALTO.
     // Inicial: solo bloquea/habilita (sin limpiar, para no borrar datos existentes al abrir).
     this.aplicarBloqueoAsistencia(this.form.get('estado_asistencia')?.value, false);
@@ -176,23 +182,20 @@ export class ReporteAsistenciaEditDialogComponent {
     if (this.esHuecaEstructural) {
       const asisCtrl = this.form.get('estado_asistencia');
       asisCtrl?.enable({ emitEvent: false });
-      // El Estado se HABILITA en cualquier hueca CON motivo (todas las opciones), y queda
-      // en "Seleccione" hasta que el usuario escoja. Sin motivo elegido, se deshabilita.
-      const motivoAct = (motivoCtrl?.value || '').toString().trim().toUpperCase();
-      if (motivoAct) {
-        estadoCtrl?.enable({ emitEvent: false });
+      // Check "Hueca": LIBRE (se puede marcar o desmarcar). El Motivo se habilita solo
+      // cuando la hueca está marcada; si se desmarca, se limpia.
+      huecaCtrl?.enable({ emitEvent: false });
+      const esHueca = !!huecaCtrl?.value;
+      if (esHueca) {
+        motivoCtrl?.enable({ emitEvent: false });
       } else {
-        estadoCtrl?.setValue(null, { emitEvent: false });
-        estadoCtrl?.disable({ emitEvent: false });
+        if (limpiar) { motivoCtrl?.setValue('', { emitEvent: false }); }
+        motivoCtrl?.disable({ emitEvent: false });
       }
+      // Estado: habilitado (opcional, sin obligar). Reemplazo según haya un Estado elegido.
+      estadoCtrl?.enable({ emitEvent: false });
       estadoCtrl?.clearValidators();
       estadoCtrl?.updateValueAndValidity({ emitEvent: false });
-      // Check "Hueca" marcado por defecto.
-      if (!huecaCtrl?.value) { huecaCtrl?.setValue(true, { emitEvent: false }); }
-      huecaCtrl?.enable({ emitEvent: false });
-      motivoCtrl?.enable({ emitEvent: false });
-      // Orden: Motivo -> Estado -> Reemplazo. El Reemplazo se habilita solo cuando ya
-      // hay un Estado elegido (igual que en las filas normales).
       this.aplicarBloqueoReemplazo(limpiar);
       return;
     }
@@ -545,9 +548,10 @@ export class ReporteAsistenciaEditDialogComponent {
     return false;
   }
 
-  // Opciones de Asistencia: en una hueca solo se permite FALTÓ (no ASISTE).
+  // Opciones de Asistencia: ambas. En una hueca cubierta con una persona se marca ASISTE;
+  // si nadie cubrió, FALTÓ.
   get asistenciasDisponibles(): Array<'ASISTIO' | 'FALTO'> {
-    return this.esHuecaEstructural ? ['FALTO'] : this.estadosAsistenciaDisponibles;
+    return this.estadosAsistenciaDisponibles;
   }
 
   // Fila normal (puesto con titular, ni hueca ni sacafranco): permite MOVIMIENTO INTERNO
@@ -563,8 +567,9 @@ export class ReporteAsistenciaEditDialogComponent {
   }
 
   // ¿La fila permite elegir el guardia del día en "Apellidos y Nombres"?
+  // Filas normales, sacafranco y también HUECAS (se puede asignar quién cubrió ese día).
   get permiteGuardiaDia(): boolean {
-    return this.esFilaNormal || this.esFilaSacafranco;
+    return this.esFilaNormal || this.esFilaSacafranco || this.esHuecaEstructural;
   }
 
   // El botón Guardar se habilita solo cuando el formulario tiene lo mínimo:
@@ -575,11 +580,18 @@ export class ReporteAsistenciaEditDialogComponent {
     if (this.guardando) { return false; }
     const raw = this.form?.getRawValue?.() || ({} as any);
 
-    // HUECA estructural: exige MOTIVO y REEMPLAZO (sin reemplazo no deja guardar).
+    // HUECA estructural: flexible. Se puede guardar si se asignó una persona (guardia del
+    // día), se marcó asistencia, se puso reemplazo, se marcó la hueca con motivo, o se
+    // escribió una descripción.
     if (this.esHuecaEstructural) {
-      const tieneMotivo = !!(raw.hueca_motivo || '').toString().trim();
+      const tienePersona = !!this.coberturaSel;
+      const asistencia = (raw.estado_asistencia || '').toString().toUpperCase();
+      const marcoAsistencia = asistencia === 'ASISTIO' || asistencia === 'FALTO';
       const tieneReemplazo = !!raw.reemplazo_id;
-      return tieneMotivo && tieneReemplazo;
+      const tieneMotivo = !!(raw.hueca_motivo || '').toString().trim();
+      const tieneDescripcion = !!(raw.descripcion || '').toString().trim();
+      return tienePersona || marcoAsistencia || tieneReemplazo
+          || (!!raw.hueca && tieneMotivo) || tieneDescripcion;
     }
 
     // Debe marcar la asistencia antes de poder guardar... salvo que haya escrito una
@@ -602,13 +614,7 @@ export class ReporteAsistenciaEditDialogComponent {
   get tituloGuardar(): string {
     if (this.guardando) { return ''; }
     if (this.esHuecaEstructural) {
-      const raw = this.form?.getRawValue?.() || ({} as any);
-      const faltaMotivo = !(raw.hueca_motivo || '').toString().trim();
-      const faltaReemplazo = !raw.reemplazo_id;
-      if (faltaMotivo || faltaReemplazo) {
-        return 'HUECA: elige el motivo y el reemplazo (quién cubre)';
-      }
-      return '';
+      return this.puedeGuardar ? '' : 'Asigna un guardia, marca asistencia o completa la hueca (motivo)';
     }
     const asistencia = (this.form?.value?.estado_asistencia || '').toString().toUpperCase();
     const tieneDescripcion = !!(this.form?.value?.descripcion || '').toString().trim();
@@ -645,7 +651,7 @@ export class ReporteAsistenciaEditDialogComponent {
     // Si la asistencia es FALTO, exigir estado de cobertura y reemplazo antes de guardar.
     // Excepción: HUECA SIN estado de cobertura (falto sin reemplazo) — ahí solo se pide motivo.
     const estadoAsistencia = (raw.estado_asistencia || '').toString().toUpperCase();
-    if (estadoAsistencia === 'FALTO' && !this.esSacafranco) {
+    if (estadoAsistencia === 'FALTO' && !this.esSacafranco && !this.esHuecaEstructural) {
       const estado = (raw.estado || '').toString().trim().toUpperCase();
       const reemplazoId = raw.reemplazo_id;
       const tieneEstadoReal = !!estado && estado !== 'TURNO';
@@ -659,21 +665,8 @@ export class ReporteAsistenciaEditDialogComponent {
         return;
       }
     }
-
-    // HUECA: exige MOTIVO y REEMPLAZO (quién cubre) antes de guardar.
-    if (this.esHuecaEstructural) {
-      const faltaMotivo = !(raw.hueca_motivo || '').toString().trim();
-      const faltaReemplazo = !(raw.reemplazo_id);
-      if (faltaMotivo || faltaReemplazo) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Completa la hueca',
-          text: 'En una HUECA debes elegir el MOTIVO y el REEMPLAZO (quién cubre) antes de guardar.',
-        });
-        return;
-      }
-    }
-    // En fila normal, marcar "Hueca" y su motivo son OPCIONALES: no se exige nada.
+    // HUECA: flexible. Se puede asignar un guardia (persona), marcar asistencia, o marcar
+    // la hueca con motivo. No se obliga a nada.
 
     const payload: any = {
       estado: raw.estado || null,
@@ -685,23 +678,18 @@ export class ReporteAsistenciaEditDialogComponent {
       fecha: this.data?.fecha || null
     };
 
-    // HUECA estructural: la fila sigue como "HUECA"; el REEMPLAZO cubre. Sin estado ni
-    // asistencia, sin persona_cobertura. No toca Asignaciones.
-    if (this.esHuecaEstructural) {
-      // Cualquier hueca conserva el Estado elegido (habilitado al elegir motivo); ese
-      // estado define la sección en Reporte de Guardia (ADELANTOS/DOBLADAS/etc.).
-      payload.estado = raw.estado || null;
-      // La asistencia en huecas es OPCIONAL (solo FALTÓ); si se marcó, se conserva.
-      payload.estado_asistencia = raw.estado_asistencia || null;
-      payload.persona_cobertura_id = null;
-      payload.hueca = true;
-    }
-
-    // MOVIMIENTO INTERNO: el guardia que realmente cubrió ese día se guarda como
-    // persona_cobertura, SOLO en el reporte de ese día (no cambia la asignación ni la ficha
-    // del sacafranco). Aplica a filas normales y a filas de sacafranco con persona.
+    // MOVIMIENTO INTERNO / cobertura de hueca: el guardia que realmente cubrió ese día se
+    // guarda como persona_cobertura, SOLO en el reporte de ese día (no cambia la asignación
+    // ni la ficha del sacafranco). Aplica a filas normales, sacafranco y HUECAS.
     if (this.permiteGuardiaDia) {
       payload.persona_cobertura_id = this.coberturaSel ?? null;
+    }
+
+    // Al marcar ASISTE, la fila se pinta de AMARILLO automáticamente (igual que el marcado
+    // rápido de la tabla), incluida una hueca a la que se le asignó una persona.
+    const _asis = (raw.estado_asistencia || '').toString().toUpperCase();
+    if (_asis === 'ASISTIO') {
+      payload.row_color = '#fff8b3';
     }
 
     this.guardando = true;
