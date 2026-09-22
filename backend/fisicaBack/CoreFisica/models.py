@@ -964,6 +964,11 @@ class SacafrancoAsistencia(models.Model):
     reemplazo = models.ForeignKey(
         Persona, null=True, blank=True, on_delete=models.SET_NULL, related_name='+'
     )
+    # Guardia del día (MOVIMIENTO INTERNO): otra persona cubrió esta fila de sacafranco ese
+    # día, SOLO en el reporte de esa fecha. No cambia la ficha del sacafranco.
+    persona_cobertura = models.ForeignKey(
+        Persona, null=True, blank=True, on_delete=models.SET_NULL, related_name='+'
+    )
     modificado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
     )

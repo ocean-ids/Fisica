@@ -12,6 +12,7 @@ from django.contrib.auth.models import User
 from CoreFisica.models import (
     Cliente, Instalacion, Puesto, Persona, Asignacion,
     ReporteAsistencia, ReporteAsistenciaHistorial,
+    SacafrancoFila, SacafrancoAsistencia,
 )
 from CoreFisica.views.reporte_asistencia_views import _build_reporte_asistencia_data
 
@@ -98,6 +99,24 @@ class MovimientoInternoTests(TestCase):
         self.assertEqual(fila['nombre_apellidos'], 'TITULAR JUAN')
         self.assertFalse(fila['movimiento_interno'])
 
+    def test_solo_afecta_ese_dia(self):
+        # El movimiento interno del día 5 NO afecta al día 6: ese día vuelve el titular.
+        self._override_cobertura(self.pedro)   # guardia del día SOLO para self.dia (día 5)
+
+        # Día 5: sale Pedro (movimiento interno).
+        f5 = self._fila_a()
+        self.assertEqual(f5['nombre_apellidos'], 'PEREZ PEDRO')
+        self.assertTrue(f5['movimiento_interno'])
+
+        # Día 6: sin cobertura ese día -> vuelve el titular, sin badge.
+        dia6 = datetime.date(self.anio, self.mes, 6)
+        res = _build_reporte_asistencia_data(fecha=dia6.isoformat(), turno=None)
+        data = res[0] if isinstance(res, tuple) else res
+        f6 = next((r for r in data if r.get('asignacion_id') == self.asig_a.id), None)
+        self.assertIsNotNone(f6)
+        self.assertEqual(f6['nombre_apellidos'], 'TITULAR JUAN')
+        self.assertFalse(f6['movimiento_interno'])
+
     def test_guardado_por_endpoint_persiste(self):
         # Reproduce el flujo del diálogo: PUT al endpoint con persona_cobertura_id.
         User.objects.create_superuser(username='mi_user', password='MiPass123!', email='m@e.com')
@@ -139,3 +158,34 @@ class MovimientoInternoTests(TestCase):
         fila = self._fila_a()
         self.assertEqual(fila['nombre_apellidos'], 'PEREZ PEDRO')
         self.assertTrue(fila['movimiento_interno'])
+
+    def test_sacafranco_guardado_por_endpoint_persiste(self):
+        # Movimiento interno en una fila de SACAFRANCO: se guarda por su fila (no toca
+        # la ficha del sacafranco) y la respuesta trae nombre efectivo + flag.
+        User.objects.create_superuser(username='sf_user', password='SfPass123!', email='s@e.com')
+        resp = self.client.post('/api/login/',
+                                data=json.dumps({'username': 'sf_user', 'password': 'SfPass123!'}),
+                                content_type='application/json')
+        access = resp.json().get('access')
+
+        titular_saca = Persona.objects.create(nombres='TITU', apellidos='SACA', cedula='0555555555', tipo='SACAFRANCO')
+        fila = SacafrancoFila.objects.create(persona=titular_saca, mes=self.mes, anio=self.anio)
+
+        payload = {
+            'fecha': self.dia.isoformat(),
+            'estado_asistencia': 'ASISTIO',
+            'persona_cobertura_id': self.pedro.id,   # fijo de otro puesto cubre ese día
+        }
+        r = self.client.put(f'/api/reporte-asistencia/sacafranco/{fila.id}/',
+                            data=json.dumps(payload), content_type='application/json',
+                            HTTP_AUTHORIZATION=f'Bearer {access}')
+        self.assertIn(r.status_code, (200, 201))
+        body = r.json()
+        self.assertEqual(body.get('nombre_apellidos'), 'PEREZ PEDRO')
+        self.assertTrue(body.get('movimiento_interno'))
+
+        sa = SacafrancoAsistencia.objects.get(sacafranco_fila=fila, fecha=self.dia)
+        self.assertEqual(sa.persona_cobertura_id, self.pedro.id)
+        # La ficha del sacafranco NO cambió (sigue su titular).
+        fila.refresh_from_db()
+        self.assertEqual(fila.persona_id, titular_saca.id)

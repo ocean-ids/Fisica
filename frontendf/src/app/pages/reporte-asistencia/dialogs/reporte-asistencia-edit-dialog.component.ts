@@ -133,7 +133,7 @@ export class ReporteAsistenciaEditDialogComponent {
     // En filas normales, "Apellidos y Nombres" ES el selector: muestra el nombre actual
     // (titular o el guardia del día ya elegido) para poder cambiarlo.
     this.coberturaSel = (data?.row as any)?.persona_cobertura_id ?? null;
-    if (this.esFilaNormal || this.coberturaSel) {
+    if (this.permiteGuardiaDia || this.coberturaSel) {
       this.coberturaCtrl.setValue(data?.row?.nombre_apellidos || '', { emitEvent: false });
     }
     this.coberturaCtrl.valueChanges.subscribe((value) => {
@@ -556,6 +556,17 @@ export class ReporteAsistenciaEditDialogComponent {
     return !!this.data?.row?.asignacion_id && !this.esHuecaEstructural && !this.esSacafranco;
   }
 
+  // Fila de SACAFRANCO con persona (no hueca): también permite elegir el guardia del día
+  // (movimiento interno), guardándose por su fila de sacafranco.
+  get esFilaSacafranco(): boolean {
+    return !!this.data?.row?.sacafranco_fila_id && !this.esHuecaEstructural;
+  }
+
+  // ¿La fila permite elegir el guardia del día en "Apellidos y Nombres"?
+  get permiteGuardiaDia(): boolean {
+    return this.esFilaNormal || this.esFilaSacafranco;
+  }
+
   // El botón Guardar se habilita solo cuando el formulario tiene lo mínimo:
   // - Primero hay que marcar la ASISTENCIA (ASISTE o FALTÓ).
   // - Si es FALTÓ (normal), además el estado (cómo se cubrió) y el reemplazo.
@@ -686,10 +697,10 @@ export class ReporteAsistenciaEditDialogComponent {
       payload.hueca = true;
     }
 
-    // MOVIMIENTO INTERNO (fila normal): el guardia que realmente cubrió ese día se guarda
-    // como persona_cobertura, SOLO en el reporte de ese día (no cambia la asignación). Si
-    // queda vacío, se limpia (vuelve a mostrar al titular).
-    if (this.esFilaNormal) {
+    // MOVIMIENTO INTERNO: el guardia que realmente cubrió ese día se guarda como
+    // persona_cobertura, SOLO en el reporte de ese día (no cambia la asignación ni la ficha
+    // del sacafranco). Aplica a filas normales y a filas de sacafranco con persona.
+    if (this.permiteGuardiaDia) {
       payload.persona_cobertura_id = this.coberturaSel ?? null;
     }
 

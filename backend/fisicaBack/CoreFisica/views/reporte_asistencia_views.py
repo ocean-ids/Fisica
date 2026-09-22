@@ -1159,7 +1159,8 @@ def _build_reporte_asistencia_data(
 
             # Asistencia marcada del sacafranco (ASISTIO/FALTO) para ESTA fecha, por fila.
             _saca_asist = {}
-            for _sa in SacafrancoAsistencia.objects.filter(fecha=fecha_obj).select_related('modificado_por'):
+            for _sa in SacafrancoAsistencia.objects.filter(fecha=fecha_obj).select_related(
+                    'modificado_por', 'reemplazo', 'persona_cobertura'):
                 _saca_asist[_sa.sacafranco_fila_id] = _sa
 
             inst_cache = {}
@@ -1254,6 +1255,20 @@ def _build_reporte_asistencia_data(
                 # el check "Hueca" quedan en blanco para que el supervisor los marque.
                 _saca_hueca = bool(getattr(_sa, 'hueca', False)) if _sa else False
 
+                # MOVIMIENTO INTERNO en sacafranco: si se eligió un guardia del día
+                # (persona_cobertura), ese es el nombre mostrado SOLO en el reporte de esa
+                # fecha (no cambia la ficha del sacafranco).
+                _sa_pc = getattr(_sa, 'persona_cobertura', None) if _sa else None
+                _saca_nombre = persona_nombre or 'HUECA'
+                _saca_mov_interno = False
+                if _sa_pc:
+                    _saca_nombre = f"{_sa_pc.apellidos} {_sa_pc.nombres}".strip()
+                    _saca_mov_interno = (getattr(_sa_pc, 'tipo', '') == 'SACAFRANCO') or bool(
+                        fecha_obj and _sa_pc.id and Asignacion.objects.filter(
+                            persona_id=_sa_pc.id, mes=fecha_obj.month, anio=fecha_obj.year, estado='ACTIVO'
+                        ).exists()
+                    )
+
                 data.append({
                     'asignacion_id': None,
                     'sacafranco_fila_id': fila.id,
@@ -1261,7 +1276,8 @@ def _build_reporte_asistencia_data(
                     'cliente': cliente_val,
                     'puesto': puesto_val,
                     'horario': horario_saca,
-                    'nombre_apellidos': persona_nombre or 'HUECA',
+                    'nombre_apellidos': _saca_nombre,
+                    'movimiento_interno': _saca_mov_interno,
                     'reemplazo_id': _sa_rem.id if _sa_rem else None,
                     'reemplazo': f"{_sa_rem.nombres} {_sa_rem.apellidos}".strip() if _sa_rem else '',
                     'estado_asistencia': _sa_estado,
@@ -1927,6 +1943,16 @@ def marcar_sacafranco_asistencia(request, sacafranco_fila_id):
                 obj.reemplazo = Persona.objects.filter(id=int(_rid)).first()
             except (ValueError, TypeError):
                 obj.reemplazo = None
+    # MOVIMIENTO INTERNO: guardia del día que cubrió esta fila (solo en el reporte del día).
+    if 'persona_cobertura_id' in request.data:
+        _pc = request.data.get('persona_cobertura_id')
+        if _pc in (None, '', 'null'):
+            obj.persona_cobertura = None
+        else:
+            try:
+                obj.persona_cobertura = Persona.objects.filter(id=int(_pc)).first()
+            except (ValueError, TypeError):
+                obj.persona_cobertura = None
     obj.modificado_por = request.user
     obj.save()
 
@@ -1957,6 +1983,21 @@ def marcar_sacafranco_asistencia(request, sacafranco_fila_id):
 
     _u = obj.modificado_por
     _rem = obj.reemplazo
+    # Nombre efectivo (guardia del día si hay cobertura, si no el titular de la ficha) y
+    # flag de movimiento interno (guardia titular de otro puesto ese mes o sacafranco).
+    _pc = obj.persona_cobertura
+    if _pc:
+        nombre_efectivo = f"{_pc.apellidos} {_pc.nombres}".strip()
+    elif fila.persona:
+        nombre_efectivo = f"{fila.persona.apellidos} {fila.persona.nombres}".strip()
+    else:
+        nombre_efectivo = 'HUECA'
+    mov_interno = bool(_pc) and (
+        getattr(_pc, 'tipo', '') == 'SACAFRANCO'
+        or Asignacion.objects.filter(
+            persona_id=_pc.id, mes=fecha.month, anio=fecha.year, estado='ACTIVO'
+        ).exists()
+    )
     return JsonResponse({
         'sacafranco_fila_id': fila.id,
         'fecha': fecha.isoformat(),
@@ -1964,6 +2005,9 @@ def marcar_sacafranco_asistencia(request, sacafranco_fila_id):
         'estado': obj.estado or 'TURNO',
         'reemplazo_id': _rem.id if _rem else None,
         'reemplazo': f"{_rem.nombres} {_rem.apellidos}".strip() if _rem else '',
+        'persona_cobertura_id': obj.persona_cobertura_id,
+        'nombre_apellidos': nombre_efectivo,
+        'movimiento_interno': mov_interno,
         'descripcion': obj.descripcion or '',
         'hueca': obj.hueca,
         'hueca_motivo': obj.hueca_motivo or '',

@@ -25,16 +25,16 @@
 
   <form [formGroup]="form" class="editable-grid">
     <fieldset class="grupo-fila">
-      <!-- HUECA / sacafranco: nombre de solo lectura (tienen su propio flujo con Reemplazo). -->
-      <mat-form-field *ngIf="!esFilaNormal" appearance="outline" class="full-width">
+      <!-- HUECA: nombre de solo lectura (tiene su propio flujo con Reemplazo). -->
+      <mat-form-field *ngIf="!permiteGuardiaDia" appearance="outline" class="full-width">
         <mat-label>Apellidos y Nombres</mat-label>
         <input matInput [value]="data.row.nombre_apellidos || '-'" readonly>
       </mat-form-field>
 
-      <!-- Fila normal: se puede ELEGIR el guardia del día (movimiento interno) aquí mismo.
-           Solo cambia el reporte de ese día; NO toca Asignaciones. Los nombres que ya están
-           asignados a un puesto salen con el badge "MOVIMIENTO INTERNO". -->
-      <mat-form-field *ngIf="esFilaNormal" appearance="outline" class="full-width">
+      <!-- Fila normal o de sacafranco: se puede ELEGIR el guardia del día (movimiento
+           interno) aquí mismo. Solo cambia el reporte de ese día; NO toca Asignaciones ni la
+           ficha del sacafranco. Fijos-con-puesto y sacafrancos salen con badge "MOVIMIENTO INTERNO". -->
+      <mat-form-field *ngIf="permiteGuardiaDia" appearance="outline" class="full-width">
         <mat-label>Apellidos y Nombres</mat-label>
         <input
           type="text"
