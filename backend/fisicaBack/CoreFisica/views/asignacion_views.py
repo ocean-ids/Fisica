@@ -3330,31 +3330,32 @@ def historial_asignaciones_mes(request, mes, anio):
             if asig:
                 _item(dia, hora=hora, usuario=usuario, accion='Puesto creado', accion_key='CREATE',
                       cliente=_cliente_lbl(asig), puesto=_puesto_lbl(asig),
-                      antes='', despues='', persona=_nom(asig.persona))
+                      antes='', despues='', persona=_nom(asig.persona), asignacion_id=asig.id)
             else:
                 per, pue = _parse_repr(lg.objeto_repr)
                 _item(dia, hora=hora, usuario=usuario, accion='Puesto creado', accion_key='CREATE',
-                      cliente='', puesto=pue, antes='', despues='', persona=per)
+                      cliente='', puesto=pue, antes='', despues='', persona=per, asignacion_id=None)
         elif lg.accion == 'DELETE':
             per, pue = _parse_repr(lg.objeto_repr)
             _item(dia, hora=hora, usuario=usuario, accion='Puesto eliminado', accion_key='DELETE',
                   cliente=(_cliente_lbl(asig) if asig else ''),
                   puesto=(_puesto_lbl(asig) if asig else pue),
-                  antes='', despues='', persona=per)
+                  antes='', despues='', persona=per, asignacion_id=(asig.id if asig else None))
         else:  # UPDATE
             key = (oid, dia) if oid else None
             if key and key in periodo_changes and key not in usados:
                 antes, despues, cli, pue = periodo_changes[key]
                 usados.add(key)
                 _item(dia, hora=hora, usuario=usuario, accion='Cambio de guardia', accion_key='CAMBIO',
-                      cliente=cli, puesto=pue, antes=antes, despues=despues, persona='')
+                      cliente=cli, puesto=pue, antes=antes, despues=despues, persona='', asignacion_id=oid)
             else:
                 if asig:
                     cli, pue, per = _cliente_lbl(asig), _puesto_lbl(asig), _nom(asig.persona)
                 else:
                     per, pue = _parse_repr(lg.objeto_repr); cli = ''
                 _item(dia, hora=hora, usuario=usuario, accion='Editó', accion_key='UPDATE',
-                      cliente=cli, puesto=pue, antes='', despues='', persona=per)
+                      cliente=cli, puesto=pue, antes='', despues='', persona=per,
+                      asignacion_id=(asig.id if asig else None))
 
     # 3) Cambios de persona cuya fecha de efecto NO coincidió con ningún UPDATE (p. ej.
     # fecha_cambio en el pasado): se agregan en su fecha de efecto.
@@ -3363,7 +3364,7 @@ def historial_asignaciones_mes(request, mes, anio):
             continue
         _asig_id, desde = key
         _item(desde, hora='', usuario='', accion='Cambio de guardia', accion_key='CAMBIO',
-              cliente=cli, puesto=pue, antes=antes, despues=despues, persona='')
+              cliente=cli, puesto=pue, antes=antes, despues=despues, persona='', asignacion_id=_asig_id)
 
     # Ordenar items por hora (los cambios de guardia, sin hora, al final) y días recientes primero.
     total = 0

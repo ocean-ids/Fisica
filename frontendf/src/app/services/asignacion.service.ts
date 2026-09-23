@@ -90,6 +90,7 @@ export class AsignacionService {
     dias: Array<{ fecha: string; items: Array<{
       hora: string; usuario: string; accion: string; accion_key: string;
       cliente: string; puesto: string; antes: string; despues: string; persona: string;
+      asignacion_id: number | null;
     }> }>;
   }> {
     return this.apiService.get<any>(`/asignaciones/historial-mes/${mes}/${anio}/`);

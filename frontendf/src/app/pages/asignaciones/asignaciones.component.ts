@@ -529,8 +529,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   // agrupados por día, del mes que se está viendo.
   abrirHistorialMes(): void {
     this.dialog.open(HistorialMesDialogComponent, {
-      width: '820px',
-      maxWidth: '95vw',
+      width: '1100px',
+      maxWidth: '96vw',
       data: { mes: this.mes, anio: this.anio },
     });
   }
