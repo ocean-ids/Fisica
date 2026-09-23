@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 import datetime
 from CoreFisica.models import (
     Cliente, Instalacion, Puesto, Persona, Asignacion, AuditLog, AsignacionPersonaPeriodo,
+    AsignacionCalendarioLog, AsignacionSemanal,
 )
 
 
@@ -82,6 +83,51 @@ class HistorialAsignacionesMesTests(TestCase):
         self.assertEqual(cambio['puesto'], 'P1')
         self.assertEqual(cambio['antes'], 'UNO ANA')     # quién estaba antes
         self.assertEqual(cambio['despues'], 'DOS BETO')   # quién quedó después
+
+    def test_cambio_de_calendario_aparece(self):
+        # Un cambio de calendario (token D/N/F por día) sale como acción "Calendario" con
+        # su valor anterior y nuevo.
+        AsignacionCalendarioLog.objects.create(
+            asignacion=self.asig, week_start=datetime.date(self.anio, self.mes, 1),
+            dia='wed', valor_anterior='F', valor_nuevo='D',
+        )
+        r = self.client.get(f'/api/asignaciones/historial-mes/{self.mes}/{self.anio}/',
+                            HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        # Los cambios de calendario NO deben aparecer en la lista principal (van en el
+        # cronograma del puesto, aparte).
+        for d in r.json()['dias']:
+            for it in d['items']:
+                self.assertNotEqual(it['accion_key'], 'CALENDARIO')
+
+    def test_cronograma_reconstruido_a_fecha(self):
+        # Estado ACTUAL del calendario: el día 10 tiene 'D'. Hubo un cambio HOY de F -> D.
+        target = datetime.date(self.anio, self.mes, 10)
+        field = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}[target.weekday()]
+        ws_iso = target - datetime.timedelta(days=target.weekday())
+        AsignacionSemanal.objects.create(asignacion=self.asig, puesto=self.puesto,
+                                         week_start=ws_iso, **{field: 'D'})
+        AsignacionCalendarioLog.objects.create(asignacion=self.asig, week_start=ws_iso,
+                                               dia=field, valor_anterior='F', valor_nuevo='D')
+
+        # Reconstruido a HOY: el día 10 muestra 'D' y sale marcado como cambiado.
+        r = self.client.get(f'/api/asignaciones/{self.asig.id}/cronograma-reconstruido/',
+                            HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        self.assertEqual(r.status_code, 200)
+        body = r.json()
+        dia10 = next((d for d in body['dias'] if d['fecha'] == target.isoformat()), None)
+        self.assertIsNotNone(dia10)
+        self.assertEqual(dia10['token'], 'D')
+        self.assertTrue(dia10['cambiado'])
+        # El mes completo sale (28-31 días).
+        self.assertGreaterEqual(len(body['dias']), 28)
+
+        # Reconstruido a AYER (antes del cambio de hoy): el día 10 vuelve a 'F', sin marcar.
+        ayer = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        r2 = self.client.get(f'/api/asignaciones/{self.asig.id}/cronograma-reconstruido/?hasta={ayer}',
+                            HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        dia10b = next((d for d in r2.json()['dias'] if d['fecha'] == target.isoformat()), None)
+        self.assertEqual(dia10b['token'], 'F')
+        self.assertFalse(dia10b['cambiado'])
 
     def test_otro_mes_no_trae_movimientos(self):
         # Un mes sin asignaciones no devuelve movimientos.

@@ -68,6 +68,25 @@
                   </tr>
                   <tr *ngIf="!tlPorPersona.length"><td class="tl-msg">Sin historial de guardias.</td></tr>
                 </table>
+
+                <div class="cr-block">
+                  <div class="cr-head">
+                    <span class="tl-title">Cronograma (D/N/F)</span>
+                    <label class="cr-date">Reconstruir al día:
+                      <input type="date" [(ngModel)]="crHasta" (ngModelChange)="cargarCronograma(it)">
+                    </label>
+                    <span class="cr-legend"><span class="cr-swatch"></span> día cambiado</span>
+                  </div>
+                  <div *ngIf="crLoading" class="tl-msg">Cargando cronograma…</div>
+                  <div *ngIf="!crLoading" class="cr-grid">
+                    <div class="cr-cell" *ngFor="let c of crDias" [class.cr-changed]="c.cambiado"
+                         [title]="c.dow + ' ' + c.fecha + (c.cambiado ? ' · cambiado' : '')">
+                      <div class="cr-dow">{{ c.dow }}</div>
+                      <div class="cr-dnum">{{ c.dia }}</div>
+                      <div class="cr-tok">{{ c.token || '·' }}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </td>
           </tr>

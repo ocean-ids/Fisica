@@ -32,6 +32,7 @@
 .acc-update { background: #dbeafe; color: #1e40af; }
 .acc-delete { background: #fee2e2; color: #991b1b; }
 .acc-cambio { background: #ede9fe; color: #6d28d9; }
+.acc-calendario { background: #ccfbf1; color: #0f766e; }
 .hist-row.clickable { cursor: pointer; }
 .tl-caret { color: #6d28d9; font-weight: 700; margin-right: 4px; }
 .hist-detail-row td { background: #faf5ff; padding: 10px 16px; text-align: left; }
@@ -41,3 +42,18 @@
 .tl-nom { color: #111827; font-weight: 600; }
 .tl-rango { color: #6b7280; font-variant-numeric: tabular-nums; }
 .tl-msg { color: #6b7280; }
+
+.cr-block { margin-top: 14px; }
+.cr-head { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }
+.cr-date { font-size: 12px; color: #4b5563; display: flex; align-items: center; gap: 6px; }
+.cr-date input { padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; }
+.cr-legend { font-size: 11px; color: #6b7280; display: flex; align-items: center; gap: 6px; }
+.cr-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #fde68a; border: 1px solid #f59e0b; }
+.cr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
+.cr-cell {
+  border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px 2px; text-align: center; background: #fff;
+}
+.cr-cell.cr-changed { background: #fef3c7; border-color: #f59e0b; }
+.cr-dow { font-size: 9px; color: #9ca3af; text-transform: uppercase; }
+.cr-dnum { font-size: 12px; font-weight: 700; color: #374151; }
+.cr-tok { font-size: 12px; font-weight: 700; color: #111827; }

@@ -96,6 +96,17 @@ export class AsignacionService {
     return this.apiService.get<any>(`/asignaciones/historial-mes/${mes}/${anio}/`);
   }
 
+  // Cronograma (D/N/F por día) de un puesto reconstruido a una fecha (?hasta), con los
+  // días cambiados marcados.
+  cronogramaReconstruido(asignacionId: number, hasta?: string): Observable<{
+    cliente: string; puesto: string; mes: number; anio: number; hasta: string;
+    dias: Array<{ fecha: string; dia: number; dow: string; token: string; cambiado: boolean }>;
+  }> {
+    const params: any = {};
+    if (hasta) { params.hasta = hasta; }
+    return this.apiService.get<any>(`/asignaciones/${asignacionId}/cronograma-reconstruido/`, params);
+  }
+
   guardarOrden(ordenes: {id: number, orden: number}[], mes?: number, anio?: number): Observable<any>{
     return this.apiService.post<any>(`/guardar-orden-asignacion/`, { ordenes, mes, anio });
   }

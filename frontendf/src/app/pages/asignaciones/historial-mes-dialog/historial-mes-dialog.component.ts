@@ -40,6 +40,11 @@ export class HistorialMesDialogComponent implements OnInit {
   tlPorPersona: Array<{ persona: string; desde: string; hasta: string }> = [];
   private tlCache: { [asigId: number]: { puesto: string; por_persona: any[] } } = {};
 
+  // Cronograma reconstruido a una fecha (D/N/F por día) del puesto expandido.
+  crLoading = false;
+  crHasta = '';   // YYYY-MM-DD (día al que se reconstruye)
+  crDias: Array<{ fecha: string; dia: number; dow: string; token: string; cambiado: boolean }> = [];
+
   readonly accionesOpc = [
     { k: '', l: 'Todas las acciones' },
     { k: 'CREATE', l: 'Puesto creado' },
@@ -66,6 +71,9 @@ export class HistorialMesDialogComponent implements OnInit {
     if (!it.asignacion_id) { return; }
     if (this.expandedItem === it) { this.expandedItem = null; return; }
     this.expandedItem = it;
+    // Cronograma: por defecto reconstruye al día de HOY.
+    this.crHasta = this.hoyIso();
+    this.cargarCronograma(it);
     const cached = this.tlCache[it.asignacion_id];
     if (cached) {
       this.tlPuesto = cached.puesto;
@@ -88,6 +96,26 @@ export class HistorialMesDialogComponent implements OnInit {
         this.tlLoading = false;
       },
       error: () => { this.tlLoading = false; },
+    });
+  }
+
+  private hoyIso(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  // Carga el cronograma del puesto reconstruido a la fecha `crHasta`.
+  cargarCronograma(it: HistItem): void {
+    if (!it.asignacion_id) { return; }
+    this.crLoading = true;
+    this.crDias = [];
+    this.asignacionService.cronogramaReconstruido(it.asignacion_id, this.crHasta).subscribe({
+      next: (res) => {
+        // Aplicar solo si sigue expandida la misma fila.
+        if (this.expandedItem === it) { this.crDias = res?.dias || []; }
+        this.crLoading = false;
+      },
+      error: () => { this.crLoading = false; },
     });
   }
 
@@ -136,6 +164,7 @@ export class HistorialMesDialogComponent implements OnInit {
     if (key === 'CREATE') return 'acc-create';
     if (key === 'DELETE') return 'acc-delete';
     if (key === 'CAMBIO') return 'acc-cambio';
+    if (key === 'CALENDARIO') return 'acc-calendario';
     return 'acc-update';
   }
 

@@ -3366,6 +3366,9 @@ def historial_asignaciones_mes(request, mes, anio):
         _item(desde, hora='', usuario='', accion='Cambio de guardia', accion_key='CAMBIO',
               cliente=cli, puesto=pue, antes=antes, despues=despues, persona='', asignacion_id=_asig_id)
 
+    # Nota: los cambios de CALENDARIO (tokens D/N/F por día) NO se listan aquí para no
+    # generar ruido; se ven en el detalle del puesto (endpoint cronograma-reconstruido).
+
     # Ordenar items por hora (los cambios de guardia, sin hora, al final) y días recientes primero.
     total = 0
     for grupo in dias.values():
@@ -3376,3 +3379,89 @@ def historial_asignaciones_mes(request, mes, anio):
         {'mes': mes, 'anio': anio, 'total': total, 'dias': dias_list},
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def cronograma_puesto_reconstruido(request, asignacion_id):
+    """Cronograma (D/N/F por día) de un puesto en su mes, RECONSTRUIDO a una fecha
+    (?hasta=YYYY-MM-DD): cómo estaba el calendario ese día. Marca los días que se
+    cambiaron (hasta esa fecha). Usa AsignacionSemanal (estado actual) + reversa de los
+    cambios registrados en AsignacionCalendarioLog posteriores a la fecha."""
+    if not request.user.has_perm('CoreFisica.view_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    asig = (Asignacion.objects.select_related('cliente', 'puesto')
+            .filter(id=asignacion_id).first())
+    if not asig:
+        return JsonResponse({'error': 'Asignacion no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    from ..models import AsignacionCalendarioLog
+    mes, anio = int(asig.mes), int(asig.anio)
+    month_base = datetime.date(anio, mes, 1)
+    last_day = (datetime.date(anio, 12, 31) if mes == 12
+                else datetime.date(anio, mes + 1, 1) - datetime.timedelta(days=1))
+
+    _hasta_raw = (request.GET.get('hasta') or '').strip()
+    try:
+        hasta = datetime.date.fromisoformat(_hasta_raw) if _hasta_raw else timezone.localdate()
+    except (TypeError, ValueError):
+        hasta = timezone.localdate()
+
+    _FIELD = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
+    _DIA_IDX = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
+    _DOW = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+    # Estado ACTUAL del calendario (por semana) de esta asignación.
+    rows_by_ws = {r.week_start: r for r in AsignacionSemanal.objects.filter(asignacion=asig)}
+
+    token_by_date = {}
+    d = month_base
+    while d <= last_day:
+        field = _FIELD[d.weekday()]
+        ws_month = month_base + datetime.timedelta(days=((d.day - 1) // 7) * 7)
+        ws_iso = d - datetime.timedelta(days=d.weekday())
+        val = ''
+        for ws in (ws_month, ws_iso):
+            r = rows_by_ws.get(ws)
+            if r:
+                v = (getattr(r, field, '') or '').strip()
+                if v:
+                    val = v
+                    break
+        token_by_date[d] = val
+        d += datetime.timedelta(days=1)
+
+    # Reconstrucción: revertir los cambios posteriores a 'hasta' (más nuevos primero); y
+    # marcar como "cambiado" los días con algún cambio hasta esa fecha.
+    changed = set()
+    for lg in AsignacionCalendarioLog.objects.filter(asignacion=asig).order_by('-creado_en'):
+        idx = _DIA_IDX.get((lg.dia or '').lower())
+        if idx is None:
+            continue
+        cell = lg.week_start + datetime.timedelta(days=idx)
+        if cell not in token_by_date:
+            continue
+        if timezone.localtime(lg.creado_en).date() > hasta:
+            token_by_date[cell] = (lg.valor_anterior or '').strip()
+        else:
+            changed.add(cell)
+
+    dias = []
+    d = month_base
+    while d <= last_day:
+        dias.append({
+            'fecha': d.isoformat(),
+            'dia': d.day,
+            'dow': _DOW[d.weekday()],
+            'token': token_by_date.get(d, ''),
+            'cambiado': d in changed,
+        })
+        d += datetime.timedelta(days=1)
+
+    return JsonResponse({
+        'cliente': getattr(asig.cliente, 'nombre_comercial', '') or '',
+        'puesto': getattr(asig.puesto, 'nombre', '') or '',
+        'mes': mes, 'anio': anio, 'hasta': hasta.isoformat(),
+        'dias': dias,
+    }, status=status.HTTP_200_OK)
