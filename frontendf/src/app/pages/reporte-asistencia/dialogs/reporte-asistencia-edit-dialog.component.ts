@@ -431,18 +431,15 @@ export class ReporteAsistenciaEditDialogComponent {
     return base;
   }
 
-  // Selector de "Apellidos y Nombres" (movimiento interno): personal operativo que se
-  // puede mover a este puesto. FIJOS solo si YA tienen asignación (un puesto). SACAFRANCO
-  // siempre (trabajan por su ficha de sacafranco, no por Asignacion, así que no entran en
-  // personasAsignadasIds pero igual son operativos).
+  // Selector de "Apellidos y Nombres" (movimiento interno): TODOS los FIJOS y SACAFRANCO
+  // (tengan un puesto o estén disponibles). El badge "MOVIMIENTO INTERNO" marca a los que
+  // ya están asignados a un puesto.
   getCoberturaFiltrados(): Persona[] {
     const v = this.coberturaCtrl.value;
     const query = typeof v === 'string' ? v : (v ? this.getNombrePersona(v) : '');
     return this.filtrarPersonas(query).filter((p) => {
       const tipo = String(p?.tipo || '').toUpperCase();
-      if (tipo === 'SACAFRANCO') { return true; }
-      if (tipo === 'FIJOS') { return !!p?.id && this.personasAsignadasIds.has(Number(p.id)); }
-      return false;
+      return tipo === 'FIJOS' || tipo === 'SACAFRANCO';
     });
   }
 
