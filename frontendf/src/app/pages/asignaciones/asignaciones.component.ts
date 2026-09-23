@@ -33,6 +33,7 @@ import { Subscription, of, from } from 'rxjs';
 import { catchError, switchMap, concatMap, toArray, debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
+import { AuthService } from '../../services/auth.service';
 import { SacafrancoPersonasModalComponent } from './sacafranco-personas-modal/sacafranco-personas-modal.component';
 import { environment } from '@env/environment';
 import { CantonMixView, CantonViewsModalComponent, VistaTipo } from './canton-views-modal.component';
@@ -69,7 +70,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
   @HostListener('window:resize')
   onResizeDrag(): void {
-    this.dragDeshabilitado = window.innerWidth < 992;
+    this.dragDeshabilitado = window.innerWidth < 992 || !this.puedeEditar;
   }
 
   // Multi-arrastre: filas seleccionadas con Ctrl/Shift + clic.
@@ -446,8 +447,15 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     private patronService: PatronAsignacionService,
     private dialog: MatDialog,
     private globalFilter: GlobalFilterStateService,
-    private router: Router
+    private router: Router,
+    private auth: AuthService
   ) {}
+
+  // Permisos: un usuario de SOLO LECTURA (solo view_asignacion) no ve los botones de
+  // crear/editar/eliminar y no puede reordenar. El backend igual lo bloquea (403).
+  get puedeCrear(): boolean { return this.auth.hasPermission('CoreFisica.add_asignacion'); }
+  get puedeEditar(): boolean { return this.auth.hasPermission('CoreFisica.change_asignacion'); }
+  get puedeEliminar(): boolean { return this.auth.hasPermission('CoreFisica.delete_asignacion'); }
 
   ngOnInit(): void {
     // En móvil/tablet (<992px) arrancamos ocultando columnas informativas anchas
@@ -456,6 +464,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     if (typeof window !== 'undefined' && window.innerWidth < 992) {
       this.columnasOcultas = ['horario', 'codigo', 'cliente'];
     }
+
+    // Solo lectura: sin permiso de editar, no se puede arrastrar/reordenar.
+    if (!this.puedeEditar) { this.dragDeshabilitado = true; }
 
     this.cargarCatalogos();
     this.selectedCantonKey = localStorage.getItem(this.selectedCantonKeyStorageKey) || '';
