@@ -1,0 +1,81 @@
+<h2 mat-dialog-title>Historial del mes · Movimientos por día</h2>
+<mat-dialog-content class="hist-content">
+  <div class="hist-sub">
+    {{ nombreMes }} {{ data.anio }}
+    <span *ngIf="!cargando"> · {{ totalFiltrado }}<span *ngIf="totalFiltrado !== total"> de {{ total }}</span> movimiento(s)</span>
+  </div>
+
+  <div class="hist-filtros" *ngIf="!cargando && total > 0">
+    <input type="text" class="hist-search" [(ngModel)]="filtroTexto" (ngModelChange)="aplicarFiltro()"
+           placeholder="Buscar puesto, persona o usuario…">
+    <select class="hist-select" [(ngModel)]="filtroAccion" (ngModelChange)="aplicarFiltro()">
+      <option *ngFor="let a of accionesOpc" [value]="a.k">{{ a.l }}</option>
+    </select>
+    <button *ngIf="filtroTexto || filtroAccion" class="hist-limpiar" type="button" (click)="limpiarFiltro()">Limpiar</button>
+  </div>
+
+  <div *ngIf="cargando" class="hist-msg">Cargando…</div>
+  <div *ngIf="!cargando && dias.length === 0" class="hist-msg">
+    No hay movimientos registrados en este mes.
+  </div>
+  <div *ngIf="!cargando && dias.length > 0 && diasFiltrados.length === 0" class="hist-msg">
+    No hay movimientos que coincidan con el filtro.
+  </div>
+
+  <table class="hist-table" *ngIf="!cargando && diasFiltrados.length > 0">
+    <thead>
+      <tr>
+        <th class="c-hora">Hora</th>
+        <th class="c-accion">Acción</th>
+        <th class="c-cliente">Cliente</th>
+        <th class="c-puesto">Puesto</th>
+        <th class="c-persona">Guardia anterior</th>
+        <th class="c-persona">Guardia actual</th>
+        <th class="c-user">Usuario</th>
+      </tr>
+    </thead>
+    <tbody>
+      <ng-container *ngFor="let d of diasFiltrados">
+        <tr class="hist-dia-row">
+          <td colspan="7">{{ formatoDia(d.fecha) }}
+            <span class="hist-dia-count">{{ d.items.length }}</span>
+          </td>
+        </tr>
+        <ng-container *ngFor="let it of d.items">
+          <tr class="hist-row" [class.clickable]="it.asignacion_id" (click)="toggleTimeline(it)">
+            <td class="c-hora">{{ it.hora || '—' }}</td>
+            <td class="c-accion">
+              <span class="hist-badge" [ngClass]="claseAccion(it.accion_key)">{{ it.accion }}</span>
+            </td>
+            <td class="c-cliente">{{ it.cliente || '—' }}</td>
+            <td class="c-puesto">
+              <span *ngIf="it.asignacion_id" class="tl-caret">{{ expandedItem === it ? '▾' : '▸' }}</span>
+              {{ it.puesto || '—' }}
+            </td>
+            <td class="c-persona">{{ it.accion_key === 'CAMBIO' ? it.antes : '—' }}</td>
+            <td class="c-persona strong">{{ it.accion_key === 'CAMBIO' ? it.despues : (it.persona || '—') }}</td>
+            <td class="c-user">{{ it.usuario || '—' }}</td>
+          </tr>
+          <tr *ngIf="expandedItem === it" class="hist-detail-row">
+            <td colspan="7">
+              <div *ngIf="tlLoading" class="tl-msg">Cargando guardias del puesto…</div>
+              <div *ngIf="!tlLoading">
+                <div class="tl-title">Guardias que han estado en <b>{{ tlPuesto || it.puesto }}</b></div>
+                <table class="tl-table">
+                  <tr *ngFor="let p of tlPorPersona">
+                    <td class="tl-nom">{{ p.persona }}</td>
+                    <td class="tl-rango">{{ p.desde }}<span *ngIf="p.hasta"> — {{ p.hasta }}</span></td>
+                  </tr>
+                  <tr *ngIf="!tlPorPersona.length"><td class="tl-msg">Sin historial de guardias.</td></tr>
+                </table>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+      </ng-container>
+    </tbody>
+  </table>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cerrar()">Cerrar</button>
+</mat-dialog-actions>
