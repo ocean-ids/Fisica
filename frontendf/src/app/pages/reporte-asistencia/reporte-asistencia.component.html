@@ -118,9 +118,9 @@
                                 </div>
                             </td>
                             <td [style.backgroundColor]="getRowColor(r)"
-                                [style.cursor]="((r.asignacion_id || r.sacafranco_fila_id) && !r.es_hueca) ? 'pointer' : 'default'"
-                                [title]="r.es_hueca ? 'HUECA: usa el lápiz para asignar el reemplazo (no se marca ASISTE aquí)' : ((r.asignacion_id || r.sacafranco_fila_id) ? 'Clic para marcar ASISTE (clic de nuevo para quitar). Para FALTÓ usa el lápiz.' : '')"
-                                (click)="(r.asignacion_id || r.sacafranco_fila_id) && !r.es_hueca && marcarAsiste(r); $event.stopPropagation()">
+                                [style.cursor]="(puedeEditar && (r.asignacion_id || r.sacafranco_fila_id) && !r.es_hueca) ? 'pointer' : 'default'"
+                                [title]="!puedeEditar ? '' : (r.es_hueca ? 'HUECA: usa el lápiz para asignar el reemplazo (no se marca ASISTE aquí)' : ((r.asignacion_id || r.sacafranco_fila_id) ? 'Clic para marcar ASISTE (clic de nuevo para quitar). Para FALTÓ usa el lápiz.' : ''))"
+                                (click)="puedeEditar && (r.asignacion_id || r.sacafranco_fila_id) && !r.es_hueca && marcarAsiste(r); $event.stopPropagation()">
                                 <span [class]="estadoAsistenciaClass(r.estado_asistencia)">{{ estadoAsistenciaLabel(r.estado_asistencia) }}</span>
                             </td>
                             <td class="d-none d-lg-table-cell" [style.backgroundColor]="getRowColor(r)">{{ r.reemplazo || '-' }}</td>
@@ -145,6 +145,7 @@
                             </td>
                             <td class="text-nowrap" (dblclick)="$event.stopPropagation()">
                                 <button
+                                    *ngIf="puedeEditar"
                                     mat-stroked-button
                                     type="button"
                                     color="primary"
@@ -152,6 +153,7 @@
                                     (click)="abrirModalEdicion(r)">
                                     <i class="bi bi-pencil"></i>
                                 </button>
+                                <span *ngIf="!puedeEditar" class="text-muted">-</span>
                             </td>
                         </tr>
                         </ng-container>

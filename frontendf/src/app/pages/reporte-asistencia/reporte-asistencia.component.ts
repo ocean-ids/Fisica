@@ -20,6 +20,7 @@ import { Router } from '@angular/router';
 import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
 import { NominativoService, ZonaOperativa } from '../../services/nominativo.service';
 import { ZonasNominativosDialogComponent } from './dialogs/zonas-nominativos-dialog.component';
+import { AuthService } from '../../services/auth.service';
 
 interface ReporteAsistenciaGrupoProvincia {
   provincia: string;
@@ -93,8 +94,13 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     private bottomSheet: MatBottomSheet,
     private globalFilter: GlobalFilterStateService,
     private router: Router,
-    private nominativoSvc: NominativoService
+    private nominativoSvc: NominativoService,
+    private auth: AuthService
   ) {}
+
+  // Solo Consola (permiso change_reporteasistencia) edita la asistencia. Los demas
+  // usuarios ven el reporte en modo solo lectura (no se marca ASISTE, ni lapiz, ni color).
+  get puedeEditar(): boolean { return this.auth.hasPermission('CoreFisica.change_reporteasistencia'); }
 
   cargarZonas(): void {
     this.nominativoSvc.getZonas().subscribe({
@@ -273,6 +279,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   }
 
   onRowDoubleClick(row: ReporteAsistenciaRow): void {
+    if (!this.puedeEditar) { return; }
     // Permitir asignar color tanto a filas normales (asignacion) como a SACAFRANCO (fila).
     if (!row?.asignacion_id && !row?.sacafranco_fila_id) return;
 
@@ -470,6 +477,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   }
 
   abrirModalEdicion(row: ReporteAsistenciaRow): void {
+    if (!this.puedeEditar) { return; }
     if (!row?.asignacion_id && !row?.sacafranco_fila_id) return;
 
     const occupiedReemplazoIds = Array.from(new Set(
@@ -545,6 +553,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   // formulario). Alterna: vacio/FALTO -> ASISTE, y ASISTE -> vacio. Guarda al instante.
   // Para FALTO (que necesita cobertura/reemplazo) se sigue usando el lapiz.
   marcarAsiste(row: ReporteAsistenciaRow): void {
+    if (!this.puedeEditar) { return; }
     // HUECA: no se marca ASISTE aquí; se cubre con un reemplazo desde el lápiz (diálogo).
     if ((row as any)?.es_hueca) { return; }
     // SACAFRANCO: no tiene asignacion; la asistencia se guarda por su fila. El clic
