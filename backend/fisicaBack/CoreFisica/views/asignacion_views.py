@@ -3439,7 +3439,10 @@ def cronograma_puesto_reconstruido(request, asignacion_id):
         idx = _DIA_IDX.get((lg.dia or '').lower())
         if idx is None:
             continue
-        cell = lg.week_start + datetime.timedelta(days=idx)
+        # La fecha de la celda es el día de esa semana cuyo weekday corresponde a 'dia'.
+        # week_start puede NO ser lunes (el sistema usa semanas que arrancan el día 1 del
+        # mes), así que se calcula el offset relativo al weekday del propio week_start.
+        cell = lg.week_start + datetime.timedelta(days=(idx - lg.week_start.weekday()) % 7)
         if cell not in token_by_date:
             continue
         if timezone.localtime(lg.creado_en).date() > hasta:

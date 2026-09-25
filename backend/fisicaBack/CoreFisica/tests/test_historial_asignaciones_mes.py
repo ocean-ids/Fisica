@@ -129,6 +129,38 @@ class HistorialAsignacionesMesTests(TestCase):
         self.assertEqual(dia10b['token'], 'F')
         self.assertFalse(dia10b['cambiado'])
 
+    def test_cronograma_marca_el_dia_correcto_semana_no_lunes(self):
+        # Reproduce el bug: cambio en un DOMINGO con week_start estilo mensual (no lunes).
+        # Debe marcar ese domingo, no el lunes siguiente.
+        import datetime as _dt
+        # Primer domingo del mes en curso.
+        domingo = None
+        d = _dt.date(self.anio, self.mes, 1)
+        for _ in range(7):
+            if d.weekday() == 6:  # domingo
+                domingo = d
+                break
+            d += _dt.timedelta(days=1)
+        self.assertIsNotNone(domingo)
+        # week_start estilo mensual (día 1 + saltos de 7) para ese domingo.
+        base = _dt.date(self.anio, self.mes, 1)
+        ws_mes = base + _dt.timedelta(days=((domingo.day - 1) // 7) * 7)
+        AsignacionSemanal.objects.create(asignacion=self.asig, puesto=self.puesto,
+                                         week_start=ws_mes, sun='F')
+        AsignacionCalendarioLog.objects.create(asignacion=self.asig, week_start=ws_mes,
+                                               dia='sun', valor_anterior='D', valor_nuevo='F')
+
+        r = self.client.get(f'/api/asignaciones/{self.asig.id}/cronograma-reconstruido/',
+                            HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        dias = {x['fecha']: x for x in r.json()['dias']}
+        # El DOMINGO debe estar marcado como cambiado y con token F.
+        self.assertTrue(dias[domingo.isoformat()]['cambiado'])
+        self.assertEqual(dias[domingo.isoformat()]['token'], 'F')
+        # El LUNES siguiente NO debe estar marcado.
+        lunes = domingo + _dt.timedelta(days=1)
+        if lunes.isoformat() in dias:
+            self.assertFalse(dias[lunes.isoformat()]['cambiado'])
+
     def test_otro_mes_no_trae_movimientos(self):
         # Un mes sin asignaciones no devuelve movimientos.
         otro_mes = 1 if self.mes != 1 else 2
