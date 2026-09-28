@@ -387,7 +387,10 @@ export class ReporteAsistenciaEditDialogComponent {
   // "MOVIMIENTO INTERNO" en el Reporte de Asistencia (es lo que ocurre al usarlo aquí).
   etiquetaEstadoReemplazo(p: Persona): string {
     const e = this.estadoReemplazo(p);
-    return e === 'ASIGNADO' ? 'MOVIMIENTO INTERNO' : e;
+    if (e === 'ASIGNADO') return 'MOVIMIENTO INTERNO';
+    if (e === 'DISPONIBLE') return 'BACKUP';
+    return e;
+
   }
 
   onReemplazoOptionSelected(value: Persona | null): void {
