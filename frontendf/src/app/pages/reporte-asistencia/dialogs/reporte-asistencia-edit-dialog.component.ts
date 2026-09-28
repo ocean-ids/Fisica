@@ -200,10 +200,12 @@ export class ReporteAsistenciaEditDialogComponent {
       return;
     }
 
-    // Check "Hueca" en filas normales: OPCIONAL, disponible solo cuando la asistencia es
-    // FALTÓ (el puesto pudo quedar hueco ese día). Desmarcado por defecto; el motivo es
-    // opcional. Si no es FALTÓ, no aplica: se desmarca y deshabilita.
-    if (esFalto) {
+    // Check "Hueca" en filas normales: OPCIONAL, disponible cuando la asistencia es FALTÓ
+    // o ASISTE (así se puede marcar la hueca con su motivo también con ASISTE). Desmarcado
+    // por defecto; el motivo es opcional. Sin asistencia marcada no aplica: se desmarca y
+    // deshabilita.
+    const esAsiste = (estadoAsistencia || '').toString().toUpperCase() === 'ASISTIO';
+    if (esFalto || esAsiste) {
       huecaCtrl?.enable({ emitEvent: false });
     } else {
       huecaCtrl?.setValue(false, { emitEvent: false });
@@ -211,8 +213,9 @@ export class ReporteAsistenciaEditDialogComponent {
     }
     const esHueca = !!huecaCtrl?.value;
 
-    // Estado: habilitado si es FALTO (NO se bloquea por hueca; se puede usar igual).
-    if (esFalto) {
+    // Estado: habilitado si es FALTO o si la hueca está marcada (con hueca+motivo se puede
+    // elegir el Estado y, según ese Estado, el Reemplazo). Si no aplica, se deshabilita.
+    if (esFalto || esHueca) {
       estadoCtrl?.enable({ emitEvent: false });
     } else {
       if (limpiar) { estadoCtrl?.setValue(null, { emitEvent: false }); }
@@ -240,7 +243,8 @@ export class ReporteAsistenciaEditDialogComponent {
   }
 
   // Habilita el Reemplazo cuando ya se eligió un Estado (ADICIONAL, DOBLA, etc.).
-  // El Estado solo se puede elegir con asistencia FALTO, así que basta con tener Estado.
+  // El Estado se puede elegir con FALTÓ o con la hueca marcada (hueca+motivo), así que
+  // basta con tener un Estado elegido para habilitar el Reemplazo.
   private aplicarBloqueoReemplazo(limpiar = false): void {
     const tieneEstado = !!this.form.get('estado')?.value;
     const reemplazoIdCtrl = this.form.get('reemplazo_id');

@@ -1062,7 +1062,7 @@ def _build_reporte_asistencia_data(
         reemplazo_id = None
         if override and override.reemplazo:
             reemplazo_id = override.reemplazo.id
-            reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
+            reemplazo_nombre = f"{override.reemplazo.apellidos} {override.reemplazo.nombres}".strip()
         if auto_sacafranco:
             reemplazo_id = None
             reemplazo_nombre = ''
@@ -1287,7 +1287,7 @@ def _build_reporte_asistencia_data(
                     'nombre_apellidos': _saca_nombre,
                     'movimiento_interno': _saca_mov_interno,
                     'reemplazo_id': _sa_rem.id if _sa_rem else None,
-                    'reemplazo': f"{_sa_rem.nombres} {_sa_rem.apellidos}".strip() if _sa_rem else '',
+                    'reemplazo': f"{_sa_rem.apellidos} {_sa_rem.nombres}".strip() if _sa_rem else '',
                     'estado_asistencia': _sa_estado,
                     'estado': (getattr(_sa, 'estado', '') or 'TURNO') if _sa else 'TURNO',
                     'descripcion': (getattr(_sa, 'descripcion', '') or '') if _sa else '',
@@ -1505,7 +1505,8 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
     # HUECA espeja al ADICIONAL: solo Cliente/Puesto/Fecha + Motivo editable (preservado).
     # PERO si el check "Hueca" está marcado, la fila manual (auto=False) que crea
     # _sync_hueca_reporte_guardia ya la representa (con su motivo). No duplicar aquí.
-    if seccion_reemplazo == 'ADICIONALES' and not getattr(override, 'hueca', False):
+    # Además: la HUECA SOLO sale si tiene motivo (una hueca sin motivo no se refleja).
+    if seccion_reemplazo == 'ADICIONALES' and not getattr(override, 'hueca', False) and (hueca_motivo or '').strip():
         _hueca = ReporteGuardia.objects.create(
             fecha=fecha_reporte,
             turno=turno,
@@ -1536,8 +1537,10 @@ def _sync_hueca_reporte_guardia(override, asignacion, fecha_reporte):
     from ..models import ReporteGuardia
 
     qs = ReporteGuardia.objects.filter(reporte_asistencia=override, seccion='HUECA', auto=False)
-    # Sin check o sin fecha: no debe existir la hueca manual.
-    if not getattr(override, 'hueca', False) or not fecha_reporte:
+    # Sin check, sin fecha o SIN MOTIVO: no debe existir la hueca manual. La hueca solo se
+    # refleja en el Reporte de Guardia si tiene un motivo (si no, no sale).
+    motivo = (getattr(override, 'hueca_motivo', '') or '').strip()
+    if not getattr(override, 'hueca', False) or not fecha_reporte or not motivo:
         qs.delete()
         return
 
@@ -1870,7 +1873,7 @@ def insertar_reporte_asistencia(request, asignacion_id):
 
     reemplazo_nombre = ''
     if override.reemplazo:
-        reemplazo_nombre = f"{override.reemplazo.nombres} {override.reemplazo.apellidos}".strip()
+        reemplazo_nombre = f"{override.reemplazo.apellidos} {override.reemplazo.nombres}".strip()
 
     # Nombre a mostrar: si hay persona de cobertura (HUECA cubierta o MOVIMIENTO INTERNO),
     # ese es el guardia del día; si no, el titular de la asignación (o HUECA).
@@ -2014,7 +2017,7 @@ def marcar_sacafranco_asistencia(request, sacafranco_fila_id):
         'estado_asistencia': obj.estado_asistencia,
         'estado': obj.estado or 'TURNO',
         'reemplazo_id': _rem.id if _rem else None,
-        'reemplazo': f"{_rem.nombres} {_rem.apellidos}".strip() if _rem else '',
+        'reemplazo': f"{_rem.apellidos} {_rem.nombres}".strip() if _rem else '',
         'persona_cobertura_id': obj.persona_cobertura_id,
         'nombre_apellidos': nombre_efectivo,
         'movimiento_interno': mov_interno,
@@ -2052,7 +2055,7 @@ def historial_reporte_asistencia(request, asignacion_id):
             usuario_nombre = full_name or h.usuario.get_username()
         reemplazo_nombre = ''
         if h.reemplazo:
-            reemplazo_nombre = f"{h.reemplazo.nombres} {h.reemplazo.apellidos}".strip()
+            reemplazo_nombre = f"{h.reemplazo.apellidos} {h.reemplazo.nombres}".strip()
         data.append({
             'fecha_reporte': h.fecha_reporte.isoformat() if h.fecha_reporte else None,
             'usuario': usuario_nombre,
@@ -2094,7 +2097,7 @@ def historial_sacafranco_asistencia(request, sacafranco_fila_id):
             usuario_nombre = f"{h.usuario.first_name} {h.usuario.last_name}".strip() or h.usuario.get_username()
         reemplazo_nombre = ''
         if h.reemplazo:
-            reemplazo_nombre = f"{h.reemplazo.nombres} {h.reemplazo.apellidos}".strip()
+            reemplazo_nombre = f"{h.reemplazo.apellidos} {h.reemplazo.nombres}".strip()
         data.append({
             'fecha_reporte': h.fecha_reporte.isoformat() if h.fecha_reporte else None,
             'usuario': usuario_nombre,
