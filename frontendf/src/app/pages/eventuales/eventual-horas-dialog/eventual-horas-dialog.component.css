@@ -55,3 +55,18 @@
   color: #4338ca;
   margin-left: 4px;
 }
+
+.ev-alerta {
+  color: #b45309;
+}
+
+/* Enlace "Usar sugerido" dentro de la ayuda del valor */
+.ev-link {
+  border: 0;
+  background: transparent;
+  padding: 0 0 0 6px;
+  color: #1a73e8;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}

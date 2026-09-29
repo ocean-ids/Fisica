@@ -1,8 +1,12 @@
 """Módulo Eventuales: registro de horas trabajadas por EVENTUALES.
 
-Se valida: catálogo (solo eventuales, con banco), creación, banco vacío si la persona no lo
-tiene, valor calculado ingresado a mano, validaciones (solo EVENTUAL, instalación del cliente,
-puesto de la instalación, horas enteras, valor obligatorio y no negativo) y permisos.
+Reglas:
+- Horas adicionales = horas trabajadas - horas solicitadas (mínimo 0), calculadas al guardar.
+- Rango (tramo) de la tarifa: según las HORAS TRABAJADAS.
+- Valor calculado: por defecto tarifa "Eventuales" de ese tramo + bonificación; si se envía un
+  valor (corregido a mano), se guarda ese.
+- Bonificación opcional. Banco de solo lectura (vacío si la persona no lo tiene).
+Además: validaciones, historial y permisos.
 """
 import json
 
@@ -10,7 +14,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 
 from CoreFisica.models import (
-    Persona, Cliente, Instalacion, Puesto, EmpleadoOtrosDatos, HorasEventual,
+    Persona, Cliente, Instalacion, Puesto, EmpleadoOtrosDatos, HorasEventual, TarifaPago,
 )
 
 
@@ -33,43 +37,109 @@ class HorasEventualTests(TestCase):
         EmpleadoOtrosDatos.objects.update_or_create(persona=self.ev, defaults={'banco': 'BANCO PICHINCHA'})
         self.ev_sin_banco = Persona.objects.create(nombres='ANA', apellidos='LOPEZ', cedula='0922222222', tipo='EVENTUAL')
         self.fijo = Persona.objects.create(nombres='LUIS', apellidos='SOTO', cedula='0933333333', tipo='FIJOS')
+        # Tarifa "Eventuales" por tramos (igual a Tarifas de Pago).
+        for mn, mx, v in [(1, 3, '6.25'), (4, 6, '12.50'), (7, 9, '18.75'), (10, 12, '25.00'), (13, 15, '31.25')]:
+            TarifaPago.objects.update_or_create(tipo_servicio='Eventuales', horas_min=mn, horas_max=mx,
+                                                defaults={'valor': v})
 
     def _auth(self, token=None):
         return {'HTTP_AUTHORIZATION': f'Bearer {token or self.token}'}
 
-    def _crear(self, **over):
+    def _datos(self, **over):
         data = {
             'fecha': '2026-09-29', 'persona_id': self.ev.id, 'cliente_id': self.cli.id,
-            'instalacion_id': self.inst.id, 'puesto_id': self.puesto.id, 'horas': 8,
-            'valor_calculado': '20',
+            'instalacion_id': self.inst.id, 'puesto_id': self.puesto.id,
+            'horas_solicitadas': 4, 'horas': 8,
         }
         data.update(over)
-        return self.client.post('/api/horas-eventual/crear/', data=json.dumps(data),
+        return data
+
+    def _crear(self, **over):
+        return self.client.post('/api/horas-eventual/crear/', data=json.dumps(self._datos(**over)),
                                 content_type='application/json', **self._auth())
 
-    def test_catalogo_solo_eventuales_con_banco(self):
+    def _editar(self, hid, **over):
+        return self.client.put(f'/api/horas-eventual/{hid}/', data=json.dumps(self._datos(**over)),
+                               content_type='application/json', **self._auth())
+
+    def test_catalogo_solo_eventuales_con_banco_y_tarifas(self):
         r = self.client.get('/api/horas-eventual/catalogo/', **self._auth())
         self.assertEqual(r.status_code, 200)
         evs = {e['id']: e for e in r.json()['eventuales']}
         self.assertIn(self.ev.id, evs)
         self.assertNotIn(self.fijo.id, evs)                       # un FIJO no sale
         self.assertEqual(evs[self.ev.id]['banco'], 'BANCO PICHINCHA')
+        self.assertEqual(evs[self.ev.id]['tipo'], 'EVENTUAL')
         self.assertEqual(evs[self.ev_sin_banco.id]['banco'], '')  # sin banco -> vacío
+        self.assertEqual(len(r.json()['tarifas']), 5)
 
-    def test_crear_y_listar(self):
-        r = self._crear(horas=7, horas_adicionales=2, valor_calculado='18.75')   # lo escribe el usuario
+    def test_adicionales_y_valor_con_bonificacion(self):
+        # trabajadas 12 -> tramo 10-12 = 25.00; + bono 5 = 30.00 (adicionales = 12 - 8 = 4)
+        r = self._crear(horas_solicitadas=8, horas=12, bonificacion='5', horas_adicionales=99)
         self.assertEqual(r.status_code, 201, r.content)
-        body = r.json()
-        self.assertEqual(body['persona'], 'PEREZ JUAN')
-        self.assertEqual(body['banco'], 'BANCO PICHINCHA')
-        self.assertEqual(body['cliente'], 'CLI')
-        self.assertEqual(body['instalacion'], 'MATRIZ')
-        self.assertEqual(body['puesto'], 'GARITA')
-        self.assertEqual(body['horas'], 7)
-        self.assertEqual(body['horas_adicionales'], 2)
-        self.assertEqual(body['valor_calculado'], 18.75)
-        lista = self.client.get('/api/horas-eventual/?desde=2026-09-01&hasta=2026-09-30', **self._auth()).json()
+        b = r.json()
+        self.assertEqual(b['horas_solicitadas'], 8)
+        self.assertEqual(b['horas'], 12)
+        self.assertEqual(b['horas_adicionales'], 4)      # se calcula; ignora lo enviado
+        self.assertEqual(b['bonificacion'], 5.0)
+        self.assertEqual(b['rango_horas'], '10-12 h')
+        self.assertEqual(b['valor_calculado'], 30.0)     # por defecto: rango + bono
+        self.assertEqual(b['persona'], 'PEREZ JUAN')
+        self.assertEqual(b['banco'], 'BANCO PICHINCHA')
+        lista = self.client.get('/api/horas-eventual/?desde=2026-09-29&hasta=2026-09-29', **self._auth()).json()
         self.assertEqual(len(lista), 1)
+
+    def test_valor_corregido_a_mano(self):
+        b = self._crear(horas_solicitadas=8, horas=12, bonificacion='5',
+                        valor_calculado='20,40', valor_manual=True).json()
+        self.assertEqual(b['valor_calculado'], 20.4)     # se guarda lo escrito
+        self.assertTrue(b['valor_manual'])
+        self.assertEqual(self._crear(valor_calculado='-1', valor_manual=True).status_code, 400)
+        self.assertEqual(self._crear(valor_calculado='abc', valor_manual=True).status_code, 400)
+
+    def test_valor_no_manual_se_calcula_solo(self):
+        # Sin valor_manual, aunque venga un valor, se usa rango + bonificación (12 h -> 25 + 5).
+        b = self._crear(horas=12, bonificacion='5', valor_calculado='0').json()
+        self.assertFalse(b['valor_manual'])
+        self.assertEqual(b['valor_calculado'], 30.0)
+
+    def test_sin_bonificacion_solo_tarifa(self):
+        b = self._crear(horas_solicitadas=4, horas=12).json()   # 12 trabajadas -> 25.00
+        self.assertEqual(b['horas_adicionales'], 8)
+        self.assertIsNone(b['bonificacion'])
+        self.assertEqual(b['valor_calculado'], 25.0)
+
+    def test_trabajo_menos_de_lo_solicitado(self):
+        # 8 trabajadas -> tramo 7-9 = 18.75; + bono 3 = 21.75. Adicionales no negativo.
+        b = self._crear(horas_solicitadas=10, horas=8, bonificacion='3').json()
+        self.assertEqual(b['horas_adicionales'], 0)
+        self.assertEqual(b['valor_calculado'], 21.75)
+
+    def test_rango_por_horas_trabajadas(self):
+        # 11 trabajadas -> tramo 10-12 = 25.00
+        b = self._crear(horas_solicitadas=11, horas=11).json()
+        self.assertEqual(b['rango_horas'], '10-12 h')
+        self.assertEqual(b['valor_calculado'], 25.0)
+        # 8 trabajadas -> tramo 7-9 = 18.75 (las solicitadas no cambian el rango)
+        b2 = self._crear(horas_solicitadas=12, horas=8).json()
+        self.assertEqual(b2['rango_horas'], '7-9 h')
+        self.assertEqual(b2['valor_calculado'], 18.75)
+
+    def test_rango_elegido_a_mano(self):
+        t = TarifaPago.objects.get(tipo_servicio='Eventuales', horas_min=13, horas_max=15)
+        b = self._crear(horas_solicitadas=11, horas=11, tarifa_id=t.id, bonificacion='1').json()
+        self.assertEqual(b['rango_horas'], '13-15 h')          # el elegido, no el de la regla
+        self.assertEqual(b['valor_calculado'], 32.25)          # 31.25 + 1
+        self.assertEqual(self._crear(tarifa_id=999999).status_code, 400)
+
+    def test_sin_tramo_rango_vacio(self):
+        b = self._crear(horas_solicitadas=0, horas=20).json()
+        self.assertEqual(b['rango_horas'], '')
+
+    def test_sin_tramo(self):
+        b = self._crear(horas_solicitadas=0, horas=20).json()   # 20 h adicionales: no hay tramo
+        self.assertEqual(b['horas_adicionales'], 20)
+        self.assertEqual(b['valor_calculado'], 0.0)
 
     def test_eventual_sin_banco_sale_vacio(self):
         r = self._crear(persona_id=self.ev_sin_banco.id)
@@ -83,25 +153,22 @@ class HorasEventualTests(TestCase):
         self.assertEqual(self._crear(horas=0).status_code, 400)
         self.assertEqual(self._crear(horas=30).status_code, 400)
         self.assertEqual(self._crear(horas=7.5).status_code, 400)                   # no entero
-        self.assertEqual(self._crear(horas_adicionales=-1).status_code, 400)
-        self.assertEqual(self._crear(valor_calculado='').status_code, 400)       # obligatorio
-        self.assertEqual(self._crear(valor_calculado='-5').status_code, 400)     # no negativo
-        self.assertEqual(self._crear(valor_calculado='abc').status_code, 400)
+        self.assertEqual(self._crear(horas_solicitadas='').status_code, 400)        # obligatorias
+        self.assertEqual(self._crear(horas_solicitadas=-1).status_code, 400)
+        self.assertEqual(self._crear(bonificacion='-5').status_code, 400)           # no negativa
+        self.assertEqual(self._crear(bonificacion='abc').status_code, 400)
         self.assertEqual(self._crear(fecha='').status_code, 400)
         self.assertEqual(HorasEventual.objects.count(), 0)
 
     def test_editar_y_eliminar(self):
         hid = self._crear().json()['id']
-        r = self.client.put(f'/api/horas-eventual/{hid}/', data=json.dumps({
-            'fecha': '2026-09-28', 'persona_id': self.ev.id, 'cliente_id': self.cli.id,
-            'instalacion_id': self.inst.id, 'puesto_id': None, 'horas': 12,
-            'valor_calculado': '25,50',
-        }), content_type='application/json', **self._auth())
+        r = self._editar(hid, horas_solicitadas=2, horas=12, puesto_id=None, bonificacion='2,50')
         self.assertEqual(r.status_code, 200, r.content)
-        self.assertEqual(r.json()['horas'], 12)
-        self.assertEqual(r.json()['horas_adicionales'], 0)          # vacío -> 0
-        self.assertEqual(r.json()['valor_calculado'], 25.5)         # acepta coma decimal
-        self.assertEqual(r.json()['puesto'], '')
+        b = r.json()
+        self.assertEqual(b['horas_adicionales'], 10)
+        self.assertEqual(b['bonificacion'], 2.5)              # acepta coma decimal
+        self.assertEqual(b['valor_calculado'], 27.5)          # 25.00 (10-12) + 2.50
+        self.assertEqual(b['puesto'], '')
         r2 = self.client.delete(f'/api/horas-eventual/{hid}/eliminar/', **self._auth())
         self.assertEqual(r2.status_code, 200)
         self.assertFalse(HorasEventual.objects.filter(id=hid).exists())
@@ -110,22 +177,16 @@ class HorasEventualTests(TestCase):
         admin = User.objects.get(username='ev_admin')
         admin.first_name, admin.last_name = 'Bryan', 'Cabello'
         admin.save()
-        hid = self._crear(horas=8, valor_calculado='20').json()['id']
-        body = self.client.put(f'/api/horas-eventual/{hid}/', data=json.dumps({
-            'fecha': '2026-09-29', 'persona_id': self.ev.id, 'cliente_id': self.cli.id,
-            'instalacion_id': self.inst.id, 'puesto_id': self.puesto.id, 'horas': 10,
-            'valor_calculado': '25',
-        }), content_type='application/json', **self._auth()).json()
-        # Última modificación en el registro.
+        hid = self._crear(horas_solicitadas=4, horas=8).json()['id']          # 4 adic -> 12.50
+        body = self._editar(hid, horas_solicitadas=4, horas=12).json()          # 8 adic -> 18.75
         self.assertEqual(body['creado_por'], 'Bryan Cabello')
         self.assertEqual(body['modificado_por'], 'Bryan Cabello')
         self.assertTrue(body['modificado_en'])
-        # Historial: más reciente primero, con qué cambió.
         hist = self.client.get(f'/api/horas-eventual/{hid}/historial/', **self._auth()).json()
         self.assertEqual([h['accion'] for h in hist], ['MODIFICADO', 'CREADO'])
         self.assertEqual(hist[0]['usuario'], 'Bryan Cabello')
-        self.assertEqual(hist[0]['horas'], 10)
-        self.assertEqual(set(hist[0]['cambios']), {'Horas trabajadas', 'Valor calculado'})
+        self.assertEqual(set(hist[0]['cambios']),
+                         {'Horas trabajadas', 'Horas adicionales', 'Rango de horas', 'Valor calculado'})
         self.assertEqual(hist[1]['cambios'], [])
         self.assertEqual(hist[1]['horas'], 8)
 

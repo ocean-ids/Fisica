@@ -84,23 +84,52 @@
     </mat-form-field>
   </div>
 
-  <!-- Fila 4: Horas trabajadas | Horas adicionales -->
+  <!-- Fila 4: Horas solicitadas | Horas trabajadas -->
   <div class="ev-row m-2">
     <mat-form-field appearance="outline">
-      <mat-label>Horas trabajadas</mat-label>
-      <input matInput type="number" required min="1" max="24" step="1" [(ngModel)]="horas" placeholder="Ej. 8">
+      <mat-label>Horas solicitadas</mat-label>
+      <input matInput type="number" required min="0" max="24" step="1" [(ngModel)]="horasSolicitadas" (ngModelChange)="onHorasChange()" placeholder="Ej. 8">
     </mat-form-field>
     <mat-form-field appearance="outline">
-      <mat-label>Horas adicionales</mat-label>
-      <input matInput type="number" min="0" max="24" step="1" [(ngModel)]="horasAdicionales" placeholder="0">
+      <mat-label>Horas trabajadas</mat-label>
+      <input matInput type="number" required min="1" max="24" step="1" [(ngModel)]="horas" (ngModelChange)="onHorasChange()" placeholder="Ej. 12">
     </mat-form-field>
   </div>
 
-  <!-- Fila 5: Valor calculado (lo escribe el usuario) -->
+  <!-- Fila 5: Rango de horas (se marca solo) | Bonificación (opcional) -->
+  <div class="ev-row m-2">
+    <mat-form-field appearance="outline">
+      <mat-label>Rango de horas</mat-label>
+      <mat-select [(ngModel)]="tarifaSel" (ngModelChange)="onRangoChange()" placeholder="Se marca según las horas">
+        <mat-option *ngFor="let t of catalogo.tarifas" [value]="t.id">
+          {{ t.horas_min }}-{{ t.horas_max }} h — {{ t.valor | number:'1.2-2' }}
+        </mat-option>
+      </mat-select>
+      <mat-hint *ngIf="horasTarifa && !rangoCambiado">Marcado por {{ horasTarifa }} h trabajadas</mat-hint>
+      <mat-hint *ngIf="rangoCambiado">
+        Cambiado a mano · por las horas sería {{ tramoAuto ? (tramoAuto.horas_min + '-' + tramoAuto.horas_max + ' h') : 'ninguno' }}
+      </mat-hint>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Bonificación</mat-label>
+      <input matInput type="number" min="0" step="0.01" [(ngModel)]="bonificacion" (ngModelChange)="recalcular()" placeholder="Opcional">
+    </mat-form-field>
+  </div>
+
+  <!-- Fila 6: Valor calculado (sugerido; se puede corregir) -->
   <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Valor calculado</mat-label>
-      <input matInput type="number" required min="0" step="0.01" [(ngModel)]="valorCalculado" placeholder="Ej. 18.75">
+      <input matInput type="number" min="0" step="0.01" [ngModel]="valorCalculado"
+             (ngModelChange)="onValorEditado($event)" placeholder="Se calcula solo">
+      <mat-hint *ngIf="valorManual">
+        Corregido a mano · sugerido {{ valorSugerido | number:'1.2-2' }}
+        <button type="button" class="ev-link" (click)="usarSugerido()">Usar sugerido</button>
+      </mat-hint>
+      <mat-hint *ngIf="!valorManual && !sinTramo && valorCalculado !== null">
+        Rango {{ valorTarifa | number:'1.2-2' }}<span *ngIf="montoBonificacion"> + bonificación {{ montoBonificacion | number:'1.2-2' }}</span>
+      </mat-hint>
+      <mat-hint *ngIf="!valorManual && sinTramo" class="ev-alerta">No hay rango para esas horas trabajadas; puedes escribir el valor</mat-hint>
     </mat-form-field>
   </div>
 </mat-dialog-content>

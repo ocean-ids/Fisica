@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatSelectModule } from '@angular/material/select';
 import Swal from 'sweetalert2';
 import { HorasEventualService } from '../../../services/horas-eventual.service';
 import { CatalogoHorasEventual, HorasEventual } from '../../../models/horas-eventual.model';
@@ -24,13 +25,13 @@ type Opcion = { id: number; nombre: string; [k: string]: any };
   standalone: true,
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule,
-    MatFormFieldModule, MatInputModule, MatAutocompleteModule, MatButtonModule, MatDatepickerModule,
+    MatFormFieldModule, MatInputModule, MatAutocompleteModule, MatButtonModule, MatDatepickerModule, MatSelectModule,
   ],
   templateUrl: './eventual-horas-dialog.component.html',
   styleUrl: './eventual-horas-dialog.component.css',
 })
 export class EventualHorasDialogComponent implements OnInit {
-  catalogo: CatalogoHorasEventual = { clientes: [], instalaciones: [], puestos: [], eventuales: [] };
+  catalogo: CatalogoHorasEventual = { clientes: [], instalaciones: [], puestos: [], eventuales: [], tarifas: [] };
   cargando = false;
   guardando = false;
   esEdicion = false;
@@ -45,9 +46,14 @@ export class EventualHorasDialogComponent implements OnInit {
   // al editar, la del registro. Es la fecha por la que se filtra la lista.
   fecha = '';                  // YYYY-MM-DD (valor inicial)
   fechaServicio: Date | null = null;
-  horas: number | null = null;
-  horasAdicionales: number | null = 0;
-  valorCalculado: number | null = null;   // lo escribe el usuario
+  horasSolicitadas: number | null = null;
+  horas: number | null = null;             // horas trabajadas
+  bonificacion: number | null = null;      // opcional
+  // Valor calculado: se llena solo (tarifa + bonificación) y se puede corregir a mano.
+  valorCalculado: number | null = null;
+  valorManual = false;                     // true = el usuario lo corrigió
+  // Rango de horas (tramo de la tarifa): se marca solo según las horas; se puede cambiar.
+  tarifaSel: number | null = null;
 
   // Cache de filtros (evita recalcular listas largas en cada ciclo de pantalla).
   private cacheFiltro: Record<string, { key: string; res: any[] }> = {};
@@ -63,9 +69,9 @@ export class EventualHorasDialogComponent implements OnInit {
     this.esEdicion = !!row?.id;
     this.fecha = row?.fecha || this.data?.fechaDefecto || this.hoy();
     this.fechaServicio = this.aFecha(this.fecha);
+    this.horasSolicitadas = row?.horas_solicitadas ?? null;
     this.horas = row?.horas ?? null;
-    this.horasAdicionales = row?.horas_adicionales ?? 0;
-    this.valorCalculado = row?.valor_calculado ?? null;
+    this.bonificacion = row?.bonificacion ?? null;
     if (this.data?.catalogo) {
       this.catalogo = this.data.catalogo;
       this.precargar(row);
@@ -89,6 +95,82 @@ export class EventualHorasDialogComponent implements OnInit {
 
   // Banco: solo lectura, sale de los datos del eventual (vacío si no lo tiene).
   get banco(): string { return this.eventualSel?.['banco'] || ''; }
+
+  // ---------- Cálculos (solo lectura; el servidor los recalcula al guardar) ----------
+  // Horas adicionales = trabajadas - solicitadas (mínimo 0).
+  get horasAdicionales(): number {
+    return Math.max(0, (Number(this.horas) || 0) - (Number(this.horasSolicitadas) || 0));
+  }
+
+  // Horas para el rango de la tarifa: las HORAS TRABAJADAS
+  // (ej. 11 trabajadas -> 10-12 h; 8 trabajadas -> 7-9 h).
+  get horasTarifa(): number {
+    return Number(this.horas) || 0;
+  }
+
+  // Tramo que corresponde por la regla (el que se marca solo).
+  get tramoAuto(): { id: number; horas_min: number; horas_max: number; valor: number } | null {
+    const h = this.horasTarifa;
+    if (!h) { return null; }
+    return (this.catalogo.tarifas || []).find(t => h >= t.horas_min && h <= t.horas_max) || null;
+  }
+
+  // Tramo elegido en "Rango de horas".
+  private get tramo(): { id: number; horas_min: number; horas_max: number; valor: number } | null {
+    return (this.catalogo.tarifas || []).find(t => t.id === this.tarifaSel) || null;
+  }
+
+  // Cambiaron las horas: el rango se vuelve a marcar solo y el valor se recalcula.
+  onHorasChange(): void {
+    this.tarifaSel = this.tramoAuto?.id ?? null;
+    this.recalcular();
+  }
+
+  // El usuario eligió otro rango a mano.
+  onRangoChange(): void {
+    this.recalcular();
+  }
+
+  // ¿El rango elegido es distinto al que corresponde por las horas?
+  get rangoCambiado(): boolean {
+    return !!this.tarifaSel && this.tarifaSel !== (this.tramoAuto?.id ?? null);
+  }
+
+  get valorTarifa(): number { return this.tramo?.valor ?? 0; }
+
+  get montoBonificacion(): number { return Number(this.bonificacion) || 0; }
+
+  // Valor sugerido = tarifa del tramo (ver horasTarifa) + bonificación.
+  get valorSugerido(): number { return this.redondear(this.valorTarifa + this.montoBonificacion); }
+
+  private redondear(v: any): number { return Math.round((Number(v) || 0) * 100) / 100; }
+
+  // Al cambiar horas o bonificación: si el valor no fue corregido a mano, sigue al sugerido.
+  recalcular(): void {
+    if (this.valorManual) { return; }
+    const sinHoras = this.horas === null || (this.horas as any) === '';
+    this.valorCalculado = sinHoras ? null : this.valorSugerido;
+  }
+
+  // El usuario escribe en "Valor calculado": queda como corrección a mano (si lo borra,
+  // vuelve a calcularse solo).
+  onValorEditado(v: any): void {
+    if (v === null || v === undefined || v === '') {
+      this.valorManual = false;
+      this.recalcular();
+      return;
+    }
+    this.valorCalculado = Number(v);
+    this.valorManual = this.redondear(v) !== this.valorSugerido;
+  }
+
+  usarSugerido(): void {
+    this.valorManual = false;
+    this.recalcular();
+  }
+
+  // Hay horas pero ningún rango elegido (ningún tramo las cubre).
+  get sinTramo(): boolean { return this.horasTarifa > 0 && !this.tramo; }
 
   displayOpcion = (o: any): string => (o && typeof o === 'object') ? (o.nombre || '') : (o || '');
 
@@ -171,6 +253,13 @@ export class EventualHorasDialogComponent implements OnInit {
     this.clienteCtrl.setValue(cli || '');
     this.instalacionCtrl.setValue(inst || '');
     this.puestoCtrl.setValue(pue || '');
+    // Rango guardado ("10-12 h"); si no se encuentra, el que corresponde por las horas.
+    const guardado = (this.catalogo.tarifas || []).find(t => `${t.horas_min}-${t.horas_max} h` === row.rango_horas);
+    this.tarifaSel = guardado?.id ?? this.tramoAuto?.id ?? null;
+    // Valor: si se había corregido a mano, se respeta; si no, se carga primero el calculado
+    // (rango + bonificación). En ambos casos se puede editar.
+    this.valorManual = !!row.valor_manual;
+    this.valorCalculado = this.valorManual ? (row.valor_calculado ?? null) : this.valorSugerido;
   }
 
   // ---------- Guardar ----------
@@ -190,19 +279,23 @@ export class EventualHorasDialogComponent implements OnInit {
     if (!pue && typeof this.puestoCtrl.value === 'string' && this.puestoCtrl.value.trim()) {
       return this.aviso('Elige el puesto de la lista o déjalo vacío.');
     }
+    const vacio = (v: any) => v === null || v === undefined || v === '';
+    if (vacio(this.horasSolicitadas)) { return this.aviso('Indica las horas solicitadas.'); }
+    const sol = Number(this.horasSolicitadas);
+    if (!Number.isInteger(sol) || sol < 0 || sol > 24) {
+      return this.aviso('Las horas solicitadas deben ser un número entero de 0 a 24.');
+    }
     const h = Number(this.horas);
     if (!Number.isInteger(h) || h < 1 || h > 24) {
       return this.aviso('Las horas trabajadas deben ser un número entero de 1 a 24.');
     }
-    const adic = (this.horasAdicionales === null || (this.horasAdicionales as any) === '') ? 0 : Number(this.horasAdicionales);
-    if (!Number.isInteger(adic) || adic < 0 || adic > 24) {
-      return this.aviso('Las horas adicionales deben ser un número entero de 0 a 24.');
+    const bono = vacio(this.bonificacion) ? null : Number(this.bonificacion);
+    if (bono !== null && (!Number.isFinite(bono) || bono < 0)) {
+      return this.aviso('La bonificación debe ser un número mayor o igual a 0.');
     }
-    if (this.valorCalculado === null || (this.valorCalculado as any) === '') {
-      return this.aviso('Ingresa el valor calculado.');
-    }
-    const valor = Number(this.valorCalculado);
-    if (!Number.isFinite(valor) || valor < 0) {
+    // Vacío = que el servidor lo calcule (tarifa + bonificación).
+    const valor = vacio(this.valorCalculado) ? null : Number(this.valorCalculado);
+    if (valor !== null && (!Number.isFinite(valor) || valor < 0)) {
       return this.aviso('El valor calculado debe ser un número mayor o igual a 0.');
     }
 
@@ -212,9 +305,12 @@ export class EventualHorasDialogComponent implements OnInit {
       cliente_id: cli.id,
       instalacion_id: inst.id,
       puesto_id: pue?.id ?? null,
+      horas_solicitadas: sol,
       horas: h,
-      horas_adicionales: adic,
-      valor_calculado: valor,
+      bonificacion: bono,
+      valor_calculado: valor ?? undefined,
+      valor_manual: this.valorManual,
+      tarifa_id: this.tarifaSel ?? undefined,
     };
     this.guardando = true;
     const id = this.data?.row?.id;

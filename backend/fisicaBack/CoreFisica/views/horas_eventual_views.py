@@ -3,17 +3,24 @@
 - Solo se registran personas de tipo EVENTUAL.
 - El banco es de solo lectura: sale de los datos de la persona (EmpleadoOtrosDatos). Si la
   persona no lo tiene cargado, se muestra vacío.
-- Valor calculado: lo ingresa el usuario a mano (no se calcula automáticamente).
+- Horas adicionales = horas trabajadas - horas solicitadas (mínimo 0), calculadas al guardar.
+- Rango de horas: tramo de la tarifa "Eventuales" (Tarifas de Pago) que incluye las HORAS
+  TRABAJADAS; se marca solo y el usuario lo puede cambiar.
+- Valor calculado: por defecto, valor del rango + bonificación. Se puede corregir a mano.
+- Bonificación: monto opcional (el bono que se le quiera dar).
 """
 import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from ..models import HorasEventual, HorasEventualHistorial, Persona, Cliente, Instalacion, Puesto
+from ..models import HorasEventual, HorasEventualHistorial, Persona, Cliente, Instalacion, Puesto, TarifaPago
+
+# Tipo de servicio de Tarifas de Pago con el que se valoran las horas adicionales.
+TIPO_SERVICIO_EVENTUAL = 'Eventuales'
 
 
 def _banco(persona):
@@ -22,6 +29,34 @@ def _banco(persona):
         return (persona.otros_datos.banco or '') if persona else ''
     except Exception:
         return ''
+
+
+def _tarifas_eventual():
+    return TarifaPago.objects.filter(tipo_servicio__iexact=TIPO_SERVICIO_EVENTUAL).order_by('horas_min')
+
+
+def _tramo_por_horas(horas):
+    """Tramo (TarifaPago) de la tarifa "Eventuales" que incluye esas horas; None si no hay."""
+    if not horas:
+        return None
+    return _tarifas_eventual().filter(horas_min__lte=horas, horas_max__gte=horas).first()
+
+
+def _rango_txt(t):
+    return f"{t.horas_min}-{t.horas_max} h" if t else ''
+
+
+def _horas_tarifa(solicitadas, trabajadas):
+    """Horas con las que se busca el tramo de la tarifa: las HORAS TRABAJADAS
+    (ej. 11 trabajadas -> tramo 10-12; 8 trabajadas -> tramo 7-9)."""
+    return trabajadas or 0
+
+
+def _decimal(v):
+    """Decimal con 2 decimales (acepta coma). Vacío -> None; inválido -> excepción."""
+    if v in (None, '', 'null'):
+        return None
+    return Decimal(str(v).replace(',', '.')).quantize(Decimal('0.01'))
 
 
 def _nombre_usuario(u):
@@ -49,9 +84,13 @@ def _serialize(h):
         'instalacion': getattr(h.instalacion, 'nombre', '') or '',
         'puesto_id': h.puesto_id,
         'puesto': getattr(h.puesto, 'nombre', '') or '',
+        'horas_solicitadas': h.horas_solicitadas or 0,
         'horas': h.horas,
         'horas_adicionales': h.horas_adicionales or 0,
+        'rango_horas': h.rango_horas or '',
         'valor_calculado': float(h.valor_calculado or 0),
+        'valor_manual': bool(h.valor_manual),
+        'bonificacion': float(h.bonificacion) if h.bonificacion is not None else None,
         # Auditoría: quién lo creó y quién lo modificó por última vez.
         'creado_por': _nombre_usuario(h.creado_por),
         'creado_en': h.creado_en.isoformat() if h.creado_en else None,
@@ -116,30 +155,52 @@ def _validar(data):
         if puesto.instalacion_id != instalacion.id:
             return None, 'El puesto no pertenece a la instalación seleccionada.'
 
+    solicitadas = _entero(data.get('horas_solicitadas'))
+    if solicitadas is None or solicitadas < 0 or solicitadas > 24:
+        return None, 'Las horas solicitadas deben ser un número entero de 0 a 24.'
     horas = _entero(data.get('horas'))
     if horas is None or horas < 1 or horas > 24:
         return None, 'Las horas trabajadas deben ser un número entero de 1 a 24.'
-    raw_adic = data.get('horas_adicionales')
-    adicionales = 0 if raw_adic in (None, '', 'null') else _entero(raw_adic)
-    if adicionales is None or adicionales < 0 or adicionales > 24:
-        return None, 'Las horas adicionales deben ser un número entero de 0 a 24.'
+    # Horas adicionales: se calculan (no se aceptan del formulario).
+    adicionales = max(0, horas - solicitadas)
 
-    # Valor calculado: lo escribe el usuario.
-    raw_valor = data.get('valor_calculado')
-    if raw_valor in (None, '', 'null'):
-        return None, 'Ingresa el valor calculado.'
+    # Bonificación: opcional.
     try:
-        valor = Decimal(str(raw_valor).replace(',', '.')).quantize(Decimal('0.01'))
-    except (InvalidOperation, TypeError, ValueError):
+        bonificacion = _decimal(data.get('bonificacion'))
+    except Exception:
+        return None, 'La bonificación no es válida.'
+    if bonificacion is not None and bonificacion < 0:
+        return None, 'La bonificación no puede ser negativa.'
+
+    # Rango de horas (tramo de la tarifa): el elegido en el formulario; si no viene, se marca
+    # solo según las horas trabajadas.
+    tarifa_id = _int(data.get('tarifa_id'))
+    if tarifa_id:
+        tramo = _tarifas_eventual().filter(id=tarifa_id).first()
+        if not tramo:
+            return None, 'El rango de horas no es válido.'
+    else:
+        tramo = _tramo_por_horas(_horas_tarifa(solicitadas, horas))
+
+    # Valor calculado: por defecto = valor del rango + bonificación. Si el usuario lo corrigió
+    # a mano (valor_manual), se guarda lo que escribió.
+    manual = str(data.get('valor_manual')).strip().lower() in ('1', 'true', 'si', 'yes', 'on')
+    try:
+        valor = _decimal(data.get('valor_calculado'))
+    except Exception:
         return None, 'El valor calculado no es válido.'
+    if not manual or valor is None:
+        manual = False
+        valor = (tramo.valor if tramo else Decimal('0')) + (bonificacion or Decimal('0'))
     if valor < 0:
         return None, 'El valor calculado no puede ser negativo.'
 
     return {
         'fecha': fecha, 'persona': persona, 'cliente': cliente,
         'instalacion': instalacion, 'puesto': puesto,
-        'horas': horas, 'horas_adicionales': adicionales,
-        'valor_calculado': valor,
+        'horas_solicitadas': solicitadas, 'horas': horas, 'horas_adicionales': adicionales,
+        'rango_horas': _rango_txt(tramo),
+        'valor_calculado': valor, 'valor_manual': manual, 'bonificacion': bonificacion,
     }, None
 
 
@@ -159,9 +220,12 @@ def _guardar_historial(h, accion, user):
         cliente=getattr(h.cliente, 'nombre_comercial', '') or '',
         instalacion=getattr(h.instalacion, 'nombre', '') or '',
         puesto=getattr(h.puesto, 'nombre', '') or '',
+        horas_solicitadas=h.horas_solicitadas,
         horas=h.horas,
         horas_adicionales=h.horas_adicionales,
+        rango_horas=h.rango_horas,
         valor_calculado=h.valor_calculado,
+        bonificacion=h.bonificacion,
     )
 
 
@@ -172,9 +236,12 @@ _CAMPOS_HISTORIAL = [
     ('instalacion', 'Instalación'),
     ('puesto', 'Nombre del puesto'),
     ('persona', 'Eventual'),
+    ('horas_solicitadas', 'Horas solicitadas'),
     ('horas', 'Horas trabajadas'),
     ('horas_adicionales', 'Horas adicionales'),
+    ('rango_horas', 'Rango de horas'),
     ('valor_calculado', 'Valor calculado'),
+    ('bonificacion', 'Bonificación'),
 ]
 
 
@@ -218,9 +285,14 @@ def catalogo_horas_eventual(request):
         for p in (Persona.objects.filter(tipo='EVENTUAL', is_active=True)
                   .select_related('otros_datos').order_by('apellidos', 'nombres'))
     ]
+    # Tramos de la tarifa "Eventuales": el formulario propone el valor mientras se escribe.
+    tarifas = [
+        {'id': t.id, 'horas_min': t.horas_min, 'horas_max': t.horas_max, 'valor': float(t.valor)}
+        for t in _tarifas_eventual()
+    ]
     return Response({
         'clientes': clientes, 'instalaciones': instalaciones,
-        'puestos': puestos, 'eventuales': eventuales,
+        'puestos': puestos, 'eventuales': eventuales, 'tarifas': tarifas,
     })
 
 
@@ -298,9 +370,12 @@ def historial_horas_eventual(request, id):
             'cliente': v.cliente,
             'instalacion': v.instalacion,
             'puesto': v.puesto,
+            'horas_solicitadas': v.horas_solicitadas,
             'horas': v.horas,
             'horas_adicionales': v.horas_adicionales,
+            'rango_horas': v.rango_horas or '',
             'valor_calculado': float(v.valor_calculado) if v.valor_calculado is not None else None,
+            'bonificacion': float(v.bonificacion) if v.bonificacion is not None else None,
             'cambios': cambios,
         })
         anterior = v

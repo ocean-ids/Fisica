@@ -1788,10 +1788,19 @@ class HorasEventual(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name='+')
     instalacion = models.ForeignKey(Instalacion, on_delete=models.PROTECT, related_name='+')
     puesto = models.ForeignKey(Puesto, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    horas_solicitadas = models.PositiveSmallIntegerField(default=0)   # las que pidió el cliente
     horas = models.PositiveSmallIntegerField()                       # horas trabajadas
+    # Horas adicionales = trabajadas - solicitadas (mínimo 0). Se calcula al guardar.
     horas_adicionales = models.PositiveSmallIntegerField(default=0)
-    # Valor que ingresa el usuario a mano.
+    # Rango (tramo) de la tarifa "Eventuales" usado, ej. "10-12 h". Se marca solo según las
+    # horas trabajadas y se puede cambiar.
+    rango_horas = models.CharField(max_length=20, blank=True, default='')
+    # Por defecto: valor del rango de horas + bonificación; se puede corregir a mano.
     valor_calculado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # True = el usuario escribió el valor a mano (se respeta); False = se calcula solo.
+    valor_manual = models.BooleanField(default=False)
+    # Bono opcional.
+    bonificacion = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,
         on_delete=models.SET_NULL, related_name='+'
@@ -1832,9 +1841,12 @@ class HorasEventualHistorial(models.Model):
     cliente = models.CharField(max_length=200, blank=True, default='')
     instalacion = models.CharField(max_length=200, blank=True, default='')
     puesto = models.CharField(max_length=200, blank=True, default='')
+    horas_solicitadas = models.PositiveSmallIntegerField(null=True, blank=True)
     horas = models.PositiveSmallIntegerField(null=True, blank=True)
     horas_adicionales = models.PositiveSmallIntegerField(null=True, blank=True)
+    rango_horas = models.CharField(max_length=20, blank=True, default='')
     valor_calculado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    bonificacion = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     class Meta:
         ordering = ['creado_en', 'id']
