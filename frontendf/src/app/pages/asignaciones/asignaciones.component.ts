@@ -2561,7 +2561,10 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   this.http.get(url, { responseType: 'blob' })
     .subscribe({
       next: (blob) => {
-        saveAs(blob, `reporte_asignaciones_${this.anio}_${mm}.xlsx`);
+        // Nombre: "HORARIO <fecha de la descarga>" (fecha de hoy, dd-mm-aaaa).
+        const hoy = new Date();
+        const f = `${String(hoy.getDate()).padStart(2, '0')}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${hoy.getFullYear()}`;
+        saveAs(blob, `HORARIO ${f}.xlsx`);
       },
       error: err => {
         console.error('Error descargando reporte:', err);

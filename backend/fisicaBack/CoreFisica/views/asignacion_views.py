@@ -2805,7 +2805,9 @@ def exportar_asignaciones_excel(request):
         pass
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="reporte_asignaciones_calendario_{year}_{month}.xlsx"'
+    # Nombre del archivo: "HORARIO <fecha de la descarga>" (fecha de hoy, no la del mes del reporte).
+    _hoy = datetime.date.today().strftime('%d-%m-%Y')
+    response['Content-Disposition'] = f'attachment; filename="HORARIO {_hoy}.xlsx"'
     output = BytesIO()
     wb.save(output)
     output.seek(0)
