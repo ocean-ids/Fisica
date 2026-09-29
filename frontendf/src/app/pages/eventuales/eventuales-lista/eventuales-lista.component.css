@@ -1,0 +1,7 @@
+table td,
+table th {
+  font-size: 13px;
+}
+tfoot th {
+  background: #f1f5fb;
+}

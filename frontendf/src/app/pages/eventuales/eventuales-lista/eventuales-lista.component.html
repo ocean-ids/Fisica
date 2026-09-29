@@ -1,0 +1,67 @@
+<div class="container-fluid px-0">
+  <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2 mb-3">
+    <h3 class="text-center m-0 flex-grow-1">Eventuales</h3>
+    <div class="d-grid d-sm-flex gap-2 align-items-center">
+      <input type="date" lang="es" class="form-control form-control-sm w-auto"
+             [(ngModel)]="fechaValor" (change)="cargar()" title="Día que se muestra">
+      <button *ngIf="puedeCrear" type="button" class="btn btn-primary btn-sm" (click)="nuevo()">
+        <i class="bi bi-plus-lg"></i> Nuevo registro
+      </button>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm align-middle text-center">
+      <thead class="table-light">
+        <tr>
+          <th style="width:40px">Nº</th>
+          <th>Cliente</th>
+          <th>Instalación</th>
+          <th>Nombre del puesto</th>
+          <th>Apellidos y Nombres</th>
+          <th>Banco</th>
+          <th style="width:90px">Horas Trabajadas</th>
+          <th style="width:90px">Horas Adicionales</th>
+          <th style="width:110px">Valor Calculado</th>
+          <th *ngIf="puedeEditar || puedeEliminar" style="width:100px">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="loading">
+          <td colspan="10" class="text-muted">Cargando…</td>
+        </tr>
+        <ng-container *ngIf="!loading">
+          <tr *ngFor="let f of filasFiltradas; let i = index">
+            <td>{{ i + 1 }}</td>
+            <td>{{ f.cliente }}</td>
+            <td>{{ f.instalacion }}</td>
+            <td>{{ f.puesto || '—' }}</td>
+            <td class="text-start">{{ f.persona }} <small class="text-muted d-block">{{ f.cedula }}</small></td>
+            <td>{{ f.banco || '—' }}</td>
+            <td class="fw-semibold">{{ f.horas }}</td>
+            <td>{{ f.horas_adicionales || 0 }}</td>
+            <td class="fw-semibold">{{ (f.valor_calculado || 0) | number:'1.2-2' }}</td>
+            <td *ngIf="puedeEditar || puedeEliminar">
+              <button *ngIf="puedeEditar" type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
+                      (click)="editar(f)" title="Editar"><i class="bi bi-pencil"></i></button>
+              <button *ngIf="puedeEliminar" type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1"
+                      (click)="eliminar(f)" title="Eliminar"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+          <tr *ngIf="!filasFiltradas.length">
+            <td colspan="10" class="text-muted">Sin registros en este día.</td>
+          </tr>
+        </ng-container>
+      </tbody>
+      <tfoot *ngIf="!loading && filasFiltradas.length">
+        <tr>
+          <th colspan="6" class="text-end">Totales</th>
+          <th>{{ totalHoras }}</th>
+          <th>{{ totalAdicionales }}</th>
+          <th>{{ totalValor | number:'1.2-2' }}</th>
+          <th *ngIf="puedeEditar || puedeEliminar"></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>

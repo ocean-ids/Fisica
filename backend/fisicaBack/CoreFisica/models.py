@@ -1583,6 +1583,7 @@ MODULOS_MENU = [
     ('horarios', 'Horarios'),
     ('asignaciones', 'Asignaciones'),
     ('sacavacaciones', 'Sacavacaciones'),
+    ('eventuales', 'Eventuales'),
     ('reporte-asistencia', 'Reportes Asistencia'),
     ('consolidado', 'Consolidado'),
     ('reporte-guardia', 'Reporte Guardia'),
@@ -1774,3 +1775,35 @@ class NotificacionEventual(models.Model):
     def __str__(self):
         return f"NotificacionEventual({self.persona_id} -> {self.destinatario_id}, resuelta={self.resuelta})"
 
+
+
+class HorasEventual(models.Model):
+    """Horas trabajadas por un EVENTUAL en un puesto (módulo Eventuales).
+
+    El banco NO se guarda aquí: se lee de los datos de la persona (EmpleadoOtrosDatos).
+    La fecha no se pide en el formulario: es el día elegido en la pantalla del módulo.
+    """
+    fecha = models.DateField(db_index=True)
+    persona = models.ForeignKey(Persona, on_delete=models.PROTECT, related_name='horas_eventual')
+    cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name='+')
+    instalacion = models.ForeignKey(Instalacion, on_delete=models.PROTECT, related_name='+')
+    puesto = models.ForeignKey(Puesto, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    horas = models.PositiveSmallIntegerField()                       # horas trabajadas
+    horas_adicionales = models.PositiveSmallIntegerField(default=0)
+    # Tarifa "Eventuales" (Tarifas de Pago) del tramo de horas trabajadas + adicionales.
+    # Se guarda para conservar el valor del momento aunque la tarifa cambie después.
+    valor_calculado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+'
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-fecha', '-id']
+        verbose_name = 'Horas de eventual'
+        verbose_name_plural = 'Horas de eventuales'
+
+    def __str__(self):
+        return f"{self.fecha} | {self.persona} | {self.horas} h"

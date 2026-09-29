@@ -1,0 +1,36 @@
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { ApiService } from './api.service';
+import { CatalogoHorasEventual, HorasEventual } from '../models/horas-eventual.model';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class HorasEventualService {
+  constructor(private api: ApiService) {}
+
+  // Registros entre dos fechas (YYYY-MM-DD).
+  listar(desde?: string, hasta?: string): Observable<HorasEventual[]> {
+    const params: any = {};
+    if (desde) { params.desde = desde; }
+    if (hasta) { params.hasta = hasta; }
+    return this.api.get<HorasEventual[]>('/horas-eventual/', params);
+  }
+
+  // Clientes, instalaciones, puestos y eventuales (con su banco) para los selectores.
+  catalogo(): Observable<CatalogoHorasEventual> {
+    return this.api.get<CatalogoHorasEventual>('/horas-eventual/catalogo/');
+  }
+
+  crear(data: HorasEventual): Observable<HorasEventual> {
+    return this.api.post<HorasEventual>('/horas-eventual/crear/', data);
+  }
+
+  actualizar(id: number, data: HorasEventual): Observable<HorasEventual> {
+    return this.api.put<HorasEventual>(`/horas-eventual/${id}/`, data);
+  }
+
+  eliminar(id: number): Observable<any> {
+    return this.api.delete(`/horas-eventual/${id}/eliminar/`);
+  }
+}

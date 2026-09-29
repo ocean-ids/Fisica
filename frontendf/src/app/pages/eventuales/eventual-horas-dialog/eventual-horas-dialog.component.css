@@ -1,0 +1,44 @@
+.ev-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 640px;
+  padding-top: 6px;
+}
+
+.ev-form mat-form-field {
+  width: 100%;
+}
+
+/* Dos campos por fila */
+.ev-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ev-row > mat-form-field {
+  flex: 1;
+  min-width: 260px;
+}
+
+/* Botón X para limpiar los selectores */
+.ev-x {
+  font-size: 20px;
+  line-height: 1;
+  color: #6c757d;
+}
+
+.ev-nota {
+  font-size: 12px;
+  margin: -2px 0 6px;
+}
+
+/* En celular: un campo por fila */
+@media (max-width: 700px) {
+  .ev-form { min-width: 0; }
+  .ev-row > mat-form-field { flex: 1 1 100%; min-width: 0; }
+}
+
+.ev-alerta {
+  color: #b45309;
+}
