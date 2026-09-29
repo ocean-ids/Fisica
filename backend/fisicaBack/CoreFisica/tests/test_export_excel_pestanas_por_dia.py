@@ -40,6 +40,10 @@ class ExcelPestanasPorDiaTests(TestCase):
         self.assertNotIn('DIURNO 4', nombres)
         self.assertNotIn('NOCTURNO 4', nombres)
 
+        # Al abrir, la pestaña activa es DIURNO del día seleccionado (sin reordenar).
+        self.assertEqual(wb.active.title, 'DIURNO 3')
+        self.assertEqual(nombres[0], 'DIURNO 1')  # el orden NO cambia
+
     def test_primer_dia_solo_dos_pestanas(self):
         r = self.client.get(
             '/api/reporte-asistencia/exportar-excel/?fecha=2026-09-01',

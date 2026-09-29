@@ -2444,8 +2444,16 @@ def exportar_reporte_asistencia_excel(request):
         ws_n = wb.create_sheet(f'NOCTURNO {_d}')
         render_sheet(ws_n, 'Nocturno', _day_data, _fecha_d)
 
+    # Al abrir el Excel, mostrar la pestaña DIURNO del día seleccionado (la última DIURNO
+    # creada). NO cambia el orden de las pestañas, solo cuál queda activa al abrir; Excel
+    # desplaza la barra de pestañas hasta ella.
+    try:
+        wb.active = wb.worksheets.index(ws_d)
+    except Exception:
+        pass
+
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="ASISTENCIA GENERAL {_sel.strftime("%d-%m-%Y")}.xlsx"'
     output = BytesIO()
     wb.save(output)
     output.seek(0)
@@ -2623,8 +2631,12 @@ def exportar_reporte_asistencia_pdf(request):
     render_section('Nocturno')
     p.save()
 
+    try:
+        _sel_pdf = datetime.date.fromisoformat(str(fecha)[:10]) if fecha else datetime.date.today()
+    except (TypeError, ValueError):
+        _sel_pdf = datetime.date.today()
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="ASISTENCIA GENERAL {_sel_pdf.strftime("%d-%m-%Y")}.pdf"'
     output.seek(0)
     response.write(output.getvalue())
     return response

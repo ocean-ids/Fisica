@@ -393,6 +393,12 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       }));
   }
 
+  // Fecha para el nombre del archivo: dd-mm-aaaa (a partir de la fecha del reporte).
+  private fechaArchivo(): string {
+    const f = this.filtroFecha || '';
+    return f ? f.split('-').reverse().join('-') : '';
+  }
+
   descargarExcel(): void {
     const params: any = {};
     // El Excel SIEMPRE trae el reporte COMPLETO del día: todas las zonas y ambas jornadas
@@ -400,7 +406,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     // solo la fecha; así el descargable no queda recortado por lo que se esté filtrando.
     if (this.filtroFecha) params.fecha = this.filtroFecha;
     this.reporteSvc.exportarExcel(params).subscribe({
-      next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.xlsx`),
+      next: (blog) => this.descargarArchivo(blog, `ASISTENCIA GENERAL ${this.fechaArchivo()}.xlsx`),
       error: (err) => this.handleDownloadError(err, 'Excel')
     });
   }
@@ -412,7 +418,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     // solo la fecha; así el descargable no queda recortado por lo que se esté filtrando.
     if(this.filtroFecha) params.fecha = this.filtroFecha;
     this.reporteSvc.exportarPdf(params).subscribe({
-      next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.pdf`),
+      next: (blog) => this.descargarArchivo(blog, `ASISTENCIA GENERAL ${this.fechaArchivo()}.pdf`),
       error: (err) => this.handleDownloadError(err, 'PDF')
     })
   }
