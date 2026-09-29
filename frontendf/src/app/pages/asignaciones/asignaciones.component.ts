@@ -1918,7 +1918,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     Swal.fire({
       icon: 'question',
       title: 'Llegaste al último día del mes',
-      html: `¿Continuar esta secuencia en los <b>meses siguientes</b>, hasta el <b>${futuro.hastaTxt}</b>?<br>`
+      html: '¿Continuar esta secuencia en los <b>meses siguientes</b>?<br>'
           + '<small>Se sobrescriben los días que ya tenga este registro en esos meses.</small>',
       showCancelButton: true,
       confirmButtonText: 'Sí',
