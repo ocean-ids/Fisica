@@ -259,7 +259,11 @@
                       <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
                         <div class="calendar-week-grid" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
                           <ng-container *ngIf="getCalendarRow(row, ws) as calRow">
-                            <div class="calendar-day" [class.day-pinned]="pinnedDay === ws + '|' + dayKey" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
+                            <div class="calendar-day" [class.day-pinned]="pinnedDay === ws + '|' + dayKey" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])"
+                                 [class.fill-sel]="isFillSelected(row, ws, dayKey)"
+                                 [class.fill-preview]="isFillPreview(row, ws, dayKey)"
+                                 (mousedown)="onFillCellMouseDown($event, row, ws, dayKey, false)"
+                                 (mouseenter)="onFillCellEnter(row, ws, dayKey)">
                               <input
                                 type="text"
                                 maxlength="4"
@@ -270,6 +274,10 @@
                                 (dblclick)="openRangeModal(row, ws, dayKey, false)"
                                 [disabled]="isPastMonth()"
                                 [ngModelOptions]="{standalone:true}">
+                              <!-- Cuadrito de relleno (como Excel): arrastrar a la derecha para replicar. -->
+                              <span *ngIf="isFillHandleCell(row, ws, dayKey)" class="fill-handle"
+                                    title="Arrastra a la derecha para replicar la secuencia"
+                                    (mousedown)="onFillHandleDown($event)"></span>
                             </div>
                           </ng-container>
                         </div>
@@ -348,7 +356,11 @@
                       <div class="calendar-week" *ngFor="let ws of weeksForMonth" [style.flex]="(calendarWeekVisibleCounts[ws] || 1) + ' 1 0'">
                         <div class="calendar-week-grid" [style.grid-template-columns]="'repeat(' + ((calendarMonthDayKeys[ws] || []).length || 1) + ', minmax(18px, 1fr))'">
                           <ng-container *ngIf="getCalendarRow(row, ws) as calRow">
-                            <div class="calendar-day" [class.day-pinned]="pinnedDay === ws + '|' + dayKey" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])">
+                            <div class="calendar-day" [class.day-pinned]="pinnedDay === ws + '|' + dayKey" *ngFor="let dayKey of (calendarMonthDayKeys[ws] || [])"
+                                 [class.fill-sel]="isFillSelected(row, ws, dayKey)"
+                                 [class.fill-preview]="isFillPreview(row, ws, dayKey)"
+                                 (mousedown)="onFillCellMouseDown($event, row, ws, dayKey, true)"
+                                 (mouseenter)="onFillCellEnter(row, ws, dayKey)">
                               <input
                                 type="text"
                                 maxlength="12"
@@ -359,6 +371,10 @@
                                 (dblclick)="openRangeModal(row, ws, dayKey, true)"
                                 [disabled]="isPastMonth()"
                                 [ngModelOptions]="{standalone:true}">
+                              <!-- Cuadrito de relleno (como Excel): arrastrar a la derecha para replicar. -->
+                              <span *ngIf="isFillHandleCell(row, ws, dayKey)" class="fill-handle"
+                                    title="Arrastra a la derecha para replicar la secuencia"
+                                    (mousedown)="onFillHandleDown($event)"></span>
                             </div>
                           </ng-container>
                         </div>

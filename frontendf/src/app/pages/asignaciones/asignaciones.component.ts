@@ -1056,6 +1056,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     this.calendarWeekDayKeys = map;
     this.calendarMonthDayKeys = monthMap;
+    this.rebuildFillCells();   // orden de celdas para el relleno tipo Excel
     this.calendarWeekDayNumbers = dayNumbersMap;
     this.calendarWeekVisibleCounts = weekSizes;
   }
@@ -1738,6 +1739,171 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         calRow[k] = weekDays[k];
       });
     });
+  }
+
+  // ============ RELLENO TIPO EXCEL: seleccionar celdas y arrastrar el cuadrito ============
+  // 1) Clic y arrastrar (o Shift+clic) sobre celdas de UNA fila -> selección.
+  // 2) Arrastrar el cuadrito de la última celda hacia la DERECHA -> se repite la secuencia.
+  // Se guarda igual que el modal de rango (applyRangeToBackend / applyRangeToCalendarData).
+  private fillCells: Array<{ ws: string; dayKey: string }> = [];   // celdas del mes en orden
+  private fillIndex: Record<string, number> = {};                   // 'ws|dayKey' -> posición
+  fillSel: { rowKey: string; anchor: number; start: number; end: number } | null = null;
+  fillDrag: 'select' | 'fill' | null = null;
+  fillTarget: number | null = null;   // hasta qué celda llega el relleno (vista previa)
+  private fillRow: any = null;
+  private fillIsSaca = false;
+
+  private rebuildFillCells(): void {
+    const cells: Array<{ ws: string; dayKey: string }> = [];
+    const index: Record<string, number> = {};
+    (this.weeksForMonth || []).forEach(ws => {
+      (this.calendarMonthDayKeys[ws] || []).forEach(dayKey => {
+        index[`${ws}|${dayKey}`] = cells.length;
+        cells.push({ ws, dayKey });
+      });
+    });
+    this.fillCells = cells;
+    this.fillIndex = index;
+    this.limpiarRelleno();
+  }
+
+  private fillRowKey(row: any): string {
+    return row?.type === 'sacafranco' ? `s:${row.id}` : `a:${row?.asig?.id ?? ''}`;
+  }
+
+  private fillIdx(ws: string, dayKey: string): number {
+    const i = this.fillIndex[`${ws}|${dayKey}`];
+    return i == null ? -1 : i;
+  }
+
+  private puedeRellenar(): boolean {
+    return this.puedeEditar && !this.isPastMonth();
+  }
+
+  private limpiarRelleno(): void {
+    this.fillSel = null;
+    this.fillDrag = null;
+    this.fillTarget = null;
+    this.fillRow = null;
+    document.body.style.userSelect = '';
+  }
+
+  isFillSelected(row: any, ws: string, dayKey: string): boolean {
+    const s = this.fillSel;
+    if (!s || s.rowKey !== this.fillRowKey(row)) return false;
+    const i = this.fillIdx(ws, dayKey);
+    return i >= s.start && i <= s.end;
+  }
+
+  isFillPreview(row: any, ws: string, dayKey: string): boolean {
+    const s = this.fillSel;
+    if (!s || this.fillDrag !== 'fill' || this.fillTarget == null || s.rowKey !== this.fillRowKey(row)) return false;
+    const i = this.fillIdx(ws, dayKey);
+    return i > s.end && i <= this.fillTarget;
+  }
+
+  isFillHandleCell(row: any, ws: string, dayKey: string): boolean {
+    const s = this.fillSel;
+    return !!s && this.fillDrag !== 'select' && s.rowKey === this.fillRowKey(row)
+      && this.fillIdx(ws, dayKey) === s.end && this.puedeRellenar();
+  }
+
+  onFillCellMouseDown(ev: MouseEvent, row: any, ws: string, dayKey: string, isSaca: boolean): void {
+    if (ev.button !== 0 || !this.puedeRellenar()) return;
+    // Que no arranque el arrastre de la FILA (cdkDrag) al seleccionar celdas del cronograma.
+    ev.stopPropagation();
+    const i = this.fillIdx(ws, dayKey);
+    if (i < 0) return;
+    const key = this.fillRowKey(row);
+    // Shift+clic: extiende la selección de la misma fila.
+    if (ev.shiftKey && this.fillSel && this.fillSel.rowKey === key) {
+      ev.preventDefault();
+      const a = this.fillSel.anchor;
+      this.fillSel = { ...this.fillSel, start: Math.min(a, i), end: Math.max(a, i) };
+      return;
+    }
+    this.fillSel = { rowKey: key, anchor: i, start: i, end: i };
+    this.fillRow = row;
+    this.fillIsSaca = isSaca;
+    this.fillDrag = 'select';
+    this.fillTarget = null;
+  }
+
+  onFillCellEnter(row: any, ws: string, dayKey: string): void {
+    const s = this.fillSel;
+    if (!this.fillDrag || !s || this.fillRowKey(row) !== s.rowKey) return;
+    const i = this.fillIdx(ws, dayKey);
+    if (i < 0) return;
+    if (this.fillDrag === 'select') {
+      this.fillSel = { ...s, start: Math.min(s.anchor, i), end: Math.max(s.anchor, i) };
+      if (i !== s.anchor) {
+        // Seleccionando varias celdas: salir del input y evitar que se seleccione texto.
+        (document.activeElement as HTMLElement | null)?.blur?.();
+        window.getSelection()?.removeAllRanges();
+        document.body.style.userSelect = 'none';
+      }
+    } else {
+      this.fillTarget = i > s.end ? i : null;
+    }
+  }
+
+  onFillHandleDown(ev: MouseEvent): void {
+    if (ev.button !== 0 || !this.fillSel || !this.puedeRellenar()) return;
+    ev.stopPropagation();
+    ev.preventDefault();
+    this.fillDrag = 'fill';
+    this.fillTarget = null;
+    document.body.style.userSelect = 'none';
+  }
+
+  @HostListener('document:mouseup')
+  onFillMouseUp(): void {
+    if (!this.fillDrag) return;
+    const eraRelleno = this.fillDrag === 'fill';
+    this.fillDrag = null;
+    document.body.style.userSelect = '';
+    if (eraRelleno && this.fillTarget != null) {
+      this.aplicarRelleno();
+    }
+    this.fillTarget = null;
+  }
+
+  // Clic fuera del cronograma (o Esc): quitar la selección.
+  @HostListener('document:mousedown')
+  onFillOutsideDown(): void {
+    if (this.fillSel && !this.fillDrag) { this.limpiarRelleno(); }
+  }
+
+  @HostListener('document:keydown.escape')
+  onFillEscape(): void {
+    if (this.fillSel) { this.limpiarRelleno(); }
+  }
+
+  // Repite la secuencia seleccionada en las celdas arrastradas y la guarda.
+  private aplicarRelleno(): void {
+    const s = this.fillSel;
+    const row = this.fillRow;
+    const target = this.fillTarget;
+    if (!s || !row || target == null || target <= s.end) return;
+    const tokens: string[] = [];
+    for (let i = s.start; i <= s.end; i++) {
+      const c = this.fillCells[i];
+      const calRow = this.getCalendarRow(row, c.ws);
+      tokens.push(String((calRow && calRow[c.dayKey]) || '').toUpperCase());
+    }
+    if (!tokens.some(t => !!t)) return;   // selección vacía: nada que replicar
+    const len = tokens.length;
+    const map: Record<string, Record<string, string>> = {};
+    for (let i = s.end + 1; i <= target; i++) {
+      const c = this.fillCells[i];
+      if (!map[c.ws]) map[c.ws] = {};
+      // Continúa la secuencia donde quedó (igual que Excel).
+      map[c.ws][c.dayKey] = tokens[(i - s.start) % len];
+    }
+    this.applyRangeToBackend(row, map, this.fillIsSaca);
+    this.applyRangeToCalendarData(row, map);
+    // La selección pasa a incluir lo rellenado (se puede seguir arrastrando).
+    this.fillSel = { ...s, end: target };
   }
 
   private openSacafrancoSequenceModal(fila: SacafrancoFila): void {

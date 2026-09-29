@@ -384,6 +384,39 @@ table.table {
 .calendar-week-grid .calendar-day:first-child {
   border-left: 1px solid #cbd5e1;
 }
+
+/* ===== Relleno tipo Excel en el cronograma ===== */
+.calendar-day { position: relative; }
+/* El marco va en un ::after por encima del input (el input tapa el fondo de la celda). */
+.calendar-day.fill-sel::after,
+.calendar-day.fill-preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.calendar-day.fill-sel::after {
+  background: rgba(26, 115, 232, 0.14);
+  box-shadow: inset 0 0 0 2px #1a73e8;
+}
+.calendar-day.fill-preview::after {
+  background: rgba(26, 115, 232, 0.06);
+  box-shadow: inset 0 0 0 1px #1a73e8;
+  border: 1px dashed #1a73e8;
+}
+/* Cuadrito para arrastrar (esquina inferior derecha de la última celda seleccionada). */
+.fill-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 7px;
+  height: 7px;
+  background: #1a73e8;
+  border: 1px solid #fff;
+  cursor: crosshair;
+  z-index: 2;
+}
 /* el header (letras + número del día) va sin bordes */
 .calendar-header-weeks .calendar-day,
 .calendar-header-weeks .calendar-week-grid .calendar-day:first-child {
