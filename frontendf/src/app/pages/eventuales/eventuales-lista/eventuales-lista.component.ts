@@ -10,6 +10,7 @@ import { AuthService } from '../../../services/auth.service';
 import { GlobalFilterStateService } from '../../../services/global-filter-state.service';
 import { CatalogoHorasEventual, HorasEventual } from '../../../models/horas-eventual.model';
 import { EventualHorasDialogComponent } from '../eventual-horas-dialog/eventual-horas-dialog.component';
+import { EventualHistorialDialogComponent } from '../eventual-historial-dialog/eventual-historial-dialog.component';
 
 @Component({
   selector: 'app-eventuales-lista',
@@ -124,6 +125,17 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
       // Si la fecha del servicio es otro día, la lista pasa a ese día (así se ve el registro).
       if (res.fecha && res.fecha !== this.fechaValor) { this.fechaValor = res.fecha; }
       this.cargar();
+    });
+  }
+
+  // Historial: quién creó el registro, quién lo modificó y qué cambió.
+  verHistorial(f: HorasEventual): void {
+    if (!f.id) { return; }
+    this.dialog.open(EventualHistorialDialogComponent, {
+      width: '1100px',
+      maxWidth: '96vw',
+      autoFocus: false,
+      data: { row: f },
     });
   }
 

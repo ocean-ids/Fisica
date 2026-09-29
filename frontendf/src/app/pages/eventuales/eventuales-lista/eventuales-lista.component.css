@@ -5,3 +5,11 @@ table th {
 tfoot th {
   background: #f1f5fb;
 }
+
+/* Columna "Última Modificación" (igual que Reporte de Asistencia) */
+.ult-mod {
+  font-size: 12px;
+}
+.ult-mod .btn-link {
+  font-size: 12px;
+}

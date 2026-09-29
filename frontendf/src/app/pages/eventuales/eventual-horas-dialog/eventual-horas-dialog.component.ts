@@ -30,7 +30,7 @@ type Opcion = { id: number; nombre: string; [k: string]: any };
   styleUrl: './eventual-horas-dialog.component.css',
 })
 export class EventualHorasDialogComponent implements OnInit {
-  catalogo: CatalogoHorasEventual = { clientes: [], instalaciones: [], puestos: [], eventuales: [], tarifas: [] };
+  catalogo: CatalogoHorasEventual = { clientes: [], instalaciones: [], puestos: [], eventuales: [] };
   cargando = false;
   guardando = false;
   esEdicion = false;
@@ -47,6 +47,7 @@ export class EventualHorasDialogComponent implements OnInit {
   fechaServicio: Date | null = null;
   horas: number | null = null;
   horasAdicionales: number | null = 0;
+  valorCalculado: number | null = null;   // lo escribe el usuario
 
   // Cache de filtros (evita recalcular listas largas en cada ciclo de pantalla).
   private cacheFiltro: Record<string, { key: string; res: any[] }> = {};
@@ -64,6 +65,7 @@ export class EventualHorasDialogComponent implements OnInit {
     this.fechaServicio = this.aFecha(this.fecha);
     this.horas = row?.horas ?? null;
     this.horasAdicionales = row?.horas_adicionales ?? 0;
+    this.valorCalculado = row?.valor_calculado ?? null;
     if (this.data?.catalogo) {
       this.catalogo = this.data.catalogo;
       this.precargar(row);
@@ -87,24 +89,6 @@ export class EventualHorasDialogComponent implements OnInit {
 
   // Banco: solo lectura, sale de los datos del eventual (vacío si no lo tiene).
   get banco(): string { return this.eventualSel?.['banco'] || ''; }
-
-  // ---------- Valor calculado (solo lectura) ----------
-  // Tarifa "Eventuales" (Tarifas de Pago) del tramo que incluye horas trabajadas + adicionales.
-  // Es una vista previa; el valor definitivo lo calcula el servidor al guardar.
-  get horasTotales(): number {
-    return (Number(this.horas) || 0) + (Number(this.horasAdicionales) || 0);
-  }
-
-  private get tramo(): { horas_min: number; horas_max: number; valor: number } | null {
-    const t = this.horasTotales;
-    if (!t) { return null; }
-    return (this.catalogo.tarifas || []).find(x => t >= x.horas_min && t <= x.horas_max) || null;
-  }
-
-  get valorCalculado(): number { return this.tramo?.valor ?? 0; }
-
-  // Hay horas pero ningún tramo de la tarifa las cubre.
-  get sinTramo(): boolean { return this.horasTotales > 0 && !this.tramo; }
 
   displayOpcion = (o: any): string => (o && typeof o === 'object') ? (o.nombre || '') : (o || '');
 
@@ -214,6 +198,13 @@ export class EventualHorasDialogComponent implements OnInit {
     if (!Number.isInteger(adic) || adic < 0 || adic > 24) {
       return this.aviso('Las horas adicionales deben ser un número entero de 0 a 24.');
     }
+    if (this.valorCalculado === null || (this.valorCalculado as any) === '') {
+      return this.aviso('Ingresa el valor calculado.');
+    }
+    const valor = Number(this.valorCalculado);
+    if (!Number.isFinite(valor) || valor < 0) {
+      return this.aviso('El valor calculado debe ser un número mayor o igual a 0.');
+    }
 
     const payload: HorasEventual = {
       fecha: this.aTexto(this.fechaServicio),
@@ -223,6 +214,7 @@ export class EventualHorasDialogComponent implements OnInit {
       puesto_id: pue?.id ?? null,
       horas: h,
       horas_adicionales: adic,
+      valor_calculado: valor,
     };
     this.guardando = true;
     const id = this.data?.row?.id;

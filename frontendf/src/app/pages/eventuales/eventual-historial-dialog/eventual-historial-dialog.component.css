@@ -1,0 +1,32 @@
+.hist-sub {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6c757d;
+  margin-left: 8px;
+}
+
+.hist-tabla td,
+.hist-tabla th {
+  font-size: 12px;
+}
+
+/* Valor que cambió respecto a la versión anterior */
+.hist-cambio {
+  background: #fff3cd !important;
+  font-weight: 600;
+}
+
+.hist-nota {
+  font-size: 12px;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hist-muestra {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #e0c56e;
+  border-radius: 3px;
+}

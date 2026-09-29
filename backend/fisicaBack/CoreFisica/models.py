@@ -1790,10 +1790,14 @@ class HorasEventual(models.Model):
     puesto = models.ForeignKey(Puesto, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     horas = models.PositiveSmallIntegerField()                       # horas trabajadas
     horas_adicionales = models.PositiveSmallIntegerField(default=0)
-    # Tarifa "Eventuales" (Tarifas de Pago) del tramo de horas trabajadas + adicionales.
-    # Se guarda para conservar el valor del momento aunque la tarifa cambie después.
+    # Valor que ingresa el usuario a mano.
     valor_calculado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+'
+    )
+    # Último usuario que lo guardó (al crear = quien lo creó).
+    modificado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,
         on_delete=models.SET_NULL, related_name='+'
     )
@@ -1807,3 +1811,33 @@ class HorasEventual(models.Model):
 
     def __str__(self):
         return f"{self.fecha} | {self.persona} | {self.horas} h"
+
+
+class HorasEventualHistorial(models.Model):
+    """Historial de un registro de horas de eventual: una copia de sus valores cada vez que se
+    crea o se modifica, con el usuario y la hora (para ver quién lo hizo y qué cambió)."""
+    ACCIONES = [('CREADO', 'Creado'), ('MODIFICADO', 'Modificado')]
+
+    registro = models.ForeignKey(HorasEventual, on_delete=models.CASCADE, related_name='historial')
+    accion = models.CharField(max_length=12, choices=ACCIONES)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+'
+    )
+    usuario_nombre = models.CharField(max_length=150, blank=True, default='')   # respaldo
+    creado_en = models.DateTimeField(auto_now_add=True)
+    # Copia de los valores en ese momento.
+    fecha_servicio = models.DateField(null=True, blank=True)
+    persona = models.CharField(max_length=200, blank=True, default='')
+    cliente = models.CharField(max_length=200, blank=True, default='')
+    instalacion = models.CharField(max_length=200, blank=True, default='')
+    puesto = models.CharField(max_length=200, blank=True, default='')
+    horas = models.PositiveSmallIntegerField(null=True, blank=True)
+    horas_adicionales = models.PositiveSmallIntegerField(null=True, blank=True)
+    valor_calculado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        ordering = ['creado_en', 'id']
+
+    def __str__(self):
+        return f"{self.registro_id} {self.accion} {self.usuario_nombre} {self.creado_en:%Y-%m-%d %H:%M}"

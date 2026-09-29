@@ -17,14 +17,14 @@ from .models import (
     AuditLog,
     Cliente, Instalacion, Puesto, Persona, Asignacion, Horario,
     Consolidado, ReporteAsistencia, SacafrancoFila, VistaCanton,
-    NovedadPuesto,
+    NovedadPuesto, HorasEventual,
 )
 
 # Modelos auditados (create/update/delete).
 AUDITED_MODELS = [
     Cliente, Instalacion, Puesto, Persona, Asignacion, Horario,
     Consolidado, ReporteAsistencia, SacafrancoFila, VistaCanton,
-    NovedadPuesto,
+    NovedadPuesto, HorasEventual,
 ]
 
 

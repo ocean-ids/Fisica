@@ -20,15 +20,17 @@
           <th>Nombre del puesto</th>
           <th>Apellidos y Nombres</th>
           <th>Banco</th>
+          <th style="width:110px">Fecha del Servicio</th>
           <th style="width:90px">Horas Trabajadas</th>
           <th style="width:90px">Horas Adicionales</th>
           <th style="width:110px">Valor Calculado</th>
+          <th style="width:150px">Última Modificación</th>
           <th *ngIf="puedeEditar || puedeEliminar" style="width:100px">Acción</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngIf="loading">
-          <td colspan="10" class="text-muted">Cargando…</td>
+          <td colspan="12" class="text-muted">Cargando…</td>
         </tr>
         <ng-container *ngIf="!loading">
           <tr *ngFor="let f of filasFiltradas; let i = index">
@@ -38,9 +40,15 @@
             <td>{{ f.puesto || '—' }}</td>
             <td class="text-start">{{ f.persona }} <small class="text-muted d-block">{{ f.cedula }}</small></td>
             <td>{{ f.banco || '—' }}</td>
+            <td>{{ fechaDMA(f.fecha) }}</td>
             <td class="fw-semibold">{{ f.horas }}</td>
             <td>{{ f.horas_adicionales || 0 }}</td>
             <td class="fw-semibold">{{ (f.valor_calculado || 0) | number:'1.2-2' }}</td>
+            <td class="text-start ult-mod">
+              <div><strong>{{ f.modificado_por || '-' }}</strong></div>
+              <div class="text-muted">{{ f.modificado_en ? (f.modificado_en | date:'dd/MM/yyyy h:mm a') : '-' }}</div>
+              <button type="button" class="btn btn-link p-0 mt-1" (click)="verHistorial(f)">Historial</button>
+            </td>
             <td *ngIf="puedeEditar || puedeEliminar">
               <button *ngIf="puedeEditar" type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
                       (click)="editar(f)" title="Editar"><i class="bi bi-pencil"></i></button>
@@ -49,16 +57,17 @@
             </td>
           </tr>
           <tr *ngIf="!filasFiltradas.length">
-            <td colspan="10" class="text-muted">Sin registros en este día.</td>
+            <td colspan="12" class="text-muted">Sin registros en este día.</td>
           </tr>
         </ng-container>
       </tbody>
       <tfoot *ngIf="!loading && filasFiltradas.length">
         <tr>
-          <th colspan="6" class="text-end">Totales</th>
+          <th colspan="7" class="text-end">Totales</th>
           <th>{{ totalHoras }}</th>
           <th>{{ totalAdicionales }}</th>
           <th>{{ totalValor | number:'1.2-2' }}</th>
+          <th></th>
           <th *ngIf="puedeEditar || puedeEliminar"></th>
         </tr>
       </tfoot>

@@ -60,7 +60,9 @@
               (click)="limpiar(eventualCtrl, $event)" aria-label="Limpiar"><span class="ev-x">×</span></button>
       <mat-autocomplete #autoEv="matAutocomplete" [displayWith]="displayOpcion">
         <mat-option *ngFor="let e of eventualesFiltrados" [value]="e">
-          {{ e.nombre }} <small class="text-muted">— {{ e['cedula'] }}</small>
+          {{ e.nombre }}
+          <span class="ev-cedula">{{ e['cedula'] }}</span>
+          <span class="ev-tipo">{{ e['tipo'] || 'EVENTUAL' }}</span>
         </mat-option>
         <mat-option *ngIf="!eventualesFiltrados.length" disabled>Sin eventuales que coincidan</mat-option>
       </mat-autocomplete>
@@ -94,13 +96,11 @@
     </mat-form-field>
   </div>
 
-  <!-- Fila 5: Valor calculado (solo lectura) -->
+  <!-- Fila 5: Valor calculado (lo escribe el usuario) -->
   <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Valor calculado</mat-label>
-      <input matInput readonly [value]="valorCalculado | number:'1.2-2'">
-      <mat-hint *ngIf="!sinTramo && horasTotales">Tarifa "Eventuales" para {{ horasTotales }} h</mat-hint>
-      <mat-hint *ngIf="sinTramo" class="ev-alerta">No hay tarifa para {{ horasTotales }} h</mat-hint>
+      <input matInput type="number" required min="0" step="0.01" [(ngModel)]="valorCalculado" placeholder="Ej. 18.75">
     </mat-form-field>
   </div>
 </mat-dialog-content>

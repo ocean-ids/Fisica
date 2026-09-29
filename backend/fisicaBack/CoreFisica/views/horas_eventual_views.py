@@ -3,21 +3,17 @@
 - Solo se registran personas de tipo EVENTUAL.
 - El banco es de solo lectura: sale de los datos de la persona (EmpleadoOtrosDatos). Si la
   persona no lo tiene cargado, se muestra vacío.
-- Valor calculado: tarifa "Eventuales" (módulo Tarifas de Pago) del tramo que incluye
-  horas trabajadas + horas adicionales. Sin tramo para esas horas -> 0.
+- Valor calculado: lo ingresa el usuario a mano (no se calcula automáticamente).
 """
 import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from ..models import HorasEventual, Persona, Cliente, Instalacion, Puesto, TarifaPago
-
-# Tipo de servicio de Tarifas de Pago con el que se valoran las horas de eventuales.
-TIPO_SERVICIO_EVENTUAL = 'Eventuales'
+from ..models import HorasEventual, HorasEventualHistorial, Persona, Cliente, Instalacion, Puesto
 
 
 def _banco(persona):
@@ -28,16 +24,11 @@ def _banco(persona):
         return ''
 
 
-def _tarifas_eventual():
-    return TarifaPago.objects.filter(tipo_servicio__iexact=TIPO_SERVICIO_EVENTUAL).order_by('horas_min')
-
-
-def _valor_calculado(horas_totales):
-    """Valor del tramo de la tarifa "Eventuales" que incluye las horas; 0 si no hay tramo."""
-    if not horas_totales:
-        return Decimal('0')
-    t = _tarifas_eventual().filter(horas_min__lte=horas_totales, horas_max__gte=horas_totales).first()
-    return t.valor if t else Decimal('0')
+def _nombre_usuario(u):
+    """Nombre completo del usuario (o su username)."""
+    if not u:
+        return ''
+    return (f"{u.first_name or ''} {u.last_name or ''}".strip()) or u.get_username()
 
 
 def _nombre_persona(p):
@@ -61,6 +52,11 @@ def _serialize(h):
         'horas': h.horas,
         'horas_adicionales': h.horas_adicionales or 0,
         'valor_calculado': float(h.valor_calculado or 0),
+        # Auditoría: quién lo creó y quién lo modificó por última vez.
+        'creado_por': _nombre_usuario(h.creado_por),
+        'creado_en': h.creado_en.isoformat() if h.creado_en else None,
+        'modificado_por': _nombre_usuario(h.modificado_por or h.creado_por),
+        'modificado_en': h.actualizado_en.isoformat() if h.actualizado_en else None,
     }
 
 
@@ -128,15 +124,58 @@ def _validar(data):
     if adicionales is None or adicionales < 0 or adicionales > 24:
         return None, 'Las horas adicionales deben ser un número entero de 0 a 24.'
 
+    # Valor calculado: lo escribe el usuario.
+    raw_valor = data.get('valor_calculado')
+    if raw_valor in (None, '', 'null'):
+        return None, 'Ingresa el valor calculado.'
+    try:
+        valor = Decimal(str(raw_valor).replace(',', '.')).quantize(Decimal('0.01'))
+    except (InvalidOperation, TypeError, ValueError):
+        return None, 'El valor calculado no es válido.'
+    if valor < 0:
+        return None, 'El valor calculado no puede ser negativo.'
+
     return {
         'fecha': fecha, 'persona': persona, 'cliente': cliente,
         'instalacion': instalacion, 'puesto': puesto,
         'horas': horas, 'horas_adicionales': adicionales,
-        'valor_calculado': _valor_calculado(horas + adicionales),
+        'valor_calculado': valor,
     }, None
 
 
-_SELECT = ('persona', 'persona__otros_datos', 'cliente', 'instalacion', 'puesto')
+_SELECT = ('persona', 'persona__otros_datos', 'cliente', 'instalacion', 'puesto',
+           'creado_por', 'modificado_por')
+
+
+def _guardar_historial(h, accion, user):
+    """Copia de los valores del registro en este momento (para el historial)."""
+    HorasEventualHistorial.objects.create(
+        registro=h,
+        accion=accion,
+        usuario=user if (user and user.is_authenticated) else None,
+        usuario_nombre=_nombre_usuario(user) if (user and user.is_authenticated) else 'sistema',
+        fecha_servicio=h.fecha,
+        persona=_nombre_persona(h.persona),
+        cliente=getattr(h.cliente, 'nombre_comercial', '') or '',
+        instalacion=getattr(h.instalacion, 'nombre', '') or '',
+        puesto=getattr(h.puesto, 'nombre', '') or '',
+        horas=h.horas,
+        horas_adicionales=h.horas_adicionales,
+        valor_calculado=h.valor_calculado,
+    )
+
+
+# Campos que se comparan entre versiones para mostrar "qué cambió".
+_CAMPOS_HISTORIAL = [
+    ('fecha_servicio', 'Fecha del servicio'),
+    ('cliente', 'Cliente'),
+    ('instalacion', 'Instalación'),
+    ('puesto', 'Nombre del puesto'),
+    ('persona', 'Eventual'),
+    ('horas', 'Horas trabajadas'),
+    ('horas_adicionales', 'Horas adicionales'),
+    ('valor_calculado', 'Valor calculado'),
+]
 
 
 @api_view(['GET'])
@@ -174,18 +213,14 @@ def catalogo_horas_eventual(request):
         for p in Puesto.objects.filter(activo=True).order_by('nombre')
     ]
     eventuales = [
-        {'id': p.id, 'nombre': _nombre_persona(p), 'cedula': p.cedula or '', 'banco': _banco(p)}
+        {'id': p.id, 'nombre': _nombre_persona(p), 'cedula': p.cedula or '', 'banco': _banco(p),
+         'tipo': p.tipo or ''}
         for p in (Persona.objects.filter(tipo='EVENTUAL', is_active=True)
                   .select_related('otros_datos').order_by('apellidos', 'nombres'))
     ]
-    # Tramos de la tarifa "Eventuales": el formulario muestra el valor mientras se escribe.
-    tarifas = [
-        {'horas_min': t.horas_min, 'horas_max': t.horas_max, 'valor': float(t.valor)}
-        for t in _tarifas_eventual()
-    ]
     return Response({
         'clientes': clientes, 'instalaciones': instalaciones,
-        'puestos': puestos, 'eventuales': eventuales, 'tarifas': tarifas,
+        'puestos': puestos, 'eventuales': eventuales,
     })
 
 
@@ -197,8 +232,9 @@ def crear_horas_eventual(request):
     campos, err = _validar(request.data)
     if err:
         return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
-    h = HorasEventual.objects.create(creado_por=request.user, **campos)
+    h = HorasEventual.objects.create(creado_por=request.user, modificado_por=request.user, **campos)
     h = HorasEventual.objects.select_related(*_SELECT).get(id=h.id)
+    _guardar_historial(h, 'CREADO', request.user)
     return Response(_serialize(h), status=status.HTTP_201_CREATED)
 
 
@@ -215,8 +251,10 @@ def actualizar_horas_eventual(request, id):
         return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
     for k, v in campos.items():
         setattr(h, k, v)
+    h.modificado_por = request.user
     h.save()
     h = HorasEventual.objects.select_related(*_SELECT).get(id=h.id)
+    _guardar_historial(h, 'MODIFICADO', request.user)
     return Response(_serialize(h))
 
 
@@ -230,3 +268,41 @@ def eliminar_horas_eventual(request, id):
         return Response({'error': 'Registro no encontrado'}, status=status.HTTP_404_NOT_FOUND)
     h.delete()
     return Response({'ok': True})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def historial_horas_eventual(request, id):
+    """Historial del registro: quién lo creó y quién lo modificó, con los valores de cada
+    versión y qué campos cambiaron respecto a la anterior. Más reciente primero."""
+    if not request.user.has_perm('CoreFisica.view_horaseventual'):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+    if not HorasEventual.objects.filter(id=id).exists():
+        return Response({'error': 'Registro no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    versiones = list(HorasEventualHistorial.objects.filter(registro_id=id).select_related('usuario'))
+    out = []
+    anterior = None
+    for v in versiones:
+        cambios = []
+        if anterior is not None:
+            cambios = [label for campo, label in _CAMPOS_HISTORIAL
+                       if getattr(v, campo) != getattr(anterior, campo)]
+        out.append({
+            'id': v.id,
+            'accion': v.accion,
+            'accion_label': v.get_accion_display(),
+            'usuario': _nombre_usuario(v.usuario) or v.usuario_nombre,
+            'fecha_hora': v.creado_en.isoformat() if v.creado_en else None,
+            'fecha_servicio': v.fecha_servicio.isoformat() if v.fecha_servicio else None,
+            'persona': v.persona,
+            'cliente': v.cliente,
+            'instalacion': v.instalacion,
+            'puesto': v.puesto,
+            'horas': v.horas,
+            'horas_adicionales': v.horas_adicionales,
+            'valor_calculado': float(v.valor_calculado) if v.valor_calculado is not None else None,
+            'cambios': cambios,
+        })
+        anterior = v
+    out.reverse()
+    return Response(out)

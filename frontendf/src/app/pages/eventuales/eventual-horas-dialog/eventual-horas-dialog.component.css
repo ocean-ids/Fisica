@@ -39,6 +39,19 @@
   .ev-row > mat-form-field { flex: 1 1 100%; min-width: 0; }
 }
 
-.ev-alerta {
-  color: #b45309;
+/* Opción del eventual: cédula + badge del tipo (mismo estilo que Reporte de Asistencia) */
+.ev-cedula {
+  font-size: 11px;
+  color: #6b7280;
+  margin-left: 6px;
+}
+.ev-tipo {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: #eef2ff;
+  color: #4338ca;
+  margin-left: 4px;
 }

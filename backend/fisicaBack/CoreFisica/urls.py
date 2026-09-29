@@ -29,7 +29,7 @@ from .views.consolidado_views import obtener_consolidado, crear_consolidado, act
 from .views.vista_canton_views import vistas_cantones
 from .views.novedad_puesto_views import obtener_novedades, crear_novedad, actualizar_novedad, eliminar_novedad, exportar_novedades_excel
 from .views.sync_views import sincronizar_empleado
-from .views.horas_eventual_views import listar_horas_eventual, catalogo_horas_eventual, crear_horas_eventual, actualizar_horas_eventual, eliminar_horas_eventual
+from .views.horas_eventual_views import listar_horas_eventual, catalogo_horas_eventual, crear_horas_eventual, actualizar_horas_eventual, eliminar_horas_eventual, historial_horas_eventual
 from .views.html_pdf_views import html_a_pdf
 from .views.image_resize_views import reducir_imagen
 from .views.reporte_vacaciones_views import (
@@ -215,6 +215,7 @@ urlpatterns = [
     path('horas-eventual/crear/', crear_horas_eventual),
     path('horas-eventual/<int:id>/', actualizar_horas_eventual),
     path('horas-eventual/<int:id>/eliminar/', eliminar_horas_eventual),
+    path('horas-eventual/<int:id>/historial/', historial_horas_eventual),
 
 ]
 

@@ -1,9 +1,8 @@
 """Módulo Eventuales: registro de horas trabajadas por EVENTUALES.
 
-Se valida: catálogo (solo eventuales, con banco, tramos de tarifa), creación, banco vacío si la
-persona no lo tiene, valor calculado con la tarifa "Eventuales" (horas + adicionales),
-validaciones (solo EVENTUAL, instalación del cliente, puesto de la instalación, horas enteras)
-y permisos.
+Se valida: catálogo (solo eventuales, con banco), creación, banco vacío si la persona no lo
+tiene, valor calculado ingresado a mano, validaciones (solo EVENTUAL, instalación del cliente,
+puesto de la instalación, horas enteras, valor obligatorio y no negativo) y permisos.
 """
 import json
 
@@ -11,7 +10,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 
 from CoreFisica.models import (
-    Persona, Cliente, Instalacion, Puesto, EmpleadoOtrosDatos, HorasEventual, TarifaPago,
+    Persona, Cliente, Instalacion, Puesto, EmpleadoOtrosDatos, HorasEventual,
 )
 
 
@@ -34,10 +33,6 @@ class HorasEventualTests(TestCase):
         EmpleadoOtrosDatos.objects.update_or_create(persona=self.ev, defaults={'banco': 'BANCO PICHINCHA'})
         self.ev_sin_banco = Persona.objects.create(nombres='ANA', apellidos='LOPEZ', cedula='0922222222', tipo='EVENTUAL')
         self.fijo = Persona.objects.create(nombres='LUIS', apellidos='SOTO', cedula='0933333333', tipo='FIJOS')
-        # Tarifa "Eventuales" por tramos (igual a Tarifas de Pago).
-        for mn, mx, v in [(1, 3, '6.25'), (4, 6, '12.50'), (7, 9, '18.75'), (10, 12, '25.00'), (13, 15, '31.25')]:
-            TarifaPago.objects.update_or_create(tipo_servicio='Eventuales', horas_min=mn, horas_max=mx,
-                                                defaults={'valor': v})
 
     def _auth(self, token=None):
         return {'HTTP_AUTHORIZATION': f'Bearer {token or self.token}'}
@@ -46,6 +41,7 @@ class HorasEventualTests(TestCase):
         data = {
             'fecha': '2026-09-29', 'persona_id': self.ev.id, 'cliente_id': self.cli.id,
             'instalacion_id': self.inst.id, 'puesto_id': self.puesto.id, 'horas': 8,
+            'valor_calculado': '20',
         }
         data.update(over)
         return self.client.post('/api/horas-eventual/crear/', data=json.dumps(data),
@@ -59,10 +55,9 @@ class HorasEventualTests(TestCase):
         self.assertNotIn(self.fijo.id, evs)                       # un FIJO no sale
         self.assertEqual(evs[self.ev.id]['banco'], 'BANCO PICHINCHA')
         self.assertEqual(evs[self.ev_sin_banco.id]['banco'], '')  # sin banco -> vacío
-        self.assertEqual(len(r.json()['tarifas']), 5)
 
     def test_crear_y_listar(self):
-        r = self._crear(horas=7, horas_adicionales=2)   # 9 h -> tramo 7-9 = 18.75
+        r = self._crear(horas=7, horas_adicionales=2, valor_calculado='18.75')   # lo escribe el usuario
         self.assertEqual(r.status_code, 201, r.content)
         body = r.json()
         self.assertEqual(body['persona'], 'PEREZ JUAN')
@@ -89,6 +84,9 @@ class HorasEventualTests(TestCase):
         self.assertEqual(self._crear(horas=30).status_code, 400)
         self.assertEqual(self._crear(horas=7.5).status_code, 400)                   # no entero
         self.assertEqual(self._crear(horas_adicionales=-1).status_code, 400)
+        self.assertEqual(self._crear(valor_calculado='').status_code, 400)       # obligatorio
+        self.assertEqual(self._crear(valor_calculado='-5').status_code, 400)     # no negativo
+        self.assertEqual(self._crear(valor_calculado='abc').status_code, 400)
         self.assertEqual(self._crear(fecha='').status_code, 400)
         self.assertEqual(HorasEventual.objects.count(), 0)
 
@@ -97,23 +95,43 @@ class HorasEventualTests(TestCase):
         r = self.client.put(f'/api/horas-eventual/{hid}/', data=json.dumps({
             'fecha': '2026-09-28', 'persona_id': self.ev.id, 'cliente_id': self.cli.id,
             'instalacion_id': self.inst.id, 'puesto_id': None, 'horas': 12,
+            'valor_calculado': '25,50',
         }), content_type='application/json', **self._auth())
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(r.json()['horas'], 12)
         self.assertEqual(r.json()['horas_adicionales'], 0)          # vacío -> 0
-        self.assertEqual(r.json()['valor_calculado'], 25.0)         # 12 h -> tramo 10-12
+        self.assertEqual(r.json()['valor_calculado'], 25.5)         # acepta coma decimal
         self.assertEqual(r.json()['puesto'], '')
         r2 = self.client.delete(f'/api/horas-eventual/{hid}/eliminar/', **self._auth())
         self.assertEqual(r2.status_code, 200)
         self.assertFalse(HorasEventual.objects.filter(id=hid).exists())
 
-    def test_sin_tramo_valor_cero(self):
-        r = self._crear(horas=16)   # no hay tramo para 16 h
-        self.assertEqual(r.status_code, 201)
-        self.assertEqual(r.json()['valor_calculado'], 0.0)
+    def test_historial_quien_creo_y_modifico(self):
+        admin = User.objects.get(username='ev_admin')
+        admin.first_name, admin.last_name = 'Bryan', 'Cabello'
+        admin.save()
+        hid = self._crear(horas=8, valor_calculado='20').json()['id']
+        body = self.client.put(f'/api/horas-eventual/{hid}/', data=json.dumps({
+            'fecha': '2026-09-29', 'persona_id': self.ev.id, 'cliente_id': self.cli.id,
+            'instalacion_id': self.inst.id, 'puesto_id': self.puesto.id, 'horas': 10,
+            'valor_calculado': '25',
+        }), content_type='application/json', **self._auth()).json()
+        # Última modificación en el registro.
+        self.assertEqual(body['creado_por'], 'Bryan Cabello')
+        self.assertEqual(body['modificado_por'], 'Bryan Cabello')
+        self.assertTrue(body['modificado_en'])
+        # Historial: más reciente primero, con qué cambió.
+        hist = self.client.get(f'/api/horas-eventual/{hid}/historial/', **self._auth()).json()
+        self.assertEqual([h['accion'] for h in hist], ['MODIFICADO', 'CREADO'])
+        self.assertEqual(hist[0]['usuario'], 'Bryan Cabello')
+        self.assertEqual(hist[0]['horas'], 10)
+        self.assertEqual(set(hist[0]['cambios']), {'Horas trabajadas', 'Valor calculado'})
+        self.assertEqual(hist[1]['cambios'], [])
+        self.assertEqual(hist[1]['horas'], 8)
 
     def test_sin_permiso(self):
         User.objects.create_user(username='sinperm', password='SinPass123!')
         tok = _login(self.client, 'sinperm', 'SinPass123!')
         self.assertEqual(self.client.get('/api/horas-eventual/', **self._auth(tok)).status_code, 403)
         self.assertEqual(self.client.get('/api/horas-eventual/catalogo/', **self._auth(tok)).status_code, 403)
+        self.assertEqual(self.client.get('/api/horas-eventual/1/historial/', **self._auth(tok)).status_code, 403)

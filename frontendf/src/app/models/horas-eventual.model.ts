@@ -14,7 +14,30 @@ export interface HorasEventual {
   puesto?: string;
   horas: number;              // horas trabajadas (enteras)
   horas_adicionales?: number;
-  valor_calculado?: number;   // tarifa "Eventuales" del tramo (horas + adicionales)
+  valor_calculado?: number;   // lo ingresa el usuario
+  // Auditoría (solo lectura)
+  creado_por?: string;
+  creado_en?: string | null;
+  modificado_por?: string;    // último que lo guardó
+  modificado_en?: string | null;
+}
+
+// Una versión del registro en su historial (quién, cuándo, valores y qué cambió).
+export interface HorasEventualHistorialItem {
+  id: number;
+  accion: 'CREADO' | 'MODIFICADO';
+  accion_label: string;
+  usuario: string;
+  fecha_hora: string | null;
+  fecha_servicio: string | null;
+  persona: string;
+  cliente: string;
+  instalacion: string;
+  puesto: string;
+  horas: number | null;
+  horas_adicionales: number | null;
+  valor_calculado: number | null;
+  cambios: string[];          // etiquetas de los campos que cambiaron respecto a la versión anterior
 }
 
 // Datos para los selectores del formulario.
@@ -22,6 +45,5 @@ export interface CatalogoHorasEventual {
   clientes: Array<{ id: number; nombre: string }>;
   instalaciones: Array<{ id: number; nombre: string; cliente_id: number }>;
   puestos: Array<{ id: number; nombre: string; instalacion_id: number }>;
-  eventuales: Array<{ id: number; nombre: string; cedula: string; banco: string }>;
-  tarifas: Array<{ horas_min: number; horas_max: number; valor: number }>;   // tarifa "Eventuales"
+  eventuales: Array<{ id: number; nombre: string; cedula: string; banco: string; tipo?: string }>;
 }

@@ -1,0 +1,56 @@
+<h2 mat-dialog-title>
+  Historial del registro
+  <small class="hist-sub">{{ data.row.persona }}</small>
+</h2>
+
+<mat-dialog-content>
+  <div *ngIf="cargando" class="text-muted">Cargando historial…</div>
+  <div *ngIf="error" class="text-danger">{{ error }}</div>
+
+  <div class="table-responsive" *ngIf="!cargando && !error">
+    <table class="table table-bordered table-sm align-middle text-center hist-tabla">
+      <thead class="table-light">
+        <tr>
+          <th>Fecha y hora</th>
+          <th>Usuario</th>
+          <th>Acción</th>
+          <th>Cliente</th>
+          <th>Instalación</th>
+          <th>Nombre del Puesto</th>
+          <th>Eventual</th>
+          <th>Fecha del Servicio</th>
+          <th>Horas Trab.</th>
+          <th>Horas Adic.</th>
+          <th>Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let it of items">
+          <td class="text-nowrap">{{ it.fecha_hora | date:'dd/MM/yyyy h:mm a' }}</td>
+          <td class="fw-semibold">{{ it.usuario || '—' }}</td>
+          <td>
+            <span class="badge" [ngClass]="it.accion === 'CREADO' ? 'bg-success' : 'bg-primary'">{{ it.accion_label }}</span>
+          </td>
+          <td [class.hist-cambio]="cambio(it, 'Cliente')">{{ it.cliente }}</td>
+          <td [class.hist-cambio]="cambio(it, 'Instalación')">{{ it.instalacion }}</td>
+          <td [class.hist-cambio]="cambio(it, 'Nombre del puesto')">{{ it.puesto || '—' }}</td>
+          <td [class.hist-cambio]="cambio(it, 'Eventual')">{{ it.persona }}</td>
+          <td [class.hist-cambio]="cambio(it, 'Fecha del servicio')">{{ fechaDMA(it.fecha_servicio) }}</td>
+          <td [class.hist-cambio]="cambio(it, 'Horas trabajadas')">{{ it.horas }}</td>
+          <td [class.hist-cambio]="cambio(it, 'Horas adicionales')">{{ it.horas_adicionales || 0 }}</td>
+          <td [class.hist-cambio]="cambio(it, 'Valor calculado')">{{ (it.valor_calculado || 0) | number:'1.2-2' }}</td>
+        </tr>
+        <tr *ngIf="!items.length">
+          <td colspan="11" class="text-muted">Este registro aún no tiene historial.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="hist-nota" *ngIf="items.length > 1">
+    <span class="hist-cambio hist-muestra"></span> Campos que cambiaron respecto a la versión anterior.
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close type="button">Cerrar</button>
+</mat-dialog-actions>

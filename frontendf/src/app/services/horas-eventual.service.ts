@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
-import { CatalogoHorasEventual, HorasEventual } from '../models/horas-eventual.model';
+import { CatalogoHorasEventual, HorasEventual, HorasEventualHistorialItem } from '../models/horas-eventual.model';
 
 @Injectable({
   providedIn: 'root',
@@ -28,6 +28,11 @@ export class HorasEventualService {
 
   actualizar(id: number, data: HorasEventual): Observable<HorasEventual> {
     return this.api.put<HorasEventual>(`/horas-eventual/${id}/`, data);
+  }
+
+  // Historial del registro (más reciente primero).
+  historial(id: number): Observable<HorasEventualHistorialItem[]> {
+    return this.api.get<HorasEventualHistorialItem[]>(`/horas-eventual/${id}/historial/`);
   }
 
   eliminar(id: number): Observable<any> {
