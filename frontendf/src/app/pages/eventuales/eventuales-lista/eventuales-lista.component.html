@@ -24,6 +24,7 @@
           <th style="width:90px">Horas Solicitadas</th>
           <th style="width:90px">Horas Trabajadas</th>
           <th style="width:90px">Rango de Horas</th>
+          <th style="width:90px">Horas Adicionales</th>
           <th style="width:100px">Bonificación</th>
           <th style="width:110px">Valor Calculado</th>
           <th style="width:150px">Última Modificación</th>
@@ -32,7 +33,7 @@
       </thead>
       <tbody>
         <tr *ngIf="loading">
-          <td colspan="14" class="text-muted">Cargando…</td>
+          <td colspan="15" class="text-muted">Cargando…</td>
         </tr>
         <ng-container *ngIf="!loading">
           <tr *ngFor="let f of filasFiltradas; let i = index">
@@ -46,6 +47,7 @@
             <td>{{ f.horas_solicitadas || 0 }}</td>
             <td class="fw-semibold">{{ f.horas }}</td>
             <td>{{ f.rango_horas || '—' }}</td>
+            <td>{{ f.horas_adicionales || 0 }}</td>
             <td>{{ f.bonificacion != null ? (f.bonificacion | number:'1.2-2') : '—' }}</td>
             <td class="fw-semibold">{{ (f.valor_calculado || 0) | number:'1.2-2' }}</td>
             <td class="text-start ult-mod">
@@ -61,7 +63,7 @@
             </td>
           </tr>
           <tr *ngIf="!filasFiltradas.length">
-            <td colspan="14" class="text-muted">Sin registros en este día.</td>
+            <td colspan="15" class="text-muted">Sin registros en este día.</td>
           </tr>
         </ng-container>
       </tbody>
@@ -71,6 +73,7 @@
           <th>{{ totalSolicitadas }}</th>
           <th>{{ totalHoras }}</th>
           <th></th>
+          <th>{{ totalAdicionales }}</th>
           <th>{{ totalBonificacion | number:'1.2-2' }}</th>
           <th>{{ totalValor | number:'1.2-2' }}</th>
           <th></th>

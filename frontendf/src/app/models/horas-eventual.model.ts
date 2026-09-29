@@ -6,12 +6,19 @@ export interface HorasEventual {
   persona?: string;           // "APELLIDOS NOMBRES"
   cedula?: string;
   banco?: string;             // solo lectura (sale de los datos de la persona)
-  cliente_id: number;
+  // Cliente / instalación / puesto: de la lista (id) o escritos a mano (texto, solo en este registro).
+  cliente_id?: number | null;
+  cliente_texto?: string;
   cliente?: string;
-  instalacion_id: number;
+  instalacion_id?: number | null;
+  instalacion_texto?: string;
   instalacion?: string;
   puesto_id?: number | null;
+  puesto_texto?: string;
   puesto?: string;
+  cliente_libre?: boolean;
+  instalacion_libre?: boolean;
+  puesto_libre?: boolean;
   horas_solicitadas?: number; // las que pidió el cliente
   horas: number;              // horas trabajadas (enteras)
   horas_adicionales?: number; // trabajadas - solicitadas (lo calcula el servidor)

@@ -49,6 +49,9 @@ export class EventualHorasDialogComponent implements OnInit {
   horasSolicitadas: number | null = null;
   horas: number | null = null;             // horas trabajadas
   bonificacion: number | null = null;      // opcional
+  // Horas adicionales: se llenan con trabajadas - solicitadas y se pueden cambiar a mano.
+  horasAdic: number | null = null;
+  adicManual = false;
   // Valor calculado: se llena solo (tarifa + bonificación) y se puede corregir a mano.
   valorCalculado: number | null = null;
   valorManual = false;                     // true = el usuario lo corrigió
@@ -93,11 +96,20 @@ export class EventualHorasDialogComponent implements OnInit {
   get instalacionSel(): Opcion | null { return this.obj(this.instalacionCtrl.value); }
   get puestoSel(): Opcion | null { return this.obj(this.puestoCtrl.value); }
 
+  // Texto escrito que NO se eligió de la lista (se guarda tal cual, solo en este registro).
+  private libre(ctrl: FormControl<any>): string {
+    const v = ctrl.value;
+    return typeof v === 'string' ? v.trim() : '';
+  }
+  get clienteLibre(): boolean { return !this.clienteSel && !!this.libre(this.clienteCtrl); }
+  get instalacionLibre(): boolean { return !this.instalacionSel && !!this.libre(this.instalacionCtrl); }
+  get puestoLibre(): boolean { return !this.puestoSel && !!this.libre(this.puestoCtrl); }
+
   // Banco: solo lectura, sale de los datos del eventual (vacío si no lo tiene).
   get banco(): string { return this.eventualSel?.['banco'] || ''; }
 
   // ---------- Cálculos (solo lectura; el servidor los recalcula al guardar) ----------
-  // Horas adicionales = trabajadas - solicitadas (mínimo 0).
+  // Horas adicionales sugeridas = trabajadas - solicitadas (mínimo 0).
   get horasAdicionales(): number {
     return Math.max(0, (Number(this.horas) || 0) - (Number(this.horasSolicitadas) || 0));
   }
@@ -123,7 +135,19 @@ export class EventualHorasDialogComponent implements OnInit {
   // Cambiaron las horas: el rango se vuelve a marcar solo y el valor se recalcula.
   onHorasChange(): void {
     this.tarifaSel = this.tramoAuto?.id ?? null;
+    if (!this.adicManual) { this.horasAdic = this.horasAdicionales; }
     this.recalcular();
+  }
+
+  // El usuario escribe las horas adicionales (si las borra, vuelven a calcularse solas).
+  onAdicEditado(v: any): void {
+    if (v === null || v === undefined || v === '') {
+      this.adicManual = false;
+      this.horasAdic = this.horasAdicionales;
+      return;
+    }
+    this.horasAdic = Number(v);
+    this.adicManual = this.horasAdic !== this.horasAdicionales;
   }
 
   // El usuario eligió otro rango a mano.
@@ -250,9 +274,13 @@ export class EventualHorasDialogComponent implements OnInit {
     if (inst && !this.catalogo.instalaciones.includes(inst)) { this.catalogo.instalaciones = [inst, ...this.catalogo.instalaciones]; }
     if (pue && !this.catalogo.puestos.includes(pue)) { this.catalogo.puestos = [pue, ...this.catalogo.puestos]; }
     this.eventualCtrl.setValue(ev || '');
-    this.clienteCtrl.setValue(cli || '');
-    this.instalacionCtrl.setValue(inst || '');
-    this.puestoCtrl.setValue(pue || '');
+    // Si se escribieron a mano (no estaban en la lista), se muestra el texto guardado.
+    this.clienteCtrl.setValue(row.cliente_libre ? (row.cliente || '') : (cli || ''));
+    this.instalacionCtrl.setValue(row.instalacion_libre ? (row.instalacion || '') : (inst || ''));
+    this.puestoCtrl.setValue(row.puesto_libre ? (row.puesto || '') : (pue || ''));
+    // Horas adicionales guardadas (si difieren de trabajadas - solicitadas, se cambiaron a mano).
+    this.horasAdic = row.horas_adicionales ?? this.horasAdicionales;
+    this.adicManual = this.horasAdic !== this.horasAdicionales;
     // Rango guardado ("10-12 h"); si no se encuentra, el que corresponde por las horas.
     const guardado = (this.catalogo.tarifas || []).find(t => `${t.horas_min}-${t.horas_max} h` === row.rango_horas);
     this.tarifaSel = guardado?.id ?? this.tramoAuto?.id ?? null;
@@ -274,11 +302,16 @@ export class EventualHorasDialogComponent implements OnInit {
     const pue = this.puestoSel;
     if (!this.fechaServicio) { return this.aviso('Indica la fecha del servicio.'); }
     if (!ev) { return this.aviso('Elige el eventual de la lista.'); }
-    if (!cli) { return this.aviso('Elige el cliente de la lista.'); }
-    if (!inst) { return this.aviso('Elige la instalación de la lista.'); }
-    if (!pue && typeof this.puestoCtrl.value === 'string' && this.puestoCtrl.value.trim()) {
-      return this.aviso('Elige el puesto de la lista o déjalo vacío.');
-    }
+    // Cliente / instalación / puesto: de la lista o escritos a mano (no se crean en el sistema).
+    const cliTxt = cli ? '' : this.libre(this.clienteCtrl);
+    if (!cli && !cliTxt) { return this.aviso('Indica el cliente: elígelo de la lista o escríbelo.'); }
+    // Una instalación de la lista solo vale si es de ese cliente; si no, se guarda su nombre.
+    const instObj = (inst && cli && inst['cliente_id'] === cli.id) ? inst : null;
+    const instTxt = instObj ? '' : (inst ? inst.nombre : this.libre(this.instalacionCtrl));
+    if (!instObj && !instTxt) { return this.aviso('Indica la instalación: elígela de la lista o escríbela.'); }
+    const pueObj = (pue && instObj && pue['instalacion_id'] === instObj.id) ? pue : null;
+    const pueTxt = pueObj ? '' : (pue ? pue.nombre : this.libre(this.puestoCtrl));
+    if (!pueObj && !pueTxt) { return this.aviso('Indica el nombre del puesto: elígelo de la lista o escríbelo.'); }
     const vacio = (v: any) => v === null || v === undefined || v === '';
     if (vacio(this.horasSolicitadas)) { return this.aviso('Indica las horas solicitadas.'); }
     const sol = Number(this.horasSolicitadas);
@@ -288,6 +321,10 @@ export class EventualHorasDialogComponent implements OnInit {
     const h = Number(this.horas);
     if (!Number.isInteger(h) || h < 1 || h > 24) {
       return this.aviso('Las horas trabajadas deben ser un número entero de 1 a 24.');
+    }
+    const adic = vacio(this.horasAdic) ? null : Number(this.horasAdic);
+    if (adic !== null && (!Number.isInteger(adic) || adic < 0 || adic > 24)) {
+      return this.aviso('Las horas adicionales deben ser un número entero de 0 a 24.');
     }
     const bono = vacio(this.bonificacion) ? null : Number(this.bonificacion);
     if (bono !== null && (!Number.isFinite(bono) || bono < 0)) {
@@ -302,11 +339,15 @@ export class EventualHorasDialogComponent implements OnInit {
     const payload: HorasEventual = {
       fecha: this.aTexto(this.fechaServicio),
       persona_id: ev.id,
-      cliente_id: cli.id,
-      instalacion_id: inst.id,
-      puesto_id: pue?.id ?? null,
+      cliente_id: cli?.id ?? null,
+      cliente_texto: cliTxt,
+      instalacion_id: instObj?.id ?? null,
+      instalacion_texto: instTxt,
+      puesto_id: pueObj?.id ?? null,
+      puesto_texto: pueTxt,
       horas_solicitadas: sol,
       horas: h,
+      horas_adicionales: adic ?? undefined,
       bonificacion: bono,
       valor_calculado: valor ?? undefined,
       valor_manual: this.valorManual,

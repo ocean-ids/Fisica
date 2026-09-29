@@ -98,6 +98,10 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
     return this.filasFiltradas.reduce((acc, f) => acc + (Number(f.bonificacion) || 0), 0);
   }
 
+  get totalAdicionales(): number {
+    return this.filasFiltradas.reduce((acc, f) => acc + (Number(f.horas_adicionales) || 0), 0);
+  }
+
   get totalHoras(): number {
     return this.filasFiltradas.reduce((acc, f) => acc + (Number(f.horas) || 0), 0);
   }

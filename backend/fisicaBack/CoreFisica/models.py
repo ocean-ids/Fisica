@@ -1785,12 +1785,17 @@ class HorasEventual(models.Model):
     """
     fecha = models.DateField(db_index=True)
     persona = models.ForeignKey(Persona, on_delete=models.PROTECT, related_name='horas_eventual')
-    cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name='+')
-    instalacion = models.ForeignKey(Instalacion, on_delete=models.PROTECT, related_name='+')
+    # Cliente / instalación / puesto: elegidos de la lista (FK) o, si no existen, escritos a mano
+    # (texto, solo para este registro; NO se crea el dato maestro).
+    cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, null=True, blank=True, related_name='+')
+    instalacion = models.ForeignKey(Instalacion, on_delete=models.PROTECT, null=True, blank=True, related_name='+')
     puesto = models.ForeignKey(Puesto, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    cliente_texto = models.CharField(max_length=200, blank=True, default='')
+    instalacion_texto = models.CharField(max_length=200, blank=True, default='')
+    puesto_texto = models.CharField(max_length=200, blank=True, default='')
     horas_solicitadas = models.PositiveSmallIntegerField(default=0)   # las que pidió el cliente
     horas = models.PositiveSmallIntegerField()                       # horas trabajadas
-    # Horas adicionales = trabajadas - solicitadas (mínimo 0). Se calcula al guardar.
+    # Horas adicionales: por defecto trabajadas - solicitadas (mínimo 0); se pueden cambiar.
     horas_adicionales = models.PositiveSmallIntegerField(default=0)
     # Rango (tramo) de la tarifa "Eventuales" usado, ej. "10-12 h". Se marca solo según las
     # horas trabajadas y se puede cambiar.

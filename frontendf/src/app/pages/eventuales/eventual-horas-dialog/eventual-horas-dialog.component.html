@@ -16,22 +16,24 @@
               (click)="limpiar(clienteCtrl, $event, 'cliente')" aria-label="Limpiar"><span class="ev-x">×</span></button>
       <mat-autocomplete #autoCli="matAutocomplete" [displayWith]="displayOpcion" (optionSelected)="onClienteSel()">
         <mat-option *ngFor="let c of clientesFiltrados" [value]="c">{{ c.nombre }}</mat-option>
-        <mat-option *ngIf="!clientesFiltrados.length" disabled>Sin clientes que coincidan</mat-option>
+        <mat-option *ngIf="!clientesFiltrados.length" disabled>No está en la lista: se guardará tal como lo escribes</mat-option>
       </mat-autocomplete>
+      <mat-hint *ngIf="clienteLibre" class="ev-libre">No está en la lista: se guardará tal como lo escribiste</mat-hint>
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Instalación</mat-label>
       <input type="text" matInput required [formControl]="instalacionCtrl" [matAutocomplete]="autoInst"
              #trigInst="matAutocompleteTrigger" (focus)="trigInst.openPanel()"
-             [placeholder]="clienteSel ? 'Escribe para filtrar…' : 'Primero elige el cliente'">
+             [placeholder]="clienteSel ? 'Escribe para filtrar…' : 'Escribe la instalación'">
       <button matSuffix mat-icon-button type="button" *ngIf="instalacionCtrl.value"
               (click)="limpiar(instalacionCtrl, $event, 'instalacion')" aria-label="Limpiar"><span class="ev-x">×</span></button>
       <mat-autocomplete #autoInst="matAutocomplete" [displayWith]="displayOpcion" (optionSelected)="onInstalacionSel()">
         <mat-option *ngFor="let i of instalacionesFiltradas" [value]="i">{{ i.nombre }}</mat-option>
         <mat-option *ngIf="!instalacionesFiltradas.length" disabled>
-          {{ clienteSel ? 'Sin instalaciones que coincidan' : 'Primero elige el cliente' }}
+          {{ clienteSel ? 'No está en la lista: se guardará tal como la escribes' : 'Escribe la instalación (el cliente no está en la lista)' }}
         </mat-option>
       </mat-autocomplete>
+      <mat-hint *ngIf="instalacionLibre" class="ev-libre">No está en la lista: se guardará tal como lo escribiste</mat-hint>
     </mat-form-field>
   </div>
 
@@ -39,17 +41,18 @@
   <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Nombre del puesto</mat-label>
-      <input type="text" matInput [formControl]="puestoCtrl" [matAutocomplete]="autoPue"
+      <input type="text" matInput required [formControl]="puestoCtrl" [matAutocomplete]="autoPue"
              #trigPue="matAutocompleteTrigger" (focus)="trigPue.openPanel()"
-             [placeholder]="instalacionSel ? 'Escribe para filtrar…' : 'Primero elige la instalación'">
+             [placeholder]="instalacionSel ? 'Escribe para filtrar…' : 'Escribe el puesto'">
       <button matSuffix mat-icon-button type="button" *ngIf="puestoCtrl.value"
               (click)="limpiar(puestoCtrl, $event)" aria-label="Limpiar"><span class="ev-x">×</span></button>
       <mat-autocomplete #autoPue="matAutocomplete" [displayWith]="displayOpcion">
         <mat-option *ngFor="let p of puestosFiltrados" [value]="p">{{ p.nombre }}</mat-option>
         <mat-option *ngIf="!puestosFiltrados.length" disabled>
-          {{ instalacionSel ? 'Sin puestos que coincidan' : 'Primero elige la instalación' }}
+          {{ instalacionSel ? 'No está en la lista: se guardará tal como lo escribes' : 'Escribe el puesto (la instalación no está en la lista)' }}
         </mat-option>
       </mat-autocomplete>
+      <mat-hint *ngIf="puestoLibre" class="ev-libre">No está en la lista: se guardará tal como lo escribiste</mat-hint>
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Apellidos y Nombres del eventual</mat-label>
@@ -96,7 +99,7 @@
     </mat-form-field>
   </div>
 
-  <!-- Fila 5: Rango de horas (se marca solo) | Bonificación (opcional) -->
+  <!-- Fila 5: Rango de horas (se marca solo) | Horas adicionales -->
   <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Rango de horas</mat-label>
@@ -111,13 +114,20 @@
       </mat-hint>
     </mat-form-field>
     <mat-form-field appearance="outline">
-      <mat-label>Bonificación</mat-label>
-      <input matInput type="number" min="0" step="0.01" [(ngModel)]="bonificacion" (ngModelChange)="recalcular()" placeholder="Opcional">
+      <mat-label>Horas adicionales</mat-label>
+      <input matInput type="number" min="0" max="24" step="1" [ngModel]="horasAdic"
+             (ngModelChange)="onAdicEditado($event)" placeholder="0">
+      <mat-hint *ngIf="!adicManual">Trabajadas − solicitadas</mat-hint>
+      <mat-hint *ngIf="adicManual">Cambiado a mano · calculado {{ horasAdicionales }}</mat-hint>
     </mat-form-field>
   </div>
 
-  <!-- Fila 6: Valor calculado (sugerido; se puede corregir) -->
+  <!-- Fila 6: Bonificación (opcional) | Valor calculado (sugerido; se puede corregir) -->
   <div class="ev-row m-2">
+    <mat-form-field appearance="outline">
+      <mat-label>Bonificación</mat-label>
+      <input matInput type="number" min="0" step="0.01" [(ngModel)]="bonificacion" (ngModelChange)="recalcular()" placeholder="Opcional">
+    </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Valor calculado</mat-label>
       <input matInput type="number" min="0" step="0.01" [ngModel]="valorCalculado"

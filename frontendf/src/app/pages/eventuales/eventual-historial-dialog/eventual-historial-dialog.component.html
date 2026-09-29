@@ -22,6 +22,7 @@
           <th>Horas Solic.</th>
           <th>Horas Trab.</th>
           <th>Rango</th>
+          <th>Horas Adic.</th>
           <th>Bonificación</th>
           <th>Valor</th>
         </tr>
@@ -41,11 +42,12 @@
           <td [class.hist-cambio]="cambio(it, 'Horas solicitadas')">{{ it.horas_solicitadas ?? 0 }}</td>
           <td [class.hist-cambio]="cambio(it, 'Horas trabajadas')">{{ it.horas }}</td>
           <td [class.hist-cambio]="cambio(it, 'Rango de horas')">{{ it.rango_horas || '—' }}</td>
+          <td [class.hist-cambio]="cambio(it, 'Horas adicionales')">{{ it.horas_adicionales || 0 }}</td>
           <td [class.hist-cambio]="cambio(it, 'Bonificación')">{{ it.bonificacion != null ? (it.bonificacion | number:'1.2-2') : '—' }}</td>
           <td [class.hist-cambio]="cambio(it, 'Valor calculado')">{{ (it.valor_calculado || 0) | number:'1.2-2' }}</td>
         </tr>
         <tr *ngIf="!items.length">
-          <td colspan="13" class="text-muted">Este registro aún no tiene historial.</td>
+          <td colspan="14" class="text-muted">Este registro aún no tiene historial.</td>
         </tr>
       </tbody>
     </table>

@@ -75,12 +75,12 @@ class HorasEventualTests(TestCase):
 
     def test_adicionales_y_valor_con_bonificacion(self):
         # trabajadas 12 -> tramo 10-12 = 25.00; + bono 5 = 30.00 (adicionales = 12 - 8 = 4)
-        r = self._crear(horas_solicitadas=8, horas=12, bonificacion='5', horas_adicionales=99)
+        r = self._crear(horas_solicitadas=8, horas=12, bonificacion='5')
         self.assertEqual(r.status_code, 201, r.content)
         b = r.json()
         self.assertEqual(b['horas_solicitadas'], 8)
         self.assertEqual(b['horas'], 12)
-        self.assertEqual(b['horas_adicionales'], 4)      # se calcula; ignora lo enviado
+        self.assertEqual(b['horas_adicionales'], 4)      # vacío -> trabajadas - solicitadas
         self.assertEqual(b['bonificacion'], 5.0)
         self.assertEqual(b['rango_horas'], '10-12 h')
         self.assertEqual(b['valor_calculado'], 30.0)     # por defecto: rango + bono
@@ -88,6 +88,13 @@ class HorasEventualTests(TestCase):
         self.assertEqual(b['banco'], 'BANCO PICHINCHA')
         lista = self.client.get('/api/horas-eventual/?desde=2026-09-29&hasta=2026-09-29', **self._auth()).json()
         self.assertEqual(len(lista), 1)
+
+    def test_horas_adicionales_escritas(self):
+        b = self._crear(horas_solicitadas=8, horas=12, horas_adicionales=6).json()
+        self.assertEqual(b['horas_adicionales'], 6)      # se guarda lo escrito
+        self.assertEqual(b['valor_calculado'], 25.0)     # el valor sigue siendo el del rango (12 h)
+        self.assertEqual(self._crear(horas_adicionales=30).status_code, 400)
+        self.assertEqual(self._crear(horas_adicionales=-1).status_code, 400)
 
     def test_valor_corregido_a_mano(self):
         b = self._crear(horas_solicitadas=8, horas=12, bonificacion='5',
@@ -162,13 +169,14 @@ class HorasEventualTests(TestCase):
 
     def test_editar_y_eliminar(self):
         hid = self._crear().json()['id']
-        r = self._editar(hid, horas_solicitadas=2, horas=12, puesto_id=None, bonificacion='2,50')
+        r = self._editar(hid, horas_solicitadas=2, horas=12, puesto_id=None, puesto_texto='PUERTA 5',
+                         bonificacion='2,50')
         self.assertEqual(r.status_code, 200, r.content)
         b = r.json()
         self.assertEqual(b['horas_adicionales'], 10)
         self.assertEqual(b['bonificacion'], 2.5)              # acepta coma decimal
         self.assertEqual(b['valor_calculado'], 27.5)          # 25.00 (10-12) + 2.50
-        self.assertEqual(b['puesto'], '')
+        self.assertEqual(b['puesto'], 'PUERTA 5')
         r2 = self.client.delete(f'/api/horas-eventual/{hid}/eliminar/', **self._auth())
         self.assertEqual(r2.status_code, 200)
         self.assertFalse(HorasEventual.objects.filter(id=hid).exists())
@@ -189,6 +197,35 @@ class HorasEventualTests(TestCase):
                          {'Horas trabajadas', 'Horas adicionales', 'Rango de horas', 'Valor calculado'})
         self.assertEqual(hist[1]['cambios'], [])
         self.assertEqual(hist[1]['horas'], 8)
+
+    def test_cliente_instalacion_puesto_escritos_a_mano(self):
+        n_clientes = Cliente.objects.count()
+        r = self._crear(cliente_id=None, instalacion_id=None, puesto_id=None,
+                        cliente_texto='CLIENTE NUEVO', instalacion_texto='BODEGA NORTE',
+                        puesto_texto='PUERTA 2')
+        self.assertEqual(r.status_code, 201, r.content)
+        b = r.json()
+        self.assertEqual(b['cliente'], 'CLIENTE NUEVO')
+        self.assertEqual(b['instalacion'], 'BODEGA NORTE')
+        self.assertEqual(b['puesto'], 'PUERTA 2')
+        self.assertTrue(b['cliente_libre'] and b['instalacion_libre'] and b['puesto_libre'])
+        self.assertIsNone(b['cliente_id'])
+        self.assertEqual(Cliente.objects.count(), n_clientes)       # NO se crea el cliente
+        # Cliente de la lista + instalación escrita a mano también vale.
+        r2 = self._crear(instalacion_id=None, puesto_id=None, instalacion_texto='SEDE TEMPORAL',
+                         puesto_texto='GARITA 1')
+        self.assertEqual(r2.status_code, 201, r2.content)
+        self.assertEqual(r2.json()['cliente'], 'CLI')
+        self.assertEqual(r2.json()['instalacion'], 'SEDE TEMPORAL')
+
+    def test_texto_libre_validaciones(self):
+        # Sin cliente (ni de la lista ni escrito) -> 400; lo mismo la instalación.
+        self.assertEqual(self._crear(cliente_id=None, cliente_texto='  ').status_code, 400)
+        self.assertEqual(self._crear(instalacion_id=None, instalacion_texto='').status_code, 400)
+        # Cliente escrito + instalación de la lista -> no corresponde.
+        self.assertEqual(self._crear(cliente_id=None, cliente_texto='X').status_code, 400)
+        # Puesto obligatorio: ni de la lista ni escrito -> 400.
+        self.assertEqual(self._crear(puesto_id=None, puesto_texto='').status_code, 400)
 
     def test_sin_permiso(self):
         User.objects.create_user(username='sinperm', password='SinPass123!')

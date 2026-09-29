@@ -70,3 +70,8 @@
   cursor: pointer;
   text-decoration: underline;
 }
+
+/* Aviso: el texto escrito no está en la lista (se guarda tal cual) */
+.ev-libre {
+  color: #b45309;
+}

@@ -59,6 +59,22 @@ def _decimal(v):
     return Decimal(str(v).replace(',', '.')).quantize(Decimal('0.01'))
 
 
+def _nombre_cliente(h):
+    return (getattr(h.cliente, 'nombre_comercial', '') or '') if h.cliente_id else (h.cliente_texto or '')
+
+
+def _nombre_instalacion(h):
+    return (getattr(h.instalacion, 'nombre', '') or '') if h.instalacion_id else (h.instalacion_texto or '')
+
+
+def _nombre_puesto(h):
+    return (getattr(h.puesto, 'nombre', '') or '') if h.puesto_id else (h.puesto_texto or '')
+
+
+def _texto(v, largo=200):
+    return str(v or '').strip()[:largo]
+
+
 def _nombre_usuario(u):
     """Nombre completo del usuario (o su username)."""
     if not u:
@@ -79,11 +95,15 @@ def _serialize(h):
         'cedula': getattr(h.persona, 'cedula', '') or '',
         'banco': _banco(h.persona),
         'cliente_id': h.cliente_id,
-        'cliente': getattr(h.cliente, 'nombre_comercial', '') or '',
+        'cliente': _nombre_cliente(h),
         'instalacion_id': h.instalacion_id,
-        'instalacion': getattr(h.instalacion, 'nombre', '') or '',
+        'instalacion': _nombre_instalacion(h),
         'puesto_id': h.puesto_id,
-        'puesto': getattr(h.puesto, 'nombre', '') or '',
+        'puesto': _nombre_puesto(h),
+        # True = escrito a mano (no está en la lista del sistema).
+        'cliente_libre': not h.cliente_id and bool(h.cliente_texto),
+        'instalacion_libre': not h.instalacion_id and bool(h.instalacion_texto),
+        'puesto_libre': not h.puesto_id and bool(h.puesto_texto),
         'horas_solicitadas': h.horas_solicitadas or 0,
         'horas': h.horas,
         'horas_adicionales': h.horas_adicionales or 0,
@@ -136,24 +156,45 @@ def _validar(data):
     if (persona.tipo or '').upper() != 'EVENTUAL':
         return None, 'La persona seleccionada no es EVENTUAL.'
 
-    cliente = Cliente.objects.filter(id=_int(data.get('cliente_id'))).first()
-    if not cliente:
-        return None, 'Selecciona el cliente.'
+    # Cliente: de la lista (cliente_id) o escrito a mano (cliente_texto). No se crea en el sistema.
+    cliente, cliente_texto = None, ''
+    cliente_id = _int(data.get('cliente_id'))
+    if cliente_id:
+        cliente = Cliente.objects.filter(id=cliente_id).first()
+        if not cliente:
+            return None, 'El cliente no existe.'
+    else:
+        cliente_texto = _texto(data.get('cliente_texto'))
+        if not cliente_texto:
+            return None, 'Indica el cliente.'
 
-    instalacion = Instalacion.objects.filter(id=_int(data.get('instalacion_id'))).first()
-    if not instalacion:
-        return None, 'Selecciona la instalación.'
-    if instalacion.cliente_id != cliente.id:
-        return None, 'La instalación no pertenece al cliente seleccionado.'
+    # Instalación: de la lista (solo si el cliente es de la lista) o escrita a mano.
+    instalacion, instalacion_texto = None, ''
+    instalacion_id = _int(data.get('instalacion_id'))
+    if instalacion_id:
+        instalacion = Instalacion.objects.filter(id=instalacion_id).first()
+        if not instalacion:
+            return None, 'La instalación no existe.'
+        if not cliente or instalacion.cliente_id != cliente.id:
+            return None, 'La instalación no pertenece al cliente seleccionado.'
+    else:
+        instalacion_texto = _texto(data.get('instalacion_texto'))
+        if not instalacion_texto:
+            return None, 'Indica la instalación.'
 
-    puesto = None
+    # Puesto (obligatorio): de la lista (solo si la instalación es de la lista) o escrito a mano.
+    puesto, puesto_texto = None, ''
     puesto_id = _int(data.get('puesto_id'))
     if puesto_id:
         puesto = Puesto.objects.filter(id=puesto_id).first()
         if not puesto:
             return None, 'El puesto no existe.'
-        if puesto.instalacion_id != instalacion.id:
+        if not instalacion or puesto.instalacion_id != instalacion.id:
             return None, 'El puesto no pertenece a la instalación seleccionada.'
+    else:
+        puesto_texto = _texto(data.get('puesto_texto'))
+        if not puesto_texto:
+            return None, 'Indica el nombre del puesto.'
 
     solicitadas = _entero(data.get('horas_solicitadas'))
     if solicitadas is None or solicitadas < 0 or solicitadas > 24:
@@ -161,8 +202,14 @@ def _validar(data):
     horas = _entero(data.get('horas'))
     if horas is None or horas < 1 or horas > 24:
         return None, 'Las horas trabajadas deben ser un número entero de 1 a 24.'
-    # Horas adicionales: se calculan (no se aceptan del formulario).
-    adicionales = max(0, horas - solicitadas)
+    # Horas adicionales: las escritas en el formulario; si vienen vacías, trabajadas - solicitadas.
+    raw_adic = data.get('horas_adicionales')
+    if raw_adic in (None, '', 'null'):
+        adicionales = max(0, horas - solicitadas)
+    else:
+        adicionales = _entero(raw_adic)
+        if adicionales is None or adicionales < 0 or adicionales > 24:
+            return None, 'Las horas adicionales deben ser un número entero de 0 a 24.'
 
     # Bonificación: opcional.
     try:
@@ -196,8 +243,10 @@ def _validar(data):
         return None, 'El valor calculado no puede ser negativo.'
 
     return {
-        'fecha': fecha, 'persona': persona, 'cliente': cliente,
-        'instalacion': instalacion, 'puesto': puesto,
+        'fecha': fecha, 'persona': persona,
+        'cliente': cliente, 'cliente_texto': cliente_texto,
+        'instalacion': instalacion, 'instalacion_texto': instalacion_texto,
+        'puesto': puesto, 'puesto_texto': puesto_texto,
         'horas_solicitadas': solicitadas, 'horas': horas, 'horas_adicionales': adicionales,
         'rango_horas': _rango_txt(tramo),
         'valor_calculado': valor, 'valor_manual': manual, 'bonificacion': bonificacion,
@@ -217,9 +266,9 @@ def _guardar_historial(h, accion, user):
         usuario_nombre=_nombre_usuario(user) if (user and user.is_authenticated) else 'sistema',
         fecha_servicio=h.fecha,
         persona=_nombre_persona(h.persona),
-        cliente=getattr(h.cliente, 'nombre_comercial', '') or '',
-        instalacion=getattr(h.instalacion, 'nombre', '') or '',
-        puesto=getattr(h.puesto, 'nombre', '') or '',
+        cliente=_nombre_cliente(h),
+        instalacion=_nombre_instalacion(h),
+        puesto=_nombre_puesto(h),
         horas_solicitadas=h.horas_solicitadas,
         horas=h.horas,
         horas_adicionales=h.horas_adicionales,
