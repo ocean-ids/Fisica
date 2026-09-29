@@ -10,6 +10,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
 import { debounceTime, startWith, map } from 'rxjs/operators';
+import Swal from 'sweetalert2';
 import { PersonaService } from '../../../services/persona.service';
 import { ReporteVacacionesService } from '../../../services/reporte-vacaciones.service';
 import { Persona } from '../../../models/persona.model';
@@ -360,7 +361,53 @@ export class SacavacacionesDialogComponent implements OnInit {
     return tienePuesto && tieneSale && tieneCubre && tieneVacaciones && !this.diasDadosExcede;
   }
 
+  // Nombre normalizado (mayúsculas, sin tildes, espacios simples) para comparar.
+  private _norm(s: any): string {
+    return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().split(/\s+/).filter(Boolean).join(' ');
+  }
+
+  // Persona cuyo nombre completo coincide exacto ("nombres apellidos" o "apellidos nombres").
+  private _personaPorNombre(texto: string): Persona | null {
+    const t = this._norm(texto);
+    if (!t) { return null; }
+    const hits = this.personasAll.filter(p => {
+      const n = this._norm(p.nombres), a = this._norm(p.apellidos);
+      return t === `${n} ${a}` || t === `${a} ${n}`;
+    });
+    return hits.length === 1 ? hits[0] : null;
+  }
+
+  // Si se ESCRIBIÓ el nombre sin elegirlo de la lista, se busca la persona por nombre.
+  // Sin la persona enlazada, el Reporte de Asistencia no puede poner al sacavacaciones.
+  private _resolverEscritos(): boolean {
+    const row: any = this.data?.row || {};
+    const txtSale = typeof this.saleCtrl.value === 'string' ? this.saleCtrl.value.trim() : '';
+    if (!this.saleSel && txtSale) {
+      const p = this._personaPorNombre(txtSale);
+      if (p) { this.saleSel = p; }
+      else if (!(this.editSaleId && txtSale === String(row.persona_sale || '').trim())) {
+        Swal.fire({ icon: 'warning', title: 'Elige quién sale de la lista',
+          text: `"${txtSale}" no está en la lista de personas.` });
+        return false;
+      }
+    }
+    const txtCubre = typeof this.cubreCtrl.value === 'string' ? this.cubreCtrl.value.trim() : '';
+    if (!this.cubreSel && txtCubre) {
+      const p = this._personaPorNombre(txtCubre);
+      if (p) { this.cubreSel = p; }
+      else if (!(this.editCubreId && txtCubre === String(row.sacavacaciones || '').trim())) {
+        Swal.fire({ icon: 'warning', title: 'Elige quién cubre de la lista',
+          text: `"${txtCubre}" no está en la lista de personas. Elígelo de la lista para que salga en el Reporte de Asistencia (o déjalo vacío).` });
+        return false;
+      }
+    }
+    return true;
+  }
+
   guardar(): void {
+    if (!this._resolverEscritos()) { return; }
+    // "Días dados" solo se guarda completo (inicio + fin); un inicio suelto no significa nada.
+    const pendCompleto = !!this.fechaDesdePend && !!this.fechaHastaPend;
     const out: any = {
       cliente: this.clienteNombre || '',
       asignacion: this.asignacionId,
@@ -371,8 +418,8 @@ export class SacavacacionesDialogComponent implements OnInit {
       fecha_desde: this._toISO(this.fechaDesde),
       fecha_hasta: this._toISO(this.fechaHasta),
       dias: this.dias || 0,
-      fecha_desde_pendiente: this._toISO(this.fechaDesdePend),
-      fecha_hasta_pendiente: this._toISO(this.fechaHastaPend),
+      fecha_desde_pendiente: pendCompleto ? this._toISO(this.fechaDesdePend) : null,
+      fecha_hasta_pendiente: pendCompleto ? this._toISO(this.fechaHastaPend) : null,
       dias_pendientes: this.diasPend || 0,
     };
     // Persona que sale

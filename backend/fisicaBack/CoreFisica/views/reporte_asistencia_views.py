@@ -938,9 +938,11 @@ def _build_reporte_asistencia_data(
             Q(fecha_desde__isnull=False, fecha_desde__lte=_fecha_ref)
             & (Q(fecha_hasta__isnull=True) | Q(fecha_hasta__gte=_fecha_ref))
         )
+        # "Días dados" solo cuenta si tiene inicio Y fin. Un rango sin fecha fin (el formulario
+        # autocompleta el inicio) se tomaba como abierto: el reemplazo nunca terminaba.
         _in_pend = (
             Q(fecha_desde_pendiente__isnull=False, fecha_desde_pendiente__lte=_fecha_ref)
-            & (Q(fecha_hasta_pendiente__isnull=True) | Q(fecha_hasta_pendiente__gte=_fecha_ref))
+            & Q(fecha_hasta_pendiente__isnull=False, fecha_hasta_pendiente__gte=_fecha_ref)
         )
         _sv_qs = (ReporteVacaciones.objects
                   .select_related('sacavacaciones_ref', 'asignacion')

@@ -11,8 +11,54 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
-from ..models import ReporteVacaciones
+import unicodedata
+
+from django.db.models import Q
+
+from ..models import ReporteVacaciones, Persona
 from ..serializers import ReporteVacacionesSerializer
+
+
+def _norm_nombre(s):
+    """Mayúsculas, sin tildes y con espacios simples (para comparar nombres)."""
+    s = unicodedata.normalize('NFD', str(s or '')).encode('ascii', 'ignore').decode()
+    return ' '.join(s.upper().split())
+
+
+def _persona_por_nombre(texto):
+    """Persona cuyo nombre completo coincide EXACTO con el texto ("nombres apellidos" o
+    "apellidos nombres"). Solo si hay UNA coincidencia; si no, None."""
+    t = _norm_nombre(texto)
+    if not t:
+        return None
+    partes = t.split()
+    # Pre-filtro: el primer o el último token está en los apellidos (según el orden escrito).
+    pre = Q(apellidos__unaccent__icontains=partes[0]) | Q(apellidos__unaccent__icontains=partes[-1])
+    candidatas = []
+    for p in Persona.objects.filter(pre).only('id', 'nombres', 'apellidos'):
+        a, n = _norm_nombre(p.apellidos), _norm_nombre(p.nombres)
+        if t in (f"{n} {a}", f"{a} {n}"):
+            candidatas.append(p)
+    return candidatas[0] if len(candidatas) == 1 else None
+
+
+def _enlazar_personas(fila):
+    """Si 'quién sale' o 'quién cubre' se guardaron solo como texto (se escribió el nombre
+    sin elegirlo de la lista), se enlaza la persona por nombre. Sin el enlace, el Reporte de
+    Asistencia no puede poner al sacavacaciones en el puesto."""
+    cambios = []
+    if not fila.persona_sale_ref_id and (fila.persona_sale or '').strip():
+        p = _persona_por_nombre(fila.persona_sale)
+        if p:
+            fila.persona_sale_ref = p
+            cambios.append('persona_sale_ref')
+    if not fila.sacavacaciones_ref_id and (fila.sacavacaciones or '').strip():
+        p = _persona_por_nombre(fila.sacavacaciones)
+        if p:
+            fila.sacavacaciones_ref = p
+            cambios.append('sacavacaciones_ref')
+    if cambios:
+        fila.save(update_fields=cambios)
 
 
 @api_view(['GET'])
@@ -30,8 +76,9 @@ def listar_reporte_vacaciones(request):
 def crear_reporte_vacaciones(request):
     s = ReporteVacacionesSerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    s.save()
-    return Response(s.data, status=status.HTTP_201_CREATED)
+    fila = s.save()
+    _enlazar_personas(fila)
+    return Response(ReporteVacacionesSerializer(fila).data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['PUT', 'PATCH'])
@@ -40,8 +87,9 @@ def actualizar_reporte_vacaciones(request, id):
     fila = get_object_or_404(ReporteVacaciones, id=id)
     s = ReporteVacacionesSerializer(fila, data=request.data, partial=True)
     s.is_valid(raise_exception=True)
-    s.save()
-    return Response(s.data)
+    fila = s.save()
+    _enlazar_personas(fila)
+    return Response(ReporteVacacionesSerializer(fila).data)
 
 
 @api_view(['DELETE'])
