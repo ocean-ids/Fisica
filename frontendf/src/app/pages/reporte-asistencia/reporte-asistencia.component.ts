@@ -395,11 +395,10 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
   descargarExcel(): void {
     const params: any = {};
-    if (this.filtroTexto) params.q = this.filtroTexto;
+    // El Excel SIEMPRE trae el reporte COMPLETO del día: todas las zonas y ambas jornadas
+    // (Diurno + Nocturno). No se aplican los filtros de pantalla (búsqueda / zona / jornada),
+    // solo la fecha; así el descargable no queda recortado por lo que se esté filtrando.
     if (this.filtroFecha) params.fecha = this.filtroFecha;
-    if (this.filtroClienteId) params.cliente_id = this.filtroClienteId;
-    if (this.filtroZona) params.zona = this.filtroZona;
-    if (this.filtroTurno) params. turno = this.filtroTurno;
     this.reporteSvc.exportarExcel(params).subscribe({
       next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.xlsx`),
       error: (err) => this.handleDownloadError(err, 'Excel')
@@ -408,11 +407,10 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
   descargarPdf(): void {
     const params: any = {};
-    if (this.filtroTexto) params.q = this.filtroTexto;
+    // El PDF SIEMPRE trae el reporte COMPLETO del día: todas las zonas y ambas jornadas
+    // (Diurno + Nocturno). No se aplican los filtros de pantalla (búsqueda / zona / jornada),
+    // solo la fecha; así el descargable no queda recortado por lo que se esté filtrando.
     if(this.filtroFecha) params.fecha = this.filtroFecha;
-    if(this.filtroClienteId) params.cliente_id = this.filtroClienteId;
-    if(this.filtroZona) params.zona = this.filtroZona;
-    if(this.filtroTurno) params.turno = this.filtroTurno;
     this.reporteSvc.exportarPdf(params).subscribe({
       next: (blog) => this.descargarArchivo(blog, `reporte_asistencia_${this.filtroFecha}.pdf`),
       error: (err) => this.handleDownloadError(err, 'PDF')
