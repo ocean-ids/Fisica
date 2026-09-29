@@ -2327,8 +2327,11 @@ def exportar_asignaciones_excel(request):
         # Solo mostrar como SACAFRANCO a quien realmente es tipo SACAFRANCO.
         # Evita que un FIJO con SacafrancoFila vieja (de cuando fue sacafranco)
         # aparezca duplicado como fila sacafranco en el descargable.
+        # SOLO las filas del MES EXACTO (igual que el endpoint en vivo sacafranco_filas):
+        # cada sacafranco tiene una fila por mes (el import las proyecta). Usar mes<=actual
+        # traía también las de meses anteriores -> la misma persona salía DUPLICADA (una vacía).
         sac_qs = SacafrancoFila.objects.filter(
-            Q(anio__lt=year) | Q(anio=year, mes__lte=month)
+            mes=month, anio=year
         ).filter(persona__tipo='SACAFRANCO').select_related('persona')
         sin_scope = Q(cantones__len=0) & Q(clientes__len=0)
         if cliente_ids and not canton_ids:
@@ -2662,7 +2665,7 @@ def exportar_asignaciones_excel(request):
                     getattr(puesto_obj, 'nombre', ''),
                     resumen_val,
                     getattr(asignacion.persona, 'cedula', '') if asignacion.persona else '',
-                    f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}".strip() if asignacion.persona else '(VACANTE)',
+                    f"{getattr(asignacion.persona, 'apellidos', '')} {getattr(asignacion.persona, 'nombres', '')}".strip() if asignacion.persona else '',
                 ]
                 for ci, v in enumerate(vals, start=1):
                     cell = target_ws.cell(row=row_idx, column=ci)
@@ -2759,6 +2762,7 @@ def exportar_asignaciones_excel(request):
         for i in range(1, left_cols + 1):
             target_ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 18
         target_ws.column_dimensions[openpyxl.utils.get_column_letter(4)].width = 28
+        target_ws.column_dimensions[openpyxl.utils.get_column_letter(6)].width = 12  # CÉDULA (10 dígitos): más angosta
         target_ws.column_dimensions[openpyxl.utils.get_column_letter(7)].width = 38
         for i in range(date_start_col, date_start_col + num_days):
             target_ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 5
