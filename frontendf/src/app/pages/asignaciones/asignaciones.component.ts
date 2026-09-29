@@ -29,7 +29,7 @@ import { AsignacionFormComponent, AsignacionFormResult } from './asignacion-form
 import { CdkDragDrop, CdkDragMove, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { ReporteAsistenciaColorDialogComponent } from '../reporte-asistencia/dialogs/reporte-asistencia-color-dialog.component';
-import { Subscription, of, from } from 'rxjs';
+import { Subscription, of, from, forkJoin, Observable } from 'rxjs';
 import { catchError, switchMap, concatMap, toArray, debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
@@ -408,6 +408,15 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   matches: Array<{ type: 'asignacion' | 'sacafranco'; id: number }> = []; // coincidencias de la búsqueda
   currentMatchIndex: number = 0;              // índice de la coincidencia actual
   private highlightTimer: any = null;
+  // Búsqueda ENTRE VISTAS: coincidencias por pestaña (clave = selectedCantonKey, ej. 'view:3').
+  // Permite que las flechas pasen a la siguiente vista con resultados.
+  private tabMatchCounts: Record<string, number> = {};
+  // Cache de filas por vista (no depende del texto buscado): se carga una vez por mes/día.
+  private viewRowsCache = new Map<string, { asigs: any[]; sacas: any[] }>();
+  private viewRowsCacheKey = '';
+  private viewRowsCacheTime = 0;
+  private searchSeq = 0;                                   // descarta respuestas viejas
+  private pendingSearchJump: 'first' | 'last' | null = null; // a qué coincidencia ir tras cambiar de vista
   private filterSub?: Subscription;
   private abrirSub?: Subscription;
   private matchNavSub?: Subscription;
@@ -602,16 +611,141 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.highlightedSacaId = null;
       this.matches = [];
       this.currentMatchIndex = 0;
+      this.tabMatchCounts = {};
+      this.pendingSearchJump = null;
+      this.searchSeq++;
       this.publicarMatchNav();
       if (this.highlightTimer) clearTimeout(this.highlightTimer);
       return;
     }
     this.scrollALocalMatch(term);
+    // Buscar también en las DEMÁS vistas; si aquí no hay nada, salta a la primera que tenga.
+    this.buscarEnVistas(term, true);
   }
 
   // Publica el estado de coincidencias al buscador global (flechas dentro del input).
+  // Con búsqueda entre vistas: total = suma de todas las pestañas e índice = posición global.
   private publicarMatchNav(): void {
-    this.globalFilter.setMatchNav(this.matches.length, this.currentMatchIndex, '/dashboard/asignaciones');
+    const route = '/dashboard/asignaciones';
+    const tabs = this.getSearchTabs();
+    const hayGlobal = tabs.length > 1 && Object.keys(this.tabMatchCounts).length > 0;
+    if (!hayGlobal) {
+      this.globalFilter.setMatchNav(this.matches.length, this.currentMatchIndex, route);
+      return;
+    }
+    let total = 0;
+    let offset = 0;
+    for (const k of tabs) {
+      if (k === this.selectedCantonKey) { offset = total; }
+      total += (k === this.selectedCantonKey) ? this.matches.length : (this.tabMatchCounts[k] || 0);
+    }
+    // Sin coincidencias en ESTA pestaña pero sí en otras: muestra "0/N" (▼ salta a la siguiente).
+    const index = this.matches.length ? offset + this.currentMatchIndex : -1;
+    this.globalFilter.setMatchNav(total, index, route);
+  }
+
+  // Pestañas donde se busca: todas las vistas personalizadas (en su orden). Si lo abierto
+  // ahora no es una vista (página de cantón), se incluye primero para no perderlo.
+  private getSearchTabs(): string[] {
+    const tabs = (this.cantonViews || []).map(v => `view:${v.id}`);
+    const cur = this.selectedCantonKey;
+    if (cur && !tabs.includes(cur)) { tabs.unshift(cur); }
+    return tabs;
+  }
+
+  // Trae las filas (asignaciones + sacafranco) de UNA vista con los mismos parámetros que usa
+  // cargarAsignaciones para esa vista, así las coincidencias son exactamente lo que se ve en ella.
+  private fetchViewRows(view: CantonMixView): Observable<{ asigs: any[]; sacas: any[] }> {
+    const params: any = { lite: true };
+    if (this.dia) { params.dia = this.dia; }
+    const isCliente = view.tipo === 'cliente';
+    const isTipo = view.tipo === 'persona_tipo';
+    const clienteCsv = (view.clienteIds || []).join(',');
+    const cantonCsv = (view.cantonIds || []).join(',');
+    if (isCliente) {
+      params.cliente_ids = clienteCsv;
+      if ((view.instalacionIds || []).length) { params.instalacion_ids = view.instalacionIds.join(','); }
+    } else if (isTipo) {
+      params.tipos = (view.tipos || []).join(',');
+    } else {
+      params.canton_ids = cantonCsv;
+    }
+    const asig$ = this.asignacionService.obtenerAsignacionesPaginadas(this.mes, this.anio, params).pipe(
+      map((r: any) => (r?.results || []) as any[]),
+      catchError(() => of([] as any[]))
+    );
+    if (isTipo) {
+      return asig$.pipe(map(asigs => ({ asigs, sacas: [] as any[] })));
+    }
+    const sp: any = isCliente ? { cliente_ids: clienteCsv } : { canton_ids: cantonCsv };
+    sp.vista_id = view.id;
+    const saca$ = this.asignacionService.obtenerSacafrancoFilas(this.mes, this.anio, sp).pipe(
+      map(s => (s || []) as any[]),
+      catchError(() => of([] as any[]))
+    );
+    return forkJoin([asig$, saca$]).pipe(map(([asigs, sacas]) => ({ asigs, sacas })));
+  }
+
+  // Cuenta coincidencias del texto en las filas de una vista.
+  private contarCoincidencias(rows: { asigs: any[]; sacas: any[] }, term: string): number {
+    let n = 0;
+    for (const a of rows.asigs || []) { if (a?.id != null && this.asigCoincide(a, term)) n++; }
+    for (const f of rows.sacas || []) { if (f?.id != null && this.sacaCoincide(f, term)) n++; }
+    return n;
+  }
+
+  // Busca el texto en TODAS las vistas. Con permitirSalto=true (texto nuevo) y sin coincidencias
+  // en la pestaña actual, cambia sola a la primera vista que tenga resultados.
+  private buscarEnVistas(term: string, permitirSalto: boolean): void {
+    const views = this.cantonViews || [];
+    if (!views.length || !term) { return; }
+    // Invalida la cache si cambió el mes/día o tiene más de 2 minutos.
+    const key = `${this.mes}-${this.anio}-${this.dia || ''}`;
+    if (key !== this.viewRowsCacheKey || (Date.now() - this.viewRowsCacheTime) > 120000) {
+      this.viewRowsCache.clear();
+      this.viewRowsCacheKey = key;
+      this.viewRowsCacheTime = Date.now();
+    }
+    const seq = ++this.searchSeq;
+    const faltantes = views.filter(v => !this.viewRowsCache.has(`view:${v.id}`));
+    const carga$ = faltantes.length
+      ? forkJoin(faltantes.map(v => this.fetchViewRows(v).pipe(map(rows => ({ v, rows })))))
+      : of([] as Array<{ v: CantonMixView; rows: { asigs: any[]; sacas: any[] } }>);
+    carga$.subscribe(resultados => {
+      resultados.forEach(({ v, rows }) => this.viewRowsCache.set(`view:${v.id}`, rows));
+      // Descartar si el usuario ya escribió otra cosa o cambió de vista mientras cargaba.
+      if (seq !== this.searchSeq || (this.filtroTexto || '').trim().toLowerCase() !== term) { return; }
+      const counts: Record<string, number> = {};
+      for (const k of this.getSearchTabs()) {
+        if (k === this.selectedCantonKey) { counts[k] = this.matches.length; continue; }
+        const rows = this.viewRowsCache.get(k);
+        counts[k] = rows ? this.contarCoincidencias(rows, term) : 0;
+      }
+      this.tabMatchCounts = counts;
+      if (permitirSalto && !this.matches.length) {
+        const destino = this.getSearchTabs().find(k => k !== this.selectedCantonKey && (counts[k] || 0) > 0);
+        if (destino) { this.irATabBusqueda(destino, 'first'); return; }
+      }
+      this.publicarMatchNav();
+    });
+  }
+
+  // Cambia a otra pestaña (vista) por la búsqueda; al cargar va a su primera/última coincidencia.
+  private irATabBusqueda(key: string, jump: 'first' | 'last'): void {
+    this.pendingSearchJump = jump;
+    this.selectedCantonKey = key;
+    this.onCantonSelect();
+  }
+
+  // Siguiente/anterior pestaña con coincidencias (circular), distinta de la actual.
+  private tabConCoincidencias(dir: 1 | -1): string | null {
+    const tabs = this.getSearchTabs();
+    const i = tabs.indexOf(this.selectedCantonKey);
+    for (let s = 1; s < tabs.length; s++) {
+      const k = tabs[(i + dir * s + tabs.length * s) % tabs.length];
+      if (k !== this.selectedCantonKey && (this.tabMatchCounts[k] || 0) > 0) { return k; }
+    }
+    return null;
   }
 
   // ¿La asignación coincide con el texto buscado? (cliente, persona, puesto, nominativo)
@@ -655,6 +789,13 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
         this.matches.push({ type: 'sacafranco', id: r.fila.id });
       }
     }
+    // Conteo real de la pestaña que se está viendo (para el total entre vistas).
+    if (this.selectedCantonKey && Object.keys(this.tabMatchCounts).length) {
+      this.tabMatchCounts[this.selectedCantonKey] = this.matches.length;
+    }
+    // Si se llegó aquí saltando desde otra vista, ir a la primera o a la última coincidencia.
+    const jump = this.pendingSearchJump;
+    this.pendingSearchJump = null;
     if (!this.matches.length) {
       this.highlightedAsigId = null;
       this.highlightedSacaId = null;
@@ -662,9 +803,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.publicarMatchNav();
       return;
     }
-    this.currentMatchIndex = 0;
+    this.currentMatchIndex = jump === 'last' ? this.matches.length - 1 : 0;
     this.publicarMatchNav();
-    this.scrollAMatch(this.matches[0]);
+    this.scrollAMatch(this.matches[this.currentMatchIndex]);
   }
 
   // Hace scroll suave a la fila (asignación o sacafranco) y la resalta unos segundos.
@@ -691,15 +832,36 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
   }
 
   irSiguienteCoincidencia(): void {
+    // Aún quedan coincidencias en esta vista: avanzar aquí.
+    if (this.matches.length && this.currentMatchIndex < this.matches.length - 1) {
+      this.currentMatchIndex++;
+      this.publicarMatchNav();
+      this.scrollAMatch(this.matches[this.currentMatchIndex]);
+      return;
+    }
+    // Se terminó esta vista: pasar a la siguiente vista con coincidencias (a su primera).
+    const sig = this.tabConCoincidencias(1);
+    if (sig) { this.irATabBusqueda(sig, 'first'); return; }
+    // Ninguna otra vista tiene resultados: volver al inicio de esta.
     if (!this.matches.length) return;
-    this.currentMatchIndex = (this.currentMatchIndex + 1) % this.matches.length;
+    this.currentMatchIndex = 0;
     this.publicarMatchNav();
     this.scrollAMatch(this.matches[this.currentMatchIndex]);
   }
 
   irAnteriorCoincidencia(): void {
+    // Aún quedan coincidencias antes en esta vista: retroceder aquí.
+    if (this.matches.length && this.currentMatchIndex > 0) {
+      this.currentMatchIndex--;
+      this.publicarMatchNav();
+      this.scrollAMatch(this.matches[this.currentMatchIndex]);
+      return;
+    }
+    // Inicio de esta vista: pasar a la vista anterior con coincidencias (a su última).
+    const ant = this.tabConCoincidencias(-1);
+    if (ant) { this.irATabBusqueda(ant, 'last'); return; }
     if (!this.matches.length) return;
-    this.currentMatchIndex = (this.currentMatchIndex - 1 + this.matches.length) % this.matches.length;
+    this.currentMatchIndex = this.matches.length - 1;
     this.publicarMatchNav();
     this.scrollAMatch(this.matches[this.currentMatchIndex]);
   }
@@ -1183,9 +1345,24 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           this.updateCalendarOrder();
           this.loadCalendarWeeks();
 
-          // Si había un texto de búsqueda activo, reubicar el scroll al registro.
+          // Guardar las filas de esta vista en la cache de búsqueda entre vistas (evita pedirlas
+          // de nuevo). Si cambió el mes/día, la cache anterior ya no sirve.
+          const _ck = `${this.mes}-${this.anio}-${this.dia || ''}`;
+          if (_ck !== this.viewRowsCacheKey) {
+            this.viewRowsCache.clear();
+            this.viewRowsCacheKey = _ck;
+            this.viewRowsCacheTime = Date.now();
+          }
+          if (activeView?.id) {
+            this.viewRowsCache.set(`view:${activeView.id}`, { asigs: this.asignaciones || [], sacas: this.sacafrancoRows || [] });
+          }
+
+          // Si había un texto de búsqueda activo, reubicar el scroll al registro y refrescar
+          // el conteo en las demás vistas (sin cambiar de vista: la eligió el usuario o el salto).
           if (this.filtroTexto && this.filtroTexto.trim()) {
-            this.scrollALocalMatch(this.filtroTexto.trim().toLowerCase());
+            const _term = this.filtroTexto.trim().toLowerCase();
+            this.scrollALocalMatch(_term);
+            this.buscarEnVistas(_term, false);
           }
 
           // Si se solicitó abrir un puesto vacante, abrir su modal de edición
