@@ -75,6 +75,7 @@ export class EventualHorasDialogComponent implements OnInit {
     this.horasSolicitadas = row?.horas_solicitadas ?? null;
     this.horas = row?.horas ?? null;
     this.bonificacion = row?.bonificacion ?? null;
+    this.bonoAnterior = Number(this.bonificacion) || 0;
     if (this.data?.catalogo) {
       this.catalogo = this.data.catalogo;
       this.precargar(row);
@@ -186,6 +187,25 @@ export class EventualHorasDialogComponent implements OnInit {
     }
     this.valorCalculado = Number(v);
     this.valorManual = this.redondear(v) !== this.valorSugerido;
+  }
+
+  // Cambió la bonificación: se suma (o resta la diferencia) también cuando el valor fue
+  // corregido a mano. Ej. corregido 31.64 + bono 50 -> 81.64.
+  private bonoAnterior = 0;
+  onBonificacionCambio(): void {
+    const nuevo = this.montoBonificacion;
+    const ajustado = this.valorManual && this.valorCalculado !== null
+      ? this.redondear(Number(this.valorCalculado) + nuevo - this.bonoAnterior) : null;
+    if (ajustado !== null && ajustado >= 0) {
+      this.valorCalculado = ajustado;
+      this.valorManual = this.valorCalculado !== this.valorSugerido;
+    } else {
+      // Nunca negativo (ej. registro guardado antes, cuyo valor no incluía el bono):
+      // vuelve al sugerido = rango + bonificación.
+      this.valorManual = false;
+      this.recalcular();
+    }
+    this.bonoAnterior = nuevo;
   }
 
   usarSugerido(): void {
