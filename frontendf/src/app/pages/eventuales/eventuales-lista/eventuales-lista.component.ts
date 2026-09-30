@@ -51,9 +51,9 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const d = new Date();
-    // Por defecto: el día de hoy (Desde = Hasta = hoy).
-    this.fechaDesde = this.fechaHasta = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    this.ponerRango(this.fechaDesde, this.fechaHasta);
+    // Por defecto: HOY (un solo día). En el calendario se puede elegir un rango.
+    // El calendario abre SIN rango marcado: se marca solo cuando el usuario lo elige.
+    this.fechaDesde = this.fechaHasta = this.aISO(d);
     // Al elegir el rango: se carga cuando están las dos fechas (Desde y Hasta).
     this.rangoSub = this.rangoForm.valueChanges.subscribe(() => this.aplicarRango());
     this.cargar();
@@ -84,11 +84,6 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  // Pone el rango en el selector sin disparar la carga (YYYY-MM-DD).
-  private ponerRango(desde: string, hasta: string): void {
-    const aFecha = (v: string) => { const [y, m, d] = v.split('-').map(Number); return new Date(y, m - 1, d); };
-    this.rangoForm.setValue({ start: aFecha(desde), end: aFecha(hasta) }, { emitEvent: false });
-  }
 
   // Toma el rango elegido (Desde y Hasta) y carga los registros de esos días. Se llama al
   // cambiar las fechas y al cerrar el calendario; si el rango no cambió, no recarga.
@@ -104,6 +99,32 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
   }
 
   private filasCargadas = false;
+
+  // Mes en el que abre el calendario: el del día que se está viendo.
+  // (se guarda el mismo objeto Date para no crear uno nuevo en cada ciclo de pantalla).
+  private _inicioCal: { iso: string; fecha: Date } | null = null;
+  get inicioCalendario(): Date {
+    if (!this._inicioCal || this._inicioCal.iso !== this.fechaDesde) {
+      const [y, m, d] = this.fechaDesde.split('-').map(Number);
+      this._inicioCal = { iso: this.fechaDesde, fecha: new Date(y, m - 1, d) };
+    }
+    return this._inicioCal.fecha;
+  }
+
+  // El rango es un solo día (Desde = Hasta).
+  get esUnDia(): boolean { return !!this.fechaDesde && this.fechaDesde === this.fechaHasta; }
+
+  // "30/9/2026" (mismo formato que el calendario)
+  get diaTexto(): string {
+    const [y, m, d] = this.fechaDesde.split('-').map(Number);
+    return `${d}/${m}/${y}`;
+  }
+
+  // Fecha que se propone al crear: hoy si está dentro del rango; si no, el último día del rango.
+  private fechaDefectoNuevo(): string {
+    const hoy = this.aISO(new Date());
+    return (hoy >= this.fechaDesde && hoy <= this.fechaHasta) ? hoy : this.fechaHasta;
+  }
 
   cargar(): void {
     // Registros entre Desde y Hasta (ambos incluidos).
@@ -199,14 +220,14 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
       maxWidth: '95vw',
       autoFocus: false,
       // Al crear, el formulario propone el día que se está viendo.
-      data: { row: row || undefined, catalogo: this.catalogo, fechaDefecto: this.fechaHasta },
+      data: { row: row || undefined, catalogo: this.catalogo, fechaDefecto: this.fechaDefectoNuevo() },
     });
     ref.afterClosed().subscribe((res: HorasEventual | undefined) => {
       if (!res) { return; }
       // Si la fecha quedó fuera del rango, la lista pasa a ese día (así se ve el registro).
       if (res.fecha && (res.fecha < this.fechaDesde || res.fecha > this.fechaHasta)) {
         this.fechaDesde = this.fechaHasta = res.fecha;
-        this.ponerRango(res.fecha, res.fecha);
+        this.rangoForm.reset({ start: null, end: null }, { emitEvent: false });
       }
       this.cargar();
     });

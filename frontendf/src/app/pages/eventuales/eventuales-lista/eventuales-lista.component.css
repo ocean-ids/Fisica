@@ -44,3 +44,19 @@ tfoot th {
   width: 20px;
   height: 20px;
 }
+.ev-rango ::ng-deep .mat-mdc-form-field-infix {
+  position: relative;
+}
+/* Texto del mes encima del campo (el campo de rango sigue ahí, oculto, para abrir el calendario) */
+.ev-mes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 1;
+}
+.ev-oculto {
+  opacity: 0;
+}

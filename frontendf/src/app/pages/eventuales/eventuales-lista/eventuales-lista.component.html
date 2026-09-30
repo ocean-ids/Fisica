@@ -4,12 +4,15 @@
     <div class="d-grid d-sm-flex gap-2 align-items-center">
       <!-- Rango de fechas (Creado): se eligen Desde y Hasta en un solo calendario. -->
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ev-rango" title="Elige el día inicial y el día final">
-        <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker">
+        <!-- Un solo día: se muestra solo esa fecha (ej. "30/9/2026"). Si se elige un rango en
+             el calendario, se muestran las dos fechas. -->
+        <span *ngIf="esUnDia" class="ev-mes" (click)="rangoPicker.open()">{{ diaTexto }}</span>
+        <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker" [class.ev-oculto]="esUnDia">
           <input matStartDate formControlName="start">
           <input matEndDate formControlName="end" (dateChange)="aplicarRango()">
         </mat-date-range-input>
         <mat-datepicker-toggle matIconSuffix [for]="rangoPicker"></mat-datepicker-toggle>
-        <mat-date-range-picker #rangoPicker (closed)="aplicarRango()"></mat-date-range-picker>
+        <mat-date-range-picker #rangoPicker [startAt]="inicioCalendario" (closed)="aplicarRango()"></mat-date-range-picker>
       </mat-form-field>
       <button type="button" class="btn btn-success btn-sm" (click)="descargarExcel()"
               title="Descargar en Excel los datos bancarios de los eventuales del rango (con la búsqueda aplicada)">
