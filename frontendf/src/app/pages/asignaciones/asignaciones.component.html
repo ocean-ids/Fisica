@@ -217,7 +217,7 @@
                         <div *ngIf="row.asig.vacaciones" class="mt-1">
                           <span class="badge bg-warning text-dark">Vacaciones</span>
                           <div class="text-muted" style="font-size:11px; line-height:1.3;">
-                            Del {{ row.asig.vacaciones.desde | date:'dd' }} al {{ row.asig.vacaciones.hasta | date:'dd' }}
+                            Del {{ row.asig.vacaciones.desde | date:'dd/MM' }} al {{ row.asig.vacaciones.hasta | date:'dd/MM' }}
                           </div>
                         </div>
                       </ng-container>

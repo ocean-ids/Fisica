@@ -282,15 +282,22 @@ def obtener_asignaciones(request, mes=None, anio=None):
     if not request.user.has_perm('CoreFisica.view_asignacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
-    # Mapa de VACACIONES vigentes (badge en el grid): persona_id -> {desde,hasta,texto}.
-    # Solo las que aún no terminan (fecha_hasta >= hoy), para que el badge desaparezca
-    # cuando pasan los días. Una sola consulta; se pasa por contexto al serializer.
+    # Mapa de VACACIONES del MES que se está viendo (badge en el grid): persona_id ->
+    # {desde,hasta,texto}. Se muestran todas las que caen dentro de ese mes, aunque ya
+    # hayan pasado, para que sirvan de referencia al entrar a ese mes. Una sola consulta;
+    # se pasa por contexto al serializer.
     from ..models import ReporteVacaciones
     _hoy_vac = timezone.localdate()
+    try:
+        _vac_ini = datetime.date(int(anio), int(mes), 1) if (mes and anio) else _hoy_vac.replace(day=1)
+    except (TypeError, ValueError):
+        _vac_ini = _hoy_vac.replace(day=1)
+    _vac_fin = (_vac_ini.replace(day=28) + datetime.timedelta(days=4)).replace(day=1) - datetime.timedelta(days=1)
     vacaciones_map = {}
     for _v in (ReporteVacaciones.objects
                .filter(persona_sale_ref__isnull=False, fecha_desde__isnull=False,
-                       fecha_hasta__isnull=False, fecha_hasta__gte=_hoy_vac)
+                       fecha_hasta__isnull=False,
+                       fecha_desde__lte=_vac_fin, fecha_hasta__gte=_vac_ini)
                .order_by('fecha_desde')):
         _pid = _v.persona_sale_ref_id
         if _pid in vacaciones_map:
