@@ -1,6 +1,12 @@
-table td,
-table th {
-  font-size: 13px;
+/* Muchas columnas: letra y márgenes compactos para que la tabla quepa sin scroll. */
+.tabla-eventuales td,
+.tabla-eventuales th {
+  font-size: 11.5px;
+  padding: 3px 4px;
+}
+.tabla-eventuales thead th {
+  line-height: 1.15;
+  vertical-align: middle;
 }
 tfoot th {
   background: #f1f5fb;

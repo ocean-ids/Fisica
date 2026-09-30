@@ -15,30 +15,30 @@
   </div>
 
   <div class="table-responsive">
-    <table class="table table-bordered table-sm align-middle text-center">
+    <table class="table table-bordered table-sm align-middle text-center tabla-eventuales">
       <thead class="table-light">
         <tr>
-          <th style="width:40px">Nº</th>
+          <th>Nº</th>
           <th>Cliente</th>
           <th>Instalación</th>
           <th>Nombre del puesto</th>
           <!-- Datos del eventual: mismos nombres y orden que el archivo del banco. -->
-          <th>NombreCompleto</th>
-          <th style="width:100px">identificacion</th>
-          <th style="width:60px">Banco</th>
-          <th style="width:100px">TipoCuentaBancaria</th>
-          <th style="width:120px">NumeroCuentaBancaria</th>
-          <th style="width:100px">BancoNombre</th>
-          <th style="width:120px">Creado</th>
-          <th style="width:110px">Fecha del Servicio</th>
-          <th style="width:90px">Horas Solicitadas</th>
-          <th style="width:90px">Horas Trabajadas</th>
-          <th style="width:90px">Rango de Horas</th>
-          <th style="width:90px">Horas Adicionales</th>
-          <th style="width:100px">Bonificación</th>
-          <th style="width:110px">Valor Calculado</th>
-          <th style="width:150px">Última Modificación</th>
-          <th *ngIf="puedeEditar || puedeEliminar" style="width:100px">Acción</th>
+          <th>Nombre<wbr>Completo</th>
+          <th>identifi<wbr>cacion</th>
+          <th>Banco</th>
+          <th>Tipo<wbr>Cuenta<wbr>Bancaria</th>
+          <th>Numero<wbr>Cuenta<wbr>Bancaria</th>
+          <th>Banco<wbr>Nombre</th>
+          <th>Creado</th>
+          <th>Fecha del Servicio</th>
+          <th>Horas Solicitadas</th>
+          <th>Horas Trabajadas</th>
+          <th>Rango de Horas</th>
+          <th>Horas Adicionales</th>
+          <th>Bonificación</th>
+          <th>Valor Calculado</th>
+          <th>Última Modificación</th>
+          <th *ngIf="puedeEditar || puedeEliminar">Acción</th>
         </tr>
       </thead>
       <tbody>
@@ -70,7 +70,7 @@
               <div class="text-muted">{{ f.modificado_en ? (f.modificado_en | date:'dd/MM/yyyy h:mm a') : '-' }}</div>
               <button type="button" class="btn btn-link p-0 mt-1" (click)="verHistorial(f)">Historial</button>
             </td>
-            <td *ngIf="puedeEditar || puedeEliminar">
+            <td *ngIf="puedeEditar || puedeEliminar" class="text-nowrap">
               <button *ngIf="puedeEditar" type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
                       (click)="editar(f)" title="Editar"><i class="bi bi-pencil"></i></button>
               <button *ngIf="puedeEliminar" type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1"
