@@ -34,7 +34,7 @@ class HorasEventualTests(TestCase):
         self.puesto = Puesto.objects.create(instalacion=self.inst, nombre='GARITA')
         self.puesto_otro = Puesto.objects.create(instalacion=self.inst_otro, nombre='PUERTA')
         self.ev = Persona.objects.create(nombres='JUAN', apellidos='PEREZ', cedula='0911111111', tipo='EVENTUAL')
-        EmpleadoOtrosDatos.objects.update_or_create(persona=self.ev, defaults={'banco': 'BANCO PICHINCHA'})
+        EmpleadoOtrosDatos.objects.update_or_create(persona=self.ev, defaults={'banco': 'Banco Pichincha'})
         self.ev_sin_banco = Persona.objects.create(nombres='ANA', apellidos='LOPEZ', cedula='0922222222', tipo='EVENTUAL')
         self.fijo = Persona.objects.create(nombres='LUIS', apellidos='SOTO', cedula='0933333333', tipo='FIJOS')
         # Tarifa "Eventuales" por tramos (igual a Tarifas de Pago).
@@ -68,7 +68,7 @@ class HorasEventualTests(TestCase):
         evs = {e['id']: e for e in r.json()['eventuales']}
         self.assertIn(self.ev.id, evs)
         self.assertNotIn(self.fijo.id, evs)                       # un FIJO no sale
-        self.assertEqual(evs[self.ev.id]['banco'], 'BANCO PICHINCHA')
+        self.assertEqual(evs[self.ev.id]['banco'], 'PICHINCHA')
         self.assertEqual(evs[self.ev.id]['tipo'], 'EVENTUAL')
         self.assertEqual(evs[self.ev_sin_banco.id]['banco'], '')  # sin banco -> vacío
         self.assertEqual(len(r.json()['tarifas']), 5)
@@ -85,7 +85,7 @@ class HorasEventualTests(TestCase):
         self.assertEqual(b['rango_horas'], '10-12 h')
         self.assertEqual(b['valor_calculado'], 30.0)     # por defecto: rango + bono
         self.assertEqual(b['persona'], 'PEREZ JUAN')
-        self.assertEqual(b['banco'], 'BANCO PICHINCHA')
+        self.assertEqual(b['banco'], 'PICHINCHA')
         lista = self.client.get('/api/horas-eventual/?desde=2026-09-29&hasta=2026-09-29', **self._auth()).json()
         self.assertEqual(len(lista), 1)
 
@@ -255,6 +255,6 @@ class HorasEventualTests(TestCase):
         ws = load_workbook(_io.BytesIO(r.content)).active
         self.assertEqual(ws.cell(4, 5).value, '0911111111')
         self.assertEqual(ws.cell(4, 6).value, 'PEREZ JUAN')
-        self.assertEqual(ws.cell(4, 7).value, 'BANCO PICHINCHA')
+        self.assertEqual(ws.cell(4, 7).value, 'PICHINCHA')
         self.assertEqual(ws.cell(4, 14).value, 30.0)
         self.assertEqual(ws.cell(5, 1).value, 'TOTALES')

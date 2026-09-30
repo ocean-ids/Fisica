@@ -91,12 +91,13 @@ export class PersonaFormComponent implements OnInit {
     { v: 'PROBLEMAS FAMILIARES', l: 'Problemas Familiares' }, { v: 'MEJOR PROPUESTA DE TRABAJO', l: 'Mejor Propuesta de Trabajo' },
   ];
   bancos = [
-    'Banco Pichincha', 'Banco del Pacífico', 'Banco Guayaquil', 'Produbanco',
-    'Banco Internacional', 'Banco Bolivariano', 'Banco del Austro', 'Banco de Machala',
-    'Banco ProCredit', 'Banco Solidario', 'Banco General Rumiñahui', 'Banco Amazonas',
-    'Banco del Litoral', 'Banco Coopnacional', 'Banco Capital', 'BanEcuador',
-    'Cooperativa JEP', 'Cooperativa Jardín Azuayo', 'Cooperativa Policía Nacional',
-    'Cooperativa 29 de Octubre', 'Cooperativa Cooprogreso', 'Cooperativa Alianza del Valle',
+    // Solo la entidad, en MAYÚSCULAS (así se guarda).
+    'PICHINCHA', 'PACIFICO', 'GUAYAQUIL', 'PRODUBANCO',
+    'INTERNACIONAL', 'BOLIVARIANO', 'AUSTRO', 'MACHALA',
+    'PROCREDIT', 'SOLIDARIO', 'GENERAL RUMIÑAHUI', 'AMAZONAS',
+    'LITORAL', 'COOPNACIONAL', 'CAPITAL', 'BANECUADOR',
+    'COOPERATIVA JEP', 'COOPERATIVA JARDIN AZUAYO', 'COOPERATIVA POLICIA NACIONAL',
+    'COOPERATIVA 29 DE OCTUBRE', 'COOPERATIVA COOPROGRESO', 'COOPERATIVA ALIANZA DEL VALLE',
   ];
   private useStaticProvincias = false;
   private initialCanton: string | null = null;

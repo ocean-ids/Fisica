@@ -694,6 +694,27 @@ class EmpleadoNomina(models.Model):
     def __str__(self):
         return f"Nómina de {self.persona}"
 
+def _sin_tildes(txt):
+    """Quita las tildes (Á -> A) pero conserva la Ñ."""
+    import unicodedata
+    return ''.join(
+        ('Ñ' if c == 'Ñ' else unicodedata.normalize('NFD', c)[0])
+        for c in txt
+    )
+
+
+def entidad_banco(nombre):
+    """Nombre del banco solo con la ENTIDAD, en MAYÚSCULAS y sin tildes (se conserva la Ñ).
+    'Banco Pichincha' -> 'PICHINCHA', 'Banco del Pacífico' -> 'PACIFICO',
+    'Produbanco' -> 'PRODUBANCO', 'Cooperativa JEP' -> 'COOPERATIVA JEP'."""
+    t = _sin_tildes(str(nombre or '').upper()).split()
+    if len(t) > 1 and t[0] in ('BANCO', 'BCO', 'BCO.'):
+        t = t[1:]
+        if len(t) > 1 and t[0] in ('DE', 'DEL'):
+            t = t[1:]
+    return ' '.join(t)
+
+
 class EmpleadoOtrosDatos(models.Model):
     """Pestaña 'Otros Datos': bancario, contable, vacaciones, cargas y gastos deducibles."""
     persona = models.OneToOneField(
@@ -737,6 +758,10 @@ class EmpleadoOtrosDatos(models.Model):
     gasto_turismo = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.banco = entidad_banco(self.banco)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Otros datos de {self.persona}"
