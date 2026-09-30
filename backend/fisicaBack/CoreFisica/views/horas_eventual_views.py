@@ -430,3 +430,135 @@ def historial_horas_eventual(request, id):
         anterior = v
     out.reverse()
     return Response(out)
+
+
+def _norm_busqueda(s):
+    import unicodedata
+    s = unicodedata.normalize('NFD', str(s or '').lower())
+    return ''.join(c for c in s if unicodedata.category(c) != 'Mn')
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def exportar_excel_horas_eventual(request):
+    """Descargable Excel de Eventuales, con las mismas columnas que la tabla.
+    Filtros: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (o ?fecha=) y ?q= (búsqueda de la pantalla)."""
+    if not request.user.has_perm('CoreFisica.view_horaseventual'):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+    import io
+    import openpyxl
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+    from django.http import HttpResponse
+
+    fecha = _parse_fecha(request.GET.get('fecha'))
+    desde = _parse_fecha(request.GET.get('desde')) or fecha
+    hasta = _parse_fecha(request.GET.get('hasta')) or fecha
+    qs = HorasEventual.objects.select_related(*_SELECT).order_by('fecha', 'id')
+    if desde:
+        qs = qs.filter(fecha__gte=desde)
+    if hasta:
+        qs = qs.filter(fecha__lte=hasta)
+    filas = [_serialize(h) for h in qs]
+
+    # Misma búsqueda que la pantalla: cada palabra debe estar en el registro.
+    tokens = _norm_busqueda(request.GET.get('q')).split()
+    if tokens:
+        def _ok(f):
+            txt = _norm_busqueda(' '.join(str(f.get(k) or '') for k in
+                                          ('persona', 'cedula', 'banco', 'cliente', 'instalacion', 'puesto')))
+            return all(t in txt for t in tokens)
+        filas = [f for f in filas if _ok(f)]
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'EVENTUALES'
+
+    borde = Border(*(Side(style='thin', color='999999'),) * 4)
+    centro = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    izq = Alignment(horizontal='left', vertical='center', wrap_text=True)
+    cab_fill = PatternFill('solid', fgColor='1F4E78')
+
+    columnas = [
+        ('Nº', 6), ('Cliente', 24), ('Instalación', 26), ('Nombre del puesto', 26),
+        ('Apellidos y Nombres', 36), ('Cédula', 13), ('Banco', 18), ('Fecha del Servicio', 13),
+        ('Horas Solicitadas', 11), ('Horas Trabajadas', 11), ('Rango de Horas', 12),
+        ('Horas Adicionales', 11), ('Bonificación', 13), ('Valor Calculado', 14),
+    ]
+    ncol = len(columnas)
+
+    # Título
+    if desde and hasta and desde != hasta:
+        periodo = f"DEL {desde.strftime('%d/%m/%Y')} AL {hasta.strftime('%d/%m/%Y')}"
+    elif desde or hasta:
+        periodo = (desde or hasta).strftime('%d/%m/%Y')
+    else:
+        periodo = 'TODOS'
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncol)
+    ws.cell(1, 1, f'EVENTUALES - {periodo}').font = Font(bold=True, size=14)
+    ws.cell(1, 1).alignment = centro
+    ws.row_dimensions[1].height = 24
+
+    for c, (titulo, ancho) in enumerate(columnas, start=1):
+        cell = ws.cell(3, c, titulo)
+        cell.font = Font(bold=True, color='FFFFFF')
+        cell.fill = cab_fill
+        cell.alignment = centro
+        cell.border = borde
+        ws.column_dimensions[get_column_letter(c)].width = ancho
+    ws.row_dimensions[3].height = 32
+
+    fila = 4
+    for i, f in enumerate(filas, start=1):
+        fecha_dt = _parse_fecha(f['fecha'])
+        valores = [
+            i, f['cliente'], f['instalacion'], f['puesto'], f['persona'], f['cedula'], f['banco'],
+            fecha_dt, f['horas_solicitadas'] or 0, f['horas'] or 0, f['rango_horas'],
+            f['horas_adicionales'] or 0, f['bonificacion'], f['valor_calculado'] or 0,
+        ]
+        for c, v in enumerate(valores, start=1):
+            cell = ws.cell(fila, c, v)
+            cell.border = borde
+            cell.alignment = izq if c in (2, 3, 4, 5) else centro
+        ws.cell(fila, 8).number_format = 'DD/MM/YYYY'
+        ws.cell(fila, 13).number_format = '#,##0.00'
+        ws.cell(fila, 14).number_format = '#,##0.00'
+        fila += 1
+
+    if not filas:
+        ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=ncol)
+        ws.cell(fila, 1, 'Sin registros.').alignment = centro
+    else:
+        # Totales (fórmulas, así se recalculan si editan el Excel).
+        ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=8)
+        ws.cell(fila, 1, 'TOTALES').alignment = Alignment(horizontal='right', vertical='center')
+        for c in (9, 10, 12, 13, 14):
+            L = get_column_letter(c)
+            ws.cell(fila, c, f'=SUM({L}4:{L}{fila - 1})')
+            if c in (13, 14):
+                ws.cell(fila, c).number_format = '#,##0.00'
+        for c in range(1, ncol + 1):
+            ws.cell(fila, c).font = Font(bold=True)
+            ws.cell(fila, c).border = borde
+            ws.cell(fila, c).fill = PatternFill('solid', fgColor='DDEBF7')
+            if c > 8:
+                ws.cell(fila, c).alignment = centro
+
+    ws.freeze_panes = 'A4'
+    ws.auto_filter.ref = f"A3:{get_column_letter(ncol)}{max(3, fila - 1 if filas else 3)}"
+    ws.page_setup.orientation = 'landscape'
+    ws.page_setup.fitToWidth = 1
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    if desde and hasta and desde != hasta:
+        nombre = f"EVENTUALES {desde.strftime('%d-%m-%Y')} AL {hasta.strftime('%d-%m-%Y')}.xlsx"
+    elif desde or hasta:
+        nombre = f"EVENTUALES {(desde or hasta).strftime('%d-%m-%Y')}.xlsx"
+    else:
+        nombre = 'EVENTUALES.xlsx'
+    resp = HttpResponse(buf.getvalue(),
+                        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resp['Content-Disposition'] = f'attachment; filename="{nombre}"'
+    return resp

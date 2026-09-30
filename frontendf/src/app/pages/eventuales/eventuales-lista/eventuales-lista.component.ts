@@ -116,6 +116,28 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
     return (y && m && d) ? `${d}/${m}/${y}` : String(v);
   }
 
+  // Excel del día que se está viendo, con la búsqueda del buscador general aplicada.
+  descargarExcel(): void {
+    if (!this.fechaValor) { return; }
+    const params: any = { fecha: this.fechaValor };
+    if (this.texto.trim()) { params.q = this.texto.trim(); }
+    const [y, m, d] = this.fechaValor.split('-');
+    this.srv.exportarExcel(params).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `EVENTUALES ${d}-${m}-${y}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => Swal.fire({
+        icon: 'error', title: 'Error',
+        text: err?.status === 403 ? 'No autorizado' : 'No se pudo descargar el Excel',
+      }),
+    });
+  }
+
   nuevo(): void { this.abrirDialog(null); }
 
   editar(f: HorasEventual): void { this.abrirDialog(f); }

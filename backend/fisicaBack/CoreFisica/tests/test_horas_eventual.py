@@ -233,3 +233,26 @@ class HorasEventualTests(TestCase):
         self.assertEqual(self.client.get('/api/horas-eventual/', **self._auth(tok)).status_code, 403)
         self.assertEqual(self.client.get('/api/horas-eventual/catalogo/', **self._auth(tok)).status_code, 403)
         self.assertEqual(self.client.get('/api/horas-eventual/1/historial/', **self._auth(tok)).status_code, 403)
+        self.assertEqual(self.client.get('/api/horas-eventual/exportar-excel/', **self._auth(tok)).status_code, 403)
+
+    def test_exportar_excel_del_dia_con_busqueda(self):
+        import io as _io
+        from openpyxl import load_workbook
+        self._crear(horas_solicitadas=8, horas=12, bonificacion='5')        # JUAN PEREZ, 30.00
+        self._crear(persona_id=self.ev_sin_banco.id, horas=8)                # ANA LOPEZ, 18.75
+        self._crear(fecha='2026-09-30', horas=8)                             # otro día: no sale
+        r = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29', **self._auth())
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('EVENTUALES 29-09-2026.xlsx', r['Content-Disposition'])
+        ws = load_workbook(_io.BytesIO(r.content)).active
+        self.assertEqual(ws.cell(3, 5).value, 'Apellidos y Nombres')
+        self.assertEqual({ws.cell(4, 5).value, ws.cell(5, 5).value}, {'PEREZ JUAN', 'LOPEZ ANA'})
+        self.assertEqual(ws.cell(6, 1).value, 'TOTALES')
+        self.assertEqual(ws.cell(6, 14).value, '=SUM(N4:N5)')
+        # Con búsqueda: solo la fila que coincide.
+        r = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29&q=perez', **self._auth())
+        ws = load_workbook(_io.BytesIO(r.content)).active
+        self.assertEqual(ws.cell(4, 5).value, 'PEREZ JUAN')
+        self.assertEqual(ws.cell(4, 7).value, 'BANCO PICHINCHA')
+        self.assertEqual(ws.cell(4, 14).value, 30.0)
+        self.assertEqual(ws.cell(5, 1).value, 'TOTALES')

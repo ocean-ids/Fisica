@@ -22,6 +22,11 @@ export class HorasEventualService {
     return this.api.get<CatalogoHorasEventual>('/horas-eventual/catalogo/');
   }
 
+  // Descargable Excel (mismas columnas que la tabla). params: fecha | desde/hasta, q.
+  exportarExcel(params: any): Observable<Blob> {
+    return this.api.getBlob('/horas-eventual/exportar-excel/', params);
+  }
+
   crear(data: HorasEventual): Observable<HorasEventual> {
     return this.api.post<HorasEventual>('/horas-eventual/crear/', data);
   }
