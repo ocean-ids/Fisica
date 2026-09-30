@@ -12,6 +12,7 @@
 import datetime
 from decimal import Decimal
 
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -432,6 +433,25 @@ def historial_horas_eventual(request, id):
     return Response(out)
 
 
+# Código del banco (como en el archivo del banco): 10 PICHINCHA, 17 GUAYAQUIL, 36 PRODUBANCO.
+CODIGO_BANCO = {'PICHINCHA': '10', 'GUAYAQUIL': '17', 'PRODUBANCO': '36'}
+
+
+def _cuenta(persona):
+    """(banco, tipo de cuenta, número) de los datos de la persona; vacío si no los tiene."""
+    try:
+        od = persona.otros_datos
+    except Exception:
+        return '', '', ''
+    numero = (od.numero_cuenta or '').strip()
+    tipo = (od.tipo_cuenta or '').strip().upper()
+    if not numero and (od.cuenta_ahorros or '').strip():
+        numero, tipo = od.cuenta_ahorros.strip(), 'AHORROS'
+    elif not numero and (od.cuenta_corriente or '').strip():
+        numero, tipo = od.cuenta_corriente.strip(), 'CORRIENTE'
+    return (od.banco or '').strip(), tipo, numero
+
+
 def _norm_busqueda(s):
     import unicodedata
     s = unicodedata.normalize('NFD', str(s or '').lower())
@@ -441,7 +461,9 @@ def _norm_busqueda(s):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def exportar_excel_horas_eventual(request):
-    """Descargable Excel de Eventuales, con las mismas columnas que la tabla.
+    """Descargable Excel de Eventuales: datos bancarios de cada eventual del día (una fila por
+    persona): Apellidos y Nombres, Cédula, Banco (código), TipoCuentaBancaria,
+    NumeroCuentaBancaria, BancoNombre y Creado (cuándo se registró).
     Filtros: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (o ?fecha=) y ?q= (búsqueda de la pantalla)."""
     if not request.user.has_perm('CoreFisica.view_horaseventual'):
         return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
@@ -459,7 +481,8 @@ def exportar_excel_horas_eventual(request):
         qs = qs.filter(fecha__gte=desde)
     if hasta:
         qs = qs.filter(fecha__lte=hasta)
-    filas = [_serialize(h) for h in qs]
+    registros = list(qs)
+    filas = [_serialize(h) for h in registros]
 
     # Misma búsqueda que la pantalla: cada palabra debe estar en el registro.
     tokens = _norm_busqueda(request.GET.get('q')).split()
@@ -469,86 +492,43 @@ def exportar_excel_horas_eventual(request):
                                           ('persona', 'cedula', 'banco', 'cliente', 'instalacion', 'puesto')))
             return all(t in txt for t in tokens)
         filas = [f for f in filas if _ok(f)]
+    ids_ok = {f['id'] for f in filas}
 
+    # Una fila por EVENTUAL (sus datos bancarios), en el orden en que se registraron.
+    personas = {}
+    for h in registros:
+        if h.id in ids_ok and h.persona_id and h.persona_id not in personas:
+            personas[h.persona_id] = h
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'EVENTUALES'
-
-    borde = Border(*(Side(style='thin', color='999999'),) * 4)
-    centro = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    izq = Alignment(horizontal='left', vertical='center', wrap_text=True)
-    cab_fill = PatternFill('solid', fgColor='1F4E78')
-
     columnas = [
-        ('Nº', 6), ('Cliente', 24), ('Instalación', 26), ('Nombre del puesto', 26),
-        ('Cédula', 13), ('Apellidos y Nombres', 36), ('Banco', 18), ('Fecha del Servicio', 13),
-        ('Horas Solicitadas', 11), ('Horas Trabajadas', 11), ('Rango de Horas', 12),
-        ('Horas Adicionales', 11), ('Bonificación', 13), ('Valor Calculado', 14),
+        ('Apellidos y Nombres', 38), ('Cédula', 14), ('Banco', 8), ('TipoCuentaBancaria', 20),
+        ('NumeroCuentaBancaria', 22), ('BancoNombre', 18), ('Creado', 18),
     ]
-    ncol = len(columnas)
-
-    # Título
-    if desde and hasta and desde != hasta:
-        periodo = f"DEL {desde.strftime('%d/%m/%Y')} AL {hasta.strftime('%d/%m/%Y')}"
-    elif desde or hasta:
-        periodo = (desde or hasta).strftime('%d/%m/%Y')
-    else:
-        periodo = 'TODOS'
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncol)
-    ws.cell(1, 1, f'EVENTUALES - {periodo}').font = Font(bold=True, size=14)
-    ws.cell(1, 1).alignment = centro
-    ws.row_dimensions[1].height = 24
-
+    borde = Border(*(Side(style='thin', color='999999'),) * 4)
     for c, (titulo, ancho) in enumerate(columnas, start=1):
-        cell = ws.cell(3, c, titulo)
+        cell = ws.cell(1, c, titulo)
         cell.font = Font(bold=True, color='FFFFFF')
-        cell.fill = cab_fill
-        cell.alignment = centro
+        cell.fill = PatternFill('solid', fgColor='1F4E78')
+        cell.alignment = Alignment(horizontal='center', vertical='center')
         cell.border = borde
         ws.column_dimensions[get_column_letter(c)].width = ancho
-    ws.row_dimensions[3].height = 32
-
-    fila = 4
-    for i, f in enumerate(filas, start=1):
-        fecha_dt = _parse_fecha(f['fecha'])
-        valores = [
-            i, f['cliente'], f['instalacion'], f['puesto'], f['cedula'], f['persona'], f['banco'],
-            fecha_dt, f['horas_solicitadas'] or 0, f['horas'] or 0, f['rango_horas'],
-            f['horas_adicionales'] or 0, f['bonificacion'], f['valor_calculado'] or 0,
-        ]
+    fila = 2
+    for h in personas.values():
+        banco, tipo, numero = _cuenta(h.persona)
+        creado = timezone.localtime(h.creado_en).strftime('%d/%m/%Y %H:%M') if h.creado_en else ''
+        valores = [_nombre_persona(h.persona), h.persona.cedula or '', CODIGO_BANCO.get(banco, ''),
+                   tipo, numero, banco, creado]
         for c, v in enumerate(valores, start=1):
             cell = ws.cell(fila, c, v)
             cell.border = borde
-            cell.alignment = izq if c in (2, 3, 4, 6) else centro
-        ws.cell(fila, 8).number_format = 'DD/MM/YYYY'
-        ws.cell(fila, 13).number_format = '#,##0.00'
-        ws.cell(fila, 14).number_format = '#,##0.00'
+            # Cédula, código y cuenta como TEXTO (conservan los ceros a la izquierda).
+            if c in (2, 3, 5):
+                cell.number_format = '@'
         fila += 1
-
-    if not filas:
-        ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=ncol)
-        ws.cell(fila, 1, 'Sin registros.').alignment = centro
-    else:
-        # Totales (fórmulas, así se recalculan si editan el Excel).
-        ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=8)
-        ws.cell(fila, 1, 'TOTALES').alignment = Alignment(horizontal='right', vertical='center')
-        for c in (9, 10, 12, 13, 14):
-            L = get_column_letter(c)
-            ws.cell(fila, c, f'=SUM({L}4:{L}{fila - 1})')
-            if c in (13, 14):
-                ws.cell(fila, c).number_format = '#,##0.00'
-        for c in range(1, ncol + 1):
-            ws.cell(fila, c).font = Font(bold=True)
-            ws.cell(fila, c).border = borde
-            ws.cell(fila, c).fill = PatternFill('solid', fgColor='DDEBF7')
-            if c > 8:
-                ws.cell(fila, c).alignment = centro
-
-    ws.freeze_panes = 'A4'
-    ws.auto_filter.ref = f"A3:{get_column_letter(ncol)}{max(3, fila - 1 if filas else 3)}"
-    ws.page_setup.orientation = 'landscape'
-    ws.page_setup.fitToWidth = 1
-    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.freeze_panes = 'A2'
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(columnas))}{max(1, fila - 1)}"
 
     buf = io.BytesIO()
     wb.save(buf)

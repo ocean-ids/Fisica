@@ -235,26 +235,30 @@ class HorasEventualTests(TestCase):
         self.assertEqual(self.client.get('/api/horas-eventual/1/historial/', **self._auth(tok)).status_code, 403)
         self.assertEqual(self.client.get('/api/horas-eventual/exportar-excel/', **self._auth(tok)).status_code, 403)
 
-    def test_exportar_excel_del_dia_con_busqueda(self):
+    def test_exportar_excel_datos_bancarios_del_dia(self):
         import io as _io
         from openpyxl import load_workbook
-        self._crear(horas_solicitadas=8, horas=12, bonificacion='5')        # JUAN PEREZ, 30.00
-        self._crear(persona_id=self.ev_sin_banco.id, horas=8)                # ANA LOPEZ, 18.75
-        self._crear(fecha='2026-09-30', horas=8)                             # otro día: no sale
+        od = self.ev.otros_datos
+        od.tipo_cuenta, od.numero_cuenta = 'AHORROS', '0037794584'
+        od.save()
+        self._crear(horas_solicitadas=8, horas=12)                  # JUAN PEREZ
+        self._crear(horas=4)                                        # JUAN otra vez: una sola fila
+        self._crear(persona_id=self.ev_sin_banco.id, horas=8)       # ANA LOPEZ, sin banco
+        self._crear(fecha='2026-09-30', horas=8)                    # otro día: no sale
         r = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29', **self._auth())
         self.assertEqual(r.status_code, 200)
         self.assertIn('EVENTUALES 29-09-2026.xlsx', r['Content-Disposition'])
         ws = load_workbook(_io.BytesIO(r.content)).active
-        self.assertEqual(ws.cell(3, 5).value, 'Cédula')
-        self.assertEqual(ws.cell(3, 6).value, 'Apellidos y Nombres')
-        self.assertEqual({ws.cell(4, 6).value, ws.cell(5, 6).value}, {'PEREZ JUAN', 'LOPEZ ANA'})
-        self.assertEqual(ws.cell(6, 1).value, 'TOTALES')
-        self.assertEqual(ws.cell(6, 14).value, '=SUM(N4:N5)')
-        # Con búsqueda: solo la fila que coincide.
-        r = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29&q=perez', **self._auth())
+        self.assertEqual([c.value for c in ws[1]], [
+            'Apellidos y Nombres', 'Cédula', 'Banco', 'TipoCuentaBancaria',
+            'NumeroCuentaBancaria', 'BancoNombre', 'Creado'])
+        self.assertEqual(ws.max_row, 3)
+        juan = [c.value for c in ws[2]]
+        self.assertEqual(juan[:6], ['PEREZ JUAN', '0911111111', '10', 'AHORROS', '0037794584', 'PICHINCHA'])
+        self.assertRegex(juan[6], r'^\d{2}/\d{2}/\d{4} \d{2}:\d{2}$')
+        self.assertEqual([c.value for c in ws[3]][:3], ['LOPEZ ANA', '0922222222', None])
+        # Con búsqueda: solo quien coincide.
+        r = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29&q=lopez', **self._auth())
         ws = load_workbook(_io.BytesIO(r.content)).active
-        self.assertEqual(ws.cell(4, 5).value, '0911111111')
-        self.assertEqual(ws.cell(4, 6).value, 'PEREZ JUAN')
-        self.assertEqual(ws.cell(4, 7).value, 'PICHINCHA')
-        self.assertEqual(ws.cell(4, 14).value, 30.0)
-        self.assertEqual(ws.cell(5, 1).value, 'TOTALES')
+        self.assertEqual(ws.max_row, 2)
+        self.assertEqual(ws.cell(2, 1).value, 'LOPEZ ANA')

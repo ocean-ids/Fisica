@@ -5,7 +5,7 @@
       <input type="date" lang="es" class="form-control form-control-sm w-auto"
              [(ngModel)]="fechaValor" (change)="cargar()" title="Día que se muestra">
       <button type="button" class="btn btn-success btn-sm" (click)="descargarExcel()"
-              title="Descargar en Excel los registros del día (con la búsqueda aplicada)">
+              title="Descargar en Excel los datos bancarios de los eventuales del día (con la búsqueda aplicada)">
         <i class="bi bi-file-earmark-excel"></i> Descargar Excel
       </button>
       <button *ngIf="puedeCrear" type="button" class="btn btn-primary btn-sm" (click)="nuevo()">
