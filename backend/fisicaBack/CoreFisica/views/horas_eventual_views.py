@@ -481,7 +481,7 @@ def exportar_excel_horas_eventual(request):
 
     columnas = [
         ('Nº', 6), ('Cliente', 24), ('Instalación', 26), ('Nombre del puesto', 26),
-        ('Apellidos y Nombres', 36), ('Cédula', 13), ('Banco', 18), ('Fecha del Servicio', 13),
+        ('Cédula', 13), ('Apellidos y Nombres', 36), ('Banco', 18), ('Fecha del Servicio', 13),
         ('Horas Solicitadas', 11), ('Horas Trabajadas', 11), ('Rango de Horas', 12),
         ('Horas Adicionales', 11), ('Bonificación', 13), ('Valor Calculado', 14),
     ]
@@ -512,14 +512,14 @@ def exportar_excel_horas_eventual(request):
     for i, f in enumerate(filas, start=1):
         fecha_dt = _parse_fecha(f['fecha'])
         valores = [
-            i, f['cliente'], f['instalacion'], f['puesto'], f['persona'], f['cedula'], f['banco'],
+            i, f['cliente'], f['instalacion'], f['puesto'], f['cedula'], f['persona'], f['banco'],
             fecha_dt, f['horas_solicitadas'] or 0, f['horas'] or 0, f['rango_horas'],
             f['horas_adicionales'] or 0, f['bonificacion'], f['valor_calculado'] or 0,
         ]
         for c, v in enumerate(valores, start=1):
             cell = ws.cell(fila, c, v)
             cell.border = borde
-            cell.alignment = izq if c in (2, 3, 4, 5) else centro
+            cell.alignment = izq if c in (2, 3, 4, 6) else centro
         ws.cell(fila, 8).number_format = 'DD/MM/YYYY'
         ws.cell(fila, 13).number_format = '#,##0.00'
         ws.cell(fila, 14).number_format = '#,##0.00'
