@@ -1,5 +1,5 @@
-"""El Excel del Reporte de Asistencia trae una pestaña DIURNO y otra NOCTURNO POR CADA DÍA
-del mes, del día 1 hasta el día SELECCIONADO (sin días futuros)."""
+"""El Excel del Reporte de Asistencia trae DOS pestañas del día seleccionado: DIURNO y
+NOCTURNO (volvió al formato anterior; ya no una pestaña por cada día del mes)."""
 import io
 import json
 
@@ -13,42 +13,15 @@ def _login(c, u, p):
                   content_type='application/json').json().get('access')
 
 
-class ExcelPestanasPorDiaTests(TestCase):
+class ExcelDosPestanasTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_superuser(
-            username='xls_user', email='e@e.com', password='XlsPass123!'
-        )
+        User.objects.create_superuser(username='xls_user', email='e@e.com', password='XlsPass123!')
         self.access = _login(self.client, 'xls_user', 'XlsPass123!')
 
-    def test_una_pestana_por_dia_hasta_el_seleccionado(self):
-        # Día seleccionado = 3 -> hojas DIURNO/NOCTURNO de los días 1, 2 y 3 (6 hojas).
-        r = self.client.get(
-            '/api/reporte-asistencia/exportar-excel/?fecha=2026-09-03',
-            HTTP_AUTHORIZATION=f'Bearer {self.access}'
-        )
+    def test_solo_diurno_y_nocturno_del_dia(self):
+        r = self.client.get('/api/reporte-asistencia/exportar-excel/?fecha=2026-09-03',
+                            HTTP_AUTHORIZATION=f'Bearer {self.access}')
         self.assertEqual(r.status_code, 200)
         wb = load_workbook(io.BytesIO(r.content))
-        nombres = wb.sheetnames
-
-        # Deben estar las 6 hojas esperadas.
-        for d in (1, 2, 3):
-            self.assertIn(f'DIURNO {d}', nombres)
-            self.assertIn(f'NOCTURNO {d}', nombres)
-        self.assertEqual(len(nombres), 6)
-
-        # NO deben existir días futuros del mes.
-        self.assertNotIn('DIURNO 4', nombres)
-        self.assertNotIn('NOCTURNO 4', nombres)
-
-        # Al abrir, la pestaña activa es DIURNO del día seleccionado (sin reordenar).
-        self.assertEqual(wb.active.title, 'DIURNO 3')
-        self.assertEqual(nombres[0], 'DIURNO 1')  # el orden NO cambia
-
-    def test_primer_dia_solo_dos_pestanas(self):
-        r = self.client.get(
-            '/api/reporte-asistencia/exportar-excel/?fecha=2026-09-01',
-            HTTP_AUTHORIZATION=f'Bearer {self.access}'
-        )
-        self.assertEqual(r.status_code, 200)
-        wb = load_workbook(io.BytesIO(r.content))
-        self.assertEqual(wb.sheetnames, ['DIURNO 1', 'NOCTURNO 1'])
+        self.assertEqual(wb.sheetnames, ['DIURNO', 'NOCTURNO'])
+        self.assertIn('ASISTENCIA GENERAL 03-09-2026.xlsx', r['Content-Disposition'])

@@ -2301,8 +2301,7 @@ def exportar_reporte_asistencia_excel(request):
     thin = Side(border_style='thin', color='000000')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
-    # Se arma UNA hoja DIURNO y una NOCTURNO POR CADA DÍA del mes, desde el día 1 hasta el
-    # día seleccionado (sin días futuros). Cada hoja se llama "DIURNO <día>" / "NOCTURNO <día>".
+    # Dos hojas del DÍA seleccionado: DIURNO y NOCTURNO.
     # DIURNO = Diurno+Tarde+Veinticuatro, NOCTURNO = Nocturno+Veinticuatro.
 
     def render_sheet(ws, turno_val, day_data_all, day_fecha):
@@ -2421,39 +2420,22 @@ def exportar_reporte_asistencia_excel(request):
                 ws.cell(row=current_row, column=col_idx).border = border
             current_row += 1
 
-    # Rango de días: del 1 al día SELECCIONADO (no se generan días futuros del mes).
     try:
         _sel = datetime.date.fromisoformat(str(fecha)[:10]) if fecha else datetime.date.today()
     except (TypeError, ValueError):
         _sel = datetime.date.today()
-    _year, _month, _last_day = _sel.year, _sel.month, _sel.day
+    _fecha_d = _sel.isoformat()
 
+    # Reporte del día (sin filtro de turno; cada hoja filtra su jornada).
+    _day_data = _build_reporte_asistencia_data(
+        fecha=_fecha_d, cliente_id=cliente_id, turno=None, zona=zona, q=q
+    )
     wb = openpyxl.Workbook()
-    _first = True
-    for _d in range(1, _last_day + 1):
-        _fecha_d = datetime.date(_year, _month, _d).isoformat()
-        # Reporte del día (sin filtro de turno; cada hoja filtra su jornada).
-        _day_data = _build_reporte_asistencia_data(
-            fecha=_fecha_d, cliente_id=cliente_id, turno=None, zona=zona, q=q
-        )
-        if _first:
-            ws_d = wb.active
-            ws_d.title = f'DIURNO {_d}'
-            _first = False
-        else:
-            ws_d = wb.create_sheet(f'DIURNO {_d}')
-        render_sheet(ws_d, 'Diurno', _day_data, _fecha_d)
-
-        ws_n = wb.create_sheet(f'NOCTURNO {_d}')
-        render_sheet(ws_n, 'Nocturno', _day_data, _fecha_d)
-
-    # Al abrir el Excel, mostrar la pestaña DIURNO del día seleccionado (la última DIURNO
-    # creada). NO cambia el orden de las pestañas, solo cuál queda activa al abrir; Excel
-    # desplaza la barra de pestañas hasta ella.
-    try:
-        wb.active = wb.worksheets.index(ws_d)
-    except Exception:
-        pass
+    ws = wb.active
+    ws.title = 'DIURNO'
+    render_sheet(ws, 'Diurno', _day_data, _fecha_d)
+    ws_nocturno = wb.create_sheet('NOCTURNO')
+    render_sheet(ws_nocturno, 'Nocturno', _day_data, _fecha_d)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="ASISTENCIA GENERAL {_sel.strftime("%d-%m-%Y")}.xlsx"'
