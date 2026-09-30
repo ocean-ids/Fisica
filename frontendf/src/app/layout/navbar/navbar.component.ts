@@ -29,7 +29,7 @@ export class NavbarComponent implements OnInit {
   themeMode: 'light' | 'dark' = 'light';
   searchText: string = '';
   vacantesCount = 0;
-  puedeVerAsignaciones = false;
+  puedeVerNotificacion = false;
   private vacantesCargando = false;
 
   // Navegación de coincidencias dentro del buscador.
@@ -80,8 +80,10 @@ export class NavbarComponent implements OnInit {
     this.themeMode = storedTheme === 'dark' ? 'dark' : 'light';
     this.applyThemeClass();
 
-    this.puedeVerAsignaciones = this.authService.hasPermission('CoreFisica.view_asignacion');
-    if (this.puedeVerAsignaciones) {
+    // Campanita (puestos sin persona): permiso propio, así se puede ver Asignaciones sin
+    // recibir la notificación.
+    this.puedeVerNotificacion = this.authService.hasPermission('CoreFisica.view_notificacion_vacantes');
+    if (this.puedeVerNotificacion) {
       this.cargarVacantesCount();
       // Refrescar el contador cuando se crean/editan/eliminan asignaciones
       this.asignacionService.asignacionesChanged$.subscribe(() => this.cargarVacantesCount());

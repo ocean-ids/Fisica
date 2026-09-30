@@ -1099,6 +1099,9 @@ class Asignacion(models.Model):
         permissions = [
             ('export_asignacion', 'Can export asignacion'),
             ('import_puestos_asignaciones', 'Can import puestos/asignaciones'),
+            # Campanita del menú superior (puestos sin persona). Separado de view_asignacion
+            # para poder ver Asignaciones sin recibir la notificación.
+            ('view_notificacion_vacantes', 'Can view notificacion de puestos sin persona'),
         ]
 
     def __str__(self):
