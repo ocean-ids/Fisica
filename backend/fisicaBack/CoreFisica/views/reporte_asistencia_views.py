@@ -950,10 +950,11 @@ def _build_reporte_asistencia_data(
                           persona_sale_ref__isnull=False,
                           asignacion__isnull=False)
                   .filter(_in_main | _in_pend))
+        # Por PERSONA (no por puesto): las vacaciones son de la persona. Si al fijo lo movieron
+        # de puesto después de registrarlas, el sacavacaciones debe salir en su puesto actual
+        # (antes se buscaba por el puesto del registro y, al cambiar, seguía saliendo el fijo).
         for _sv in _sv_qs:
-            _pid = getattr(_sv.asignacion, 'puesto_id', None)
-            if _pid:
-                sacavac_map[(_pid, _sv.persona_sale_ref_id)] = _sv.sacavacaciones_ref
+            sacavac_map[_sv.persona_sale_ref_id] = _sv.sacavacaciones_ref
     except Exception:
         sacavac_map = {}
 
@@ -990,7 +991,7 @@ def _build_reporte_asistencia_data(
         # SACAVACACIONES: si el titular esta de vacaciones ese dia, lo cubre el suplente
         # (solo en el reporte). El puesto muestra al suplente; el titular no sale ese dia.
         if p is not None and sacavac_map:
-            _sup = sacavac_map.get((getattr(asig, 'puesto_id', None), p.id))
+            _sup = sacavac_map.get(p.id)
             if _sup is not None:
                 p = _sup
         if p:
