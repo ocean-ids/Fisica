@@ -60,3 +60,7 @@ tfoot th {
 .ev-oculto {
   opacity: 0;
 }
+/* Un solo día: el campo mide lo de una fecha; al elegir un rango se agranda. */
+.ev-rango.ev-rango-dia {
+  width: 115px;
+}

@@ -3,7 +3,7 @@
     <h3 class="text-center m-0 flex-grow-1">Eventuales</h3>
     <div class="d-grid d-sm-flex gap-2 align-items-center">
       <!-- Rango de fechas (Creado): se eligen Desde y Hasta en un solo calendario. -->
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ev-rango" title="Elige el día inicial y el día final">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ev-rango" [class.ev-rango-dia]="esUnDia" title="Elige el día inicial y el día final">
         <!-- Un solo día: se muestra solo esa fecha (ej. "30/9/2026"). Si se elige un rango en
              el calendario, se muestran las dos fechas. -->
         <span *ngIf="esUnDia" class="ev-mes" (click)="rangoPicker.open()">{{ diaTexto }}</span>
