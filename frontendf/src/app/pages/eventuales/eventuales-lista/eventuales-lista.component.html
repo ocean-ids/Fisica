@@ -2,10 +2,17 @@
   <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2 mb-3">
     <h3 class="text-center m-0 flex-grow-1">Eventuales</h3>
     <div class="d-grid d-sm-flex gap-2 align-items-center">
-      <input type="date" lang="es" class="form-control form-control-sm w-auto"
-             [(ngModel)]="fechaValor" (change)="cargar()" title="Día que se muestra">
+      <!-- Rango de fechas (Creado): se eligen Desde y Hasta en un solo calendario. -->
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ev-rango" title="Elige el día inicial y el día final">
+        <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="rangoPicker">
+          <input matStartDate formControlName="start">
+          <input matEndDate formControlName="end" (dateChange)="aplicarRango()">
+        </mat-date-range-input>
+        <mat-datepicker-toggle matIconSuffix [for]="rangoPicker"></mat-datepicker-toggle>
+        <mat-date-range-picker #rangoPicker (closed)="aplicarRango()"></mat-date-range-picker>
+      </mat-form-field>
       <button type="button" class="btn btn-success btn-sm" (click)="descargarExcel()"
-              title="Descargar en Excel los datos bancarios de los eventuales del día (con la búsqueda aplicada)">
+              title="Descargar en Excel los datos bancarios de los eventuales del rango (con la búsqueda aplicada)">
         <i class="bi bi-file-earmark-excel"></i> Descargar Excel
       </button>
       <button *ngIf="puedeCrear" type="button" class="btn btn-primary btn-sm" (click)="nuevo()">
@@ -76,7 +83,7 @@
             </td>
           </tr>
           <tr *ngIf="!filasFiltradas.length">
-            <td colspan="19" class="text-muted">Sin registros en este día.</td>
+            <td colspan="19" class="text-muted">Sin registros en estas fechas.</td>
           </tr>
         </ng-container>
       </tbody>

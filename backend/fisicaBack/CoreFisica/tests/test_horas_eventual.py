@@ -257,12 +257,22 @@ class HorasEventualTests(TestCase):
             'NombreCompleto', 'identificacion', 'Banco', 'TipoCuentaBancaria',
             'NumeroCuentaBancaria', 'BancoNombre', 'Creado'])
         self.assertEqual(ws.max_row, 3)
-        juan = [c.value for c in ws[2]]
+        # Ordenados por nombre: LOPEZ ANA antes que PEREZ JUAN.
+        self.assertEqual([c.value for c in ws[2]][:3], ['LOPEZ ANA', '0922222222', None])
+        juan = [c.value for c in ws[3]]
         self.assertEqual(juan[:6], ['PEREZ JUAN', '0911111111', '10', 'AHORROS', '0037794584', 'PICHINCHA'])
         self.assertEqual(juan[6], '29/09/2026')      # Creado = fecha del servicio
-        self.assertEqual([c.value for c in ws[3]][:3], ['LOPEZ ANA', '0922222222', None])
         # Con búsqueda: solo quien coincide.
         r = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29&q=lopez', **self._auth())
         ws = load_workbook(_io.BytesIO(r.content)).active
         self.assertEqual(ws.max_row, 2)
         self.assertEqual(ws.cell(2, 1).value, 'LOPEZ ANA')
+
+    def test_rango_de_fechas_lista_y_excel(self):
+        for dia in ('2026-09-21', '2026-09-22', '2026-09-25', '2026-09-29', '2026-09-30'):
+            self._crear(fecha=dia, horas=8)
+        lista = self.client.get('/api/horas-eventual/?desde=2026-09-22&hasta=2026-09-29', **self._auth()).json()
+        self.assertEqual(sorted(f['fecha'] for f in lista), ['2026-09-22', '2026-09-25', '2026-09-29'])
+        r = self.client.get('/api/horas-eventual/exportar-excel/?desde=2026-09-22&hasta=2026-09-29', **self._auth())
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('EVENTUALES 22-09-2026 AL 29-09-2026.xlsx', r['Content-Disposition'])

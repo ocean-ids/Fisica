@@ -19,3 +19,28 @@ tfoot th {
 .ult-mod .btn-link {
   font-size: 12px;
 }
+
+/* Selector de rango de fechas en la cabecera: mismo tamaño que un input form-control-sm,
+   sin título (solo se ven las fechas y el calendario). */
+.ev-rango {
+  width: 230px;
+  --mat-form-field-container-height: 31px;
+  --mat-form-field-container-vertical-padding: 4px;
+  --mat-form-field-container-text-size: 14px;
+  --mat-form-field-outlined-container-shape: 6px;
+}
+.ev-rango ::ng-deep .mat-mdc-form-field-infix {
+  min-height: 31px;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+.ev-rango ::ng-deep .mat-mdc-form-field-icon-suffix .mat-mdc-icon-button {
+  width: 30px;
+  height: 30px;
+  padding: 3px;
+  --mat-icon-button-state-layer-size: 30px;
+}
+.ev-rango ::ng-deep .mat-mdc-form-field-icon-suffix .mat-mdc-icon-button svg {
+  width: 20px;
+  height: 20px;
+}

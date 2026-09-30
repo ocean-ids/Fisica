@@ -1,6 +1,9 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
@@ -15,14 +18,21 @@ import { EventualHistorialDialogComponent } from '../eventual-historial-dialog/e
 @Component({
   selector: 'app-eventuales-lista',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatDatepickerModule],
   templateUrl: './eventuales-lista.component.html',
   styleUrl: './eventuales-lista.component.css',
 })
 export class EventualesListaComponent implements OnInit, OnDestroy {
   filas: HorasEventual[] = [];
   loading = false;
-  fechaValor = '';      // YYYY-MM-DD (día que se está viendo)
+  fechaDesde = '';      // YYYY-MM-DD: rango de fechas que se está viendo (Creado)
+  fechaHasta = '';
+  // Selector de rango (un solo calendario): start = Desde, end = Hasta.
+  rangoForm = new FormGroup({
+    start: new FormControl<Date | null>(null),
+    end: new FormControl<Date | null>(null),
+  });
+  private rangoSub?: Subscription;
   texto = '';           // búsqueda: viene del buscador GENERAL (barra superior)
   private catalogo: CatalogoHorasEventual | null = null;
   private filterSub?: Subscription;
@@ -41,7 +51,11 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const d = new Date();
-    this.fechaValor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    // Por defecto: el día de hoy (Desde = Hasta = hoy).
+    this.fechaDesde = this.fechaHasta = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    this.ponerRango(this.fechaDesde, this.fechaHasta);
+    // Al elegir el rango: se carga cuando están las dos fechas (Desde y Hasta).
+    this.rangoSub = this.rangoForm.valueChanges.subscribe(() => this.aplicarRango());
     this.cargar();
     // El catálogo se carga una vez y se pasa al formulario (abre más rápido).
     this.srv.catalogo().subscribe({ next: (c) => (this.catalogo = c), error: () => (this.catalogo = null) });
@@ -63,15 +77,49 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.filterSub?.unsubscribe();
+    this.rangoSub?.unsubscribe();
   }
 
+  private aISO(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  // Pone el rango en el selector sin disparar la carga (YYYY-MM-DD).
+  private ponerRango(desde: string, hasta: string): void {
+    const aFecha = (v: string) => { const [y, m, d] = v.split('-').map(Number); return new Date(y, m - 1, d); };
+    this.rangoForm.setValue({ start: aFecha(desde), end: aFecha(hasta) }, { emitEvent: false });
+  }
+
+  // Toma el rango elegido (Desde y Hasta) y carga los registros de esos días. Se llama al
+  // cambiar las fechas y al cerrar el calendario; si el rango no cambió, no recarga.
+  aplicarRango(): void {
+    const v = this.rangoForm.value;
+    if (!v.start || !v.end) { return; }
+    const desde = this.aISO(v.start);
+    const hasta = this.aISO(v.end);
+    if (desde === this.fechaDesde && hasta === this.fechaHasta && this.filasCargadas) { return; }
+    this.fechaDesde = desde;
+    this.fechaHasta = hasta;
+    this.cargar();
+  }
+
+  private filasCargadas = false;
+
   cargar(): void {
-    // Registros del DÍA elegido (igual que Reporte de Asistencia / Asignaciones).
-    const dia = this.fechaValor;
-    if (!dia) { this.filas = []; return; }
+    // Registros entre Desde y Hasta (ambos incluidos).
+    if (!this.fechaDesde || !this.fechaHasta) { this.filas = []; return; }
     this.loading = true;
-    this.srv.listar(dia, dia).subscribe({
-      next: (rows) => { this.filas = rows || []; this.loading = false; },
+    this.srv.listar(this.fechaDesde, this.fechaHasta).subscribe({
+      next: (rows) => {
+        // Ordenados por nombre (apellidos y nombres) y, del mismo eventual, por fecha:
+        // así los registros de una persona salen uno debajo del otro.
+        this.filas = (rows || []).slice().sort((a, b) =>
+          (a.persona || '').localeCompare(b.persona || '', 'es', { sensitivity: 'base' })
+          || String(a.fecha || '').localeCompare(String(b.fecha || ''))
+          || (Number(a.id) || 0) - (Number(b.id) || 0));
+        this.filasCargadas = true;
+        this.loading = false;
+      },
       error: () => { this.filas = []; this.loading = false; },
     });
   }
@@ -116,18 +164,21 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
     return (y && m && d) ? `${d}/${m}/${y}` : String(v);
   }
 
-  // Excel del día que se está viendo, con la búsqueda del buscador general aplicada.
+  // Excel del rango que se está viendo, con la búsqueda del buscador general aplicada.
   descargarExcel(): void {
-    if (!this.fechaValor) { return; }
-    const params: any = { fecha: this.fechaValor };
+    if (!this.fechaDesde || !this.fechaHasta) { return; }
+    const params: any = { desde: this.fechaDesde, hasta: this.fechaHasta };
     if (this.texto.trim()) { params.q = this.texto.trim(); }
-    const [y, m, d] = this.fechaValor.split('-');
+    const dma = (v: string) => v.split('-').reverse().join('-');
+    const nombre = this.fechaDesde === this.fechaHasta
+      ? `EVENTUALES ${dma(this.fechaDesde)}.xlsx`
+      : `EVENTUALES ${dma(this.fechaDesde)} AL ${dma(this.fechaHasta)}.xlsx`;
     this.srv.exportarExcel(params).subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `EVENTUALES ${d}-${m}-${y}.xlsx`;
+        a.download = nombre;
         a.click();
         window.URL.revokeObjectURL(url);
       },
@@ -148,12 +199,15 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
       maxWidth: '95vw',
       autoFocus: false,
       // Al crear, el formulario propone el día que se está viendo.
-      data: { row: row || undefined, catalogo: this.catalogo, fechaDefecto: this.fechaValor },
+      data: { row: row || undefined, catalogo: this.catalogo, fechaDefecto: this.fechaHasta },
     });
     ref.afterClosed().subscribe((res: HorasEventual | undefined) => {
       if (!res) { return; }
-      // Si la fecha del servicio es otro día, la lista pasa a ese día (así se ve el registro).
-      if (res.fecha && res.fecha !== this.fechaValor) { this.fechaValor = res.fecha; }
+      // Si la fecha quedó fuera del rango, la lista pasa a ese día (así se ve el registro).
+      if (res.fecha && (res.fecha < this.fechaDesde || res.fecha > this.fechaHasta)) {
+        this.fechaDesde = this.fechaHasta = res.fecha;
+        this.ponerRango(res.fecha, res.fecha);
+      }
       this.cargar();
     });
   }

@@ -502,7 +502,7 @@ def exportar_excel_horas_eventual(request):
         filas = [f for f in filas if _ok(f)]
     ids_ok = {f['id'] for f in filas}
 
-    # Una fila por EVENTUAL (sus datos bancarios), en el orden en que se registraron.
+    # Una fila por EVENTUAL (sus datos bancarios).
     personas = {}
     for h in registros:
         if h.id in ids_ok and h.persona_id and h.persona_id not in personas:
@@ -524,7 +524,8 @@ def exportar_excel_horas_eventual(request):
         cell.border = borde
         ws.column_dimensions[get_column_letter(c)].width = ancho
     fila = 2
-    for h in personas.values():
+    # Ordenados por nombre (apellidos y nombres), igual que la tabla.
+    for h in sorted(personas.values(), key=lambda x: _norm_busqueda(_nombre_persona(x.persona))):
         banco, tipo, numero = _cuenta(h.persona)
         # Creado = fecha del servicio.
         creado = h.fecha.strftime('%d/%m/%Y') if h.fecha else ''
