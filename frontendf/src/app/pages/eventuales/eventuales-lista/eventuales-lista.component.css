@@ -23,7 +23,7 @@ tfoot th {
 /* Selector de rango de fechas en la cabecera: mismo tamaño que un input form-control-sm,
    sin título (solo se ven las fechas y el calendario). */
 .ev-rango {
-  width: 230px;
+  width: 205px;
   --mat-form-field-container-height: 31px;
   --mat-form-field-container-vertical-padding: 4px;
   --mat-form-field-container-text-size: 14px;
