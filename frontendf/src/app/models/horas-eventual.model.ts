@@ -6,6 +6,9 @@ export interface HorasEventual {
   persona?: string;           // "APELLIDOS NOMBRES"
   cedula?: string;
   banco?: string;             // solo lectura (sale de los datos de la persona)
+  banco_codigo?: string;      // código del banco (10 PICHINCHA, 17 GUAYAQUIL, 36 PRODUBANCO)
+  tipo_cuenta?: string;
+  numero_cuenta?: string;
   // Cliente / instalación / puesto: de la lista (id) o escritos a mano (texto, solo en este registro).
   cliente_id?: number | null;
   cliente_texto?: string;

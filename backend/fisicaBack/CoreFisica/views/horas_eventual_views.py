@@ -88,6 +88,7 @@ def _nombre_persona(p):
 
 
 def _serialize(h):
+    banco, tipo_cuenta, numero_cuenta = _cuenta(h.persona) if h.persona else ('', '', '')
     return {
         'id': h.id,
         'fecha': h.fecha.isoformat() if h.fecha else None,
@@ -95,6 +96,10 @@ def _serialize(h):
         'persona': _nombre_persona(h.persona),
         'cedula': getattr(h.persona, 'cedula', '') or '',
         'banco': _banco(h.persona),
+        # Datos bancarios (mismos nombres que el archivo del banco).
+        'banco_codigo': CODIGO_BANCO.get(banco, ''),
+        'tipo_cuenta': tipo_cuenta,
+        'numero_cuenta': numero_cuenta,
         'cliente_id': h.cliente_id,
         'cliente': _nombre_cliente(h),
         'instalacion_id': h.instalacion_id,
@@ -462,7 +467,7 @@ def _norm_busqueda(s):
 @permission_classes([IsAuthenticated])
 def exportar_excel_horas_eventual(request):
     """Descargable Excel de Eventuales: datos bancarios de cada eventual del día (una fila por
-    persona): Apellidos y Nombres, Cédula, Banco (código), TipoCuentaBancaria,
+    persona): NombreCompleto, identificacion, Banco (código), TipoCuentaBancaria,
     NumeroCuentaBancaria, BancoNombre y Creado (cuándo se registró).
     Filtros: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (o ?fecha=) y ?q= (búsqueda de la pantalla)."""
     if not request.user.has_perm('CoreFisica.view_horaseventual'):
@@ -503,7 +508,8 @@ def exportar_excel_horas_eventual(request):
     ws = wb.active
     ws.title = 'EVENTUALES'
     columnas = [
-        ('Apellidos y Nombres', 38), ('Cédula', 14), ('Banco', 8), ('TipoCuentaBancaria', 20),
+        # Mismos nombres y orden que el archivo del banco.
+        ('NombreCompleto', 38), ('identificacion', 14), ('Banco', 8), ('TipoCuentaBancaria', 20),
         ('NumeroCuentaBancaria', 22), ('BancoNombre', 18), ('Creado', 18),
     ]
     borde = Border(*(Side(style='thin', color='999999'),) * 4)

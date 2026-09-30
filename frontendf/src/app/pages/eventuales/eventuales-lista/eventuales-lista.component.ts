@@ -85,7 +85,7 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
     const tokens = this.norm(this.texto).split(/\s+/).filter(Boolean);
     if (!tokens.length) { return this.filas; }
     return this.filas.filter(f => {
-      const h = this.norm([f.persona, f.cedula, f.banco, f.cliente, f.instalacion, f.puesto].join(' '));
+      const h = this.norm([f.persona, f.cedula, f.banco, f.numero_cuenta, f.cliente, f.instalacion, f.puesto].join(' '));
       return tokens.every(t => h.includes(t));
     });
   }

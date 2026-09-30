@@ -242,6 +242,9 @@ class HorasEventualTests(TestCase):
         od.tipo_cuenta, od.numero_cuenta = 'AHORROS', '0037794584'
         od.save()
         self._crear(horas_solicitadas=8, horas=12)                  # JUAN PEREZ
+        fila = self.client.get('/api/horas-eventual/?desde=2026-09-29&hasta=2026-09-29', **self._auth()).json()[0]
+        self.assertEqual((fila['banco_codigo'], fila['tipo_cuenta'], fila['numero_cuenta'], fila['banco']),
+                         ('10', 'AHORROS', '0037794584', 'PICHINCHA'))
         self._crear(horas=4)                                        # JUAN otra vez: una sola fila
         self._crear(persona_id=self.ev_sin_banco.id, horas=8)       # ANA LOPEZ, sin banco
         self._crear(fecha='2026-09-30', horas=8)                    # otro día: no sale
@@ -250,7 +253,7 @@ class HorasEventualTests(TestCase):
         self.assertIn('EVENTUALES 29-09-2026.xlsx', r['Content-Disposition'])
         ws = load_workbook(_io.BytesIO(r.content)).active
         self.assertEqual([c.value for c in ws[1]], [
-            'Apellidos y Nombres', 'Cédula', 'Banco', 'TipoCuentaBancaria',
+            'NombreCompleto', 'identificacion', 'Banco', 'TipoCuentaBancaria',
             'NumeroCuentaBancaria', 'BancoNombre', 'Creado'])
         self.assertEqual(ws.max_row, 3)
         juan = [c.value for c in ws[2]]
