@@ -210,7 +210,8 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
     });
   }
 
-  nuevo(): void { this.abrirDialog(null); }
+  // Solo se crea con UN día seleccionado (con un rango no se sabe en qué fecha sería).
+  nuevo(): void { if (this.esUnDia) { this.abrirDialog(null); } }
 
   editar(f: HorasEventual): void { this.abrirDialog(f); }
 

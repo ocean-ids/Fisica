@@ -18,7 +18,9 @@
               title="Descargar en Excel los datos bancarios de los eventuales del rango (con la búsqueda aplicada)">
         <i class="bi bi-file-earmark-excel"></i> Descargar Excel
       </button>
-      <button *ngIf="puedeCrear" type="button" class="btn btn-primary btn-sm" (click)="nuevo()">
+      <button *ngIf="puedeCrear" type="button" class="btn btn-primary btn-sm" (click)="nuevo()"
+              [disabled]="!esUnDia"
+              [attr.title]="esUnDia ? 'Nuevo registro' : 'Elige un solo día para crear un registro (hay un rango de fechas seleccionado)'">
         <i class="bi bi-plus-lg"></i> Nuevo registro
       </button>
     </div>
