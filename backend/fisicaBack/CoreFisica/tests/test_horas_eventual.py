@@ -69,6 +69,7 @@ class HorasEventualTests(TestCase):
         self.assertIn(self.ev.id, evs)
         self.assertNotIn(self.fijo.id, evs)                       # un FIJO no sale
         self.assertEqual(evs[self.ev.id]['banco'], 'PICHINCHA')
+        self.assertEqual(evs[self.ev.id]['banco_codigo'], '10')
         self.assertEqual(evs[self.ev.id]['tipo'], 'EVENTUAL')
         self.assertEqual(evs[self.ev_sin_banco.id]['banco'], '')  # sin banco -> vacío
         self.assertEqual(len(r.json()['tarifas']), 5)
@@ -258,7 +259,7 @@ class HorasEventualTests(TestCase):
         self.assertEqual(ws.max_row, 3)
         juan = [c.value for c in ws[2]]
         self.assertEqual(juan[:6], ['PEREZ JUAN', '0911111111', '10', 'AHORROS', '0037794584', 'PICHINCHA'])
-        self.assertRegex(juan[6], r'^\d{2}/\d{2}/\d{4} \d{2}:\d{2}$')
+        self.assertEqual(juan[6], '29/09/2026')      # Creado = fecha del servicio
         self.assertEqual([c.value for c in ws[3]][:3], ['LOPEZ ANA', '0922222222', None])
         # Con búsqueda: solo quien coincide.
         r = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29&q=lopez', **self._auth())

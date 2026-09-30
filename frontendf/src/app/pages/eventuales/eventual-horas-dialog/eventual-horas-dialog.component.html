@@ -5,7 +5,7 @@
 <mat-dialog-content class="ev-form  ">
   <div *ngIf="cargando" class="text-muted ev-nota">Cargando datos…</div>
 
-  <!-- Fila 1: Cliente | Instalación -->
+  <!-- Fila 1: Cliente | Instalación | Nombre del puesto -->
   <div class="ev-row m-2">
     <mat-form-field class="" appearance="outline">
       <mat-label>Cliente</mat-label>
@@ -35,10 +35,6 @@
       </mat-autocomplete>
       <mat-hint *ngIf="instalacionLibre" class="ev-libre">No está en la lista: se guardará tal como lo escribiste</mat-hint>
     </mat-form-field>
-  </div>
-
-  <!-- Fila 2: Nombre del puesto | Apellidos y nombres del eventual -->
-  <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Nombre del puesto</mat-label>
       <input type="text" matInput required [formControl]="puestoCtrl" [matAutocomplete]="autoPue"
@@ -54,6 +50,10 @@
       </mat-autocomplete>
       <mat-hint *ngIf="puestoLibre" class="ev-libre">No está en la lista: se guardará tal como lo escribiste</mat-hint>
     </mat-form-field>
+  </div>
+
+  <!-- Fila 2: Eventual | BancoNombre | Banco (datos bancarios: solo lectura, salen de su ficha de Persona) -->
+  <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Apellidos y Nombres del eventual</mat-label>
       <input type="text" matInput required [formControl]="eventualCtrl" [matAutocomplete]="autoEv"
@@ -70,16 +70,28 @@
         <mat-option *ngIf="!eventualesFiltrados.length" disabled>Sin eventuales que coincidan</mat-option>
       </mat-autocomplete>
     </mat-form-field>
-  </div>
-
-  <!-- Fila 3: Nombre del banco (solo lectura) | Fecha del servicio -->
-  <div class="ev-row m-2">
     <mat-form-field appearance="outline">
-      <mat-label>Nombre del banco</mat-label>
+      <mat-label>BancoNombre</mat-label>
       <input matInput readonly [value]="banco" placeholder="Se toma de los datos del eventual">
     </mat-form-field>
     <mat-form-field appearance="outline">
-      <mat-label>Fecha del servicio</mat-label>
+      <mat-label>Banco</mat-label>
+      <input matInput readonly [value]="bancoCodigo" placeholder="Código del banco">
+    </mat-form-field>
+  </div>
+
+  <!-- Fila 3: TipoCuentaBancaria | NumeroCuentaBancaria | Creado (= fecha del servicio) -->
+  <div class="ev-row m-2">
+    <mat-form-field appearance="outline">
+      <mat-label>TipoCuentaBancaria</mat-label>
+      <input matInput readonly [value]="tipoCuenta">
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>NumeroCuentaBancaria</mat-label>
+      <input matInput readonly [value]="numeroCuenta">
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Creado</mat-label>
       <input matInput required [matDatepicker]="pickerServicio" [(ngModel)]="fechaServicio"
              placeholder="dd/mm/aaaa" (click)="pickerServicio.open()">
       <mat-datepicker-toggle matIconSuffix [for]="pickerServicio"></mat-datepicker-toggle>
@@ -87,7 +99,7 @@
     </mat-form-field>
   </div>
 
-  <!-- Fila 4: Horas solicitadas | Horas trabajadas -->
+  <!-- Fila 4: Horas solicitadas | Horas trabajadas | Rango de horas (se marca solo) -->
   <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Horas solicitadas</mat-label>
@@ -97,10 +109,6 @@
       <mat-label>Horas trabajadas</mat-label>
       <input matInput type="number" required min="1" max="24" step="1" [(ngModel)]="horas" (ngModelChange)="onHorasChange()" placeholder="Ej. 12">
     </mat-form-field>
-  </div>
-
-  <!-- Fila 5: Rango de horas (se marca solo) | Horas adicionales -->
-  <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Rango de horas</mat-label>
       <mat-select [(ngModel)]="tarifaSel" (ngModelChange)="onRangoChange()" placeholder="Se marca según las horas">
@@ -113,6 +121,10 @@
         Cambiado a mano · por las horas sería {{ tramoAuto ? (tramoAuto.horas_min + '-' + tramoAuto.horas_max + ' h') : 'ninguno' }}
       </mat-hint>
     </mat-form-field>
+  </div>
+
+  <!-- Fila 5: Horas adicionales | Bonificación (opcional) | Valor calculado (sugerido; se puede corregir) -->
+  <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Horas adicionales</mat-label>
       <input matInput type="number" min="0" max="24" step="1" [ngModel]="horasAdic"
@@ -120,10 +132,6 @@
       <mat-hint *ngIf="!adicManual">Trabajadas − solicitadas</mat-hint>
       <mat-hint *ngIf="adicManual">Cambiado a mano · calculado {{ horasAdicionales }}</mat-hint>
     </mat-form-field>
-  </div>
-
-  <!-- Fila 6: Bonificación (opcional) | Valor calculado (sugerido; se puede corregir) -->
-  <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Bonificación</mat-label>
       <input matInput type="number" min="0" step="0.01" [(ngModel)]="bonificacion" (ngModelChange)="onBonificacionCambio()" placeholder="Opcional">

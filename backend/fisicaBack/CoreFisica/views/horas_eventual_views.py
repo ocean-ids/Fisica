@@ -12,7 +12,6 @@
 import datetime
 from decimal import Decimal
 
-from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -286,7 +285,7 @@ def _guardar_historial(h, accion, user):
 
 # Campos que se comparan entre versiones para mostrar "qué cambió".
 _CAMPOS_HISTORIAL = [
-    ('fecha_servicio', 'Fecha del servicio'),
+    ('fecha_servicio', 'Creado'),
     ('cliente', 'Cliente'),
     ('instalacion', 'Instalación'),
     ('puesto', 'Nombre del puesto'),
@@ -334,9 +333,13 @@ def catalogo_horas_eventual(request):
         {'id': p.id, 'nombre': p.nombre or '', 'instalacion_id': p.instalacion_id}
         for p in Puesto.objects.filter(activo=True).order_by('nombre')
     ]
+    def _ev(p):
+        banco, tipo_cuenta, numero_cuenta = _cuenta(p)
+        return {'id': p.id, 'nombre': _nombre_persona(p), 'cedula': p.cedula or '', 'banco': _banco(p),
+                'banco_codigo': CODIGO_BANCO.get(banco, ''), 'tipo_cuenta': tipo_cuenta,
+                'numero_cuenta': numero_cuenta, 'tipo': p.tipo or ''}
     eventuales = [
-        {'id': p.id, 'nombre': _nombre_persona(p), 'cedula': p.cedula or '', 'banco': _banco(p),
-         'tipo': p.tipo or ''}
+        _ev(p)
         for p in (Persona.objects.filter(tipo='EVENTUAL', is_active=True)
                   .select_related('otros_datos').order_by('apellidos', 'nombres'))
     ]
@@ -468,7 +471,7 @@ def _norm_busqueda(s):
 def exportar_excel_horas_eventual(request):
     """Descargable Excel de Eventuales: datos bancarios de cada eventual del día (una fila por
     persona): NombreCompleto, identificacion, Banco (código), TipoCuentaBancaria,
-    NumeroCuentaBancaria, BancoNombre y Creado (cuándo se registró).
+    NumeroCuentaBancaria, BancoNombre y Creado (fecha del servicio).
     Filtros: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (o ?fecha=) y ?q= (búsqueda de la pantalla)."""
     if not request.user.has_perm('CoreFisica.view_horaseventual'):
         return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
@@ -523,7 +526,8 @@ def exportar_excel_horas_eventual(request):
     fila = 2
     for h in personas.values():
         banco, tipo, numero = _cuenta(h.persona)
-        creado = timezone.localtime(h.creado_en).strftime('%d/%m/%Y %H:%M') if h.creado_en else ''
+        # Creado = fecha del servicio.
+        creado = h.fecha.strftime('%d/%m/%Y') if h.fecha else ''
         valores = [_nombre_persona(h.persona), h.persona.cedula or '', CODIGO_BANCO.get(banco, ''),
                    tipo, numero, banco, creado]
         for c, v in enumerate(valores, start=1):

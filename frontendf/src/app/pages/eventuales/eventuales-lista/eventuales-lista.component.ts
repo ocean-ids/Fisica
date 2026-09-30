@@ -144,7 +144,7 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
 
   private abrirDialog(row: HorasEventual | null): void {
     const ref = this.dialog.open(EventualHorasDialogComponent, {
-      width: '760px',
+      width: '1000px',
       maxWidth: '95vw',
       autoFocus: false,
       // Al crear, el formulario propone el día que se está viendo.

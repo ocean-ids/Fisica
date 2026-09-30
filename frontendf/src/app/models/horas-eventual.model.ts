@@ -63,6 +63,7 @@ export interface CatalogoHorasEventual {
   clientes: Array<{ id: number; nombre: string }>;
   instalaciones: Array<{ id: number; nombre: string; cliente_id: number }>;
   puestos: Array<{ id: number; nombre: string; instalacion_id: number }>;
-  eventuales: Array<{ id: number; nombre: string; cedula: string; banco: string; tipo?: string }>;
+  eventuales: Array<{ id: number; nombre: string; cedula: string; banco: string; tipo?: string;
+    banco_codigo?: string; tipo_cuenta?: string; numero_cuenta?: string }>;
   tarifas: Array<{ id: number; horas_min: number; horas_max: number; valor: number }>;   // tarifa "Eventuales"
 }

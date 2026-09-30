@@ -29,8 +29,7 @@
           <th>Tipo<wbr>Cuenta<wbr>Bancaria</th>
           <th>Numero<wbr>Cuenta<wbr>Bancaria</th>
           <th>Banco<wbr>Nombre</th>
-          <th>Creado</th>
-          <th>Fecha del Servicio</th>
+          <th>Creado</th>  <!-- = fecha del servicio -->
           <th>Horas Solicitadas</th>
           <th>Horas Trabajadas</th>
           <th>Rango de Horas</th>
@@ -43,7 +42,7 @@
       </thead>
       <tbody>
         <tr *ngIf="loading">
-          <td colspan="20" class="text-muted">Cargando…</td>
+          <td colspan="19" class="text-muted">Cargando…</td>
         </tr>
         <ng-container *ngIf="!loading">
           <tr *ngFor="let f of filasFiltradas; let i = index">
@@ -57,7 +56,6 @@
             <td>{{ f.tipo_cuenta || '—' }}</td>
             <td>{{ f.numero_cuenta || '—' }}</td>
             <td>{{ f.banco || '—' }}</td>
-            <td>{{ f.creado_en ? (f.creado_en | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
             <td>{{ fechaDMA(f.fecha) }}</td>
             <td>{{ f.horas_solicitadas || 0 }}</td>
             <td class="fw-semibold">{{ f.horas }}</td>
@@ -78,13 +76,13 @@
             </td>
           </tr>
           <tr *ngIf="!filasFiltradas.length">
-            <td colspan="20" class="text-muted">Sin registros en este día.</td>
+            <td colspan="19" class="text-muted">Sin registros en este día.</td>
           </tr>
         </ng-container>
       </tbody>
       <tfoot *ngIf="!loading && filasFiltradas.length">
         <tr>
-          <th colspan="12" class="text-end">Totales</th>
+          <th colspan="11" class="text-end">Totales</th>
           <th>{{ totalSolicitadas }}</th>
           <th>{{ totalHoras }}</th>
           <th></th>

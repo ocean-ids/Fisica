@@ -18,7 +18,7 @@
           <th>Instalación</th>
           <th>Nombre del Puesto</th>
           <th>Eventual</th>
-          <th>Fecha del Servicio</th>
+          <th>Creado</th>
           <th>Horas Solic.</th>
           <th>Horas Trab.</th>
           <th>Rango</th>
@@ -38,7 +38,7 @@
           <td [class.hist-cambio]="cambio(it, 'Instalación')">{{ it.instalacion }}</td>
           <td [class.hist-cambio]="cambio(it, 'Nombre del puesto')">{{ it.puesto || '—' }}</td>
           <td [class.hist-cambio]="cambio(it, 'Eventual')">{{ it.persona }}</td>
-          <td [class.hist-cambio]="cambio(it, 'Fecha del servicio')">{{ fechaDMA(it.fecha_servicio) }}</td>
+          <td [class.hist-cambio]="cambio(it, 'Creado')">{{ fechaDMA(it.fecha_servicio) }}</td>
           <td [class.hist-cambio]="cambio(it, 'Horas solicitadas')">{{ it.horas_solicitadas ?? 0 }}</td>
           <td [class.hist-cambio]="cambio(it, 'Horas trabajadas')">{{ it.horas }}</td>
           <td [class.hist-cambio]="cambio(it, 'Rango de horas')">{{ it.rango_horas || '—' }}</td>

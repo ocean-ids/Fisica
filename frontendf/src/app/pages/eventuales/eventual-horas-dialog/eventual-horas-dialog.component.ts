@@ -108,6 +108,9 @@ export class EventualHorasDialogComponent implements OnInit {
 
   // Banco: solo lectura, sale de los datos del eventual (vacío si no lo tiene).
   get banco(): string { return this.eventualSel?.['banco'] || ''; }
+  get bancoCodigo(): string { return this.eventualSel?.['banco_codigo'] || ''; }
+  get tipoCuenta(): string { return this.eventualSel?.['tipo_cuenta'] || ''; }
+  get numeroCuenta(): string { return this.eventualSel?.['numero_cuenta'] || ''; }
 
   // ---------- Cálculos (solo lectura; el servidor los recalcula al guardar) ----------
   // Horas adicionales sugeridas = trabajadas - solicitadas (mínimo 0).
@@ -283,7 +286,8 @@ export class EventualHorasDialogComponent implements OnInit {
     const buscar = (lista: any[], id: any, respaldo: any) =>
       lista.find(x => x.id === id) || (id ? respaldo : null);
     const ev = buscar(this.catalogo.eventuales, row.persona_id,
-      { id: row.persona_id, nombre: row.persona || '', cedula: row.cedula || '', banco: row.banco || '' });
+      { id: row.persona_id, nombre: row.persona || '', cedula: row.cedula || '', banco: row.banco || '',
+        banco_codigo: row.banco_codigo || '', tipo_cuenta: row.tipo_cuenta || '', numero_cuenta: row.numero_cuenta || '' });
     const cli = buscar(this.catalogo.clientes, row.cliente_id, { id: row.cliente_id, nombre: row.cliente || '' });
     const inst = buscar(this.catalogo.instalaciones, row.instalacion_id,
       { id: row.instalacion_id, nombre: row.instalacion || '', cliente_id: row.cliente_id });
@@ -320,7 +324,7 @@ export class EventualHorasDialogComponent implements OnInit {
     const cli = this.clienteSel;
     const inst = this.instalacionSel;
     const pue = this.puestoSel;
-    if (!this.fechaServicio) { return this.aviso('Indica la fecha del servicio.'); }
+    if (!this.fechaServicio) { return this.aviso('Indica la fecha en Creado.'); }
     if (!ev) { return this.aviso('Elige el eventual de la lista.'); }
     // Cliente / instalación / puesto: de la lista o escritos a mano (no se crean en el sistema).
     const cliTxt = cli ? '' : this.libre(this.clienteCtrl);
