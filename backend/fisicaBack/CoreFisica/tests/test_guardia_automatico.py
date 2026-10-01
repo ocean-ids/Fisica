@@ -120,3 +120,38 @@ class GuardiaAutomaticoTests(TestCase):
         ad = self._filas(seccion='ADICIONALES')
         self.assertEqual(ad.count(), 1)
         self.assertEqual(ad.first().persona_ref_id, self.reemplazo.id)
+
+    # ---- Cada día es independiente: guardar un día NO borra las filas de otro día ----
+    def test_guardar_otro_dia_no_borra_las_filas_de_un_dia_anterior(self):
+        self._guardar_asistencia(estado_asistencia='FALTO')                                   # 29
+        self.assertEqual(self._filas(seccion='FALTOS').count(), 1)
+        self._guardar_asistencia(estado_asistencia='ASISTIO', fecha='2026-09-30')              # 30
+        # El falto del 29 sigue ahí aunque se guardó otro día de la misma asignación.
+        self.assertEqual(self._filas(seccion='FALTOS').count(), 1)
+        self.assertEqual(ReporteGuardia.objects.filter(fecha=datetime.date(2026, 9, 30)).count(), 0)
+
+    def test_regenerar_un_dia_pasado_usa_el_historial_de_ese_dia(self):
+        self._guardar_asistencia(estado_asistencia='FALTO')                                   # 29
+        self._guardar_asistencia(estado_asistencia='ASISTIO', fecha='2026-09-30')              # 30 (la asistencia "avanzó")
+        self._filas().delete()                                                                 # el 29 quedó sin filas (datos viejos)
+        self.assertEqual(ReporteAsistencia.objects.get(asignacion=self.asig).fecha_reporte,
+                         datetime.date(2026, 9, 30))
+        r = self.client.post('/api/reporte-guardia/regenerar/', data=json.dumps({'fecha': FECHA.isoformat()}),
+                             content_type='application/json', **self.auth)
+        self.assertEqual(r.status_code, 200, r.content)
+        # Se reconstruyó el 29 desde el historial del 29, no desde el último día guardado (30).
+        self.assertEqual(self._filas(seccion='FALTOS').count(), 1)
+        # Y la asistencia guardada NO cambió (sigue en el día 30).
+        self.assertEqual(ReporteAsistencia.objects.get(asignacion=self.asig).estado_asistencia, 'ASISTIO')
+
+    def test_comando_rango_con_prueba_no_guarda(self):
+        from django.core.management import call_command
+        from io import StringIO
+        self._guardar_asistencia(estado_asistencia='FALTO')
+        self._filas().delete()
+        out = StringIO()
+        call_command('regenerar_reporte_guardia', '--desde', '2026-09-28', '--hasta', '2026-09-30', '--dry-run', stdout=out)
+        self.assertIn('PRUEBA', out.getvalue())
+        self.assertEqual(self._filas().count(), 0)              # no guardó nada
+        call_command('regenerar_reporte_guardia', '--desde', '2026-09-28', '--hasta', '2026-09-30', stdout=StringIO())
+        self.assertEqual(self._filas(seccion='FALTOS').count(), 1)

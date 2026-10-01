@@ -1439,15 +1439,18 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
 
     # Preservar los campos editados a mano (overrides) por sección, para
     # re-aplicarlos tras regenerar las filas auto.
+    # SOLO las filas de ESE día: cada día tiene su propio registro en el historial de
+    # asistencia, así que guardar un día no debe borrar las filas de los demás días.
+    _auto_qs = ReporteGuardia.objects.filter(reporte_asistencia=override, auto=True)
+    if fecha_reporte:
+        _auto_qs = _auto_qs.filter(fecha=fecha_reporte)
     prev_overrides = {}
-    for _r in ReporteGuardia.objects.filter(reporte_asistencia=override, auto=True):
+    for _r in _auto_qs:
         if _r.overrides:
             prev_overrides.setdefault(_r.seccion, _r.overrides)
 
-    # Quitar TODAS las filas auto previas de este reporte (cualquier fecha) para reflejar
-    # cambios y no dejar huérfanos si cambió la fecha del reporte. El ReporteAsistencia
-    # tiene una sola fecha_reporte vigente, así que solo debe existir la de la fecha actual.
-    ReporteGuardia.objects.filter(reporte_asistencia=override, auto=True).delete()
+    # Quitar las filas auto previas de ESE día para reflejar los cambios. Sin fecha: todas.
+    _auto_qs.delete()
     if not fecha_reporte:
         ReporteGuardiaOculta.objects.filter(reporte_asistencia=override).delete()
         return
@@ -1460,8 +1463,6 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
         return
 
     # Filas que el usuario eliminó a mano para este día: no se recrean (ver ReporteGuardiaOculta).
-    # Las marcas de otras fechas ya no aplican (el reporte tiene una sola fecha vigente).
-    ReporteGuardiaOculta.objects.filter(reporte_asistencia=override).exclude(fecha=fecha_reporte).delete()
     ocultas = set(ReporteGuardiaOculta.objects.filter(
         reporte_asistencia=override, fecha=fecha_reporte).values_list('seccion', 'persona_id_ref'))
     vigentes = set()
@@ -1567,6 +1568,8 @@ def _sync_hueca_reporte_guardia(override, asignacion, fecha_reporte):
     from ..models import ReporteGuardia
 
     qs = ReporteGuardia.objects.filter(reporte_asistencia=override, seccion='HUECA', auto=False)
+    if fecha_reporte:
+        qs = qs.filter(fecha=fecha_reporte)      # solo ESE día (los demás días conservan la suya)
     # Sin check, sin fecha o SIN MOTIVO: no debe existir la hueca manual. La hueca solo se
     # refleja en el Reporte de Guardia si tiene un motivo (si no, no sale).
     motivo = (getattr(override, 'hueca_motivo', '') or '').strip()
@@ -1610,6 +1613,8 @@ def _sync_frtrabajado_dobladas(override, asignacion, fecha_reporte):
     qs = ReporteGuardia.objects.filter(
         reporte_asistencia=override, seccion='DOBLADAS', auto=False
     )
+    if fecha_reporte:
+        qs = qs.filter(fecha=fecha_reporte)      # solo ESE día (los demás días conservan la suya)
     estado = (getattr(override, 'estado', '') or '').upper()
     rem = getattr(override, 'reemplazo', None)
     if estado != 'FR/TRABAJADO' or not fecha_reporte or not rem:
@@ -1705,12 +1710,16 @@ def _sync_reporte_guardia_sacafranco(sa, fecha_reporte):
         ).first()
         if _h:
             hueca_motivo_prev = _h.motivo or ''
+    # SOLO las filas de ESE día (guardar un día no borra las filas de los demás).
+    _auto_qs = ReporteGuardia.objects.filter(sacafranco_fila=fila, auto=True)
+    if fecha_reporte:
+        _auto_qs = _auto_qs.filter(fecha=fecha_reporte)
     prev_overrides = {}
-    for _r in ReporteGuardia.objects.filter(sacafranco_fila=fila, auto=True):
+    for _r in _auto_qs:
         if _r.overrides:
             prev_overrides.setdefault(_r.seccion, _r.overrides)
 
-    ReporteGuardia.objects.filter(sacafranco_fila=fila, auto=True).delete()
+    _auto_qs.delete()
     if not fecha_reporte:
         ReporteGuardiaOculta.objects.filter(sacafranco_fila=fila).delete()
         return
@@ -1782,6 +1791,8 @@ def _sync_hueca_reporte_guardia_sacafranco(sa, fecha_reporte):
     if not fila:
         return
     qs = ReporteGuardia.objects.filter(sacafranco_fila=fila, seccion='HUECA', auto=False)
+    if fecha_reporte:
+        qs = qs.filter(fecha=fecha_reporte)      # solo ESE día
     if not getattr(sa, 'hueca', False) or not fecha_reporte:
         qs.delete()
         return

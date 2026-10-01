@@ -206,50 +206,63 @@ def eliminar_reporte_guardia(request, id):
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def regenerar_reporte_guardia(request):
-    """Regenera BAJO DEMANDA las filas auto del reporte de guardia desde la
-    asistencia de una fecha (faltos, dobladas, adicionales, adelantos, huecas).
-    Vuelve a traer esas filas desde la asistencia (INCLUSO las que se habían eliminado a
-    mano) y reaplica las ediciones a mano; las filas MANUALES (auto=False) no se tocan.
-    El reporte ya se llena solo al guardar la asistencia; este botón es el respaldo
-    ('Regenerar desde asistencia') para días pasados o para reparar un día."""
-    fecha = request.data.get('fecha') or request.GET.get('fecha')
-    try:
-        fecha_obj = fecha if isinstance(fecha, datetime.date) else datetime.date.fromisoformat(str(fecha))
-    except (TypeError, ValueError):
-        return Response({'error': 'fecha invalida'}, status=status.HTTP_400_BAD_REQUEST)
+def regenerar_guardia_dia(fecha_obj):
+    """Reconstruye las filas AUTOMÁTICAS del Reporte de Guardia de UN día desde la asistencia
+    de ESE día (historial: el último registro de cada asignación ese día), no desde el último
+    día que se guardó cada asignación. Así sirve para días pasados.
+
+    Vuelve a traer también las filas que se habían eliminado a mano, reaplica las ediciones a
+    mano y no toca las filas MANUALES. Devuelve {'procesadas': n, 'errores': n}."""
+    from .reporte_asistencia_views import (
+        _sync_reporte_guardia, _sync_hueca_reporte_guardia, _sync_reporte_guardia_sacafranco,
+        _sync_hueca_reporte_guardia_sacafranco, _sync_frtrabajado_dobladas,
+    )
+    from ..models import ReporteAsistencia, ReporteAsistenciaHistorial, SacafrancoAsistencia
 
     # Se vuelve a traer TODO el día: se olvidan las filas que se habían eliminado a mano.
     ReporteGuardiaOculta.objects.filter(fecha=fecha_obj).delete()
 
-    from .reporte_asistencia_views import (
-        _sync_reporte_guardia, _sync_reporte_guardia_sacafranco,
-        _sync_hueca_reporte_guardia_sacafranco, _sync_frtrabajado_dobladas,
-    )
-    from ..models import ReporteAsistencia, SacafrancoAsistencia
+    # Último registro de cada asignación ESE día. Se incluyen TODAS las asignaciones con
+    # datos ese día (ACTIVO o INACTIVO), igual que el Reporte de Asistencia.
+    ultimo = {}
+    hist_qs = (ReporteAsistenciaHistorial.objects
+               .select_related('asignacion', 'asignacion__cliente', 'asignacion__puesto',
+                               'asignacion__persona', 'reemplazo', 'persona_cobertura')
+               .filter(fecha_reporte=fecha_obj, asignacion__isnull=False)
+               .order_by('asignacion_id', '-creado_en'))
+    for h in hist_qs:
+        ultimo.setdefault(h.asignacion_id, h)
 
-    # Se incluyen TODAS las asignaciones con datos guardados ese día (tengan estado ACTIVO
-    # o INACTIVO), igual que el Reporte de Asistencia: un puesto cerrado (INACTIVO) con
-    # FALTO/hueca/FR-TRABAJADO ese día debe reflejarse en el Reporte de Guardia. Antes solo
-    # se procesaban las ACTIVO, por eso esos registros no generaban FALTOS/DOBLADAS/HUECA.
-    overrides = ReporteAsistencia.objects.select_related('asignacion').filter(
-        fecha_reporte=fecha_obj, asignacion__isnull=False
-    )
-    for ov in overrides:
-        if not ov.asignacion:
+    # Asignaciones que ya tienen filas ese día (para limpiar las que dejaron de aplicar).
+    con_filas = set(ReporteGuardia.objects.filter(
+        fecha=fecha_obj, reporte_asistencia__isnull=False
+    ).values_list('reporte_asistencia__asignacion_id', flat=True))
+    estados_guardia = {'DOBLA', 'DOBLADO', 'ADICIONAL', 'ADEL/TURNO', 'EVENTUAL', 'FR/TRABAJADO'}
+
+    procesadas = errores = 0
+    for asig_id, h in ultimo.items():
+        relevante = ((h.estado_asistencia or '').upper() == 'FALTO'
+                     or (h.estado or '').upper() in estados_guardia
+                     or h.hueca or asig_id in con_filas)
+        if not relevante:
             continue
-        try:
-            _sync_reporte_guardia(ov, ov.asignacion, fecha_obj)
-        except Exception:
-            pass
-        # FR/TRABAJADO -> DOBLADAS (fila manual). Se reconstruye aquí para que un registro
-        # que no se guardó bien también aparezca al regenerar.
-        try:
-            _sync_frtrabajado_dobladas(ov, ov.asignacion, fecha_obj)
-        except Exception:
-            pass
+        ov = ReporteAsistencia.objects.filter(asignacion_id=asig_id).first()
+        if not ov:
+            continue
+        # Se aplican EN MEMORIA los valores de ese día (no se guarda nada en la asistencia).
+        ov.estado = h.estado
+        ov.estado_asistencia = h.estado_asistencia
+        ov.reemplazo = h.reemplazo
+        ov.persona_cobertura = h.persona_cobertura
+        ov.descripcion = h.descripcion
+        ov.hueca = bool(h.hueca)
+        ov.hueca_motivo = h.hueca_motivo or ''
+        for sync in (_sync_reporte_guardia, _sync_hueca_reporte_guardia, _sync_frtrabajado_dobladas):
+            try:
+                sync(ov, h.asignacion, fecha_obj)
+            except Exception:
+                errores += 1
+        procesadas += 1
 
     # Sacafranco: su asistencia esta en SacafrancoAsistencia (no tiene asignacion).
     for sa in SacafrancoAsistencia.objects.select_related('sacafranco_fila', 'reemplazo').filter(fecha=fecha_obj):
@@ -257,8 +270,25 @@ def regenerar_reporte_guardia(request):
             _sync_reporte_guardia_sacafranco(sa, fecha_obj)
             _sync_hueca_reporte_guardia_sacafranco(sa, fecha_obj)
         except Exception:
-            pass
-    return Response({'ok': True})
+            errores += 1
+        procesadas += 1
+    return {'procesadas': procesadas, 'errores': errores}
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def regenerar_reporte_guardia(request):
+    """Regenera BAJO DEMANDA las filas auto del reporte de guardia de una fecha desde la
+    asistencia de ESE día (faltos, dobladas, adicionales, adelantos, huecas), incluso las que
+    se habían eliminado a mano. El reporte ya se llena solo al guardar la asistencia; este
+    botón ('Regenerar desde asistencia') es el respaldo para días pasados o para reparar un día."""
+    fecha = request.data.get('fecha') or request.GET.get('fecha')
+    try:
+        fecha_obj = fecha if isinstance(fecha, datetime.date) else datetime.date.fromisoformat(str(fecha))
+    except (TypeError, ValueError):
+        return Response({'error': 'fecha invalida'}, status=status.HTTP_400_BAD_REQUEST)
+    res = regenerar_guardia_dia(fecha_obj)
+    return Response({'ok': True, **res})
 
 
 
