@@ -469,9 +469,9 @@ def _norm_busqueda(s):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def exportar_excel_horas_eventual(request):
-    """Descargable Excel de Eventuales: datos bancarios de cada eventual del día (una fila por
-    persona): NombreCompleto, identificacion, Banco (código), TipoCuentaBancaria,
-    NumeroCuentaBancaria, BancoNombre y Creado (fecha del servicio).
+    """Descargable Excel de Eventuales (formato de pago): una fila por persona con
+    NOMBRE, CUENTA, BANCO, TIPO (de cuenta), CEDULA y VALOR (suma del Valor Calculado de sus
+    registros del día o del rango elegido).
     Filtros: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (o ?fecha=) y ?q= (búsqueda de la pantalla)."""
     if not request.user.has_perm('CoreFisica.view_horaseventual'):
         return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
@@ -502,18 +502,18 @@ def exportar_excel_horas_eventual(request):
         filas = [f for f in filas if _ok(f)]
     ids_ok = {f['id'] for f in filas}
 
-    # Una fila por EVENTUAL (sus datos bancarios).
+    # Una fila por EVENTUAL: sus registros del día/rango se suman.
     personas = {}
     for h in registros:
-        if h.id in ids_ok and h.persona_id and h.persona_id not in personas:
-            personas[h.persona_id] = h
+        if h.id not in ids_ok or not h.persona_id:
+            continue
+        r = personas.setdefault(h.persona_id, {'h': h, 'valor': Decimal('0')})
+        r['valor'] += h.valor_calculado or Decimal('0')
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'EVENTUALES'
     columnas = [
-        # Mismos nombres y orden que el archivo del banco.
-        ('NombreCompleto', 42), ('identificacion', 18), ('Banco', 12), ('TipoCuentaBancaria', 26),
-        ('NumeroCuentaBancaria', 28), ('BancoNombre', 20), ('Creado', 16),
+        ('NOMBRE', 44), ('CUENTA', 20), ('BANCO', 18), ('TIPO', 14), ('CEDULA', 16), ('VALOR', 14),
     ]
     borde = Border(*(Side(style='thin', color='999999'),) * 4)
     for c, (titulo, ancho) in enumerate(columnas, start=1):
@@ -525,22 +525,24 @@ def exportar_excel_horas_eventual(request):
         ws.column_dimensions[get_column_letter(c)].width = ancho
     fila = 2
     # Ordenados por nombre (apellidos y nombres), igual que la tabla.
-    for h in sorted(personas.values(), key=lambda x: _norm_busqueda(_nombre_persona(x.persona))):
+    for r in sorted(personas.values(), key=lambda x: _norm_busqueda(_nombre_persona(x['h'].persona))):
+        h = r['h']
         banco, tipo, numero = _cuenta(h.persona)
-        # Creado = fecha del servicio.
-        creado = h.fecha.strftime('%d/%m/%Y') if h.fecha else ''
-        valores = [_nombre_persona(h.persona), h.persona.cedula or '', CODIGO_BANCO.get(banco, ''),
-                   tipo, numero, banco, creado]
+        valores = [_nombre_persona(h.persona), numero, banco, tipo, h.persona.cedula or '',
+                   float(r['valor'])]
         for c, v in enumerate(valores, start=1):
             cell = ws.cell(fila, c, v)
             cell.border = borde
             cell.alignment = Alignment(horizontal='center', vertical='center')
-            # Cédula, código y cuenta como TEXTO (conservan los ceros a la izquierda).
-            if c in (2, 3, 5):
+            # Cuenta y cédula como TEXTO (conservan los ceros a la izquierda).
+            if c in (2, 5):
                 cell.number_format = '@'
+            if c == 6:
+                cell.number_format = '#,##0.00'
         fila += 1
+    ultima = fila - 1
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(columnas))}{max(1, ultima)}"
     ws.freeze_panes = 'A2'
-    ws.auto_filter.ref = f"A1:{get_column_letter(len(columnas))}{max(1, fila - 1)}"
 
     buf = io.BytesIO()
     wb.save(buf)

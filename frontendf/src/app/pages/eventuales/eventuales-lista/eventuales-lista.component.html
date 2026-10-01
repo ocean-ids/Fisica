@@ -34,27 +34,26 @@
           <th>Cliente</th>
           <th>Instalación</th>
           <th>Nombre del puesto</th>
-          <!-- Datos del eventual: mismos nombres y orden que el archivo del banco. -->
-          <th>Nombre<wbr>Completo</th>
-          <th>identifi<wbr>cacion</th>
+          <!-- Datos del eventual: mismos nombres y orden que el Excel (formato de pago). -->
+          <th>Nombre</th>
+          <th>Cuenta</th>
           <th>Banco</th>
-          <th>Tipo<wbr>Cuenta<wbr>Bancaria</th>
-          <th>Numero<wbr>Cuenta<wbr>Bancaria</th>
-          <th>Banco<wbr>Nombre</th>
+          <th>Tipo</th>
+          <th>Cedula</th>
           <th>Creado</th>  <!-- = fecha del servicio -->
           <th>Horas Solicitadas</th>
           <th>Horas Trabajadas</th>
           <th>Rango de Horas</th>
           <th>Horas Adicionales</th>
           <th>Bonificación</th>
-          <th>Valor Calculado</th>
+          <th>Valor</th>
           <th>Última Modificación</th>
           <th *ngIf="puedeEditar || puedeEliminar">Acción</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngIf="loading">
-          <td colspan="19" class="text-muted">Cargando…</td>
+          <td colspan="18" class="text-muted">Cargando…</td>
         </tr>
         <ng-container *ngIf="!loading">
           <tr *ngFor="let f of filasFiltradas; let i = index">
@@ -63,11 +62,10 @@
             <td>{{ f.instalacion }}</td>
             <td>{{ f.puesto || '—' }}</td>
             <td class="text-start">{{ f.persona }}</td>
-            <td>{{ f.cedula || '—' }}</td>
-            <td>{{ f.banco_codigo || '—' }}</td>
-            <td>{{ f.tipo_cuenta || '—' }}</td>
             <td>{{ f.numero_cuenta || '—' }}</td>
             <td>{{ f.banco || '—' }}</td>
+            <td>{{ f.tipo_cuenta || '—' }}</td>
+            <td>{{ f.cedula || '—' }}</td>
             <td>{{ fechaDMA(f.fecha) }}</td>
             <td>{{ f.horas_solicitadas || 0 }}</td>
             <td class="fw-semibold">{{ f.horas }}</td>
@@ -88,13 +86,13 @@
             </td>
           </tr>
           <tr *ngIf="!filasFiltradas.length">
-            <td colspan="19" class="text-muted">Sin registros en estas fechas.</td>
+            <td colspan="18" class="text-muted">Sin registros en estas fechas.</td>
           </tr>
         </ng-container>
       </tbody>
       <tfoot *ngIf="!loading && filasFiltradas.length">
         <tr>
-          <th colspan="11" class="text-end">Totales</th>
+          <th colspan="10" class="text-end">Totales</th>
           <th>{{ totalSolicitadas }}</th>
           <th>{{ totalHoras }}</th>
           <th></th>

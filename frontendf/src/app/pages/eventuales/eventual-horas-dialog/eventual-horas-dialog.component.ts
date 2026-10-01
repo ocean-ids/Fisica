@@ -108,7 +108,7 @@ export class EventualHorasDialogComponent implements OnInit {
 
   // Banco: solo lectura, sale de los datos del eventual (vacío si no lo tiene).
   get banco(): string { return this.eventualSel?.['banco'] || ''; }
-  get bancoCodigo(): string { return this.eventualSel?.['banco_codigo'] || ''; }
+  get cedula(): string { return this.eventualSel?.['cedula'] || ''; }
   get tipoCuenta(): string { return this.eventualSel?.['tipo_cuenta'] || ''; }
   get numeroCuenta(): string { return this.eventualSel?.['numero_cuenta'] || ''; }
 

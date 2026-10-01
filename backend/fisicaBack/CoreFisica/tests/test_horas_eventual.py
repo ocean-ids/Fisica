@@ -253,19 +253,19 @@ class HorasEventualTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIn('EVENTUALES 29-09-2026.xlsx', r['Content-Disposition'])
         ws = load_workbook(_io.BytesIO(r.content)).active
-        self.assertEqual([c.value for c in ws[1]], [
-            'NombreCompleto', 'identificacion', 'Banco', 'TipoCuentaBancaria',
-            'NumeroCuentaBancaria', 'BancoNombre', 'Creado'])
-        self.assertEqual(ws.max_row, 3)
+        self.assertEqual([c.value for c in ws[1]], ['NOMBRE', 'CUENTA', 'BANCO', 'TIPO', 'CEDULA', 'VALOR'])
+        self.assertEqual(ws.max_row, 3)             # encabezado + 2 personas (sin fila de totales)
         # Ordenados por nombre: LOPEZ ANA antes que PEREZ JUAN.
-        self.assertEqual([c.value for c in ws[2]][:3], ['LOPEZ ANA', '0922222222', None])
+        ana = [c.value for c in ws[2]]
+        self.assertEqual(ana[:5], ['LOPEZ ANA', None, None, None, '0922222222'])   # sin datos bancarios
         juan = [c.value for c in ws[3]]
-        self.assertEqual(juan[:6], ['PEREZ JUAN', '0911111111', '10', 'AHORROS', '0037794584', 'PICHINCHA'])
-        self.assertEqual(juan[6], '29/09/2026')      # Creado = fecha del servicio
+        self.assertEqual(juan[:5], ['PEREZ JUAN', '0037794584', 'PICHINCHA', 'AHORROS', '0911111111'])
+        # Sumarizado del día de JUAN: 12 trabajadas (tramo 10-12 = 25.00) + 4 trabajadas (4-6 = 12.50)
+        self.assertEqual(juan[5], 25.0 + 12.5)
         # Con búsqueda: solo quien coincide.
         r = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29&q=lopez', **self._auth())
         ws = load_workbook(_io.BytesIO(r.content)).active
-        self.assertEqual(ws.max_row, 2)
+        self.assertEqual(ws.max_row, 2)             # encabezado + LOPEZ ANA
         self.assertEqual(ws.cell(2, 1).value, 'LOPEZ ANA')
 
     def test_rango_de_fechas_lista_y_excel(self):
@@ -276,3 +276,19 @@ class HorasEventualTests(TestCase):
         r = self.client.get('/api/horas-eventual/exportar-excel/?desde=2026-09-22&hasta=2026-09-29', **self._auth())
         self.assertEqual(r.status_code, 200)
         self.assertIn('EVENTUALES 22-09-2026 AL 29-09-2026.xlsx', r['Content-Disposition'])
+
+    def test_excel_rango_suma_por_persona(self):
+        import io as _io
+        from openpyxl import load_workbook
+        # JUAN trabaja 3 días del rango y 1 fuera; ANA 1 día.
+        self._crear(fecha='2026-09-22', horas_solicitadas=8, horas=8)                       # 18.75
+        self._crear(fecha='2026-09-25', horas_solicitadas=8, horas=12, bonificacion='5')   # 25.00 + 5
+        self._crear(fecha='2026-09-29', horas_solicitadas=4, horas=4)                       # 12.50
+        self._crear(fecha='2026-09-21', horas_solicitadas=8, horas=8)                       # fuera
+        self._crear(persona_id=self.ev_sin_banco.id, fecha='2026-09-23', horas=8)
+        r = self.client.get('/api/horas-eventual/exportar-excel/?desde=2026-09-22&hasta=2026-09-29', **self._auth())
+        ws = load_workbook(_io.BytesIO(r.content)).active
+        self.assertEqual(ws.max_row, 3)             # encabezado + 2 personas (sin fila de totales)
+        juan = next([c.value for c in ws[i]] for i in (2, 3) if ws.cell(i, 1).value == 'PEREZ JUAN')
+        self.assertEqual(juan[5], 18.75 + 30.0 + 12.5)               # valor sumado del rango (incluye el bono)
+        self.assertEqual(len(juan), 6)
