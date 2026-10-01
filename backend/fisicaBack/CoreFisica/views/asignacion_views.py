@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django.http import JsonResponse
 from rest_framework import status
+from ..asignaciones_meses import propaga_a_meses_siguientes
 from ..models import Asignacion, AsignacionSemanal, AsignacionPersonaPeriodo, Persona, Puesto, ReporteAsistencia, SacafrancoFila, SacafrancoFilaSemanal, Provincia, Canton, EmpleadoOtrosDatos
 from django.db.models import Q, Max, Value
 from django.db.models.functions import Coalesce
@@ -731,6 +732,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@propaga_a_meses_siguientes
 def asignar_servicio(request):
     #si el usuario no tiene permiso para agregar asignaciones, devolver error 403 antes de procesar la solicitud
     if not request.user.has_perm('CoreFisica.add_asignacion'):
@@ -1479,6 +1481,7 @@ def _registrar_cambio_persona(asignacion, old_persona_id, new_persona_id, fecha_
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
+@propaga_a_meses_siguientes
 def editar_servicio(request, id):
     # si el ususario no tiene permiso de cambio de asignacion, retornar error 403
     if not request.user.has_perm('CoreFisica.change_asignacion'):
@@ -1602,7 +1605,16 @@ def editar_servicio(request, id):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     data['recurring'] = True
-    data['end_date'] = None
+    # NO dejar la asignación abierta (end_date=NULL): una fila abierta se cuela, duplicada, en
+    # los meses siguientes. Un end_date explícito (cierre a una fecha) se respeta; si no viene,
+    # se acota al fin del mes de la asignación.
+    if str(data.get('end_date') or '').strip().lower() in ('', 'null', 'none'):
+        _m = int(data.get('mes') or asignacion.mes)
+        _y = int(data.get('anio') or asignacion.anio)
+        data['end_date'] = (
+            datetime.date(_y, 12, 31) if _m >= 12
+            else datetime.date(_y, _m + 1, 1) - datetime.timedelta(days=1)
+        ).isoformat()
     serializer = AsignacionSerializer(asignacion, data=data, partial=True)
     if serializer.is_valid():
         asignacion = serializer.save()
@@ -1722,6 +1734,7 @@ def guardar_orden_sacafranco(request):
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
+@propaga_a_meses_siguientes
 def eliminar_asignacion(request, id):
     # si el usuario no tiene permiso de eliminar asignacion, retornar error 403
     if not request.user.has_perm('CoreFisica.delete_asignacion'):
