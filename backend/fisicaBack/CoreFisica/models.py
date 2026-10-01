@@ -1490,6 +1490,27 @@ class ReporteGuardia(models.Model):
         indexes = [models.Index(fields=['fecha', 'turno', 'seccion'])]
 
 
+class ReporteGuardiaOculta(models.Model):
+    """Fila AUTOMÁTICA del Reporte de Guardia que el usuario ELIMINÓ a mano.
+
+    El reporte de guardia se llena solo al guardar la asistencia; sin esta marca, una fila
+    eliminada reaparecería la próxima vez que se guarde esa asistencia. La sincronización la
+    consulta y no recrea esa fila. El botón "Regenerar desde asistencia" borra estas marcas
+    del día (vuelve a traer todo). Es una tabla aparte: no afecta a ReporteGuardia ni a los
+    pagos que se calculan desde ahí.
+    """
+    reporte_asistencia = models.ForeignKey('ReporteAsistencia', on_delete=models.CASCADE, null=True, blank=True, related_name='guardia_ocultas')
+    sacafranco_fila = models.ForeignKey('SacafrancoFila', on_delete=models.CASCADE, null=True, blank=True, related_name='guardia_ocultas')
+    fecha = models.DateField(db_index=True)
+    seccion = models.CharField(max_length=15)
+    # Persona de la fila eliminada (id; None en HUECA o filas sin persona).
+    persona_id_ref = models.IntegerField(null=True, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['fecha', 'seccion'])]
+
+
 class ReporteVacaciones(models.Model):
     """Una fila del REPORTE DE VACACIONES DEL PERSONAL (carga manual, CRUD)."""
     cliente = models.CharField(max_length=120, blank=True, default='')

@@ -63,8 +63,8 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
     return this.editablesPorSeccion[seccion] || [];
   }
 
-  // Todas las secciones se manejan a mano (crear/editar/eliminar). Los datos de
-  // asistencia se traen bajo demanda con "Regenerar desde asistencia".
+  // Todas las secciones se pueden crear/editar/eliminar. Los datos de asistencia se llenan
+  // solos al guardar la asistencia; "Regenerar desde asistencia" es el respaldo.
   readonly seccionesManuales = ['DOBLADAS', 'ADICIONALES', 'ADELANTOS', 'NO_CUBIERTOS', 'FALTOS', 'HUECA', 'APOYO'];
   esManual(seccion: string): boolean { return this.seccionesManuales.includes(seccion); }
 
@@ -72,7 +72,7 @@ export class ReporteGuardiaComponent implements OnInit, OnDestroy {
   regenerar(): void {
     Swal.fire({
       title: '¿Regenerar desde asistencia?',
-      text: 'Se vuelven a traer los faltos, dobladas, adicionales y huecas desde la asistencia de este día. Reemplaza esas filas automáticas (tus filas manuales se conservan).',
+      text: 'El reporte ya se llena solo al guardar la asistencia. Esto vuelve a traer del todo los faltos, dobladas, adicionales y huecas de este día, incluso las filas que habías eliminado. Reemplaza esas filas automáticas (tus filas manuales se conservan).',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Sí, regenerar',

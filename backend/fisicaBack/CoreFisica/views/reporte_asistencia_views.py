@@ -1426,7 +1426,7 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
     - Titular que FALTÓ -> Faltos.
     - Reemplazo según su estado -> Dobladas/Adicionales/Adelantos (con SU tipo en 'proviene').
     Puede generar 2 filas (titular faltó + reemplazo cubrió). Idempotente por reporte+fecha."""
-    from ..models import ReporteGuardia
+    from ..models import ReporteGuardia, ReporteGuardiaOculta
 
     # Preservar el motivo escrito a mano en la HUECA antes de regenerar (se borra y recrea).
     hueca_motivo = ''
@@ -1449,13 +1449,22 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
     # tiene una sola fecha_reporte vigente, así que solo debe existir la de la fecha actual.
     ReporteGuardia.objects.filter(reporte_asistencia=override, auto=True).delete()
     if not fecha_reporte:
+        ReporteGuardiaOculta.objects.filter(reporte_asistencia=override).delete()
         return
 
     # Turno desde el calendario D/N de esa fecha.
     letra = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id)
     turno = 'Diurno' if letra == 'D' else ('Nocturno' if letra == 'N' else '')
     if turno not in ('Diurno', 'Nocturno'):
+        ReporteGuardiaOculta.objects.filter(reporte_asistencia=override).delete()
         return
+
+    # Filas que el usuario eliminó a mano para este día: no se recrean (ver ReporteGuardiaOculta).
+    # Las marcas de otras fechas ya no aplican (el reporte tiene una sola fecha vigente).
+    ReporteGuardiaOculta.objects.filter(reporte_asistencia=override).exclude(fecha=fecha_reporte).delete()
+    ocultas = set(ReporteGuardiaOculta.objects.filter(
+        reporte_asistencia=override, fecha=fecha_reporte).values_list('seccion', 'persona_id_ref'))
+    vigentes = set()
 
     cliente = getattr(asignacion.cliente, 'nombre_comercial', '') or ''
     puesto = getattr(asignacion.puesto, 'nombre', '') or ''
@@ -1486,6 +1495,10 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
         filas.append((seccion_reemplazo, override.reemplazo, ''))
 
     for seccion, persona, motivo in filas:
+        _clave = (seccion, persona.id if persona else None)
+        vigentes.add(_clave)
+        if _clave in ocultas:
+            continue
         _row = ReporteGuardia.objects.create(
             fecha=fecha_reporte,
             turno=turno,
@@ -1509,7 +1522,11 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
     # PERO si el check "Hueca" está marcado, la fila manual (auto=False) que crea
     # _sync_hueca_reporte_guardia ya la representa (con su motivo). No duplicar aquí.
     # Además: la HUECA SOLO sale si tiene motivo (una hueca sin motivo no se refleja).
-    if seccion_reemplazo == 'ADICIONALES' and not getattr(override, 'hueca', False) and (hueca_motivo or '').strip():
+    _hueca_aplica = (seccion_reemplazo == 'ADICIONALES' and not getattr(override, 'hueca', False)
+                     and bool((hueca_motivo or '').strip()))
+    if _hueca_aplica:
+        vigentes.add(('HUECA', None))
+    if _hueca_aplica and ('HUECA', None) not in ocultas:
         _hueca = ReporteGuardia.objects.create(
             fecha=fecha_reporte,
             turno=turno,
@@ -1527,6 +1544,16 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
                 setattr(_hueca, _k, _v)
             _hueca.overrides = _ov
             _hueca.save()
+
+    # Marcas de eliminación que ya no corresponden (ej. el falto dejó de existir): se limpian.
+    _limpiar_ocultas(ReporteGuardiaOculta.objects.filter(reporte_asistencia=override, fecha=fecha_reporte), vigentes)
+
+
+def _limpiar_ocultas(qs, vigentes):
+    """Borra las marcas de filas eliminadas a mano cuya fila automática ya no se genera."""
+    for _o in qs:
+        if (_o.seccion, _o.persona_id_ref) not in vigentes:
+            _o.delete()
 
 
 def _sync_hueca_reporte_guardia(override, asignacion, fecha_reporte):
@@ -1666,7 +1693,7 @@ def _sync_reporte_guardia_sacafranco(sa, fecha_reporte):
     """Refleja la asistencia de un SACAFRANCO (SacafrancoAsistencia) en el REPORTE DE
     GUARDIA: FALTO -> Faltos; reemplazo segun estado -> Dobladas/Adicionales/Adelantos;
     ADICIONAL -> Hueca auto. Idempotente por sacafranco_fila. Preserva overrides y motivo."""
-    from ..models import ReporteGuardia
+    from ..models import ReporteGuardia, ReporteGuardiaOculta
     fila = getattr(sa, 'sacafranco_fila', None)
     if not fila:
         return
@@ -1685,12 +1712,18 @@ def _sync_reporte_guardia_sacafranco(sa, fecha_reporte):
 
     ReporteGuardia.objects.filter(sacafranco_fila=fila, auto=True).delete()
     if not fecha_reporte:
+        ReporteGuardiaOculta.objects.filter(sacafranco_fila=fila).delete()
         return
     ctx = _saca_guardia_ctx(fila, fecha_reporte)
     if not ctx:
+        ReporteGuardiaOculta.objects.filter(sacafranco_fila=fila, fecha=fecha_reporte).delete()
         return
     turno, cliente, puesto = ctx
     persona = getattr(fila, 'persona', None)
+    # Filas que el usuario eliminó a mano para este día: no se recrean.
+    ocultas = set(ReporteGuardiaOculta.objects.filter(
+        sacafranco_fila=fila, fecha=fecha_reporte).values_list('seccion', 'persona_id_ref'))
+    vigentes = set()
 
     def _nombre(p):
         return f"{p.nombres} {p.apellidos}".strip() if p else ''
@@ -1706,6 +1739,10 @@ def _sync_reporte_guardia_sacafranco(sa, fecha_reporte):
         filas.append((seccion_reemplazo, rem, ''))
 
     for seccion, per, motivo in filas:
+        _clave = (seccion, per.id if per else None)
+        vigentes.add(_clave)
+        if _clave in ocultas:
+            continue
         _row = ReporteGuardia.objects.create(
             fecha=fecha_reporte, turno=turno, seccion=seccion,
             cliente=cliente, puesto=puesto,
@@ -1719,7 +1756,10 @@ def _sync_reporte_guardia_sacafranco(sa, fecha_reporte):
             _row.overrides = _ov
             _row.save()
 
-    if seccion_reemplazo == 'ADICIONALES' and not getattr(sa, 'hueca', False):
+    _hueca_aplica = seccion_reemplazo == 'ADICIONALES' and not getattr(sa, 'hueca', False)
+    if _hueca_aplica:
+        vigentes.add(('HUECA', None))
+    if _hueca_aplica and ('HUECA', None) not in ocultas:
         _hueca = ReporteGuardia.objects.create(
             fecha=fecha_reporte, turno=turno, seccion='HUECA',
             cliente=cliente, puesto=puesto, fecha_evento=fecha_reporte,
@@ -1731,6 +1771,8 @@ def _sync_reporte_guardia_sacafranco(sa, fecha_reporte):
                 setattr(_hueca, _k, _v)
             _hueca.overrides = _ov
             _hueca.save()
+
+    _limpiar_ocultas(ReporteGuardiaOculta.objects.filter(sacafranco_fila=fila, fecha=fecha_reporte), vigentes)
 
 
 def _sync_hueca_reporte_guardia_sacafranco(sa, fecha_reporte):
@@ -1854,12 +1896,15 @@ def insertar_reporte_asistencia(request, asignacion_id):
     except Exception:
         pass
 
-    # El reporte de guardia YA NO se sincroniza automaticamente al guardar la
-    # asistencia. Ahora se regenera bajo demanda con el boton "Regenerar desde
-    # asistencia" (endpoint regenerar_reporte_guardia), para que las correcciones
-    # manuales del reporte de guardia no se pisen solas.
-    # EXCEPCION: el check 'Hueca' y el estado FR/TRABAJADO SI se reflejan
-    # automaticamente al guardar (HUECA y DOBLADAS respectivamente).
+    # El reporte de guardia se llena SOLO al guardar la asistencia (Faltos, Dobladas,
+    # Adicionales, Adelantos, Hueca). Es síncrono (en esta misma petición). Las ediciones
+    # a mano de una fila se vuelven a aplicar, las filas manuales no se tocan y las filas
+    # que el usuario eliminó a mano no reaparecen (ReporteGuardiaOculta).
+    # El botón "Regenerar desde asistencia" queda como respaldo (días pasados / reparar).
+    try:
+        _sync_reporte_guardia(override, asignacion, fecha_reporte)
+    except Exception:
+        pass
     try:
         _sync_hueca_reporte_guardia(override, asignacion, fecha_reporte)
     except Exception:

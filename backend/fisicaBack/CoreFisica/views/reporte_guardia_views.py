@@ -14,7 +14,7 @@ from openpyxl.drawing.image import Image as XLImage
 from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
 from openpyxl.drawing.xdr import XDRPositiveSize2D
 from openpyxl.utils.units import pixels_to_EMU
-from ..models import ReporteGuardia, Asignacion
+from ..models import ReporteGuardia, ReporteGuardiaOculta, Asignacion
 from ..serializers import ReporteGuardiaSerializer
 
 TURNOS = ('Diurno', 'Nocturno')
@@ -194,6 +194,14 @@ def actualizar_reporte_guardia(request, id):
 @permission_classes([IsAuthenticated])
 def eliminar_reporte_guardia(request, id):
     fila = get_object_or_404(ReporteGuardia, id=id)
+    # Una fila AUTOMÁTICA eliminada a mano deja una marca para que no reaparezca cuando se
+    # vuelva a guardar la asistencia (el reporte se llena solo). "Regenerar" borra las marcas.
+    if fila.auto and (fila.reporte_asistencia_id or fila.sacafranco_fila_id):
+        ReporteGuardiaOculta.objects.get_or_create(
+            reporte_asistencia_id=fila.reporte_asistencia_id,
+            sacafranco_fila_id=fila.sacafranco_fila_id,
+            fecha=fila.fecha, seccion=fila.seccion, persona_id_ref=fila.persona_ref_id,
+        )
     fila.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -203,14 +211,18 @@ def eliminar_reporte_guardia(request, id):
 def regenerar_reporte_guardia(request):
     """Regenera BAJO DEMANDA las filas auto del reporte de guardia desde la
     asistencia de una fecha (faltos, dobladas, adicionales, adelantos, huecas).
-    Vuelve a traer esas filas desde la asistencia y reaplica las ediciones a mano;
-    las filas MANUALES (auto=False) no se tocan. Se dispara con el boton
-    'Regenerar desde asistencia' del Reporte de Guardia."""
+    Vuelve a traer esas filas desde la asistencia (INCLUSO las que se habían eliminado a
+    mano) y reaplica las ediciones a mano; las filas MANUALES (auto=False) no se tocan.
+    El reporte ya se llena solo al guardar la asistencia; este botón es el respaldo
+    ('Regenerar desde asistencia') para días pasados o para reparar un día."""
     fecha = request.data.get('fecha') or request.GET.get('fecha')
     try:
         fecha_obj = fecha if isinstance(fecha, datetime.date) else datetime.date.fromisoformat(str(fecha))
     except (TypeError, ValueError):
         return Response({'error': 'fecha invalida'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Se vuelve a traer TODO el día: se olvidan las filas que se habían eliminado a mano.
+    ReporteGuardiaOculta.objects.filter(fecha=fecha_obj).delete()
 
     from .reporte_asistencia_views import (
         _sync_reporte_guardia, _sync_reporte_guardia_sacafranco,
