@@ -13,6 +13,10 @@ comando las vuelve a alinear (ver CoreFisica/asignaciones_meses.py):
   4. SACAFRANCO: misma vista, orden, provincia y horario que en el mes base (se crean los
      que faltan). Los que solo existen en el mes siguiente se informan; para eliminarlos use
      --quitar-sacafranco-sobrantes.
+  5. SOLO DE OCTUBRE: con --quitar-solo-octubre se desactivan los RETEN / SACAVACACIONES /
+     SACAFRANCO que tienen asignación en el mes siguiente pero no en el mes base (el puesto
+     vuelve a su vacante) y se eliminan sus filas de sacafranco que no están en el mes base.
+     Sirve para quitar personas que salen duplicadas (asignación y sacafranco) o que ya no van.
   0. Las filas recurrentes con fecha de fin vacía se acotan al fin de su mes.
 
 Las pestañas / vistas personalizadas de Asignaciones son filtros guardados que usan el mismo
@@ -31,7 +35,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from CoreFisica.asignaciones_meses import MESES_POR_DEFECTO, alinear_meses
-from CoreFisica.models import Asignacion
+from CoreFisica.models import Asignacion, Persona
 
 
 class Command(BaseCommand):
@@ -46,6 +50,11 @@ class Command(BaseCommand):
         parser.add_argument('--detalle', action='store_true', help='Muestra cada cambio, no solo los totales.')
         parser.add_argument('--quitar-sacafranco-sobrantes', action='store_true',
                             help='Elimina los sacafranco que solo existen en el mes siguiente (por defecto solo se informan).')
+        parser.add_argument('--conservar', default='',
+                            help='Cédulas (separadas por coma) de personas que NO se quitan con --quitar-solo-octubre.')
+        parser.add_argument('--quitar-solo-octubre', action='store_true',
+                            help='Desactiva los RETEN/SACAVACACIONES/SACAFRANCO con asignación solo en el mes siguiente '
+                                 'y elimina sus filas de sacafranco que no están en el mes base.')
 
     def handle(self, *args, **opts):
         mes, anio = opts['mes'], opts['anio']
@@ -54,13 +63,19 @@ class Command(BaseCommand):
         if not Asignacion.objects.filter(mes=mes, anio=anio).exists():
             raise CommandError(f'No hay asignaciones en {mes:02d}/{anio}')
         dry = opts['dry_run']
+        cedulas = [c.strip() for c in (opts['conservar'] or '').split(',') if c.strip()]
+        conservar = set(Persona.objects.filter(cedula__in=cedulas).values_list('id', flat=True)) if cedulas else set()
+        if cedulas and len(conservar) != len(set(cedulas)):
+            raise CommandError('Alguna cédula de --conservar no existe: ' + ', '.join(cedulas))
         log = (lambda m: self.stdout.write('      ' + m)) if opts['detalle'] else None
         self.stdout.write(('PRUEBA (no se guarda nada)' if dry else 'GUARDANDO')
                           + f': meses siguientes a {mes:02d}/{anio} (hasta {opts["meses"]})')
         total = Counter()
         with transaction.atomic():
             for ty, tm, res in alinear_meses(mes, anio, meses=opts['meses'], log=log,
-                                             quitar_sacafranco_sobrantes=opts['quitar_sacafranco_sobrantes']):
+                                             quitar_sacafranco_sobrantes=opts['quitar_sacafranco_sobrantes'],
+                                             quitar_solo_octubre=opts['quitar_solo_octubre'],
+                                             conservar_personas=conservar):
                 total.update(res)
                 resumen = ', '.join(f'{v} {n}' for n, v in res.items() if v) or 'sin cambios'
                 self.stdout.write(f'  {tm:02d}/{ty}: {resumen}')

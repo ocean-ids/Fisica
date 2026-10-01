@@ -276,6 +276,16 @@ def _rebuild_asignacion_semanal(asignacion, force_all: bool = False):
         current += datetime.timedelta(days=7)
 
 
+def _tipos_con_vista_propia():
+    """Tipos de persona (ej. {'RETEN'}) que tienen su propia pestaña "por tipo de persona".
+    Esas personas se muestran SOLO en esa pestaña (no en las de cantón / empresa / generales)."""
+    from ..models import VistaCanton
+    tipos = set()
+    for v in VistaCanton.objects.filter(tipo='persona_tipo'):
+        tipos.update(str(t).strip().upper() for t in (v.tipos or []) if str(t).strip())
+    return tipos
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def obtener_asignaciones(request, mes=None, anio=None):
@@ -519,6 +529,13 @@ def obtener_asignaciones(request, mes=None, anio=None):
             'provincia_total': 1,
             'provincia_id': None
         })
+
+    # Las personas de un TIPO que tiene su propia pestaña (ej. RETEN) se muestran SOLO en esa
+    # pestaña: se excluyen de las vistas por cantón / empresa / generales para que no salgan
+    # repetidas. (La vista por tipo ya se devolvió arriba, con todas las del tipo.)
+    _tipos_exclusivos = _tipos_con_vista_propia()
+    if _tipos_exclusivos:
+        asignaciones = asignaciones.exclude(persona__tipo__in=_tipos_exclusivos)
 
     # Lo que ya está en una VISTA DE EMPRESA se muestra SOLO en esa vista: se
     # excluye de las vistas por cantón / generales para que no salga duplicado.
@@ -1985,6 +2002,19 @@ def sacafranco_filas(request):
                 qs = qs.filter(Q(vista_id=int(vista_id)) | Q(vista__isnull=True))
             except (TypeError, ValueError):
                 pass
+        # Las personas de un tipo con pestaña propia (ej. RETEN) salen SOLO en esa pestaña:
+        # tampoco como sacafranco en las demás vistas.
+        _tipos_exclusivos = _tipos_con_vista_propia()
+        if _tipos_exclusivos:
+            from ..models import VistaCanton as _VistaCanton
+            _es_vista_tipo = False
+            try:
+                _es_vista_tipo = bool(vista_id) and _VistaCanton.objects.filter(
+                    id=int(vista_id), tipo='persona_tipo').exists()
+            except (TypeError, ValueError):
+                pass
+            if not _es_vista_tipo:
+                qs = qs.exclude(persona__tipo__in=_tipos_exclusivos)
         # Búsqueda de texto: filtrar sacafranco por su persona (nombre/apellido/cédula),
         # insensible a acentos. Así no aparecen siempre al buscar un cliente/instalación.
         q = (request.GET.get('q') or '').strip()

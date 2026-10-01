@@ -222,3 +222,109 @@ class SacafrancoMesesTests(TestCase):
     def test_en_modo_parcial_no_toca_sacafranco(self):
         alinear_meses(self.mes, self.anio, personas={999999}, puestos=set())
         self.assertEqual(self._fila(self.s1).vista_id, self.v2.id)        # sin cambios
+
+
+class SoloDelMesSiguienteTests(TestCase):
+    """Retenes / sacavacaciones / sacafranco que solo existen en el mes siguiente."""
+    setUp = AsignacionesMesesTests.setUp
+    _asig = AsignacionesMesesTests._asig
+
+    def _armar(self):
+        # Mes base: el puesto P1 está VACANTE (persona vacía) y A está en P2.
+        Asignacion.objects.create(persona=None, cliente=self.cli, instalacion=self.inst, puesto=self.p1,
+                                  mes=self.mes, anio=self.anio, estado='ACTIVO', recurring=True, es_hueca=True,
+                                  start_date=datetime.date(self.anio, self.mes, 1))
+        self._asig(self.A, self.p2, self.mes, self.anio, orden=1)
+        # Mes siguiente: A está bien, pero un RETEN (R) ocupa P1 que en el base es vacante.
+        self._asig(self.A, self.p2, self.sig_mes, self.sig_anio, orden=1)
+        self.tR = self._asig(self.R, self.p1, self.sig_mes, self.sig_anio, orden=2)
+
+    def test_por_defecto_no_se_toca_al_reten(self):
+        self._armar()
+        alinear_meses(self.mes, self.anio)
+        self.tR.refresh_from_db()
+        self.assertEqual(self.tR.estado, 'ACTIVO')
+
+    def test_con_la_opcion_se_desactiva_y_el_puesto_vuelve_a_ser_vacante(self):
+        self._armar()
+        alinear_meses(self.mes, self.anio, quitar_solo_octubre=True)
+        self.tR.refresh_from_db()
+        self.assertEqual(self.tR.estado, 'INACTIVO')
+        vacantes = Asignacion.objects.filter(puesto=self.p1, mes=self.sig_mes, anio=self.sig_anio,
+                                             persona__isnull=True, estado='ACTIVO')
+        self.assertEqual(vacantes.count(), 1)
+
+    def test_se_puede_conservar_a_una_persona(self):
+        self._armar()
+        alinear_meses(self.mes, self.anio, quitar_solo_octubre=True, conservar_personas={self.R.id})
+        self.tR.refresh_from_db()
+        self.assertEqual(self.tR.estado, 'ACTIVO')
+
+    def test_quien_esta_en_los_dos_meses_nunca_se_quita(self):
+        self._armar()
+        self._asig(self.R, self.p3, self.mes, self.anio, orden=3)           # R también está en el mes base
+        self.tR.puesto = self.p3
+        self.tR.save()
+        alinear_meses(self.mes, self.anio, quitar_solo_octubre=True)
+        self.tR.refresh_from_db()
+        self.assertEqual(self.tR.estado, 'ACTIVO')
+
+    def test_el_comando_acepta_la_opcion_y_conservar(self):
+        self._armar()
+        call_command('continuar_meses_desde', '--mes', str(self.mes), '--anio', str(self.anio),
+                     '--quitar-solo-octubre', '--conservar', self.R.cedula, stdout=StringIO())
+        self.tR.refresh_from_db()
+        self.assertEqual(self.tR.estado, 'ACTIVO')
+
+
+
+class VistaPorTipoExclusivaTests(TestCase):
+    """La pestaña "por tipo de persona" (ej. RETEN) es EXCLUSIVA: esas personas no salen en las demás."""
+
+    def setUp(self):
+        from CoreFisica.models import SacafrancoFila, VistaCanton
+        User.objects.create_superuser(username='vt_user', email='e@e.com', password='VtPass123!')
+        self.auth = {'HTTP_AUTHORIZATION': f"Bearer {_login(self.client, 'vt_user', 'VtPass123!')}"}
+        hoy = timezone.localdate()
+        self.mes, self.anio = hoy.month, hoy.year
+        self.cli = Cliente.objects.create(razon_social='CLI SA', nombre_comercial='CLI')
+        inst = Instalacion.objects.create(cliente=self.cli, nombre='MATRIZ')
+        puesto = Puesto.objects.create(instalacion=inst, nombre='P1')
+        self.fijo = Persona.objects.create(nombres='F', apellidos='FIJO', cedula='0920000001', tipo='FIJOS')
+        self.reten = Persona.objects.create(nombres='R', apellidos='RETEN', cedula='0920000002', tipo='RETEN')
+        for per in (self.fijo, self.reten):
+            Asignacion.objects.create(persona=per, cliente=self.cli, instalacion=inst, puesto=puesto,
+                                      mes=self.mes, anio=self.anio, estado='ACTIVO', recurring=True,
+                                      start_date=datetime.date(self.anio, self.mes, 1))
+        self.vista_cliente = VistaCanton.objects.create(nombre='EMPRESA', tipo='cliente', clientes=[self.cli.id])
+        self.vista_tipo = VistaCanton.objects.create(nombre='RETEN', tipo='persona_tipo', tipos=['RETEN'])
+        self.fila_saca = SacafrancoFila.objects.create(mes=self.mes, anio=self.anio, persona=self.reten, orden=1)
+
+    def _personas(self, params):
+        r = self.client.get(f'/api/asignaciones/{self.mes}/{self.anio}/', params, **self.auth)
+        self.assertEqual(r.status_code, 200, r.content)
+        res = r.json().get('results', [])
+        return {(f['persona'].get('id') if isinstance(f['persona'], dict) else f['persona']) for f in res if f.get('persona')}
+
+    def test_el_reten_ya_no_sale_en_la_vista_de_empresa(self):
+        personas = self._personas({'cliente_ids': str(self.cli.id)})
+        self.assertIn(self.fijo.id, personas)
+        self.assertNotIn(self.reten.id, personas)
+
+    def test_el_reten_sale_en_su_propia_pestana(self):
+        self.assertEqual(self._personas({'tipos': 'RETEN'}), {self.reten.id})
+
+    def test_sin_pestana_por_tipo_todo_sigue_igual(self):
+        self.vista_tipo.delete()
+        personas = self._personas({'cliente_ids': str(self.cli.id)})
+        self.assertEqual(personas, {self.fijo.id, self.reten.id})
+
+    def test_el_sacafranco_reten_sale_solo_en_su_pestana(self):
+        def filas(vista_id):
+            r = self.client.get('/api/sacafranco-filas/', {'mes': self.mes, 'anio': self.anio, 'vista_id': vista_id}, **self.auth)
+            self.assertEqual(r.status_code, 200, r.content)
+            d = r.json()
+            lista = d if isinstance(d, list) else (d.get('results') or [])
+            return {f.get('id') for f in lista}
+        self.assertNotIn(self.fila_saca.id, filas(self.vista_cliente.id))      # en otra vista: no sale
+        self.assertIn(self.fila_saca.id, filas(self.vista_tipo.id))            # en su pestaña: sí

@@ -19,6 +19,11 @@ quedaban con una foto vieja. Este módulo los vuelve a alinear con el mes base:
      misma vista, con el mismo orden, provincia y horario en los meses siguientes (se crea la
      fila si no existía) y su cronograma continúa la secuencia. Los sacafranco que solo existen
      en el mes siguiente se informan; solo se eliminan con `quitar_sacafranco_sobrantes=True`.
+  5. SOLO DE OCTUBRE (opcional, `quitar_solo_octubre=True`): las personas RETEN / SACAVACACIONES /
+     SACAFRANCO que tienen asignación en el mes siguiente pero NO en el mes base se desactivan
+     (y el puesto vuelve a su vacante si el mes base la tenía), y sus filas de sacafranco que
+     no están en el mes base se eliminan. Evita personas que salen duplicadas (asignación y
+     sacafranco) o que ya no van. Por defecto solo se informan.
 
 Las pestañas / vistas personalizadas de Asignaciones son filtros guardados (cantón, empresa,
 instalación, tipo) que usan el mismo orden global (provincia, orden, id): al dejar iguales los
@@ -141,7 +146,8 @@ def _filtro(personas, puestos):
 
 
 def alinear_meses(mes, anio, meses=MESES_POR_DEFECTO, personas=None, puestos=None, log=None,
-                  incluir_sacafranco=None, quitar_sacafranco_sobrantes=False):
+                  incluir_sacafranco=None, quitar_sacafranco_sobrantes=False, quitar_solo_octubre=False,
+                  conservar_personas=None):
     """Alinea los `meses` meses siguientes a (mes, anio) con ese mes base.
 
     personas / puestos: conjuntos de ids para limitar el alcance (None = todo el mes).
@@ -149,8 +155,12 @@ def alinear_meses(mes, anio, meses=MESES_POR_DEFECTO, personas=None, puestos=Non
     incluir_sacafranco: alinear también las filas de sacafranco (por defecto solo si se alinea
         el mes completo). quitar_sacafranco_sobrantes: eliminar los sacafranco que solo existen
         en el mes siguiente (por defecto solo se informan).
+    quitar_solo_octubre: desactivar RETEN / SACAVACACIONES / SACAFRANCO con asignación solo en el
+        mes siguiente (y eliminar sus filas de sacafranco que no están en el mes base).
+    conservar_personas: ids de personas que NO se quitan aunque estén solo en el mes siguiente.
     Devuelve una lista [(anio, mes, Counter), ...] de los meses revisados."""
     log = log or (lambda msg: None)
+    conservar = set(conservar_personas or ())
     flt = _filtro(personas, puestos)
     base_qs = Asignacion.objects.filter(mes=mes, anio=anio).select_related('persona')
     if flt is not None:
@@ -187,10 +197,10 @@ def alinear_meses(mes, anio, meses=MESES_POR_DEFECTO, personas=None, puestos=Non
         if not Asignacion.objects.filter(mes=tm, anio=ty).exists():
             continue
         res = _alinear_mes(base, base_por_persona, personas_en_base, base_filas, mes, anio, tm, ty,
-                           personas, puestos, flt, log)
+                           personas, puestos, flt, log, quitar_solo_octubre and personas is None, conservar)
         if incluir_sacafranco:
             res.update(_alinear_sacafranco(base_saca, base_saca_filas, mes, anio, tm, ty,
-                                           quitar_sacafranco_sobrantes, log))
+                                           quitar_sacafranco_sobrantes or quitar_solo_octubre, log, conservar))
         resultados.append((ty, tm, res))
     return resultados
 
@@ -206,7 +216,7 @@ def _acotar(filas, anio, mes, res):
 
 
 def _alinear_mes(base, base_por_persona, personas_en_base, base_filas, bm, by, tm, ty,
-                 personas, puestos, flt, log):
+                 personas, puestos, flt, log, quitar_solo_octubre=False, conservar=frozenset()):
     res = Counter()
     destino_qs = Asignacion.objects.filter(mes=tm, anio=ty).select_related('persona')
     if flt is not None:
@@ -248,11 +258,27 @@ def _alinear_mes(base, base_por_persona, personas_en_base, base_filas, bm, by, t
         for c, v in cambios.items():
             setattr(t, c, v)
 
+    # ---- 1b) SOLO DE OCTUBRE (opcional): retenes / sacavacaciones / sacafranco que no están en el base ----
+    if quitar_solo_octubre:
+        for a in destino:
+            if (a.estado == 'ACTIVO' and a.persona_id and a.persona_id not in personas_en_base
+                    and a.persona_id not in conservar
+                    and getattr(a.persona, 'tipo', '') in TIPOS_PROTEGIDOS):
+                Asignacion.objects.filter(pk=a.pk).update(estado='INACTIVO')
+                a.estado = 'INACTIVO'
+                res['retenes/sacavacaciones/sacafranco solo del mes siguiente desactivados'] += 1
+                log(f'DESACTIVAR (solo del mes siguiente) {a.persona} [{a.persona.tipo}] puesto {a.puesto_id}')
+
     # ---- 2) SOBRANTES / FALTANTES por puesto ----
-    base_activas = Counter(a.puesto_id for a in base if a.estado == 'ACTIVO')
+    # Se cuentan solo las filas VISIBLES: activas y sin persona con la ficha desactivada
+    # (la pantalla oculta a las personas desactivadas, así que no ocupan cupo).
+    def _cuenta(a):
+        return a.estado == 'ACTIVO' and (not a.persona_id or getattr(a.persona, 'is_active', True))
+
+    base_activas = Counter(a.puesto_id for a in base if _cuenta(a))
     dest_activas = defaultdict(list)
     for a in destino:
-        if a.estado == 'ACTIVO':
+        if _cuenta(a):
             dest_activas[a.puesto_id].append(a)
     for puesto_id in set(base_activas) | set(dest_activas):
         if puestos is not None and puesto_id not in puestos:
@@ -317,7 +343,7 @@ def _alinear_mes(base, base_por_persona, personas_en_base, base_filas, bm, by, t
     return res
 
 
-def _alinear_sacafranco(base_saca, base_filas, bm, by, tm, ty, quitar_sobrantes, log):
+def _alinear_sacafranco(base_saca, base_filas, bm, by, tm, ty, quitar_sobrantes, log, conservar=frozenset()):
     """Deja las filas de sacafranco del mes (tm, ty) como las del mes base: misma vista,
     orden, provincia, horario y alcance; y su cronograma continuando la secuencia."""
     res = Counter()
@@ -378,7 +404,8 @@ def _alinear_sacafranco(base_saca, base_filas, bm, by, tm, ty, quitar_sobrantes,
         escribir_mes_saca(t, ty, tm, deseado)
         res['sacafranco: cronogramas corregidos'] += 1
 
-    sobrantes = [f for f in destino if f.persona_id and f.persona_id not in base_ids]
+    sobrantes = [f for f in destino if f.persona_id and f.persona_id not in base_ids
+                 and f.persona_id not in conservar]
     if sobrantes and quitar_sobrantes:
         for f in sobrantes:
             log(f'SACAFRANCO ELIMINAR {f.persona}')
