@@ -591,7 +591,8 @@ def obtener_asignaciones(request, mes=None, anio=None):
             .values_list('instalacion__canton_id', flat=True)
             .distinct()
         )
-        sac_qs = SacafrancoFila.objects.all()
+        # Sin personas DESACTIVADAS (no deben generar pestañas/cantones).
+        sac_qs = SacafrancoFila.objects.filter(Q(persona__isnull=True) | Q(persona__is_active=True))
         if mes and anio:
             try:
                 mes_val = int(mes)
@@ -678,7 +679,7 @@ def obtener_asignaciones(request, mes=None, anio=None):
             .values_list('instalacion__canton_id', flat=True)
             .distinct()
         )
-        sac_full_qs = SacafrancoFila.objects.all()
+        sac_full_qs = SacafrancoFila.objects.filter(Q(persona__isnull=True) | Q(persona__is_active=True))
         if mes and anio:
             try:
                 sac_full_qs = sac_full_qs.filter(Q(anio__lt=int(anio)) | Q(anio=int(anio), mes__lte=int(mes)))
@@ -834,9 +835,9 @@ def asignar_servicio(request):
                     cupo = Puesto.objects.filter(id=puesto_id).values_list('cantidad_puestos', flat=True).first() or 1
                 except Exception:
                     cupo = 1
-                ocupadas = existentes.filter(persona__isnull=False).count()
+                ocupadas = existentes.filter(persona__isnull=False, persona__is_active=True).count()
                 if ocupadas >= cupo:
-                    target = existentes.filter(persona__isnull=False).first()
+                    target = existentes.filter(persona__isnull=False, persona__is_active=True).first()
             if target:
                 target.persona_id = persona_id
                 if horario_id:
@@ -891,7 +892,8 @@ def asignar_servicio(request):
                 cupo = Puesto.objects.filter(id=int(puesto_id)).values_list('cantidad_puestos', flat=True).first() or 1
             except Exception:
                 cupo = 1
-            ocupadas = existentes.filter(persona__isnull=False).count()
+            # Las personas DESACTIVADAS no ocupan cupo (no se ven en pantalla).
+            ocupadas = existentes.filter(persona__isnull=False, persona__is_active=True).count()
             # Solo se bloquea cuando ya se llenaron todos los cupos del puesto.
             if ocupadas >= cupo:
                 return Response(
@@ -1945,8 +1947,9 @@ def sacafranco_filas(request):
             except (TypeError, ValueError):
                 return Response({'error': 'Cliente IDs invalidos'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # se obtiene las filas de sacafranco
-        qs = SacafrancoFila.objects.all()
+        # se obtiene las filas de sacafranco. Igual que la grilla de asignaciones, se ocultan las
+        # personas DESACTIVADAS (is_active=False); las filas sin persona (vacías) se mantienen.
+        qs = SacafrancoFila.objects.filter(Q(persona__isnull=True) | Q(persona__is_active=True))
         if mes and anio:
             try:
                 mes_val = int(mes)
@@ -2382,7 +2385,7 @@ def exportar_asignaciones_excel(request):
         # traía también las de meses anteriores -> la misma persona salía DUPLICADA (una vacía).
         sac_qs = SacafrancoFila.objects.filter(
             mes=month, anio=year
-        ).filter(persona__tipo='SACAFRANCO').select_related('persona')
+        ).filter(persona__tipo='SACAFRANCO', persona__is_active=True).select_related('persona')
         sin_scope = Q(cantones__len=0) & Q(clientes__len=0)
         if cliente_ids and not canton_ids:
             derived_cantones = list(
@@ -3015,7 +3018,7 @@ def puestos_ocupacion(request, mes, anio):
 
     from django.db.models import Count
     filas = (Asignacion.objects
-             .filter(estado='ACTIVO', persona__isnull=False, mes=mes, anio=anio)
+             .filter(estado='ACTIVO', persona__isnull=False, persona__is_active=True, mes=mes, anio=anio)
              .values('puesto_id')
              .annotate(total=Count('id')))
     ocupacion = {str(f['puesto_id']): f['total'] for f in filas if f['puesto_id'] is not None}
@@ -3075,7 +3078,8 @@ def _llenar_hoja_reimportable(ws, mes, anio, cliente_ids=None, canton_ids=None, 
     for s in AsignacionSemanal.objects.filter(asignacion_id__in=[a.id for a in asigs]):
         sem_map[(s.asignacion_id, s.week_start)] = s
 
-    sf_qs = SacafrancoFila.objects.filter(mes=mes, anio=anio, persona__isnull=False).select_related('persona')
+    sf_qs = SacafrancoFila.objects.filter(mes=mes, anio=anio, persona__isnull=False,
+                                          persona__is_active=True).select_related('persona')
     if canton_ids:
         sf_qs = sf_qs.filter(cantones__overlap=canton_ids)
     sfilas = list(sf_qs)

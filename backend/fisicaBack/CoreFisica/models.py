@@ -620,11 +620,23 @@ class Persona(models.Model):
 
     def save(self, *args, **kwargs):
         # estado_empleado es la fuente de verdad: ACTIVO -> habilitado; LIQUIDADO/SUSPENDIDO -> deshabilitado.
+        estaba_activa = None
+        if self.pk:
+            estaba_activa = type(self).objects.filter(pk=self.pk).values_list('is_active', flat=True).first()
         self.is_active = (self.estado_empleado == 'ACTIVO')
         update_fields = kwargs.get('update_fields')
         if update_fields is not None and 'is_active' not in update_fields:
             kwargs['update_fields'] = list(update_fields) + ['is_active']
         super().save(*args, **kwargs)
+        # Si se acaba de DESACTIVAR (LIQUIDADO / SUSPENDIDO): sale de Asignaciones del mes actual en
+        # adelante (asignaciones a INACTIVO y filas de sacafranco eliminadas). Nunca rompe el guardado.
+        if estaba_activa and not self.is_active:
+            try:
+                from .asignaciones_meses import limpiar_personas_desactivadas
+                limpiar_personas_desactivadas(persona_ids=[self.pk])
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception('No se pudo limpiar Asignaciones de la persona desactivada')
 
     def disable(self, by_user=None):
         if not self.is_active:

@@ -328,3 +328,120 @@ class VistaPorTipoExclusivaTests(TestCase):
             return {f.get('id') for f in lista}
         self.assertNotIn(self.fila_saca.id, filas(self.vista_cliente.id))      # en otra vista: no sale
         self.assertIn(self.fila_saca.id, filas(self.vista_tipo.id))            # en su pestaña: sí
+
+
+class SacafrancoDesactivadoTests(TestCase):
+    """Las filas de sacafranco de personas DESACTIVADAS no se muestran (igual que en asignaciones)."""
+
+    def test_no_sale_el_sacafranco_con_la_ficha_desactivada(self):
+        from CoreFisica.models import SacafrancoFila
+        User.objects.create_superuser(username='sd_user', email='e@e.com', password='SdPass123!')
+        auth = {'HTTP_AUTHORIZATION': f"Bearer {_login(self.client, 'sd_user', 'SdPass123!')}"}
+        hoy = timezone.localdate()
+        activo = Persona.objects.create(nombres='A', apellidos='ACTIVO', cedula='0930000001', tipo='SACAFRANCO')
+        baja = Persona.objects.create(nombres='B', apellidos='BAJA', cedula='0930000002', tipo='SACAFRANCO', estado_empleado='LIQUIDADO')
+        f1 = SacafrancoFila.objects.create(mes=hoy.month, anio=hoy.year, persona=activo, orden=1)
+        f2 = SacafrancoFila.objects.create(mes=hoy.month, anio=hoy.year, persona=baja, orden=2)
+        f3 = SacafrancoFila.objects.create(mes=hoy.month, anio=hoy.year, persona=None, orden=3)   # fila vacía
+        r = self.client.get('/api/sacafranco-filas/', {'mes': hoy.month, 'anio': hoy.year}, **auth)
+        self.assertEqual(r.status_code, 200, r.content)
+        d = r.json()
+        ids = {f.get('id') for f in (d if isinstance(d, list) else (d.get('results') or []))}
+        self.assertIn(f1.id, ids)
+        self.assertIn(f3.id, ids)           # las filas vacías se mantienen
+        self.assertNotIn(f2.id, ids)        # la persona desactivada no sale
+
+
+
+class PersonasDesactivadasTests(TestCase):
+    """Desactivar a una persona (LIQUIDADO / SUSPENDIDO) la quita de Asignaciones del mes actual en adelante."""
+
+    def setUp(self):
+        from CoreFisica.models import SacafrancoFila
+        self.SacafrancoFila = SacafrancoFila
+        User.objects.create_superuser(username='pd_user', email='e@e.com', password='PdPass123!')
+        self.auth = {'HTTP_AUTHORIZATION': f"Bearer {_login(self.client, 'pd_user', 'PdPass123!')}"}
+        hoy = timezone.localdate()
+        self.anio, self.mes = hoy.year, hoy.month
+        self.sig_anio, self.sig_mes = sumar_meses(self.anio, self.mes, 1)
+        self.ant_anio, self.ant_mes = sumar_meses(self.anio, self.mes, -1)
+        cli = Cliente.objects.create(razon_social='C SA', nombre_comercial='C')
+        self.inst = Instalacion.objects.create(cliente=cli, nombre='I')
+        self.cli = cli
+        self.puesto = Puesto.objects.create(instalacion=self.inst, nombre='P1', cantidad_puestos=1)
+
+    def _asig(self, persona, mes, anio, estado='ACTIVO'):
+        return Asignacion.objects.create(persona=persona, cliente=self.cli, instalacion=self.inst, puesto=self.puesto,
+                                         mes=mes, anio=anio, estado=estado, recurring=True,
+                                         start_date=datetime.date(anio, mes, 1))
+
+    def test_al_desactivar_sale_del_mes_actual_en_adelante_y_no_toca_el_pasado(self):
+        p = Persona.objects.create(nombres='X', apellidos='FIJO', cedula='0940000001', tipo='FIJOS')
+        pasado = self._asig(p, self.ant_mes, self.ant_anio)
+        actual = self._asig(p, self.mes, self.anio)
+        futuro = self._asig(p, self.sig_mes, self.sig_anio)
+        p.estado_empleado = 'LIQUIDADO'
+        p.save()
+        for a in (pasado, actual, futuro):
+            a.refresh_from_db()
+        self.assertEqual(pasado.estado, 'ACTIVO')            # historial: no se toca
+        self.assertEqual(actual.estado, 'INACTIVO')
+        self.assertEqual(futuro.estado, 'INACTIVO')
+
+    def test_sirve_para_cualquier_tipo(self):
+        for i, tipo in enumerate(('SACAFRANCO', 'RETEN', 'SACAVACACIONES', 'SUPERVISOR EVENTUAL')):
+            p = Persona.objects.create(nombres='X', apellidos=tipo, cedula=f'095000000{i}', tipo=tipo)
+            a = self._asig(p, self.sig_mes, self.sig_anio)
+            p.estado_empleado = 'SUSPENDIDO'
+            p.save()
+            a.refresh_from_db()
+            self.assertEqual(a.estado, 'INACTIVO', tipo)
+
+    def test_se_eliminan_sus_filas_de_sacafranco_menos_las_que_tienen_asistencia(self):
+        from CoreFisica.models import SacafrancoAsistencia
+        p = Persona.objects.create(nombres='S', apellidos='SACA', cedula='0960000001', tipo='SACAFRANCO')
+        sin_historial = self.SacafrancoFila.objects.create(mes=self.sig_mes, anio=self.sig_anio, persona=p, orden=1)
+        con_historial = self.SacafrancoFila.objects.create(mes=self.mes, anio=self.anio, persona=p, orden=1)
+        SacafrancoAsistencia.objects.create(sacafranco_fila=con_historial, fecha=datetime.date(self.anio, self.mes, 1),
+                                            estado_asistencia='ASISTIO')
+        pasada = self.SacafrancoFila.objects.create(mes=self.ant_mes, anio=self.ant_anio, persona=p, orden=1)
+        p.estado_empleado = 'LIQUIDADO'
+        p.save()
+        self.assertFalse(self.SacafrancoFila.objects.filter(pk=sin_historial.pk).exists())   # se elimina
+        self.assertTrue(self.SacafrancoFila.objects.filter(pk=con_historial.pk).exists())    # tiene asistencia: se conserva
+        self.assertTrue(self.SacafrancoFila.objects.filter(pk=pasada.pk).exists())           # mes pasado: no se toca
+
+    def test_una_persona_activa_no_se_toca(self):
+        p = Persona.objects.create(nombres='A', apellidos='ACTIVA', cedula='0970000001', tipo='FIJOS')
+        a = self._asig(p, self.sig_mes, self.sig_anio)
+        p.nombres = 'A2'
+        p.save()
+        a.refresh_from_db()
+        self.assertEqual(a.estado, 'ACTIVO')
+
+    def test_la_desactivada_no_ocupa_cupo_ni_bloquea_al_asignar(self):
+        # Datos viejos: la persona ya estaba desactivada con su asignación todavía ACTIVA (se fuerza sin pasar por save()).
+        baja = Persona.objects.create(nombres='B', apellidos='BAJA', cedula='0980000001', tipo='FIJOS')
+        self._asig(baja, self.mes, self.anio)
+        Persona.objects.filter(pk=baja.pk).update(estado_empleado='LIQUIDADO', is_active=False)
+        nuevo = Persona.objects.create(nombres='N', apellidos='NUEVO', cedula='0980000002', tipo='FIJOS')
+        r = self.client.get(f'/api/puestos-ocupacion/{self.mes}/{self.anio}/', **self.auth)
+        if r.status_code == 200:
+            self.assertNotIn(str(self.puesto.id), r.json().get('ocupacion', {}))
+        r = self.client.post('/api/asignar-servicio/', data=json.dumps({
+            'persona': nuevo.id, 'cliente': self.cli.id, 'instalacion': self.inst.id, 'puesto': self.puesto.id,
+            'mes': self.mes, 'anio': self.anio}), content_type='application/json', **self.auth)
+        self.assertIn(r.status_code, (200, 201), r.content)      # antes: "ya alcanzó su cantidad máxima"
+
+    def test_el_comando_en_prueba_no_guarda(self):
+        p = Persona.objects.create(nombres='C', apellidos='CMD', cedula='0990000001', tipo='FIJOS')
+        a = self._asig(p, self.sig_mes, self.sig_anio)
+        Persona.objects.filter(pk=p.pk).update(estado_empleado='LIQUIDADO', is_active=False)
+        out = StringIO()
+        call_command('limpiar_personas_desactivadas', '--dry-run', stdout=out)
+        a.refresh_from_db()
+        self.assertEqual(a.estado, 'ACTIVO')
+        self.assertIn('PRUEBA', out.getvalue())
+        call_command('limpiar_personas_desactivadas', stdout=StringIO())
+        a.refresh_from_db()
+        self.assertEqual(a.estado, 'INACTIVO')

@@ -44,7 +44,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import Asignacion, AsignacionSemanal, SacafrancoFila, SacafrancoFilaSemanal
+from .models import Asignacion, AsignacionSemanal, Persona, SacafrancoFila, SacafrancoFilaSemanal
 
 logger = logging.getLogger(__name__)
 
@@ -498,3 +498,42 @@ def propaga_a_meses_siguientes(vista):
             logger.exception('No se pudo propagar el cambio de asignaciones')
         return respuesta
     return envoltura
+
+
+# ---------------------------------------------------------------------------
+# Personas DESACTIVADAS (LIQUIDADO / SUSPENDIDO)
+# ---------------------------------------------------------------------------
+def limpiar_personas_desactivadas(persona_ids=None, desde=None, log=None):
+    """Quita de Asignaciones a las personas desactivadas, del mes ACTUAL en adelante.
+
+    - Sus asignaciones ACTIVAS pasan a INACTIVO (dejan de ocupar cupo y de salir en pantalla).
+    - Sus filas de sacafranco se ELIMINAN, salvo las que ya tienen asistencia registrada
+      (esas son historial: se conservan; igual no se muestran porque la persona está desactivada).
+    - Los meses PASADOS no se tocan (son historial de asistencia, pagos y reportes).
+    Sirve para todos los tipos (FIJOS, SACAFRANCO, RETEN, ...). Devuelve un Counter."""
+    res = Counter()
+    hoy = timezone.localdate()
+    anio, mes = desde or (hoy.year, hoy.month)
+    personas = Persona.objects.filter(is_active=False)
+    if persona_ids is not None:
+        personas = personas.filter(pk__in=list(persona_ids))
+    periodo = Q(anio__gt=anio) | Q(anio=anio, mes__gte=mes)
+
+    asig_qs = Asignacion.objects.filter(estado='ACTIVO', persona__in=personas).filter(periodo)
+    if log:
+        for a in asig_qs.select_related('persona')[:300]:
+            log(f'ASIGNACION a INACTIVO: {a.persona} {a.mes:02d}/{a.anio} (puesto {a.puesto_id})')
+    res['asignaciones de personas desactivadas pasadas a INACTIVO'] += asig_qs.update(estado='INACTIVO')
+
+    saca_qs = SacafrancoFila.objects.filter(persona__in=personas).filter(periodo)
+    con_historial = saca_qs.filter(Q(asistencias__isnull=False) | Q(historial_asistencia__isnull=False))
+    borrables = saca_qs.exclude(pk__in=con_historial.values('pk'))
+    n_borrar = borrables.count()
+    res['filas de sacafranco conservadas (tienen asistencia registrada)'] += saca_qs.count() - n_borrar
+    if log:
+        for f in borrables.select_related('persona')[:300]:
+            log(f'SACAFRANCO ELIMINAR: {f.persona} {f.mes:02d}/{f.anio}')
+    if n_borrar:
+        borrables.delete()
+    res['filas de sacafranco de personas desactivadas eliminadas'] += n_borrar
+    return +res
