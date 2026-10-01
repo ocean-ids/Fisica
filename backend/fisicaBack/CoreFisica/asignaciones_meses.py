@@ -365,9 +365,11 @@ def _alinear_sacafranco(base_saca, base_filas, bm, by, tm, ty, quitar_sobrantes,
             continue                      # persona repetida en el mes base: se usa la primera
         vistos.add(b.persona_id)
         base_ids.add(b.persona_id)
-        campos = dict(orden=b.orden, provincia_id=b.provincia_id, hora_ingreso=b.hora_ingreso,
-                      hora_salida=b.hora_salida, cantones=list(b.cantones or []),
-                      clientes=list(b.clientes or []), vista_id=b.vista_id)
+        campos = {
+            'orden': b.orden, 'provincia_id': b.provincia_id, 'hora_ingreso': b.hora_ingreso,
+            'hora_salida': b.hora_salida, 'cantones': list(b.cantones or []),
+            'clientes': list(b.clientes or []), 'vista_id': b.vista_id,
+        }
         t = dest_por_persona.get(b.persona_id)
         if t is None:
             t = SacafrancoFila.objects.create(mes=tm, anio=ty, persona_id=b.persona_id, **campos)
