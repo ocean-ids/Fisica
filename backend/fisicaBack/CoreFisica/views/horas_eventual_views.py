@@ -512,15 +512,15 @@ def exportar_excel_horas_eventual(request):
     ws.title = 'EVENTUALES'
     columnas = [
         # Mismos nombres y orden que el archivo del banco.
-        ('NombreCompleto', 38), ('identificacion', 14), ('Banco', 8), ('TipoCuentaBancaria', 20),
-        ('NumeroCuentaBancaria', 22), ('BancoNombre', 18), ('Creado', 18),
+        ('NombreCompleto', 42), ('identificacion', 18), ('Banco', 12), ('TipoCuentaBancaria', 26),
+        ('NumeroCuentaBancaria', 28), ('BancoNombre', 20), ('Creado', 16),
     ]
     borde = Border(*(Side(style='thin', color='999999'),) * 4)
     for c, (titulo, ancho) in enumerate(columnas, start=1):
         cell = ws.cell(1, c, titulo)
         cell.font = Font(bold=True, color='FFFFFF')
         cell.fill = PatternFill('solid', fgColor='1F4E78')
-        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
         cell.border = borde
         ws.column_dimensions[get_column_letter(c)].width = ancho
     fila = 2
@@ -534,6 +534,7 @@ def exportar_excel_horas_eventual(request):
         for c, v in enumerate(valores, start=1):
             cell = ws.cell(fila, c, v)
             cell.border = borde
+            cell.alignment = Alignment(horizontal='center', vertical='center')
             # Cédula, código y cuenta como TEXTO (conservan los ceros a la izquierda).
             if c in (2, 3, 5):
                 cell.number_format = '@'
