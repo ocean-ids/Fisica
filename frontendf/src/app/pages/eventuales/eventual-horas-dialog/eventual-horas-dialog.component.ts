@@ -16,6 +16,7 @@ interface DialogData {
   row?: HorasEventual;                       // presente = edición
   catalogo?: CatalogoHorasEventual | null;   // si viene, no se vuelve a pedir
   fechaDefecto?: string;                     // al crear: día propuesto (YYYY-MM-DD)
+  turnoDefecto?: 'Diurno' | 'Nocturno';      // al crear: turno que se estaba viendo en la lista
 }
 
 type Opcion = { id: number; nombre: string; [k: string]: any };
@@ -46,6 +47,7 @@ export class EventualHorasDialogComponent implements OnInit {
   // al editar, la del registro. Es la fecha por la que se filtra la lista.
   fecha = '';                  // YYYY-MM-DD (valor inicial)
   fechaServicio: Date | null = null;
+  turno: 'Diurno' | 'Nocturno' = 'Diurno';   // al crear: el de la lista; al editar: el del registro
   horasSolicitadas: number | null = null;
   horas: number | null = null;             // horas trabajadas
   bonificacion: number | null = null;      // opcional
@@ -72,6 +74,7 @@ export class EventualHorasDialogComponent implements OnInit {
     this.esEdicion = !!row?.id;
     this.fecha = row?.fecha || this.data?.fechaDefecto || this.hoy();
     this.fechaServicio = this.aFecha(this.fecha);
+    this.turno = row?.turno || this.data?.turnoDefecto || 'Diurno';
     this.horasSolicitadas = row?.horas_solicitadas ?? null;
     this.horas = row?.horas ?? null;
     this.bonificacion = row?.bonificacion ?? null;
@@ -362,6 +365,7 @@ export class EventualHorasDialogComponent implements OnInit {
 
     const payload: HorasEventual = {
       fecha: this.aTexto(this.fechaServicio),
+      turno: this.turno,
       persona_id: ev.id,
       cliente_id: cli?.id ?? null,
       cliente_texto: cliTxt,

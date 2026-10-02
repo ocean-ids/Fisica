@@ -91,6 +91,7 @@ def _serialize(h):
     return {
         'id': h.id,
         'fecha': h.fecha.isoformat() if h.fecha else None,
+        'turno': h.turno or 'Diurno',
         'persona_id': h.persona_id,
         'persona': _nombre_persona(h.persona),
         'cedula': getattr(h.persona, 'cedula', '') or '',
@@ -149,11 +150,19 @@ def _entero(v):
     return int(f) if f.is_integer() else None
 
 
+def _turno(v):
+    """'Diurno' o 'Nocturno' (sin importar mayúsculas); None si no es ninguno."""
+    t = str(v or '').strip().capitalize()
+    return t if t in ('Diurno', 'Nocturno') else None
+
+
 def _validar(data):
     """Valida y resuelve los datos del registro. Devuelve (campos, error)."""
     fecha = _parse_fecha(data.get('fecha'))
     if not fecha:
         return None, 'La fecha es obligatoria.'
+
+    turno = _turno(data.get('turno')) or 'Diurno'
 
     persona = Persona.objects.filter(id=_int(data.get('persona_id'))).first()
     if not persona:
@@ -248,7 +257,7 @@ def _validar(data):
         return None, 'El valor calculado no puede ser negativo.'
 
     return {
-        'fecha': fecha, 'persona': persona,
+        'fecha': fecha, 'turno': turno, 'persona': persona,
         'cliente': cliente, 'cliente_texto': cliente_texto,
         'instalacion': instalacion, 'instalacion_texto': instalacion_texto,
         'puesto': puesto, 'puesto_texto': puesto_texto,
@@ -302,7 +311,7 @@ _CAMPOS_HISTORIAL = [
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def listar_horas_eventual(request):
-    """Lista de registros. Filtros opcionales: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD."""
+    """Lista de registros. Filtros opcionales: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&turno=Diurno|Nocturno."""
     if not request.user.has_perm('CoreFisica.view_horaseventual'):
         return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
     qs = HorasEventual.objects.select_related(*_SELECT)
@@ -312,6 +321,9 @@ def listar_horas_eventual(request):
         qs = qs.filter(fecha__gte=desde)
     if hasta:
         qs = qs.filter(fecha__lte=hasta)
+    turno = _turno(request.GET.get('turno'))   # sin turno = ambos
+    if turno:
+        qs = qs.filter(turno=turno)
     return Response([_serialize(h) for h in qs])
 
 
@@ -472,7 +484,8 @@ def exportar_excel_horas_eventual(request):
     """Descargable Excel de Eventuales (formato de pago): una fila por persona con
     NOMBRE, CUENTA, BANCO, TIPO (de cuenta), CEDULA y VALOR (suma del Valor Calculado de sus
     registros del día o del rango elegido).
-    Filtros: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (o ?fecha=) y ?q= (búsqueda de la pantalla)."""
+    Filtros: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (o ?fecha=), ?turno=Diurno|Nocturno (sin turno = ambos)
+    y ?q= (búsqueda de la pantalla)."""
     if not request.user.has_perm('CoreFisica.view_horaseventual'):
         return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
     import io
@@ -489,6 +502,9 @@ def exportar_excel_horas_eventual(request):
         qs = qs.filter(fecha__gte=desde)
     if hasta:
         qs = qs.filter(fecha__lte=hasta)
+    turno = _turno(request.GET.get('turno'))   # sin turno = ambos
+    if turno:
+        qs = qs.filter(turno=turno)
     registros = list(qs)
     filas = [_serialize(h) for h in registros]
 

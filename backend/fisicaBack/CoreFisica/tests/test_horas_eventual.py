@@ -292,3 +292,31 @@ class HorasEventualTests(TestCase):
         juan = next([c.value for c in ws[i]] for i in (2, 3) if ws.cell(i, 1).value == 'PEREZ JUAN')
         self.assertEqual(juan[5], 18.75 + 30.0 + 12.5)               # valor sumado del rango (incluye el bono)
         self.assertEqual(len(juan), 6)
+
+    # ---------- Turno (Diurno / Nocturno) ----------
+    def test_turno_por_defecto_diurno_y_se_guarda_nocturno(self):
+        self.assertEqual(self._crear().json()['turno'], 'Diurno')
+        self.assertEqual(self._crear(turno='nocturno').json()['turno'], 'Nocturno')
+        self.assertEqual(self._crear(turno='cualquiera').json()['turno'], 'Diurno')   # inválido: Diurno
+
+    def test_listado_y_excel_filtran_por_turno_y_sin_turno_es_ambos(self):
+        import io as _io
+        from openpyxl import load_workbook
+        self._crear(turno='Diurno')                                          # JUAN, diurno
+        self._crear(persona_id=self.ev_sin_banco.id, turno='Nocturno')       # ANA, nocturno
+        base = '/api/horas-eventual/?desde=2026-09-29&hasta=2026-09-29'
+        self.assertEqual(len(self.client.get(base, **self._auth()).json()), 2)           # ambos
+        self.assertEqual([f['persona'] for f in self.client.get(base + '&turno=Nocturno', **self._auth()).json()],
+                         ['LOPEZ ANA'])
+        self.assertEqual([f['persona'] for f in self.client.get(base + '&turno=Diurno', **self._auth()).json()],
+                         ['PEREZ JUAN'])
+        ex = '/api/horas-eventual/exportar-excel/?fecha=2026-09-29'
+        self.assertEqual(load_workbook(_io.BytesIO(self.client.get(ex, **self._auth()).content)).active.max_row, 3)
+        r = self.client.get(ex + '&turno=Nocturno', **self._auth())
+        self.assertEqual(load_workbook(_io.BytesIO(r.content)).active.max_row, 2)        # encabezado + ANA
+
+    def test_editar_cambia_el_turno(self):
+        rid = self._crear().json()['id']
+        r = self.client.put(f'/api/horas-eventual/{rid}/', data=json.dumps(self._datos(turno='Nocturno')),
+                            content_type='application/json', **self._auth())
+        self.assertEqual(r.json()['turno'], 'Nocturno')

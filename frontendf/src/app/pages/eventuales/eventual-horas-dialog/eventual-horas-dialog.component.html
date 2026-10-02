@@ -80,15 +80,11 @@
     </mat-form-field>
   </div>
 
-  <!-- Fila 3: TIPO | CEDULA | Creado (= fecha del servicio) -->
+  <!-- Fila 3: TIPO | Creado (= fecha del servicio) -->
   <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Tipo</mat-label>
       <input matInput readonly [value]="tipoCuenta">
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Cedula</mat-label>
-      <input matInput readonly [value]="cedula">
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Creado</mat-label>
@@ -96,6 +92,14 @@
              placeholder="dd/mm/aaaa" (click)="pickerServicio.open()">
       <mat-datepicker-toggle matIconSuffix [for]="pickerServicio"></mat-datepicker-toggle>
       <mat-datepicker #pickerServicio></mat-datepicker>
+    </mat-form-field>
+    <!-- Turno: viene elegido el que se estaba viendo en la lista (o el del registro al editar); se puede cambiar. -->
+    <mat-form-field appearance="outline">
+      <mat-label>Turno</mat-label>
+      <mat-select [(ngModel)]="turno" name="turno" required>
+        <mat-option value="Diurno">Diurno</mat-option>
+        <mat-option value="Nocturno">Nocturno</mat-option>
+      </mat-select>
     </mat-form-field>
   </div>
 

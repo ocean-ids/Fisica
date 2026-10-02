@@ -19,11 +19,21 @@
         <i class="bi bi-file-earmark-excel"></i> Descargar Excel
       </button>
       <button *ngIf="puedeCrear" type="button" class="btn btn-primary btn-sm" (click)="nuevo()"
-              [disabled]="!esUnDia"
-              [attr.title]="esUnDia ? 'Nuevo registro' : 'Elige un solo día para crear un registro (hay un rango de fechas seleccionado)'">
+              [disabled]="!esUnDia || turnoFiltro === 'Ambos'"
+              [attr.title]="turnoFiltro === 'Ambos' ? 'Elige Diurno o Nocturno para crear un registro (Ambos es solo para ver todos)' : (esUnDia ? 'Nuevo registro' : 'Elige un solo día para crear un registro (hay un rango de fechas seleccionado)')">
         <i class="bi bi-plus-lg"></i> Nuevo registro
       </button>
     </div>
+  </div>
+
+  <!-- Turno, centrado bajo el título. Ambos = solo para VER todos los registros (diurnos y
+       nocturnos) en una sola lista; no se puede crear nada estando en Ambos. -->
+  <div class="d-flex justify-content-center mb-2">
+    <mat-button-toggle-group [(ngModel)]="turnoFiltro" aria-label="Turno" class="ev-turno">
+      <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
+      <mat-button-toggle value="Ambos">Ambos</mat-button-toggle>
+      <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
+    </mat-button-toggle-group>
   </div>
 
   <div class="table-responsive">
@@ -41,6 +51,7 @@
           <th>Tipo</th>
           <th>Cedula</th>
           <th>Creado</th>  <!-- = fecha del servicio -->
+          <th>Turno</th>
           <th>Horas Solicitadas</th>
           <th>Horas Trabajadas</th>
           <th>Rango de Horas</th>
@@ -53,7 +64,7 @@
       </thead>
       <tbody>
         <tr *ngIf="loading">
-          <td colspan="18" class="text-muted">Cargando…</td>
+          <td colspan="19" class="text-muted">Cargando…</td>
         </tr>
         <ng-container *ngIf="!loading">
           <tr *ngFor="let f of filasFiltradas; let i = index">
@@ -67,6 +78,7 @@
             <td>{{ f.tipo_cuenta || '—' }}</td>
             <td>{{ f.cedula || '—' }}</td>
             <td>{{ fechaDMA(f.fecha) }}</td>
+            <td>{{ f.turno || 'Diurno' }}</td>
             <td>{{ f.horas_solicitadas || 0 }}</td>
             <td class="fw-semibold">{{ f.horas }}</td>
             <td>{{ f.rango_horas || '—' }}</td>
@@ -86,13 +98,13 @@
             </td>
           </tr>
           <tr *ngIf="!filasFiltradas.length">
-            <td colspan="18" class="text-muted">Sin registros en estas fechas.</td>
+            <td colspan="19" class="text-muted">Sin registros en estas fechas.</td>
           </tr>
         </ng-container>
       </tbody>
       <tfoot *ngIf="!loading && filasFiltradas.length">
         <tr>
-          <th colspan="10" class="text-end">Totales</th>
+          <th colspan="11" class="text-end">Totales</th>
           <th>{{ totalSolicitadas }}</th>
           <th>{{ totalHoras }}</th>
           <th></th>

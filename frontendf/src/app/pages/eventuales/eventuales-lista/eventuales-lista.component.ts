@@ -4,6 +4,7 @@ import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angul
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
@@ -18,7 +19,7 @@ import { EventualHistorialDialogComponent } from '../eventual-historial-dialog/e
 @Component({
   selector: 'app-eventuales-lista',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatDatepickerModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatDatepickerModule, MatButtonToggleModule],
   templateUrl: './eventuales-lista.component.html',
   styleUrl: './eventuales-lista.component.css',
 })
@@ -33,6 +34,8 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
     end: new FormControl<Date | null>(null),
   });
   private rangoSub?: Subscription;
+  // Turno que se está viendo. 'Ambos' = todos los registros (diurnos y nocturnos) en una sola lista.
+  turnoFiltro: 'Ambos' | 'Diurno' | 'Nocturno' = 'Ambos';
   texto = '';           // búsqueda: viene del buscador GENERAL (barra superior)
   private catalogo: CatalogoHorasEventual | null = null;
   private filterSub?: Subscription;
@@ -152,8 +155,11 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
   // Búsqueda en la tabla: cada palabra debe aparecer en el registro (en cualquier orden).
   get filasFiltradas(): HorasEventual[] {
     const tokens = this.norm(this.texto).split(/\s+/).filter(Boolean);
-    if (!tokens.length) { return this.filas; }
-    return this.filas.filter(f => {
+    const base = this.turnoFiltro === 'Ambos'
+      ? this.filas
+      : this.filas.filter(f => (f.turno || 'Diurno') === this.turnoFiltro);
+    if (!tokens.length) { return base; }
+    return base.filter(f => {
       const h = this.norm([f.persona, f.cedula, f.banco, f.numero_cuenta, f.cliente, f.instalacion, f.puesto].join(' '));
       return tokens.every(t => h.includes(t));
     });
@@ -190,6 +196,7 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
     if (!this.fechaDesde || !this.fechaHasta) { return; }
     const params: any = { desde: this.fechaDesde, hasta: this.fechaHasta };
     if (this.texto.trim()) { params.q = this.texto.trim(); }
+    if (this.turnoFiltro !== 'Ambos') { params.turno = this.turnoFiltro; }
     const dma = (v: string) => v.split('-').reverse().join('-');
     const nombre = this.fechaDesde === this.fechaHasta
       ? `EVENTUALES ${dma(this.fechaDesde)}.xlsx`
@@ -211,7 +218,7 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
   }
 
   // Solo se crea con UN día seleccionado (con un rango no se sabe en qué fecha sería).
-  nuevo(): void { if (this.esUnDia) { this.abrirDialog(null); } }
+  nuevo(): void { if (this.esUnDia && this.turnoFiltro !== 'Ambos') { this.abrirDialog(null); } }
 
   editar(f: HorasEventual): void { this.abrirDialog(f); }
 
@@ -221,7 +228,9 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
       maxWidth: '95vw',
       autoFocus: false,
       // Al crear, el formulario propone el día que se está viendo.
-      data: { row: row || undefined, catalogo: this.catalogo, fechaDefecto: this.fechaDefectoNuevo() },
+      data: { row: row || undefined, catalogo: this.catalogo, fechaDefecto: this.fechaDefectoNuevo(),
+        // El turno que se está viendo viene marcado en el formulario (Ambos no deja crear; solo Diurno o Nocturno).
+        turnoDefecto: this.turnoFiltro === 'Nocturno' ? 'Nocturno' : 'Diurno' },
     });
     ref.afterClosed().subscribe((res: HorasEventual | undefined) => {
       if (!res) { return; }
@@ -229,6 +238,10 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
       if (res.fecha && (res.fecha < this.fechaDesde || res.fecha > this.fechaHasta)) {
         this.fechaDesde = this.fechaHasta = res.fecha;
         this.rangoForm.reset({ start: null, end: null }, { emitEvent: false });
+      }
+      // Si el registro quedó en otro turno que el filtrado, la lista pasa a ese turno.
+      if (this.turnoFiltro !== 'Ambos' && res.turno && res.turno !== this.turnoFiltro) {
+        this.turnoFiltro = res.turno;
       }
       this.cargar();
     });

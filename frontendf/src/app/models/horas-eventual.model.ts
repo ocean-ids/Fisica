@@ -2,6 +2,7 @@
 export interface HorasEventual {
   id?: number;
   fecha: string;              // YYYY-MM-DD (día elegido en la pantalla del módulo)
+  turno?: 'Diurno' | 'Nocturno'; // turno en que trabajó
   persona_id: number;
   persona?: string;           // "APELLIDOS NOMBRES"
   cedula?: string;

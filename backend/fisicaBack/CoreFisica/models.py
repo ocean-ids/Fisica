@@ -1846,6 +1846,9 @@ class HorasEventual(models.Model):
     """
     fecha = models.DateField(db_index=True)
     persona = models.ForeignKey(Persona, on_delete=models.PROTECT, related_name='horas_eventual')
+    # Turno en que trabajó. Los registros anteriores a este campo quedaron como Diurno.
+    turno = models.CharField(max_length=8, default='Diurno', db_index=True,
+                             choices=[('Diurno', 'Diurno'), ('Nocturno', 'Nocturno')])
     # Cliente / instalación / puesto: elegidos de la lista (FK) o, si no existen, escritos a mano
     # (texto, solo para este registro; NO se crea el dato maestro).
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, null=True, blank=True, related_name='+')
