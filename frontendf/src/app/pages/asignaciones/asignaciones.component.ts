@@ -1909,55 +1909,9 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.fillSel = { ...s, end: target };   // la selección incluye lo rellenado
     };
 
-    // Se arrastró HASTA EL ÚLTIMO DÍA del mes (solo fijos: el sacafranco tiene una fila por
-    // mes): ofrecer continuar la secuencia 24 meses, igual que "Sin fecha fin" del modal.
-    const llegoAFinDeMes = target === this.fillCells.length - 1;
-    const futuro = (!isSaca && llegoAFinDeMes) ? this.buildRellenoFuturo(tokens, s.start) : null;
-    if (!futuro) { guardar(null); return; }
-
-    Swal.fire({
-      icon: 'question',
-      title: 'Llegaste al último día del mes',
-      html: '¿Continuar esta secuencia en los <b>meses siguientes</b>?<br>'
-          + '<small>Se sobrescriben los días que ya tenga este registro en esos meses.</small>',
-      showCancelButton: true,
-      confirmButtonText: 'Sí',
-      cancelButtonText: 'Solo este mes',
-      reverseButtons: true,
-    }).then(res => {
-      if (res.isConfirmed) {
-        Swal.fire({
-          toast: true, position: 'top-end', icon: 'info', timer: 3500, showConfirmButton: false,
-          title: 'Aplicando la secuencia en los meses siguientes…',
-        });
-        guardar(futuro.map);
-      } else {
-        guardar(null);
-      }
-    });
-  }
-
-  // Secuencia para los MESES SIGUIENTES: desde el día 1 del mes siguiente hasta 24 meses
-  // contados desde el inicio de la selección (mismo horizonte que "Sin fecha fin").
-  // Sigue el ciclo sin cortarse y usa las mismas claves de semana que cada mes (1, 8, 15…).
-  private buildRellenoFuturo(tokens: string[], selStart: number):
-      { map: Record<string, Record<string, string>>; hastaTxt: string } | null {
-    const c0 = this.fillCells[selStart];
-    const inicio = c0 ? this.getDateForDayKey(c0.ws, c0.dayKey) : null;
-    if (!inicio || !tokens.length) return null;
-    const hasta = new Date(inicio);
-    hasta.setMonth(hasta.getMonth() + 24);
-    hasta.setDate(hasta.getDate() - 1);
-    const desde = new Date(this.anio, this.mes, 1);   // día 1 del mes siguiente
-    if (desde > hasta) return null;
-    // Fase del ciclo en el día 1 del mes siguiente: el último día del mes es la celda
-    // (fillCells.length - 1); el día siguiente continúa la cuenta.
-    const off = (this.fillCells.length - selStart) % tokens.length;
-    const rot = tokens.slice(off).concat(tokens.slice(0, off));
-    const map = this.buildRangeMap(desde, hasta, rot, null);
-    const dd = String(hasta.getDate()).padStart(2, '0');
-    const mm = String(hasta.getMonth() + 1).padStart(2, '0');
-    return { map, hastaTxt: `${dd}/${mm}/${hasta.getFullYear()}` };
+    // El cronograma se queda en ESTE mes. El mes siguiente lo genera el cierre de mes, la última noche
+    // del mes, continuando la secuencia con la que termina este (ya no se pregunta ni se copia aquí).
+    guardar(null);
   }
 
   private openSacafrancoSequenceModal(fila: SacafrancoFila): void {

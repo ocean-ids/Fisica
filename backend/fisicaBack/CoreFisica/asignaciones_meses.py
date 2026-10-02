@@ -31,12 +31,12 @@ registros y el orden, TODAS las vistas quedan iguales al mes base.
 
 No borra nada: solo actualiza, crea o desactiva (estado INACTIVO). Se puede repetir.
 
-- `alinear_meses(...)`: lo usa el comando `continuar_meses_desde` (todo el mes) y la propagación.
-- `propagar_cambio(...)`: lo usan las vistas de asignaciones al crear/editar/eliminar, para
-  que un cambio hecho en el mes actual se pase solo a los meses siguientes. Nunca lanza.
+- `alinear_meses(...)`: lo usa el comando `continuar_meses_desde` y `asegurar_horizonte`.
+- `asegurar_horizonte(...)`: lo usa el comando `cierre_de_mes`. NO se copian cambios en vivo a los
+  meses siguientes: el mes siguiente se crea (o se re-alinea) UNA vez, al cambiar de mes, desde el
+  estado final del mes que termina.
 """
 import datetime
-import functools
 import logging
 from collections import Counter, defaultdict
 
@@ -57,6 +57,10 @@ CAMPOS_COPIA = (
     'cedula_color', 'publicada_calendario',
 )
 MESES_POR_DEFECTO = 12
+# HORIZONTE OPERATIVO: SOLO el mes actual. No se copia nada por adelantado: el mes siguiente se GENERA
+# una sola vez, la última noche del mes, desde el estado final del mes que termina (`cierre_de_mes`).
+# (Para generar los N meses siguientes, `asegurar_horizonte(meses_adelante=N)`.)
+MESES_ADELANTE = 0
 
 
 def sumar_meses(anio, mes, k):
@@ -90,6 +94,29 @@ def periodo_exacto(seq):
     for p in range(1, n // 2 + 1):
         if all(seq[i] == seq[i % p] for i in range(n)):
             return p
+    return None
+
+
+def ciclo_de_continuacion(tokens):
+    """Ciclo con el que continuar el cronograma del mes siguiente: (ciclo, ancla) o None.
+
+    ciclo[(i - ancla) % len(ciclo)] es el turno del día i (0 = día 1 del mes base).
+    1) Si todo el mes es un ciclo exacto, ese ciclo (ancla 0).
+    2) Si el mes tiene cambios a mano, el ciclo de sus ÚLTIMOS días (28, 21 o 14): la secuencia
+       en que quedó el mes. Se exige que el ciclo tenga al menos 2 turnos distintos (no se
+       continúa indefinidamente un día suelto como una vacación).
+    3) Si no hay ciclo claro, None (no se inventa un cronograma)."""
+    n = len(tokens)
+    p = periodo_exacto(tokens)
+    if p:
+        return tokens[:p], 0
+    for largo in (28, 21, 14):
+        if n < largo:
+            continue
+        cola = tokens[-largo:]
+        p = periodo_exacto(cola)
+        if p and p > 1 and len(set(cola[:p])) > 1:
+            return cola[:p], n - largo
     return None
 
 
@@ -147,7 +174,7 @@ def _filtro(personas, puestos):
 
 def alinear_meses(mes, anio, meses=MESES_POR_DEFECTO, personas=None, puestos=None, log=None,
                   incluir_sacafranco=None, quitar_sacafranco_sobrantes=False, quitar_solo_octubre=False,
-                  conservar_personas=None):
+                  conservar_personas=None, crear_meses=False):
     """Alinea los `meses` meses siguientes a (mes, anio) con ese mes base.
 
     personas / puestos: conjuntos de ids para limitar el alcance (None = todo el mes).
@@ -158,6 +185,7 @@ def alinear_meses(mes, anio, meses=MESES_POR_DEFECTO, personas=None, puestos=Non
     quitar_solo_octubre: desactivar RETEN / SACAVACACIONES / SACAFRANCO con asignación solo en el
         mes siguiente (y eliminar sus filas de sacafranco que no están en el mes base).
     conservar_personas: ids de personas que NO se quitan aunque estén solo en el mes siguiente.
+    crear_meses: crear el mes siguiente aunque todavía no tenga filas (lo usa `asegurar_horizonte`).
     Devuelve una lista [(anio, mes, Counter), ...] de los meses revisados."""
     log = log or (lambda msg: None)
     conservar = set(conservar_personas or ())
@@ -194,7 +222,7 @@ def alinear_meses(mes, anio, meses=MESES_POR_DEFECTO, personas=None, puestos=Non
         resultados.append((anio, mes, res0))
     for k in range(1, meses + 1):
         ty, tm = sumar_meses(anio, mes, k)
-        if not Asignacion.objects.filter(mes=tm, anio=ty).exists():
+        if not crear_meses and not Asignacion.objects.filter(mes=tm, anio=ty).exists():
             continue
         res = _alinear_mes(base, base_por_persona, personas_en_base, base_filas, mes, anio, tm, ty,
                            personas, puestos, flt, log, quitar_solo_octubre and personas is None, conservar)
@@ -224,6 +252,7 @@ def _alinear_mes(base, base_por_persona, personas_en_base, base_filas, bm, by, t
     destino = list(destino_qs)
     dest_por_persona = {a.persona_id: a for a in destino if a.persona_id}
     d1, ult = datetime.date(ty, tm, 1), datetime.date(ty, tm, ultimo_dia(ty, tm))
+    offset = (d1 - datetime.date(by, bm, 1)).days      # días entre el día 1 del mes base y el del destino
     _acotar(destino, ty, tm, res)
 
     # ---- 1) REGISTROS: cada persona del mes base queda como en el mes base ----
@@ -233,8 +262,8 @@ def _alinear_mes(base, base_por_persona, personas_en_base, base_filas, bm, by, t
         nuevos = {c: getattr(b, c) for c in CAMPOS_COPIA}
         t = dest_por_persona.get(pid)
         if t is None:
-            if b.estado != 'ACTIVO':
-                continue
+            if b.estado != 'ACTIVO' or not getattr(b.persona, 'is_active', True):
+                continue          # ni inactivas ni de personas desactivadas
             t = Asignacion.objects.create(
                 persona_id=pid, mes=tm, anio=ty, recurring=True, start_date=d1, end_date=ult,
                 fecha=None, **nuevos)
@@ -301,11 +330,17 @@ def _alinear_mes(base, base_por_persona, personas_en_base, base_filas, bm, by, t
             # Faltan filas activas: solo se pueden recrear las VACANTES del mes base.
             vacantes_base = [a for a in base if a.estado == 'ACTIVO' and a.puesto_id == puesto_id and not a.persona_id]
             for b in vacantes_base[:-exceso]:
-                Asignacion.objects.create(
+                nueva = Asignacion.objects.create(
                     persona=None, mes=tm, anio=ty, recurring=True, start_date=d1, end_date=ult, fecha=None,
                     **{c: getattr(b, c) for c in CAMPOS_COPIA})
                 res['vacantes creadas'] += 1
                 log(f'VACANTE nueva en puesto {puesto_id}')
+                # Si la vacante tenía cronograma, también continúa su secuencia.
+                cont = ciclo_de_continuacion(tokens_mes(base_filas.get(b.id, {}), by, bm))
+                if cont:
+                    ciclo, ancla = cont
+                    escribir_mes(nueva, ty, tm, [ciclo[(offset + d - ancla) % len(ciclo)]
+                                                 for d in range(ultimo_dia(ty, tm))])
 
     # ---- 3) CRONOGRAMA: continuar la secuencia donde terminó el mes base ----
     offset = (datetime.date(ty, tm, 1) - datetime.date(by, bm, 1)).days
@@ -322,13 +357,14 @@ def _alinear_mes(base, base_por_persona, personas_en_base, base_filas, bm, by, t
         if b is None or a.estado != 'ACTIVO':
             continue
         tokens_base = tokens_mes(base_filas.get(b.id, {}), by, bm)
-        p = periodo_exacto(tokens_base)
-        if p is None:
-            res['cronogramas no continuados (el mes base no es un ciclo exacto)'] += 1
-            log(f'CRONOGRAMA OMITIDO {a.persona}: el mes base no es un ciclo exacto')
+        cont = ciclo_de_continuacion(tokens_base)
+        if cont is None:
+            res['cronogramas no continuados (el mes base no tiene un ciclo claro)'] += 1
+            log(f'CRONOGRAMA OMITIDO {a.persona}: el mes base no tiene un ciclo claro')
             continue
-        ciclo = tokens_base[:p]
-        deseado = [ciclo[(offset + d) % p] for d in range(ultimo_dia(ty, tm))]
+        ciclo, ancla = cont
+        p = len(ciclo)
+        deseado = [ciclo[(offset + d - ancla) % p] for d in range(ultimo_dia(ty, tm))]
         actual = tokens_mes(dest_filas.get(a.id, {}), ty, tm)
         if actual == deseado:
             continue
@@ -372,6 +408,8 @@ def _alinear_sacafranco(base_saca, base_filas, bm, by, tm, ty, quitar_sobrantes,
         }
         t = dest_por_persona.get(b.persona_id)
         if t is None:
+            if not getattr(b.persona, 'is_active', True):
+                continue          # no se crean filas de personas desactivadas
             t = SacafrancoFila.objects.create(mes=tm, anio=ty, persona_id=b.persona_id, **campos)
             dest_por_persona[b.persona_id] = t
             res['sacafranco creados'] += 1
@@ -391,12 +429,13 @@ def _alinear_sacafranco(base_saca, base_filas, bm, by, tm, ty, quitar_sobrantes,
                     setattr(t, c, v)
         # Cronograma: continuar la secuencia donde terminó el mes base.
         tokens_base = tokens_mes(base_filas.get(b.id, {}), by, bm)
-        p = periodo_exacto(tokens_base)
-        if p is None:
-            res['sacafranco: cronogramas no continuados (el mes base no es un ciclo exacto)'] += 1
+        cont = ciclo_de_continuacion(tokens_base)
+        if cont is None:
+            res['sacafranco: cronogramas no continuados (el mes base no tiene un ciclo claro)'] += 1
             continue
-        ciclo = tokens_base[:p]
-        deseado = [ciclo[(offset + d) % p] for d in range(ultimo_dia(ty, tm))]
+        ciclo, ancla = cont
+        p = len(ciclo)
+        deseado = [ciclo[(offset + d - ancla) % p] for d in range(ultimo_dia(ty, tm))]
         actual = tokens_mes(dest_filas.get(t.id, {}), ty, tm)
         if actual == deseado:
             continue
@@ -418,88 +457,44 @@ def _alinear_sacafranco(base_saca, base_filas, bm, by, tm, ty, quitar_sobrantes,
     return res
 
 
-def propagar_cambio(mes, anio, personas=(), puestos=(), meses=MESES_POR_DEFECTO):
-    """Pasa un cambio hecho en (mes, anio) a los meses siguientes (solo esas personas/puestos).
+def asegurar_horizonte(hoy=None, meses_adelante=MESES_ADELANTE, log=None, alinear_existentes=False):
+    """Asegura que existan el mes actual y los `meses_adelante` meses siguientes.
 
-    - Solo se propaga desde el mes ACTUAL en adelante: editar un mes pasado no debe pisar el presente.
-    - Nunca lanza: si falla, se registra y el guardado original no se ve afectado."""
-    try:
-        hoy = timezone.localdate()
-        if not mes or not anio or (int(anio), int(mes)) < (hoy.year, hoy.month):
-            return
-        personas = {int(p) for p in personas if p}
-        puestos = {int(p) for p in puestos if p}
-        if not personas and not puestos:
-            return
+    Los cambios que se hacen durante el mes NO se copian en vivo a los meses siguientes: el mes
+    siguiente se crea (o se re-alinea con `alinear_existentes`) al cambiar de mes.
+
+    Un mes que falta se CREA desde el estado FINAL del mes anterior: mismas personas en los
+    mismos puestos, mismo orden, vacantes, sacafranco (vista y orden) y cronograma continuando
+    la secuencia. Por defecto un mes que ya existe NO se toca (los cambios del mes actual ya se
+    copian solos al editar): es idempotente y se puede correr a diario.
+
+    alinear_existentes=True: además VUELVE A ALINEAR el mes siguiente aunque ya exista (por ejemplo
+    una copia vieja del import), dejándolo igual al estado final del mes anterior. Pisa lo que
+    alguien haya cambiado a mano en ese mes siguiente. Se usa una vez al mes, al cambiar de mes.
+    Devuelve [(anio, mes, Counter), ...] de los meses creados o alineados."""
+    hoy = hoy or timezone.localdate()
+    creados = []
+    # Seguro: si falta el mes ACTUAL (por ejemplo falló el cierre de la noche anterior), se crea desde
+    # el mes anterior para que nunca se empiece un mes vacío.
+    if not Asignacion.objects.filter(mes=hoy.month, anio=hoy.year).exists():
+        py, pm = sumar_meses(hoy.year, hoy.month, -1)
+        if Asignacion.objects.filter(mes=pm, anio=py).exists():
+            with transaction.atomic():
+                for _a, _m, res in alinear_meses(pm, py, meses=1, log=log, crear_meses=True):
+                    if (_a, _m) == (hoy.year, hoy.month):
+                        creados.append((_a, _m, res))
+    for k in range(1, meses_adelante + 1):
+        by, bm = sumar_meses(hoy.year, hoy.month, k - 1)
+        ty, tm = sumar_meses(hoy.year, hoy.month, k)
+        if Asignacion.objects.filter(mes=tm, anio=ty).exists() and not alinear_existentes:
+            continue
+        if not Asignacion.objects.filter(mes=bm, anio=by).exists():
+            break                                  # no hay mes base desde donde crear
         with transaction.atomic():
-            alinear_meses(int(mes), int(anio), meses=meses, personas=personas, puestos=puestos)
-    except Exception:
-        logger.exception('No se pudo propagar el cambio de asignaciones a los meses siguientes')
-
-
-# ---------------------------------------------------------------------------
-# Enganche automático para las vistas que crean / editan / eliminan una asignación
-# ---------------------------------------------------------------------------
-def _a_int(v):
-    if isinstance(v, dict):
-        v = v.get('id')
-    try:
-        return int(v) if v not in (None, '', 'null', 'None') else None
-    except (TypeError, ValueError):
-        return None
-
-
-def _datos(obj):
-    return obj if isinstance(obj, dict) else {}
-
-
-def _foto_antes(request, id_asignacion):
-    """Personas, puestos y mes que toca el cambio, ANTES de que la vista lo haga."""
-    data = _datos(getattr(request, 'data', None))
-    personas, puestos = set(), set()
-    mes, anio = _a_int(data.get('mes')), _a_int(data.get('anio'))
-    if id_asignacion:
-        fila = Asignacion.objects.filter(id=id_asignacion).values('persona_id', 'puesto_id', 'mes', 'anio').first()
-        if fila:
-            personas.add(fila['persona_id'])
-            puestos.add(fila['puesto_id'])
-            mes, anio = fila['mes'], fila['anio']
-    persona = _a_int(data.get('persona'))
-    if persona:
-        personas.add(persona)
-        # La persona puede venir de otro puesto del mismo mes: ese puesto también cambia.
-        if mes and anio:
-            puestos.update(Asignacion.objects.filter(persona_id=persona, mes=mes, anio=anio)
-                           .values_list('puesto_id', flat=True))
-    puestos.add(_a_int(data.get('puesto')) or _a_int(data.get('puesto_id')))
-    return {'personas': personas, 'puestos': puestos, 'mes': mes, 'anio': anio}
-
-
-def propaga_a_meses_siguientes(vista):
-    """Decorador: si la vista crea/edita/elimina una asignación con éxito, el cambio se pasa
-    a los meses siguientes (personas y puestos que tocó). No altera la respuesta ni falla."""
-    @functools.wraps(vista)
-    def envoltura(request, *args, **kwargs):
-        try:
-            antes = _foto_antes(request, kwargs.get('id'))
-        except Exception:
-            logger.exception('No se pudo preparar la propagación de asignaciones')
-            antes = None
-        respuesta = vista(request, *args, **kwargs)
-        try:
-            if antes is not None and 200 <= getattr(respuesta, 'status_code', 500) < 300:
-                resp = _datos(getattr(respuesta, 'data', None))
-                personas = set(antes['personas'])
-                puestos = set(antes['puestos'])
-                personas.add(_a_int(resp.get('persona')))
-                puestos.add(_a_int(resp.get('puesto')))
-                mes = _a_int(resp.get('mes')) or antes['mes']
-                anio = _a_int(resp.get('anio')) or antes['anio']
-                propagar_cambio(mes, anio, personas, puestos)
-        except Exception:
-            logger.exception('No se pudo propagar el cambio de asignaciones')
-        return respuesta
-    return envoltura
+            for _a, _m, res in alinear_meses(bm, by, meses=1, log=log, crear_meses=True):
+                if (_a, _m) == (ty, tm):
+                    creados.append((ty, tm, res))
+    return creados
 
 
 # ---------------------------------------------------------------------------
@@ -539,3 +534,4 @@ def limpiar_personas_desactivadas(persona_ids=None, desde=None, log=None):
         borrables.delete()
     res['filas de sacafranco de personas desactivadas eliminadas'] += n_borrar
     return +res
+

@@ -134,16 +134,16 @@ class AsignacionesMesesTests(TestCase):
         self.assertEqual(self._siguiente(self.A).puesto_id, self.p1.id)
 
     # ---------------- propagación automática ----------------
-    def test_editar_en_el_mes_actual_se_pasa_a_los_meses_siguientes(self):
+    def test_editar_en_el_mes_actual_no_toca_el_mes_siguiente(self):
+        # Ya NO se copia en vivo: el mes siguiente se crea al cambiar de mes (cierre_de_mes).
         self._armar_meses()
         alinear_meses(self.mes, self.anio)                                 # parten alineados
-        # Se cambia la persona del puesto P1 en el mes actual: A sale, C entra.
         r = self.client.put(f'/api/editar-servicio/{self.bA.id}/',
                             data=json.dumps({'persona': self.C.id}), content_type='application/json', **self.auth)
         self.assertEqual(r.status_code, 200, r.content)
-        # C debería quedar en P1 el mes siguiente; A (que ya no está en el mes base) se desactiva.
-        self.assertEqual(self._siguiente(self.C).puesto_id, self.p1.id)
-        self.assertEqual(self._siguiente(self.A).estado, 'INACTIVO')
+        self.assertEqual(self._siguiente(self.A).puesto_id, self.p1.id)    # A sigue igual en el mes siguiente
+        self.assertEqual(self._siguiente(self.A).estado, 'ACTIVO')
+        self.assertEqual(self._siguiente(self.C).puesto_id, self.p3.id)    # C sigue en su puesto del mes siguiente
 
     def test_editar_ya_no_deja_la_asignacion_abierta(self):
         self._armar_meses()
@@ -164,12 +164,24 @@ class AsignacionesMesesTests(TestCase):
         actual.refresh_from_db()
         self.assertEqual(actual.puesto_id, self.p1.id)                     # el mes actual no se pisó
 
-    def test_eliminar_en_el_mes_actual_desactiva_la_fila_del_mes_siguiente(self):
+    def test_eliminar_en_el_mes_actual_no_toca_el_mes_siguiente(self):
         self._armar_meses()
         alinear_meses(self.mes, self.anio)
         r = self.client.delete(f'/api/eliminar-asignacion/{self.bB.id}/', **self.auth)
         self.assertIn(r.status_code, (200, 204), r.content)
-        self.assertEqual(self._siguiente(self.B).estado, 'INACTIVO')
+        self.assertEqual(self._siguiente(self.B).estado, 'ACTIVO')         # el mes siguiente no se tocó
+
+    def test_reordenar_filas_no_toca_el_mes_siguiente(self):
+        self._armar_meses()
+        alinear_meses(self.mes, self.anio)
+        r = self.client.post('/api/guardar-orden-asignacion/', data=json.dumps({
+            'mes': self.mes, 'anio': self.anio,
+            'ordenes': [{'id': self.bA.id, 'orden': 50}, {'id': self.bB.id, 'orden': 40}]}),
+            content_type='application/json', **self.auth)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.bA.refresh_from_db()
+        self.assertEqual(self.bA.orden, 50)                                # en el mes actual sí se guarda
+        self.assertEqual(self._siguiente(self.A).orden, 1)                 # el mes siguiente conserva el suyo
 
 
 class SacafrancoMesesTests(TestCase):
@@ -445,3 +457,193 @@ class PersonasDesactivadasTests(TestCase):
         call_command('limpiar_personas_desactivadas', stdout=StringIO())
         a.refresh_from_db()
         self.assertEqual(a.estado, 'INACTIVO')
+
+
+class CicloDeContinuacionTests(TestCase):
+    """El cronograma continúa con el ciclo exacto del mes o, si tiene cambios a mano, el de sus últimos días."""
+
+    def test_ciclo_exacto_de_todo_el_mes(self):
+        from CoreFisica.asignaciones_meses import ciclo_de_continuacion
+        ciclo = ['D', 'D', 'N', 'N', 'F', 'F']
+        tokens = [ciclo[i % 6] for i in range(30)]
+        self.assertEqual(ciclo_de_continuacion(tokens), (ciclo, 0))
+
+    def test_con_cambios_a_mano_usa_el_ciclo_de_los_ultimos_dias(self):
+        from CoreFisica.asignaciones_meses import ciclo_de_continuacion
+        ciclo = ['D', 'D', 'N', 'N', 'F', 'F']
+        tokens = ['V', 'V'] + [ciclo[(j - 2) % 6] for j in range(2, 30)]       # 2 días de vacaciones al inicio
+        res = ciclo_de_continuacion(tokens)
+        self.assertIsNotNone(res)
+        c, ancla = res
+        for g in range(30, 40):                                              # los días siguientes siguen el ciclo
+            self.assertEqual(c[(g - ancla) % len(c)], ciclo[(g - 2) % 6])
+
+    def test_sin_patron_claro_no_se_continua(self):
+        from CoreFisica.asignaciones_meses import ciclo_de_continuacion
+        irregular = ['D', 'N', 'F', 'V', 'D', 'D', 'N', 'F', 'X', 'D', 'N', 'F', 'N', 'D', 'F', 'D', 'D', 'N', 'V', 'F',
+                     'X', 'N', 'N', 'D', 'F', 'D', 'V', 'N', 'F', 'D']
+        self.assertIsNone(ciclo_de_continuacion(irregular))
+        # Un mes de 24 horas todos los días ('V') es un ciclo válido de un solo turno.
+        self.assertEqual(ciclo_de_continuacion(['V'] * 30), (['V'], 0))
+
+    def test_con_vacios_no_se_inventa_nada(self):
+        from CoreFisica.asignaciones_meses import ciclo_de_continuacion
+        self.assertIsNone(ciclo_de_continuacion([''] * 30))
+
+
+class CierreDeMesTests(TestCase):
+    """El mes que falta del horizonte (actual + siguiente) se crea desde el estado FINAL del anterior."""
+    ANIO, MES = 2031, 3
+
+    def setUp(self):
+        from CoreFisica.models import SacafrancoFila, VistaCanton
+        self.SacafrancoFila = SacafrancoFila
+        self.sig_anio, self.sig_mes = sumar_meses(self.ANIO, self.MES, 1)
+        self.hoy = datetime.date(self.ANIO, self.MES, 15)
+        cli = Cliente.objects.create(razon_social='C SA', nombre_comercial='C')
+        self.cli = cli
+        self.inst = Instalacion.objects.create(cliente=cli, nombre='I')
+        self.p1 = Puesto.objects.create(instalacion=self.inst, nombre='P1')
+        self.p2 = Puesto.objects.create(instalacion=self.inst, nombre='P2')
+        self.p3 = Puesto.objects.create(instalacion=self.inst, nombre='P3')
+        self.p4 = Puesto.objects.create(instalacion=self.inst, nombre='P4')
+
+        def mk(n, c, **kw):
+            return Persona.objects.create(nombres=n, apellidos='X', cedula=c, tipo='FIJOS', **kw)
+
+        self.A, self.B = mk('A', '0910000011'), mk('B', '0910000012')
+        self.baja = mk('BAJA', '0910000013', estado_empleado='LIQUIDADO')
+        self.n = ultimo_dia(self.ANIO, self.MES)
+        self.ciclo = ['D', 'D', 'N', 'N', 'F', 'F']
+        self.aA = self._asig(self.A, self.p1, 5)
+        self.aB = self._asig(self.B, self.p2, 6)
+        self.aBaja = self._asig(self.baja, self.p3, 7)
+        self.vac = self._asig(None, self.p4, 8)
+        escribir_mes(self.aA, self.ANIO, self.MES, [self.ciclo[i % 6] for i in range(self.n)])
+        escribir_mes(self.vac, self.ANIO, self.MES, [self.ciclo[i % 6] for i in range(self.n)])   # la vacante también tiene cronograma
+        escribir_mes(self.aB, self.ANIO, self.MES, ['V', 'V'] + [self.ciclo[(j - 2) % 6] for j in range(2, self.n)])
+        self.vista = VistaCanton.objects.create(nombre='V1', tipo='canton')
+        self.sa = Persona.objects.create(nombres='S', apellidos='SACA', cedula='0910000014', tipo='SACAFRANCO')
+        self.sbaja = Persona.objects.create(nombres='SB', apellidos='SACA', cedula='0910000015', tipo='SACAFRANCO',
+                                            estado_empleado='LIQUIDADO')
+        SacafrancoFila.objects.create(mes=self.MES, anio=self.ANIO, persona=self.sa, orden=3, vista=self.vista)
+        SacafrancoFila.objects.create(mes=self.MES, anio=self.ANIO, persona=self.sbaja, orden=4, vista=self.vista)
+
+    def _asig(self, persona, puesto, orden):
+        return Asignacion.objects.create(
+            persona=persona, cliente=self.cli, instalacion=self.inst, puesto=puesto, mes=self.MES, anio=self.ANIO,
+            orden=orden, estado='ACTIVO', recurring=True, es_hueca=persona is None,
+            start_date=datetime.date(self.ANIO, self.MES, 1),
+            end_date=datetime.date(self.ANIO, self.MES, self.n))
+
+    def _sig(self, persona=None, puesto=None):
+        qs = Asignacion.objects.filter(mes=self.sig_mes, anio=self.sig_anio)
+        return qs.filter(persona=persona).first() if persona else qs.filter(persona__isnull=True, puesto=puesto).first()
+
+    def _tokens_sig(self, asig):
+        filas = {r.week_start: r for r in AsignacionSemanal.objects.filter(asignacion=asig)}
+        return tokens_mes(filas, self.sig_anio, self.sig_mes)
+
+    def test_crea_el_mes_siguiente_desde_el_final_del_actual(self):
+        from CoreFisica.asignaciones_meses import asegurar_horizonte
+        creados = asegurar_horizonte(hoy=self.hoy, meses_adelante=1)
+        self.assertEqual([(a, m) for a, m, _ in creados], [(self.sig_anio, self.sig_mes)])
+        a = self._sig(self.A)
+        self.assertEqual((a.puesto_id, a.orden, a.estado), (self.p1.id, 5, 'ACTIVO'))
+        self.assertEqual(self._sig(self.B).puesto_id, self.p2.id)
+        self.assertIsNotNone(self._sig(puesto=self.p4))                         # la vacante también pasa
+        self.assertIsNone(self._sig(self.baja))                                 # la persona desactivada NO
+
+    def test_el_cronograma_continua_la_secuencia(self):
+        from CoreFisica.asignaciones_meses import asegurar_horizonte
+        asegurar_horizonte(hoy=self.hoy, meses_adelante=1)
+        n_sig = ultimo_dia(self.sig_anio, self.sig_mes)
+        self.assertEqual(self._tokens_sig(self._sig(self.A)), [self.ciclo[(self.n + i) % 6] for i in range(n_sig)])
+        # B tuvo vacaciones a mano al inicio: continúa con la secuencia en que quedó el mes.
+        self.assertEqual(self._tokens_sig(self._sig(self.B)), [self.ciclo[(self.n + i - 2) % 6] for i in range(n_sig)])
+
+    def test_la_vacante_tambien_continua_su_cronograma(self):
+        from CoreFisica.asignaciones_meses import asegurar_horizonte
+        asegurar_horizonte(hoy=self.hoy, meses_adelante=1)
+        n_sig = ultimo_dia(self.sig_anio, self.sig_mes)
+        self.assertEqual(self._tokens_sig(self._sig(puesto=self.p4)),
+                         [self.ciclo[(self.n + i) % 6] for i in range(n_sig)])
+
+    def test_los_sacafranco_pasan_con_su_vista_y_orden_menos_los_desactivados(self):
+        from CoreFisica.asignaciones_meses import asegurar_horizonte
+        asegurar_horizonte(hoy=self.hoy, meses_adelante=1)
+        f = self.SacafrancoFila.objects.filter(mes=self.sig_mes, anio=self.sig_anio, persona=self.sa).first()
+        self.assertEqual((f.vista_id, f.orden), (self.vista.id, 3))
+        self.assertFalse(self.SacafrancoFila.objects.filter(mes=self.sig_mes, anio=self.sig_anio, persona=self.sbaja).exists())
+
+    def test_es_idempotente_y_no_toca_un_mes_que_ya_existe(self):
+        from CoreFisica.asignaciones_meses import asegurar_horizonte
+        asegurar_horizonte(hoy=self.hoy, meses_adelante=1)
+        a = self._sig(self.A)
+        Asignacion.objects.filter(pk=a.pk).update(orden=99)                      # alguien lo cambió en el mes nuevo
+        self.assertEqual(asegurar_horizonte(hoy=self.hoy, meses_adelante=1), [])                   # segunda vez: no hace nada
+        a.refresh_from_db()
+        self.assertEqual(a.orden, 99)
+
+    def test_si_falta_el_mes_actual_se_crea_desde_el_anterior(self):
+        from CoreFisica.asignaciones_meses import asegurar_horizonte
+        # "Hoy" ya es el mes siguiente, pero ese mes todavía no existe (falló el cierre de la noche anterior).
+        hoy = datetime.date(self.sig_anio, self.sig_mes, 1)
+        creados = asegurar_horizonte(hoy=hoy)
+        meses_creados = [(a, m) for a, m, _ in creados]
+        self.assertIn((self.sig_anio, self.sig_mes), meses_creados)         # el mes actual se creó
+        a = self._sig(self.A)
+        self.assertEqual((a.puesto_id, a.orden), (self.p1.id, 5))
+
+    def test_sin_mes_base_no_crea_nada(self):
+        from CoreFisica.asignaciones_meses import asegurar_horizonte
+        self.assertEqual(asegurar_horizonte(hoy=datetime.date(2040, 1, 10), meses_adelante=1), [])
+
+    def test_por_defecto_el_horizonte_es_solo_el_mes_actual(self):
+        from CoreFisica.asignaciones_meses import MESES_ADELANTE, asegurar_horizonte
+        self.assertEqual(MESES_ADELANTE, 0)
+        self.assertEqual(asegurar_horizonte(hoy=self.hoy), [])            # el mes actual existe: nada que hacer
+        self.assertFalse(Asignacion.objects.filter(mes=self.sig_mes, anio=self.sig_anio).exists())
+
+    def test_el_comando_en_un_dia_normal_no_crea_el_mes_siguiente(self):
+        out = StringIO()
+        call_command('cierre_de_mes', '--hoy', '2031-03-15', stdout=out)
+        self.assertFalse(Asignacion.objects.filter(mes=self.sig_mes, anio=self.sig_anio).exists())
+        self.assertIn('solo se verifica', out.getvalue())
+
+    def test_el_comando_el_ultimo_dia_genera_el_mes_siguiente(self):
+        call_command('cierre_de_mes', '--hoy', '2031-03-31', '--dry-run', stdout=StringIO())
+        self.assertFalse(Asignacion.objects.filter(mes=self.sig_mes, anio=self.sig_anio).exists())   # prueba: no guarda
+        out = StringIO()
+        call_command('cierre_de_mes', '--hoy', '2031-03-31', stdout=out)
+        self.assertTrue(Asignacion.objects.filter(mes=self.sig_mes, anio=self.sig_anio).exists())
+        self.assertIn('MES SIGUIENTE', out.getvalue())
+        a = self._sig(self.A)
+        self.assertEqual((a.puesto_id, a.orden), (self.p1.id, 5))
+        n_sig = ultimo_dia(self.sig_anio, self.sig_mes)
+        self.assertEqual(self._tokens_sig(a), [self.ciclo[(self.n + i) % 6] for i in range(n_sig)])
+
+    def test_el_comando_con_siguiente_realinea_una_copia_vieja(self):
+        call_command('cierre_de_mes', '--hoy', '2031-03-31', stdout=StringIO())
+        a = self._sig(self.A)
+        Asignacion.objects.filter(pk=a.pk).update(orden=99)                    # copia desactualizada
+        call_command('cierre_de_mes', '--hoy', '2031-03-15', stdout=StringIO())   # dia normal: no la toca
+        a.refresh_from_db()
+        self.assertEqual(a.orden, 99)
+        call_command('cierre_de_mes', '--hoy', '2031-03-15', '--siguiente', '--dry-run', stdout=StringIO())
+        a.refresh_from_db()
+        self.assertEqual(a.orden, 99)                                          # en prueba no cambia nada
+        call_command('cierre_de_mes', '--hoy', '2031-03-15', '--siguiente', stdout=StringIO())
+        a.refresh_from_db()
+        self.assertEqual(a.orden, 5)
+
+
+class ImportacionHorizonteTests(TestCase):
+    def test_por_defecto_proyecta_solo_el_mes_importado(self):
+        from types import SimpleNamespace
+        from CoreFisica.views.importar_puestos_asignaciones import _meses_proyeccion
+        self.assertEqual(_meses_proyeccion(SimpleNamespace(GET={}, POST={})), 0)
+        self.assertEqual(_meses_proyeccion(SimpleNamespace(GET={'meses': '0'}, POST={})), 0)
+        self.assertEqual(_meses_proyeccion(SimpleNamespace(GET={'meses': '3'}, POST={})), 3)
+
+

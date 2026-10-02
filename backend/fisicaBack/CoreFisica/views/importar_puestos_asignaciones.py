@@ -15,6 +15,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from openpyxl import load_workbook
 from openpyxl.utils.datetime import from_excel
 
+from ..asignaciones_meses import MESES_ADELANTE
 from ..models import Cliente, Instalacion, Puesto, PuestoHorario, Persona, Horario, Asignacion, PatronAsignacion, AsignacionSemanal, ReporteAsistencia
 
 logger = logging.getLogger(__name__)
@@ -546,8 +547,10 @@ def _get_or_create_sacafranco_fila(persona, mes, anio, orden):
 
 
 def _meses_proyeccion(request):
-    """Cuantos meses se proyecta el patron hacia adelante. Por defecto 36.
-    Se ajusta con ?meses=N (0 = solo el mes importado, sin proyeccion). Tope 60."""
+    """Cuantos meses se proyecta el patron hacia adelante, despues del mes importado.
+    Por defecto MESES_ADELANTE (0 = solo el mes importado): no se copia nada por adelantado; cada mes
+    nuevo lo genera el cierre de mes (`cierre_de_mes`) desde el estado final del anterior.
+    Se ajusta con ?meses=N (0 = solo el mes importado). Tope 60."""
     try:
         val = request.GET.get('meses') or request.POST.get('meses')
     except Exception:
@@ -555,7 +558,7 @@ def _meses_proyeccion(request):
     try:
         n = int(val)
     except (TypeError, ValueError):
-        n = 36
+        n = MESES_ADELANTE
     return max(0, min(n, 60))
 
 
