@@ -88,12 +88,38 @@ export class SacavacacionesComponent implements OnInit {
     });
     ref.afterClosed().subscribe((res) => {
       if (!res) { return; }
-      if (row?.id) {
-        this.srv.actualizar(row.id, res).subscribe({ next: () => this.cargar(), error: () => this.cargar() });
-      } else {
-        this.srv.crear(res).subscribe({ next: () => this.cargar(), error: () => this.cargar() });
-      }
+      const editando = !!row?.id;
+      const req = editando ? this.srv.actualizar(row!.id!, res) : this.srv.crear(res);
+      req.subscribe({
+        next: () => {
+          this.cargar();
+          Swal.fire({
+            icon: 'success', title: editando ? 'Registro actualizado' : 'Registro creado',
+            timer: 1500, showConfirmButton: false,
+          });
+        },
+        error: (err) => {
+          this.cargar();
+          Swal.fire({
+            icon: 'error', title: editando ? 'No se pudo actualizar' : 'No se pudo crear',
+            text: this.mensajeError(err),
+          });
+        },
+      });
     });
+  }
+
+  // Texto del error del servidor (validaciones de DRF: {campo: ['mensaje']}) o uno genérico.
+  private mensajeError(err: any): string {
+    const e = err?.error;
+    if (err?.status === 403) { return 'No tienes permiso para esta acción.'; }
+    if (typeof e === 'string' && e.length < 300) { return e; }
+    if (e && typeof e === 'object') {
+      const partes = Object.entries(e).map(([k, v]) =>
+        `${k === 'detail' || k === 'error' ? '' : k + ': '}${Array.isArray(v) ? v.join(' ') : v}`);
+      if (partes.length) { return partes.join(' | '); }
+    }
+    return 'Revisa los datos e intenta de nuevo.';
   }
 
   eliminar(f: ReporteVacaciones): void {
@@ -107,7 +133,16 @@ export class SacavacacionesComponent implements OnInit {
       cancelButtonText: 'Cancelar',
     }).then((r) => {
       if (r.isConfirmed) {
-        this.srv.eliminar(f.id!).subscribe({ next: () => this.cargar(), error: () => this.cargar() });
+        this.srv.eliminar(f.id!).subscribe({
+          next: () => {
+            this.cargar();
+            Swal.fire({ icon: 'success', title: 'Registro eliminado', timer: 1500, showConfirmButton: false });
+          },
+          error: (err) => {
+            this.cargar();
+            Swal.fire({ icon: 'error', title: 'No se pudo eliminar', text: this.mensajeError(err) });
+          },
+        });
       }
     });
   }

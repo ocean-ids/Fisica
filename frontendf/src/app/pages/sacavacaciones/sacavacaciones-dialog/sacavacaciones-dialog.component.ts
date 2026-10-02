@@ -95,6 +95,8 @@ export class SacavacacionesDialogComponent implements OnInit {
     // Períodos alrededor del año actual: bastantes años hacia atrás (para las
     // vacaciones pendientes de años pasados) y un par hacia adelante.
     const y = new Date().getFullYear();
+    // Orden cronológico (2014 - 2015 ... 2036 - 2037). Al crear viene elegido el del año actual
+    // y la lista se abre en él.
     this.periodos = [];
     for (let i = -12; i <= 10; i++) { this.periodos.push(`${y + i} - ${y + i + 1}`); }
 
@@ -107,6 +109,8 @@ export class SacavacacionesDialogComponent implements OnInit {
     } else {
       this.anio = this.data?.anioDefecto || new Date().getFullYear();
     }
+    // Al crear, el período del año actual viene elegido (se puede cambiar).
+    if (!this.esEdicion) { this.periodo = `${y} - ${y + 1}`; }
     if (row) {
       // Si el período guardado está en la lista, se selecciona; si no, es "Otro".
       const p = row.periodo || '';
