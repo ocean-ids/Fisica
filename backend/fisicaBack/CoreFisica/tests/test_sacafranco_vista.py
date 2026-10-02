@@ -82,10 +82,11 @@ class SacafrancoVistaTests(TestCase):
         self.assertIn(self.fila_legado.id, ids_a)
         self.assertIn(self.fila_legado.id, ids_b)
 
-    def test_sin_vista_id_no_rompe_compatibilidad(self):
-        # Sin vista_id: ambas filas salen por su cantón (comportamiento anterior).
+    def test_sin_vista_id_no_muestra_el_sellado_a_una_vista(self):
+        # Sin pestaña activa (usuario nuevo): solo salen las filas SIN vista (legado); la sellada a
+        # la vista A no se mezcla.
         ids = self._ids({'canton_ids': str(self.canton.id)})
-        self.assertIn(self.fila_A.id, ids)
+        self.assertNotIn(self.fila_A.id, ids)
         self.assertIn(self.fila_legado.id, ids)
 
     def test_crear_manual_queda_solo_en_su_vista(self):

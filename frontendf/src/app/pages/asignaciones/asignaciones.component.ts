@@ -487,7 +487,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
 
     // Cargar las vistas PRIMERO; recién entonces cargar asignaciones, para que
     // si lo guardado es una vista (view:X) se restaure correctamente al volver.
-    this.loadCantonViews(() => this.cargarAsignaciones());
+    this.loadCantonViews(() => { this.asegurarVistaActiva(); this.cargarAsignaciones(); });
 
     this.filterSub = this.globalFilter.state$
       .pipe(
@@ -2164,6 +2164,17 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       next: views => { this.cantonViews = this.normalizeCantonViews(views); if (done) done(); },
       error: () => { this.cantonViews = []; if (done) done(); }
     });
+  }
+
+  // Al entrar, siempre hay una pestaña abierta. Un usuario nuevo (o con una pestaña guardada que ya
+  // no existe, por ejemplo borrada) no tiene ninguna: el selector quedaba en blanco y se mostraba el
+  // listado por cantón con el sacafranco de TODAS las pestañas mezclado. Se abre la primera pestaña.
+  private asegurarVistaActiva(): void {
+    if (this.getActiveView()) { return; }
+    const primera = (this.cantonViews || [])[0];
+    if (!primera) { return; }     // sin pestañas creadas: queda el listado por cantón
+    this.selectedCantonKey = `view:${primera.id}`;
+    localStorage.setItem(this.selectedCantonKeyStorageKey, this.selectedCantonKey);
   }
 
   private persistCantonViews(done?: () => void): void {

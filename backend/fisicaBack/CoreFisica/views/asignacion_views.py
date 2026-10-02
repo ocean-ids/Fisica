@@ -1945,6 +1945,10 @@ def sacafranco_filas(request):
                 qs = qs.filter(Q(vista_id=int(vista_id)) | Q(vista__isnull=True))
             except (TypeError, ValueError):
                 pass
+        else:
+            # Sin pestaña activa (ej. un usuario nuevo que aún no eligió una) NO se muestra el
+            # sacafranco sellado a una pestaña: saldría mezclado el de todas las pestañas del cantón.
+            qs = qs.filter(vista__isnull=True)
         # Las personas de un tipo con pestaña propia (ej. RETEN) salen SOLO en esa pestaña:
         # tampoco como sacafranco en las demás vistas.
         _tipos_exclusivos = _tipos_con_vista_propia()
