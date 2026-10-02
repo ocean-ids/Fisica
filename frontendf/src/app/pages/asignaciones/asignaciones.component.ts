@@ -1914,46 +1914,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     guardar(null);
   }
 
-  private openSacafrancoSequenceModal(fila: SacafrancoFila): void {
-    if (!fila?.id) return;
-    const weekStart = (this.weeksForMonth && this.weeksForMonth.length)
-      ? this.weeksForMonth[0]
-      : this.formatDateLocal(new Date(this.anio, this.mes - 1, 1));
-    if (!weekStart) return;
-    const startDefault = this.formatDateLocal(new Date(this.anio, this.mes - 1, 1));
-    const endDefault = this.formatDateLocal(new Date(this.anio, this.mes, 0));
-    const row = { type: 'sacafranco', id: fila.id } as any;
-    const calRow = this.getCalendarRow(row, weekStart);
-    const ref = this.dialog.open(AsignacionCalendarioRangeModalComponent, {
-      width: '420px',
-      data: {
-        start: startDefault,
-        end: endDefault,
-        seq: '',
-        isSacafranco: true,
-        weekStart,
-        row: calRow
-      }
-    });
-
-    ref.afterClosed().subscribe((result?: AsignacionRangeModalResult) => {
-      if (!result) return;
-      const { start, end, seq } = result;
-      if (!start || !end || !seq) return;
-      const startDate = new Date(start + 'T00:00:00');
-      const endDate = new Date(end + 'T00:00:00');
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
-      const tokens = this.parseSequence(seq, true);
-      if (!tokens.length) return;
-      const anchor = this.parseWeekStart(weekStart);
-      const backendMap = this.buildRangeMap(startDate, endDate, tokens, anchor);
-      const uiMap = this.buildRangeMap(startDate, endDate, tokens, anchor, true);
-      this.applyRangeToBackend(row, backendMap, true);
-      this.applyRangeToCalendarData(row, uiMap);
-    });
-  }
-
-  // Tras crear una asignación, abre "Aplicar secuencia" para esa fila (igual que sacafranco).
+  // Tras crear una asignación, abre "Aplicar secuencia" para esa fila (el sacafranco ya no la abre al crearse).
   private openAsignacionSequenceModal(asig: any): void {
     if (!asig?.id) return;
     const weekStart = (this.weeksForMonth && this.weeksForMonth.length)
@@ -2053,7 +2014,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
           this.buildDisplayRows();
           this.updateCalendarOrder();
           this.loadCalendarWeeks();
-          this.openSacafrancoSequenceModal(fila);
+          // Al crear el sacafranco ya no se abre "Aplicar secuencia" (se llena el cronograma en la grilla).
         },
         error: err => {
           console.error('Error al crear fila sacafranco', err);
