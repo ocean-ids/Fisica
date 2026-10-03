@@ -42,7 +42,7 @@
           [formControl]="coberturaCtrl"
           [matAutocomplete]="autoCobertura"
           [readonly]="guardando || cargandoReemplazos"
-          placeholder="Escribe para buscar al guardia del día"
+          [placeholder]="esHuecaEstructural && !coberturaSel ? 'HUECA - escribe para buscar al guardia del día' : 'Escribe para buscar al guardia del día'"
           style="text-transform: uppercase;"
         >
         <button *ngIf="coberturaCtrl.value" matSuffix mat-icon-button type="button"

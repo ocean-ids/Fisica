@@ -134,7 +134,10 @@ export class ReporteAsistenciaEditDialogComponent {
     // (titular o el guardia del día ya elegido) para poder cambiarlo.
     this.coberturaSel = (data?.row as any)?.persona_cobertura_id ?? null;
     if (this.permiteGuardiaDia || this.coberturaSel) {
-      this.coberturaCtrl.setValue(data?.row?.nombre_apellidos || '', { emitEvent: false });
+      // HUECA sin guardia del día: el campo se abre VACÍO. Si se precargara el texto "HUECA", lo que se
+      // escribe se juntaría con él ("HUECAJUAN") y el buscador no encontraría a nadie.
+      const sinGuardia = this.esHuecaEstructural && !this.coberturaSel;
+      this.coberturaCtrl.setValue(sinGuardia ? '' : (data?.row?.nombre_apellidos || ''), { emitEvent: false });
     }
     this.coberturaCtrl.valueChanges.subscribe((value) => {
       // Si el usuario escribe texto (no eligió opción), se limpia la selección.
