@@ -567,7 +567,27 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     // sincronizar lista de semanas para el mes elegido
     this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
     this.buildCalendarWeekDayKeys();
-    this.cargarAsignaciones();
+    this.cargarPreparandoMesSiguiente();
+  }
+
+  // Al pasar al MES SIGUIENTE al actual (ej. estando en octubre se elige noviembre), ese mes se vuelve a
+  // armar desde el estado actual del mes en curso (mismo orden, personas, vacantes, sacafranco y
+  // cronogramas continuando la secuencia), sin preguntar. Cada vez que se entra de nuevo se actualiza.
+  // Solo con permiso de editar; los demás meses se cargan normal.
+  private cargarPreparandoMesSiguiente(): void {
+    const hoy = new Date();
+    const esSiguiente = this.anio * 12 + (this.mes - 1) === hoy.getFullYear() * 12 + hoy.getMonth() + 1;
+    if (!esSiguiente || !this.puedeEditar) { this.cargarAsignaciones(); return; }
+    this.asignacionService.prepararMesSiguiente(this.mes, this.anio).subscribe({
+      next: (r) => {
+        this.cargarAsignaciones();
+        if (r?.preparado) {
+          Swal.fire({ toast: true, position: 'top-end', icon: 'success', timer: 2500, showConfirmButton: false,
+                      title: 'Mes actualizado desde el mes actual' });
+        }
+      },
+      error: () => this.cargarAsignaciones(),
+    });
   }
 
   // onDateChange maneja el selector de fecha (día/mes/año). Al elegir un DÍA, la grilla
@@ -597,6 +617,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       this.provinciaPage = 1;
       this.weeksForMonth = this.computeWeeksForMonth(this.mes, this.anio);
       this.buildCalendarWeekDayKeys();
+      this.cargarPreparandoMesSiguiente();
+      return;
     }
     this.cargarAsignaciones();
   }

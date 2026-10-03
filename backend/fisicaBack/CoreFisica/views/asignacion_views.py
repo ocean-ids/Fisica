@@ -1647,6 +1647,33 @@ def editar_servicio(request, id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def preparar_mes_siguiente(request):
+    """Arma el MES SIGUIENTE desde el estado actual del mes en curso (personas en el mismo puesto y
+    orden, vacantes, sacafranco con su pestaña y orden, cronogramas continuando la secuencia).
+
+    Se llama al pasar de la pantalla del mes actual al mes siguiente. Solo vale para ese mes (el
+    inmediato siguiente al actual); cualquier otro mes no se toca. Cada vez que se llama, el mes
+    siguiente se vuelve a armar desde el actual: lo que se hubiera editado allí se reemplaza.
+    El cierre de mes de la última noche hace lo mismo como respaldo."""
+    if not request.user.has_perm('CoreFisica.change_asignacion'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    from django.utils import timezone
+    from ..asignaciones_meses import asegurar_horizonte, sumar_meses
+    from ..audit import suppress_audit
+    try:
+        mes, anio = int(request.data.get('mes')), int(request.data.get('anio'))
+    except (TypeError, ValueError):
+        return Response({'error': 'mes y anio invalidos'}, status=status.HTTP_400_BAD_REQUEST)
+    hoy = timezone.localdate()
+    if (anio, mes) != sumar_meses(hoy.year, hoy.month, 1):
+        return Response({'preparado': False, 'detalle': 'Solo se prepara el mes siguiente al actual.'})
+    with suppress_audit():
+        asegurar_horizonte(hoy=hoy, meses_adelante=1, alinear_existentes=True)
+    return Response({'preparado': True})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def guardar_orden_asignacion(request):
     # si el usuario no tiene permiso de cambio de asignacion, retornar error 403
     if not request.user.has_perm('CoreFisica.change_asignacion'):

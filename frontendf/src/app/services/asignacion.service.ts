@@ -177,6 +177,11 @@ export class AsignacionService {
     );
   }
 
+  // Arma el mes siguiente desde el estado actual del mes en curso (al pasar a ese mes en pantalla).
+  prepararMesSiguiente(mes: number, anio: number): Observable<{ preparado: boolean }> {
+    return this.apiService.post<{ preparado: boolean }>('/asignaciones/preparar-mes-siguiente/', { mes, anio });
+  }
+
   // Vistas compartidas (guardadas en BD, visibles para todos los usuarios).
   obtenerVistasCantones(): Observable<any[]> {
     return this.apiService.get<any>('/vistas-cantones/').pipe(

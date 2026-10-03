@@ -674,3 +674,49 @@ class ImportacionHorizonteTests(TestCase):
         self.assertEqual(_meses_proyeccion(SimpleNamespace(GET={'meses': '3'}, POST={})), 3)
 
 
+class PrepararMesSiguienteTests(TestCase):
+    """Pasar al mes siguiente desde la pantalla lo arma desde el mes actual (sin preguntar)."""
+
+    def setUp(self):
+        from CoreFisica.asignaciones_meses import sumar_meses, ultimo_dia
+        User.objects.create_superuser(username='pm_user', email='e@e.com', password='PmPass123!')
+        self.auth = {'HTTP_AUTHORIZATION': f"Bearer {_login(self.client, 'pm_user', 'PmPass123!')}"}
+        User.objects.create_user(username='pm_lee', email='l@e.com', password='PmPass123!')
+        self.hoy = timezone.localdate()
+        self.sig_anio, self.sig_mes = sumar_meses(self.hoy.year, self.hoy.month, 1)
+        self.otro_anio, self.otro_mes = sumar_meses(self.hoy.year, self.hoy.month, 2)
+        cli = Cliente.objects.create(razon_social='C SA', nombre_comercial='C')
+        inst = Instalacion.objects.create(cliente=cli, nombre='I')
+        puesto = Puesto.objects.create(instalacion=inst, nombre='P')
+        self.persona = Persona.objects.create(nombres='A', apellidos='A', cedula='0910000030', tipo='FIJOS')
+        self.asig = Asignacion.objects.create(
+            persona=self.persona, cliente=cli, instalacion=inst, puesto=puesto, mes=self.hoy.month,
+            anio=self.hoy.year, orden=7, estado='ACTIVO', recurring=True, start_date=self.hoy.replace(day=1),
+            end_date=self.hoy.replace(day=ultimo_dia(self.hoy.year, self.hoy.month)))
+
+    def _llamar(self, mes, anio, auth=None):
+        return self.client.post('/api/asignaciones/preparar-mes-siguiente/', data=json.dumps({'mes': mes, 'anio': anio}),
+                                content_type='application/json', **(auth or self.auth))
+
+    def _sig(self):
+        return Asignacion.objects.filter(mes=self.sig_mes, anio=self.sig_anio, persona=self.persona).first()
+
+    def test_arma_el_mes_siguiente_y_lo_vuelve_a_armar_cada_vez(self):
+        r = self._llamar(self.sig_mes, self.sig_anio)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(r.json()['preparado'])
+        self.assertEqual(self._sig().orden, 7)
+        Asignacion.objects.filter(pk=self.asig.pk).update(orden=3)          # el mes actual cambió
+        self._llamar(self.sig_mes, self.sig_anio)                           # vuelve a pasar al mes siguiente
+        self.assertEqual(self._sig().orden, 3)
+
+    def test_otro_mes_no_se_toca(self):
+        r = self._llamar(self.otro_mes, self.otro_anio)
+        self.assertFalse(r.json()['preparado'])
+        self.assertFalse(Asignacion.objects.filter(mes=self.sig_mes, anio=self.sig_anio).exists())
+        self.assertFalse(Asignacion.objects.filter(mes=self.otro_mes, anio=self.otro_anio).exists())
+
+    def test_sin_permiso_de_editar_no_hace_nada(self):
+        tok = {'HTTP_AUTHORIZATION': f"Bearer {_login(self.client, 'pm_lee', 'PmPass123!')}"}
+        self.assertEqual(self._llamar(self.sig_mes, self.sig_anio, tok).status_code, 403)
+        self.assertFalse(Asignacion.objects.filter(mes=self.sig_mes, anio=self.sig_anio).exists())
