@@ -216,7 +216,10 @@ export class PersonasComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Error al eliminar persona:', error);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar' });
+        // Muestra el motivo que da el servidor (ej. tiene horas de eventual) en vez de un texto genérico.
+        const motivo = error?.error?.error;
+        Swal.fire({ icon: 'error', title: 'Error',
+                    text: (typeof motivo === 'string' && motivo.length < 250) ? motivo : 'No se pudo eliminar' });
       }
     });
   }

@@ -320,3 +320,16 @@ class HorasEventualTests(TestCase):
         r = self.client.put(f'/api/horas-eventual/{rid}/', data=json.dumps(self._datos(turno='Nocturno')),
                             content_type='application/json', **self._auth())
         self.assertEqual(r.json()['turno'], 'Nocturno')
+
+    # ---------- Eliminar persona ----------
+    def test_eliminar_eventual_con_horas_explica_el_motivo(self):
+        self._crear()                                                   # JUAN PEREZ ya tiene horas
+        r = self.client.delete(f'/api/eliminar-persona/{self.ev.id}/', **self._auth())
+        self.assertEqual(r.status_code, 409, r.content)
+        self.assertIn('registros asociados', r.json()['error'])
+        self.assertTrue(Persona.objects.filter(id=self.ev.id).exists())   # no se borró nada
+
+    def test_eliminar_persona_sin_registros_funciona(self):
+        r = self.client.delete(f'/api/eliminar-persona/{self.ev_sin_banco.id}/', **self._auth())
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertFalse(Persona.objects.filter(id=self.ev_sin_banco.id).exists())

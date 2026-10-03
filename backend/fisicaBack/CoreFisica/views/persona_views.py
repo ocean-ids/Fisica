@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import ProtectedError, Q
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from ..models import Persona, AsignacionSemanal, Puesto, Asignacion, Horario, Provincia, Canton, CoberturaSacafranco, NotificacionEventual, ReporteAsistencia, SacafrancoFila
@@ -1142,6 +1142,13 @@ def eliminar_persona(request, id):
         return JsonResponse({'message': 'Persona eliminada correctamente'}, status=200)
     except Persona.DoesNotExist:
         return JsonResponse({'error': 'Persona no encontrada'}, status=404)
+    except ProtectedError:
+        # Hay registros que dependen de la persona y no se pueden borrar con ella (hoy: horas de
+        # eventual). Se explica el motivo en vez de un error genérico.
+        return JsonResponse({
+            'error': 'No se puede eliminar: tiene registros asociados (horas de eventual). '
+                     'Desactívela cambiando su estado en lugar de eliminarla.'
+        }, status=409)
     except Exception:
         logger.exception('Error eliminando persona id=%s', id)
         return JsonResponse({'error': 'No se pudo eliminar persona'}, status=500)
