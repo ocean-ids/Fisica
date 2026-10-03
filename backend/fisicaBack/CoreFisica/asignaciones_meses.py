@@ -207,11 +207,14 @@ def alinear_meses(mes, anio, meses=MESES_POR_DEFECTO, personas=None, puestos=Non
 
     if incluir_sacafranco is None:
         incluir_sacafranco = flt is None
-    base_saca, base_saca_filas = [], defaultdict(dict)
+    base_saca, base_saca_filas, base_saca_vac = [], defaultdict(dict), []
     if incluir_sacafranco:
+        base_saca_vac = list(SacafrancoFila.objects.filter(mes=mes, anio=anio, persona__isnull=True)
+                             .order_by('orden', 'id'))
         base_saca = list(SacafrancoFila.objects.filter(mes=mes, anio=anio, persona__isnull=False)
                          .select_related('persona').order_by('orden', 'id'))
-        for r in SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id__in=[f.id for f in base_saca]):
+        for r in SacafrancoFilaSemanal.objects.filter(
+                sacafranco_fila_id__in=[f.id for f in base_saca] + [f.id for f in base_saca_vac]):
             base_saca_filas[r.sacafranco_fila_id][r.week_start] = r
 
     resultados = []
@@ -228,7 +231,8 @@ def alinear_meses(mes, anio, meses=MESES_POR_DEFECTO, personas=None, puestos=Non
                            personas, puestos, flt, log, quitar_solo_octubre and personas is None, conservar)
         if incluir_sacafranco:
             res.update(_alinear_sacafranco(base_saca, base_saca_filas, mes, anio, tm, ty,
-                                           quitar_sacafranco_sobrantes or quitar_solo_octubre, log, conservar))
+                                           quitar_sacafranco_sobrantes or quitar_solo_octubre, log, conservar,
+                                           base_saca_vac))
         resultados.append((ty, tm, res))
     return resultados
 
@@ -342,6 +346,22 @@ def _alinear_mes(base, base_por_persona, personas_en_base, base_filas, bm, by, t
                     escribir_mes(nueva, ty, tm, [ciclo[(offset + d - ancla) % len(ciclo)]
                                                  for d in range(ultimo_dia(ty, tm))])
 
+    # ---- 2b) VACANTES: mismo orden (y datos) que las vacantes del mes base, por puesto ----
+    for puesto_id in set(base_activas):
+        if puestos is not None and puesto_id not in puestos:
+            continue
+        bv = sorted((a for a in base if a.estado == 'ACTIVO' and a.puesto_id == puesto_id and not a.persona_id),
+                    key=lambda a: (a.orden, a.id))
+        dv = sorted((a for a in destino if a.estado == 'ACTIVO' and a.puesto_id == puesto_id and not a.persona_id),
+                    key=lambda a: (a.orden, a.id))
+        for b, t in zip(bv, dv):
+            cambios = {c: getattr(b, c) for c in CAMPOS_COPIA if getattr(t, c) != getattr(b, c)}
+            if cambios:
+                Asignacion.objects.filter(pk=t.pk).update(**cambios)
+                for c, v in cambios.items():
+                    setattr(t, c, v)
+                res['vacantes con orden corregido'] += 1
+
     # ---- 3) CRONOGRAMA: continuar la secuencia donde terminó el mes base ----
     offset = (datetime.date(ty, tm, 1) - datetime.date(by, bm, 1)).days
     ids = [a.id for a in destino if a.persona_id in base_por_persona and a.estado == 'ACTIVO']
@@ -379,7 +399,8 @@ def _alinear_mes(base, base_por_persona, personas_en_base, base_filas, bm, by, t
     return res
 
 
-def _alinear_sacafranco(base_saca, base_filas, bm, by, tm, ty, quitar_sobrantes, log, conservar=frozenset()):
+def _alinear_sacafranco(base_saca, base_filas, bm, by, tm, ty, quitar_sobrantes, log, conservar=frozenset(),
+                        base_vacantes=()):
     """Deja las filas de sacafranco del mes (tm, ty) como las del mes base: misma vista,
     orden, provincia, horario y alcance; y su cronograma continuando la secuencia."""
     res = Counter()
@@ -445,6 +466,31 @@ def _alinear_sacafranco(base_saca, base_filas, bm, by, tm, ty, quitar_sobrantes,
         escribir_mes_saca(t, ty, tm, deseado)
         res['sacafranco: cronogramas corregidos'] += 1
 
+    # Filas VACÍAS (huecas) de sacafranco: las del mes base se copian tal cual (vista, orden, alcance).
+    # Si el mes ya traía huecas propias (copia vieja), se reemplazan solo cuando se piden quitar los
+    # sobrantes (cierre de mes); si no, se dejan como están.
+    dest_vac = [f for f in destino if not f.persona_id]
+    if base_vacantes and (quitar_sobrantes or not dest_vac):
+        for f in dest_vac:
+            SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id=f.id).delete()
+            f.delete()
+        for b in base_vacantes:
+            nuevo = SacafrancoFila.objects.create(
+                mes=tm, anio=ty, persona=None, orden=b.orden, provincia_id=b.provincia_id,
+                hora_ingreso=b.hora_ingreso, hora_salida=b.hora_salida, cantones=list(b.cantones or []),
+                clientes=list(b.clientes or []), vista_id=b.vista_id)
+            res['sacafranco vacíos copiados'] += 1
+            cont = ciclo_de_continuacion(tokens_mes(base_filas.get(b.id, {}), by, bm))
+            if cont:
+                ciclo, ancla = cont
+                escribir_mes_saca(nuevo, ty, tm, [ciclo[(offset + d - ancla) % len(ciclo)]
+                                                  for d in range(ultimo_dia(ty, tm))])
+    elif not base_vacantes and dest_vac and quitar_sobrantes:
+        for f in dest_vac:
+            SacafrancoFilaSemanal.objects.filter(sacafranco_fila_id=f.id).delete()
+            f.delete()
+        res['sacafranco vacíos eliminados (no estaban en el mes base)'] += len(dest_vac)
+
     sobrantes = [f for f in destino if f.persona_id and f.persona_id not in base_ids
                  and f.persona_id not in conservar]
     if sobrantes and quitar_sobrantes:
@@ -490,8 +536,13 @@ def asegurar_horizonte(hoy=None, meses_adelante=MESES_ADELANTE, log=None, alinea
             continue
         if not Asignacion.objects.filter(mes=bm, anio=by).exists():
             break                                  # no hay mes base desde donde crear
+        # Cierre de mes: el mes siguiente queda IGUAL al estado final del que termina. Lo que traía de
+        # una copia vieja (retenes / sacavacaciones / sacafranco que ya no están en el mes base, y
+        # sacafranco sobrantes) se quita; si no, aparecerían personas que ya no están en el mes base.
+        quitar = ({'quitar_solo_octubre': True, 'quitar_sacafranco_sobrantes': True}
+                  if Asignacion.objects.filter(mes=tm, anio=ty).exists() else {})
         with transaction.atomic():
-            for _a, _m, res in alinear_meses(bm, by, meses=1, log=log, crear_meses=True):
+            for _a, _m, res in alinear_meses(bm, by, meses=1, log=log, crear_meses=True, **quitar):
                 if (_a, _m) == (ty, tm):
                     creados.append((ty, tm, res))
     return creados

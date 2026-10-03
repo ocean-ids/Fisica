@@ -637,6 +637,33 @@ class CierreDeMesTests(TestCase):
         a.refresh_from_db()
         self.assertEqual(a.orden, 5)
 
+    def test_el_cierre_deja_el_mes_siguiente_igual_al_final_del_actual_sin_restos_de_una_copia_vieja(self):
+        """Una persona protegida (retén) y un sacafranco vacío que SOLO traía la copia vieja del mes
+        siguiente se quitan; las vacantes quedan con el mismo orden que en el mes que termina."""
+        from CoreFisica.models import SacafrancoFila
+        call_command('cierre_de_mes', '--hoy', '2031-03-31', stdout=StringIO())      # crea el mes siguiente
+        reten = Persona.objects.create(nombres='R', apellidos='RETEN', cedula='0910000020', tipo='RETEN')
+        sig_p = Puesto.objects.get(pk=self.p4.pk)
+        Asignacion.objects.create(
+            persona=reten, cliente=self.cli, instalacion=self.inst, puesto=sig_p, mes=self.sig_mes, anio=self.sig_anio,
+            orden=77, estado='ACTIVO', recurring=True,
+            start_date=datetime.date(self.sig_anio, self.sig_mes, 1), end_date=datetime.date(self.sig_anio, self.sig_mes, 28))
+        SacafrancoFila.objects.create(mes=self.sig_mes, anio=self.sig_anio, persona=None, orden=500, vista=self.vista)
+        Asignacion.objects.filter(mes=self.sig_mes, anio=self.sig_anio, persona__isnull=True, puesto=self.p4).update(orden=999)
+        call_command('cierre_de_mes', '--hoy', '2031-03-31', stdout=StringIO())      # el cierre vuelve a alinear
+        sig = Asignacion.objects.filter(mes=self.sig_mes, anio=self.sig_anio, estado='ACTIVO')
+        self.assertFalse(sig.filter(persona=reten).exists())                          # el retén de la copia vieja ya no está
+        self.assertEqual(sig.get(persona__isnull=True, puesto=self.p4).orden, self.vac.orden)   # la vacante, con su orden
+        self.assertFalse(SacafrancoFila.objects.filter(mes=self.sig_mes, anio=self.sig_anio, orden=500).exists())
+
+    def test_el_cierre_copia_los_sacafranco_vacios_del_mes_que_termina(self):
+        from CoreFisica.models import SacafrancoFila
+        SacafrancoFila.objects.create(mes=self.MES, anio=self.ANIO, persona=None, orden=9, vista=self.vista)
+        call_command('cierre_de_mes', '--hoy', '2031-03-31', stdout=StringIO())
+        call_command('cierre_de_mes', '--hoy', '2031-03-31', stdout=StringIO())      # repetir no duplica
+        vac = SacafrancoFila.objects.filter(mes=self.sig_mes, anio=self.sig_anio, persona__isnull=True)
+        self.assertEqual([(f.orden, f.vista_id) for f in vac], [(9, self.vista.id)])
+
 
 class ImportacionHorizonteTests(TestCase):
     def test_por_defecto_proyecta_solo_el_mes_importado(self):
