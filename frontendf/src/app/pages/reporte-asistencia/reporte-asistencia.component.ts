@@ -433,7 +433,10 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
   private handleActionError(err: any, fallback: string): void {
     const status = err?.status;
-    const msg = status === 403 ? 'No autorizado' : fallback;
+    // Si el servidor explica el motivo (ej. "Cédula ya registrada"), se muestra tal cual.
+    const motivo = err?.error?.error || err?.error?.detail;
+    const msg = status === 403 ? 'No autorizado'
+      : (typeof motivo === 'string' && motivo.length < 200 ? `${fallback}: ${motivo}` : fallback);
     Swal.fire({ icon: 'error', title: 'Error', text: msg });
   }
 
