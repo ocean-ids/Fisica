@@ -1421,6 +1421,17 @@ def listar_descripciones_reporte(request):
     return JsonResponse(list(descripciones), safe=False, status=status.HTTP_200_OK)
 
 
+def _titular_en_fecha(asignacion, fecha):
+    """Persona que ocupaba la fila ESE día (por el historial de periodos). Si la fila ya cambió de
+    persona o quedó vacante, el Reporte de Guardia de un día pasado sigue mostrando a quien faltó."""
+    from ..models import AsignacionPersonaPeriodo
+    per = (AsignacionPersonaPeriodo.objects
+           .filter(asignacion_id=asignacion.id, desde__lte=fecha)
+           .filter(Q(hasta__isnull=True) | Q(hasta__gte=fecha))
+           .select_related('persona').order_by('-desde').first())
+    return per.persona if per is not None else asignacion.persona
+
+
 def _sync_reporte_guardia(override, asignacion, fecha_reporte):
     """Refleja el registro de asistencia en el REPORTE DE GUARDIA.
     - Titular que FALTÓ -> Faltos.
@@ -1478,7 +1489,7 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
 
     # 1) Titular que faltó -> Faltos.
     if (override.estado_asistencia or '').upper() == 'FALTO':
-        filas.append(('FALTOS', asignacion.persona, 'FALTO'))
+        filas.append(('FALTOS', _titular_en_fecha(asignacion, fecha_reporte), 'FALTO'))
 
     # 2) Reemplazo según su estado -> sección correspondiente (acepta DOBLA y DOBLADO).
     #    FR/TRABAJADO se refleja aparte, automático al guardar (ver _sync_frtrabajado_dobladas).

@@ -155,3 +155,19 @@ class GuardiaAutomaticoTests(TestCase):
         self.assertEqual(self._filas().count(), 0)              # no guardó nada
         call_command('regenerar_reporte_guardia', '--desde', '2026-09-28', '--hasta', '2026-09-30', stdout=StringIO())
         self.assertEqual(self._filas(seccion='FALTOS').count(), 1)
+
+
+class GuardiaTitularDePeriodoTests(GuardiaAutomaticoTests):
+    """Días pasados: el Falto muestra a quien ocupaba la fila ese día, aunque hoy esté vacante."""
+
+    def test_regenerar_un_dia_pasado_muestra_al_titular_de_ese_dia(self):
+        from CoreFisica.models import AsignacionPersonaPeriodo
+        from CoreFisica.views.reporte_guardia_views import regenerar_guardia_dia
+        self._guardar_asistencia(estado_asistencia='FALTO')
+        AsignacionPersonaPeriodo.objects.filter(asignacion=self.asig).delete()
+        AsignacionPersonaPeriodo.objects.create(asignacion=self.asig, persona=self.titular,
+                                                desde=datetime.date(2026, 9, 1), hasta=datetime.date(2026, 9, 30))
+        Asignacion.objects.filter(id=self.asig.id).update(persona=None)     # hoy la fila está vacante
+        self._filas().delete()
+        regenerar_guardia_dia(FECHA)
+        self.assertEqual(self._filas(seccion='FALTOS').get().persona_nombre, 'JUAN PEREZ')
