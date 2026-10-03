@@ -65,6 +65,20 @@ export class SacafrancoPersonasModalComponent implements OnInit {
       if (preId) {
         const sel = this.personasAll.find(p => p.id === preId);
         if (sel) { this.selectedId = sel.id ?? null; this.personaCtrl.setValue(sel, { emitEvent: false }); }
+        else {
+          // La persona de la fila no es de tipo SACAFRANCO (ej. un fijo puesto en una fila de
+          // sacafranco): no sale en la lista, pero igual se muestra para poder verla y conservarla.
+          this.personaService.getPersona(preId).subscribe({
+            next: (p) => {
+              if (!p) return;
+              this.personasAll = [p, ...this.personasAll];
+              this.personasFiltradas = this.personasAll;
+              this.selectedId = p.id ?? null;
+              this.personaCtrl.setValue(p, { emitEvent: false });
+            },
+            error: () => { /* sin datos de la persona: queda vacío */ },
+          });
+        }
       }
     };
 
