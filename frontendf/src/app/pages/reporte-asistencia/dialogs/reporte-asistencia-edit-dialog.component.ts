@@ -663,6 +663,14 @@ export class ReporteAsistenciaEditDialogComponent {
   // - Primero hay que marcar la ASISTENCIA (ASISTE o FALTÓ).
   // - Si es FALTÓ (normal), además el estado (cómo se cubrió) y el reemplazo.
   // - Si marca Hueca, exige el motivo.
+  // Hueca marcada que ya tiene lo mínimo para guardarse sin asistencia: su motivo, o un reemplazo con su estado.
+  private huecaCompleta(raw: any): boolean {
+    if (!raw?.hueca) { return false; }
+    const motivo = !!(raw.hueca_motivo || '').toString().trim();
+    const conReemplazo = !!raw.reemplazo_id && !!(raw.estado || '').toString().trim();
+    return motivo || conReemplazo;
+  }
+
   get puedeGuardar(): boolean {
     if (this.guardando) { return false; }
     const raw = this.form?.getRawValue?.() || ({} as any);
@@ -686,9 +694,9 @@ export class ReporteAsistenciaEditDialogComponent {
     const asistencia = (raw.estado_asistencia || '').toString().toUpperCase();
     const tieneDescripcion = !!(raw.descripcion || '').toString().trim();
     if (asistencia !== 'ASISTIO' && asistencia !== 'FALTO') {
-      // Sin asistencia se puede guardar con una descripción o con la hueca marcada y su motivo.
-      const huecaConMotivo = !!raw.hueca && !!(raw.hueca_motivo || '').toString().trim();
-      return tieneDescripcion || huecaConMotivo;
+      // Sin asistencia se puede guardar con una descripción, o con la hueca marcada y su motivo, o con la
+      // hueca marcada y un reemplazo ya escogido (con su estado).
+      return tieneDescripcion || this.huecaCompleta(raw);
     }
 
     if (asistencia === 'FALTO') {
@@ -707,9 +715,8 @@ export class ReporteAsistenciaEditDialogComponent {
     }
     const asistencia = (this.form?.value?.estado_asistencia || '').toString().toUpperCase();
     const tieneDescripcion = !!(this.form?.value?.descripcion || '').toString().trim();
-    const huecaConMotivo = !!this.form?.getRawValue?.()?.hueca && !!(this.form?.getRawValue?.()?.hueca_motivo || '').toString().trim();
-    if (asistencia !== 'ASISTIO' && asistencia !== 'FALTO' && !tieneDescripcion && !huecaConMotivo) {
-      return 'Marca la asistencia (ASISTE o FALTÓ), marca la hueca con su motivo o escribe una descripción';
+    if (asistencia !== 'ASISTIO' && asistencia !== 'FALTO' && !tieneDescripcion && !this.huecaCompleta(this.form?.getRawValue?.() || {})) {
+      return 'Marca la asistencia (ASISTE o FALTÓ), marca la hueca con su motivo o con un reemplazo, o escribe una descripción';
     }
     if (asistencia === 'FALTO' && this.coberturaFaltoIncompleta) {
       return 'FALTÓ: elige el estado (cómo se cubrió) y el reemplazo';
