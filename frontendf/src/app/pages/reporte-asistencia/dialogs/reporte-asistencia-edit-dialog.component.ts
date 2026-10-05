@@ -157,11 +157,15 @@ export class ReporteAsistenciaEditDialogComponent {
     this.form.get('estado_asistencia')?.valueChanges.subscribe((v) => {
       this.aplicarBloqueoAsistencia(v, true);
     });
-    // Al cambiar el Estado: cambia el filtro del reemplazo, así que se limpia y se re-evalúa
-    // (el reemplazo queda deshabilitado hasta elegir un Estado).
+    // Al cambiar el Estado, el reemplazo elegido SE CONSERVA mientras siga siendo válido para ese estado.
+    // Solo se limpia si ya no cumple (EVENTUAL exige una persona de tipo EVENTUAL) o si se quitó el estado.
+    // Antes siempre se borraba: al elegir a alguien en franco, el estado se ponía solo en FR/TRABAJADO y
+    // eso borraba al reemplazo recién elegido (no dejaba escogerlo ni guardar).
     this.form.get('estado')?.valueChanges.subscribe(() => {
-      this.reemplazoCtrl.setValue('', { emitEvent: false });
-      this.form.get('reemplazo_id')?.setValue(null, { emitEvent: false });
+      if (!this.reemplazoCumpleEstado()) {
+        this.reemplazoCtrl.setValue('', { emitEvent: false });
+        this.form.get('reemplazo_id')?.setValue(null, { emitEvent: false });
+      }
       this.aplicarBloqueoReemplazo();
     });
 
@@ -419,6 +423,26 @@ export class ReporteAsistenciaEditDialogComponent {
     if (value?.id && this.personasFrancoIds.has(Number(value.id))) {
       this.form.get('estado')?.setValue('FR/TRABAJADO');
     }
+  }
+
+  // El reemplazo ya elegido (persona de la lista) sigue siendo válido para el Estado actual.
+  private reemplazoCumpleEstado(): boolean {
+    const estado = (this.form.get('estado')?.value || '').toString().trim().toUpperCase();
+    if (!estado) { return false; }                                  // sin estado no hay reemplazo
+    const elegido = this.reemplazoCtrl.value;
+    if (!elegido || typeof elegido !== 'object') { return false; }  // solo texto escrito: no es una selección
+    if (estado === 'EVENTUAL') { return String((elegido as any)?.tipo || '').toUpperCase() === 'EVENTUAL'; }
+    return true;
+  }
+
+  // Estados que se pueden elegir. Si el reemplazo está en FRANCO ese día, solo ADEL/TURNO o FR/TRABAJADO.
+  get estadosOpciones(): string[] {
+    const elegido: any = this.reemplazoCtrl.value;
+    const id = elegido && typeof elegido === 'object' ? Number(elegido.id) : NaN;
+    if (Number.isFinite(id) && this.personasFrancoIds.has(id)) {
+      return this.estadosDisponibles.filter(e => e === 'ADEL/TURNO' || e === 'FR/TRABAJADO');
+    }
+    return this.estadosDisponibles;
   }
 
   getDescripcionesFiltradas(): string[] {

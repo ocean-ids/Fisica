@@ -128,7 +128,7 @@
       <mat-label>Estado</mat-label>
       <mat-select formControlName="estado">
         <mat-option [value]="null">Seleccione</mat-option>
-        <mat-option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</mat-option>
+        <mat-option *ngFor="let estado of estadosOpciones" [value]="estado">{{ estado }}</mat-option>
       </mat-select>
     </mat-form-field>
     </fieldset>
