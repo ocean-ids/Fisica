@@ -76,6 +76,9 @@ export class EventualHorasDialogComponent implements OnInit {
     this.fechaServicio = this.aFecha(this.fecha);
     this.turno = row?.turno || this.data?.turnoDefecto || 'Diurno';
     this.horasSolicitadas = row?.horas_solicitadas ?? null;
+    // Un registro guardado SIN horas solicitadas (quedó en 0 y sin horas adicionales) se vuelve a abrir con
+    // ese campo vacío, para poder completarlo y que las adicionales se calculen.
+    if (row?.id && !row.horas_solicitadas && !row.horas_adicionales) { this.horasSolicitadas = null; }
     this.horas = row?.horas ?? null;
     this.bonificacion = row?.bonificacion ?? null;
     this.bonoAnterior = Number(this.bonificacion) || 0;
@@ -118,6 +121,9 @@ export class EventualHorasDialogComponent implements OnInit {
   // ---------- Cálculos (solo lectura; el servidor los recalcula al guardar) ----------
   // Horas adicionales sugeridas = trabajadas - solicitadas (mínimo 0).
   get horasAdicionales(): number {
+    // Sin horas solicitadas no hay con qué comparar: 0.
+    const sinSolicitadas = this.horasSolicitadas === null || this.horasSolicitadas === undefined || (this.horasSolicitadas as any) === '';
+    if (sinSolicitadas) { return 0; }
     return Math.max(0, (Number(this.horas) || 0) - (Number(this.horasSolicitadas) || 0));
   }
 
@@ -340,9 +346,9 @@ export class EventualHorasDialogComponent implements OnInit {
     const pueTxt = pueObj ? '' : (pue ? pue.nombre : this.libre(this.puestoCtrl));
     if (!pueObj && !pueTxt) { return this.aviso('Indica el nombre del puesto: elígelo de la lista o escríbelo.'); }
     const vacio = (v: any) => v === null || v === undefined || v === '';
-    if (vacio(this.horasSolicitadas)) { return this.aviso('Indica las horas solicitadas.'); }
-    const sol = Number(this.horasSolicitadas);
-    if (!Number.isInteger(sol) || sol < 0 || sol > 24) {
+    // Las horas solicitadas son opcionales (pueden no saberse): vacías, no hay horas adicionales por defecto.
+    const sol = vacio(this.horasSolicitadas) ? null : Number(this.horasSolicitadas);
+    if (sol !== null && (!Number.isInteger(sol) || sol < 0 || sol > 24)) {
       return this.aviso('Las horas solicitadas deben ser un número entero de 0 a 24.');
     }
     const h = Number(this.horas);
@@ -373,7 +379,7 @@ export class EventualHorasDialogComponent implements OnInit {
       instalacion_texto: instTxt,
       puesto_id: pueObj?.id ?? null,
       puesto_texto: pueTxt,
-      horas_solicitadas: sol,
+      horas_solicitadas: sol ?? undefined,
       horas: h,
       horas_adicionales: adic ?? undefined,
       bonificacion: bono,

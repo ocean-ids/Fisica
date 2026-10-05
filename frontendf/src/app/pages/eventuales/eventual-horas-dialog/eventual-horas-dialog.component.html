@@ -107,7 +107,7 @@
   <div class="ev-row m-2">
     <mat-form-field appearance="outline">
       <mat-label>Horas solicitadas</mat-label>
-      <input matInput type="number" required min="0" max="24" step="1" [(ngModel)]="horasSolicitadas" (ngModelChange)="onHorasChange()" placeholder="Ej. 8">
+      <input matInput type="number" min="0" max="24" step="1" [(ngModel)]="horasSolicitadas" (ngModelChange)="onHorasChange()" placeholder="Ej. 8 (opcional)">
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Horas trabajadas</mat-label>

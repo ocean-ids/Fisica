@@ -161,7 +161,6 @@ class HorasEventualTests(TestCase):
         self.assertEqual(self._crear(horas=0).status_code, 400)
         self.assertEqual(self._crear(horas=30).status_code, 400)
         self.assertEqual(self._crear(horas=7.5).status_code, 400)                   # no entero
-        self.assertEqual(self._crear(horas_solicitadas='').status_code, 400)        # obligatorias
         self.assertEqual(self._crear(horas_solicitadas=-1).status_code, 400)
         self.assertEqual(self._crear(bonificacion='-5').status_code, 400)           # no negativa
         self.assertEqual(self._crear(bonificacion='abc').status_code, 400)
@@ -345,3 +344,14 @@ class HorasEventualTests(TestCase):
                             content_type='application/json', **self._auth())
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn('PERTENECE A: PEREZ JUAN', r.json()['error'])
+
+    # ---------- Horas solicitadas opcionales ----------
+    def test_se_guarda_sin_horas_solicitadas_y_luego_se_corrige(self):
+        r = self._crear(horas_solicitadas='', horas=12)
+        self.assertEqual(r.status_code, 201, r.content)
+        b = r.json()
+        self.assertEqual((b['horas_solicitadas'], b['horas_adicionales']), (0, 0))   # sin solicitadas: sin adicionales
+        self.assertEqual(b['valor_calculado'], 25.0)                                  # el pago sale de las trabajadas
+        # Luego, desde Eventuales, se completan las solicitadas y las adicionales se calculan.
+        e = self._editar(b['id'], horas_solicitadas=8, horas=12, horas_adicionales='').json()
+        self.assertEqual((e['horas_solicitadas'], e['horas_adicionales']), (8, 4))

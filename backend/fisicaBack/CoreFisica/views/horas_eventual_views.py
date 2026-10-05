@@ -210,7 +210,10 @@ def _validar(data):
         if not puesto_texto:
             return None, 'Indica el nombre del puesto.'
 
-    solicitadas = _entero(data.get('horas_solicitadas'))
+    # Horas solicitadas: OPCIONAL (puede no saberse). Vacías = 0 y entonces no hay horas adicionales por
+    # defecto. El pago sale de las horas TRABAJADAS, así que no afectan el valor.
+    sin_solicitadas = data.get('horas_solicitadas') in (None, '', 'null')
+    solicitadas = 0 if sin_solicitadas else _entero(data.get('horas_solicitadas'))
     if solicitadas is None or solicitadas < 0 or solicitadas > 24:
         return None, 'Las horas solicitadas deben ser un número entero de 0 a 24.'
     horas = _entero(data.get('horas'))
@@ -219,7 +222,7 @@ def _validar(data):
     # Horas adicionales: las escritas en el formulario; si vienen vacías, trabajadas - solicitadas.
     raw_adic = data.get('horas_adicionales')
     if raw_adic in (None, '', 'null'):
-        adicionales = max(0, horas - solicitadas)
+        adicionales = 0 if sin_solicitadas else max(0, horas - solicitadas)
     else:
         adicionales = _entero(raw_adic)
         if adicionales is None or adicionales < 0 or adicionales > 24:
