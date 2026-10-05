@@ -107,7 +107,7 @@
                             </td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.instalacion_nombre || r.cliente || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto_tipo || r.puesto || '-' }}</td>
-                            <td [style.backgroundColor]="getRowColor(r)">{{ r.horario || '-' }}</td>
+                            <td [style.backgroundColor]="getRowColor(r)" style="white-space: nowrap;">{{ r.horario || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">
                                 {{ r.nombre_apellidos || '-' }}
                                 <div *ngIf="r.sacafranco_fila_id">
