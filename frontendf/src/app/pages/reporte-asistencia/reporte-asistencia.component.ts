@@ -21,6 +21,9 @@ import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
 import { NominativoService, ZonaOperativa } from '../../services/nominativo.service';
 import { ZonasNominativosDialogComponent } from './dialogs/zonas-nominativos-dialog.component';
 import { AuthService } from '../../services/auth.service';
+import { HorasEventualService } from '../../services/horas-eventual.service';
+import { EventualHorasDialogComponent } from '../eventuales/eventual-horas-dialog/eventual-horas-dialog.component';
+import { HorasEventual } from '../../models/horas-eventual.model';
 
 interface ReporteAsistenciaGrupoProvincia {
   provincia: string;
@@ -95,7 +98,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     private globalFilter: GlobalFilterStateService,
     private router: Router,
     private nominativoSvc: NominativoService,
-    private auth: AuthService
+    private auth: AuthService,
+    private eventualSvc: HorasEventualService
   ) {}
 
   // Solo Consola (permiso change_reporteasistencia) edita la asistencia. Los demas
@@ -555,6 +559,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe((res: any) => {
       if (!res) return;
+      const reemplazoAntes = row.reemplazo_id ?? null;
       // res.codigo puede no venir (p.ej. sacafranco): no sobrescribir el codigo existente.
       row.codigo = (res.codigo ?? row.codigo);
       row.estado_asistencia = res.estado_asistencia;
@@ -577,6 +582,47 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
         if (res.nombre_apellidos) { row.nombre_apellidos = res.nombre_apellidos; }
         (row as any).movimiento_interno = !!res.movimiento_interno;
       }
+      // Se escogió un reemplazo NUEVO: si es un eventual, se ofrece registrar sus horas.
+      if (res.reemplazo_id && res.reemplazo_id !== reemplazoAntes) {
+        this.ofrecerHorasEventual(row, Number(res.reemplazo_id));
+      }
+    });
+  }
+
+  // Si el reemplazo es un EVENTUAL, abre el formulario de Eventuales YA LLENO con lo que el reporte sabe
+  // (eventual, fecha, turno, cliente, instalación y puesto). Las horas solicitadas / trabajadas y la
+  // bonificación NO se llenan: son datos que solo conoce quien registra y de ellos sale el pago.
+  private ofrecerHorasEventual(row: ReporteAsistenciaRow, personaId: number): void {
+    const fecha = this.filtroFecha;
+    if (!fecha || !this.auth.hasPermission('CoreFisica.add_horaseventual')) { return; }
+    this.eventualSvc.catalogo().subscribe({
+      next: (cat) => {
+        const ev = (cat.eventuales || []).find(e => Number(e.id) === personaId);
+        if (!ev) { return; }                                   // no es un eventual
+        const abrir = () => {
+          const n = (t: any) => (t ?? '').toString().trim().toUpperCase();
+          const cli = (cat.clientes || []).find(c => n(c.nombre) === n(row.cliente));
+          const inst = (cat.instalaciones || []).find(i => n(i.nombre) === n(row.instalacion_nombre)
+            && (!cli || i.cliente_id === cli.id));
+          const pue = (cat.puestos || []).find(p => n(p.nombre) === n(row.puesto)
+            && (!inst || p.instalacion_id === inst.id));
+          const turno = (row.turno === 'Nocturno' || this.filtroTurno === 'Nocturno') ? 'Nocturno' : 'Diurno';
+          const datos = {
+            fecha, turno, persona_id: ev.id, persona: ev.nombre,
+            cliente_id: cli?.id ?? null, instalacion_id: inst?.id ?? null, puesto_id: pue?.id ?? null,
+          } as unknown as HorasEventual;
+          this.dialog.open(EventualHorasDialogComponent, {
+            width: '1000px', maxWidth: '95vw', autoFocus: false,
+            data: { row: datos, catalogo: cat, fechaDefecto: fecha, turnoDefecto: turno },
+          });
+        };
+        // Si ese eventual ya tiene horas registradas ese día, no se vuelve a ofrecer.
+        this.eventualSvc.listar(fecha, fecha).subscribe({
+          next: (regs) => { if (!(regs || []).some(r => Number(r.persona_id) === personaId)) { abrir(); } },
+          error: () => abrir(),
+        });
+      },
+      error: () => { /* sin catálogo no se ofrece nada */ },
     });
   }
 
