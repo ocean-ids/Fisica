@@ -79,6 +79,7 @@ export class EventualHorasDialogComponent implements OnInit {
     // Un registro guardado SIN horas solicitadas (quedó en 0 y sin horas adicionales) se vuelve a abrir con
     // ese campo vacío, para poder completarlo y que las adicionales se calculen.
     if (row?.id && !row.horas_solicitadas && !row.horas_adicionales) { this.horasSolicitadas = null; }
+    if (row?.id && !row.horas) { this.horas = null; }       // pendiente de horas: se abre vacío para completarlo
     this.horas = row?.horas ?? null;
     this.bonificacion = row?.bonificacion ?? null;
     this.bonoAnterior = Number(this.bonificacion) || 0;
@@ -351,9 +352,11 @@ export class EventualHorasDialogComponent implements OnInit {
     if (sol !== null && (!Number.isInteger(sol) || sol < 0 || sol > 24)) {
       return this.aviso('Las horas solicitadas deben ser un número entero de 0 a 24.');
     }
-    const h = Number(this.horas);
-    if (!Number.isInteger(h) || h < 1 || h > 24) {
-      return this.aviso('Las horas trabajadas deben ser un número entero de 1 a 24.');
+    // Las horas trabajadas pueden quedar vacías (pendiente de horas): se completan luego editando, y mientras
+    // tanto el registro no tiene valor ni entra al Excel de pago.
+    const h = vacio(this.horas) ? 0 : Number(this.horas);
+    if (!Number.isInteger(h) || h < 0 || h > 24) {
+      return this.aviso('Las horas trabajadas deben ser un número entero de 1 a 24 (o vacías si están pendientes).');
     }
     const adic = vacio(this.horasAdic) ? null : Number(this.horasAdic);
     if (adic !== null && (!Number.isInteger(adic) || adic < 0 || adic > 24)) {

@@ -81,7 +81,7 @@
             <td>{{ fechaDMA(f.fecha) }}</td>
             <td>{{ f.turno || 'Diurno' }}</td>
             <td>{{ f.horas_solicitadas || 0 }}</td>
-            <td class="fw-semibold">{{ f.horas }}</td>
+            <td class="fw-semibold">{{ f.horas || 'Pendiente' }}</td>
             <td>{{ f.rango_horas || '—' }}</td>
             <td>{{ f.horas_adicionales || 0 }}</td>
             <td>{{ f.bonificacion != null ? (f.bonificacion | number:'1.2-2') : '—' }}</td>

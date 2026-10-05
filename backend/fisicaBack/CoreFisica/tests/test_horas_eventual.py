@@ -158,8 +158,8 @@ class HorasEventualTests(TestCase):
         self.assertEqual(self._crear(persona_id=self.fijo.id).status_code, 400)          # no es EVENTUAL
         self.assertEqual(self._crear(instalacion_id=self.inst_otro.id).status_code, 400)  # otro cliente
         self.assertEqual(self._crear(puesto_id=self.puesto_otro.id).status_code, 400)     # otra instalación
-        self.assertEqual(self._crear(horas=0).status_code, 400)
         self.assertEqual(self._crear(horas=30).status_code, 400)
+        self.assertEqual(self._crear(horas=-1).status_code, 400)
         self.assertEqual(self._crear(horas=7.5).status_code, 400)                   # no entero
         self.assertEqual(self._crear(horas_solicitadas=-1).status_code, 400)
         self.assertEqual(self._crear(bonificacion='-5').status_code, 400)           # no negativa
@@ -355,3 +355,17 @@ class HorasEventualTests(TestCase):
         # Luego, desde Eventuales, se completan las solicitadas y las adicionales se calculan.
         e = self._editar(b['id'], horas_solicitadas=8, horas=12, horas_adicionales='').json()
         self.assertEqual((e['horas_solicitadas'], e['horas_adicionales']), (8, 4))
+
+    def test_se_guarda_pendiente_de_horas_y_no_entra_al_excel_hasta_completarlo(self):
+        import io as _io
+        from openpyxl import load_workbook
+        r = self._crear(horas_solicitadas='', horas='')
+        self.assertEqual(r.status_code, 201, r.content)
+        b = r.json()
+        self.assertEqual((b['horas'], b['valor_calculado'], b['rango_horas']), (0, 0.0, ''))
+        ex = '/api/horas-eventual/exportar-excel/?fecha=2026-09-29'
+        ws = load_workbook(_io.BytesIO(self.client.get(ex, **self._auth()).content)).active
+        self.assertEqual(ws.max_row, 1)                           # solo el encabezado: no se paga sin horas
+        self._editar(b['id'], horas=12, horas_solicitadas='')
+        ws = load_workbook(_io.BytesIO(self.client.get(ex, **self._auth()).content)).active
+        self.assertEqual(ws.max_row, 2)                           # ya con horas, sí entra

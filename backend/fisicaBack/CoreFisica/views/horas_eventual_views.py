@@ -216,9 +216,12 @@ def _validar(data):
     solicitadas = 0 if sin_solicitadas else _entero(data.get('horas_solicitadas'))
     if solicitadas is None or solicitadas < 0 or solicitadas > 24:
         return None, 'Las horas solicitadas deben ser un número entero de 0 a 24.'
-    horas = _entero(data.get('horas'))
-    if horas is None or horas < 1 or horas > 24:
-        return None, 'Las horas trabajadas deben ser un número entero de 1 a 24.'
+    # Horas trabajadas: pueden quedar VACÍAS (= 0, "pendiente de horas") para completarlas luego editando.
+    # Un registro con 0 horas no tiene rango ni valor, y no entra al Excel de pago.
+    sin_horas = data.get('horas') in (None, '', 'null')
+    horas = 0 if sin_horas else _entero(data.get('horas'))
+    if horas is None or horas < 0 or horas > 24:
+        return None, 'Las horas trabajadas deben ser un número entero de 0 a 24 (vacías = pendiente).'
     # Horas adicionales: las escritas en el formulario; si vienen vacías, trabajadas - solicitadas.
     raw_adic = data.get('horas_adicionales')
     if raw_adic in (None, '', 'null'):
@@ -526,6 +529,8 @@ def exportar_excel_horas_eventual(request):
     for h in registros:
         if h.id not in ids_ok or not h.persona_id:
             continue
+        if not h.horas:
+            continue            # pendiente de horas: todavía no se paga
         r = personas.setdefault(h.persona_id, {'h': h, 'valor': Decimal('0')})
         r['valor'] += h.valor_calculado or Decimal('0')
     wb = openpyxl.Workbook()

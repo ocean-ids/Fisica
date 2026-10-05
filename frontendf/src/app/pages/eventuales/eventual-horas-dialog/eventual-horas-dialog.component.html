@@ -111,7 +111,7 @@
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Horas trabajadas</mat-label>
-      <input matInput type="number" required min="1" max="24" step="1" [(ngModel)]="horas" (ngModelChange)="onHorasChange()" placeholder="Ej. 12">
+      <input matInput type="number" min="0" max="24" step="1" [(ngModel)]="horas" (ngModelChange)="onHorasChange()" placeholder="Ej. 12 (vacío = pendiente)">
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Rango de horas</mat-label>
