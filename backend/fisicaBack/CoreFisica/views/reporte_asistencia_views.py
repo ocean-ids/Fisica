@@ -4,6 +4,7 @@ from django.db.models import Q, Subquery, Prefetch
 from django.http import HttpResponse
 from django.utils import timezone
 from io import BytesIO
+from collections import defaultdict
 import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -891,6 +892,7 @@ def _build_reporte_asistencia_data(
     # se busca el PuestoHorario del puesto para ese día de la semana.
     horario_puesto_dia = {}     # {puesto_id: (ing,sal)} — fallback (cualquier turno)
     horario_puesto_turno = {}   # {(puesto_id, 'Diurno'|'Nocturno'): (ing,sal)} — por turno
+    horarios_puesto = defaultdict(list)   # {puesto_id: [(ing, sal, etiqueta)]} — para elegir por D/N
     if fecha_obj:
         from ..models import PuestoHorario
         dia_semana = fecha_obj.weekday() + 1  # 1=Lunes ... 7=Domingo
@@ -900,6 +902,7 @@ def _build_reporte_asistencia_data(
                 if ph.hora_ingreso:
                     horario_puesto_turno.setdefault((ph.puesto_id, ph.turno), (ph.hora_ingreso, ph.hora_salida))
                     horario_puesto_dia.setdefault(ph.puesto_id, (ph.hora_ingreso, ph.hora_salida))
+                    horarios_puesto[ph.puesto_id].append((ph.hora_ingreso, ph.hora_salida, ph.turno))
 
     # COBERTURA de FIJO: token crudo del dia (ej. DK37). Si un fijo tiene D/N+nominativo,
     # ese dia cubre OTRA instalacion -> se muestra bajo ese nominativo (su puesto propio
@@ -1017,7 +1020,11 @@ def _build_reporte_asistencia_data(
             _lt = (dnf.get(asig.id) if asig else '') or ''
             _turno_nombre = 'Diurno' if _lt == 'D' else ('Nocturno' if _lt == 'N' else '')
             if _turno_nombre:
-                ph_horas = horario_puesto_turno.get((_pid, _turno_nombre))
+                # Según la D / N de la persona ese día: el horario de noche cruza la medianoche y el de
+                # día no; si el puesto solo tiene uno, se le da la vuelta (ver _horas_de_turno).
+                ph_horas = _horas_de_turno(horarios_puesto.get(_pid, []), _turno_nombre)
+                if not ph_horas:
+                    ph_horas = horario_puesto_turno.get((_pid, _turno_nombre))
             if not ph_horas:
                 ph_horas = horario_puesto_dia.get(_pid)
         if ph_horas and ph_horas[0]:
@@ -1419,6 +1426,33 @@ def listar_descripciones_reporte(request):
     )
 
     return JsonResponse(list(descripciones), safe=False, status=status.HTTP_200_OK)
+
+
+def _horas_de_turno(entradas, turno_nombre):
+    """Horario (ingreso, salida) que corresponde al TURNO de la persona ese día (Diurno / Nocturno,
+    según la D o N del cronograma), a partir de los horarios guardados en el puesto para ese día.
+
+    Se mira la FORMA del horario, no su etiqueta (hay horarios de día guardados como "nocturno"):
+    - cruza la medianoche (19:00 - 07:00)  -> es de NOCHE;
+    - no la cruza (07:00 - 19:00)          -> es de DÍA.
+    Si el puesto tiene uno del mismo tipo que el turno, se usa. Si no, se toma el que haya y se le da
+    la vuelta (solo de día 07:00 - 19:00 y la persona de noche -> 19:00 - 07:00; y al revés). Solo se
+    invierten bloques de 6 a 16 horas. Devuelve None si no se puede decidir (queda el comportamiento
+    de siempre). Los de 24 horas ("Ambos") no se tocan."""
+    quiere_noche = (turno_nombre == 'Nocturno')
+    validos = []
+    for ing, sal, etiqueta in entradas:
+        if not ing or not sal or etiqueta == 'Ambos' or ing == sal:
+            continue
+        validos.append((ing, sal, sal < ing))             # (ingreso, salida, es_de_noche)
+    for ing, sal, es_noche in validos:
+        if es_noche == quiere_noche:
+            return ing, sal
+    for ing, sal, es_noche in validos:
+        horas = ((sal.hour * 60 + sal.minute) - (ing.hour * 60 + ing.minute)) % (24 * 60) / 60
+        if 6 <= horas <= 16:
+            return sal, ing                               # al revés: entra cuando salía el otro turno
+    return None
 
 
 def _titular_en_fecha(asignacion, fecha):

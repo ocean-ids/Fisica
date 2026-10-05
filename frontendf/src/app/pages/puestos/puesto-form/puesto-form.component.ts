@@ -11,6 +11,8 @@ import { InstalacionService } from '../../../services/instalacion.service';
 import { HorarioService } from '../../../services/horario.service';
 import { Instalacion, Horario } from '../../../models';
 
+import Swal from 'sweetalert2';
+
 @Component({
   selector: 'app-puesto-form',
   standalone: true,
@@ -147,6 +149,25 @@ export class PuestoFormComponent implements OnInit {
       // Cada bloque (turno) tiene SU propia hora de ingreso/salida (dia/noche distintos).
       const horariosPayload: any[] = [];
       const horariosFA = this.puestoForm.get('horarios') as any;
+      // El horario debe corresponder a su turno: el NOCTURNO cruza la medianoche (19:00 - 07:00) y el
+      // DIURNO no (07:00 - 19:00). Un horario de día guardado como nocturno (o al revés) sale mal en el
+      // Reporte de Asistencia.
+      for (let i = 0; i < horariosFA.length; i++) {
+        const h = horariosFA.at(i).getRawValue();
+        const turno = this.normalizeTurno(h.turno);
+        if (!h.ingreso || !h.salida || this.is24hTurn(h.turno) || h.ingreso === h.salida) { continue; }
+        const cruza = h.salida < h.ingreso;      // "HH:MM" se comparan bien como texto
+        if (turno === 'Nocturno' && !cruza) {
+          Swal.fire({ icon: 'warning', title: 'Horario nocturno incorrecto',
+                      text: `El horario Nocturno debe pasar la medianoche (ej. 19:00 - 07:00). Tiene ${h.ingreso} - ${h.salida}.` });
+          return;
+        }
+        if (turno === 'Diurno' && cruza) {
+          Swal.fire({ icon: 'warning', title: 'Horario diurno incorrecto',
+                      text: `El horario Diurno no debe pasar la medianoche (ej. 07:00 - 19:00). Tiene ${h.ingreso} - ${h.salida}.` });
+          return;
+        }
+      }
       for (let i = 0; i < horariosFA.length; i++) {
         const h = horariosFA.at(i).getRawValue();
         const days: number[] = h.days || [];

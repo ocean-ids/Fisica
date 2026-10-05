@@ -1,0 +1,84 @@
+"""Reporte de Asistencia: el horario que se muestra sigue la D / N de la persona ese día.
+
+El horario de noche cruza la medianoche y el de día no. Si el puesto solo tiene uno de los dos, a la
+persona del otro turno se le muestra el reverso (19:00 - 07:00 / 07:00 - 19:00). Un horario guardado
+como "nocturno" que en realidad es de día se trata como de día.
+"""
+import datetime
+import json
+from unittest import mock
+
+from django.contrib.auth.models import User
+from django.test import SimpleTestCase, TestCase
+
+from CoreFisica.models import Asignacion, Cliente, Instalacion, Persona, Puesto, PuestoHorario
+from CoreFisica.views.reporte_asistencia_views import _horas_de_turno
+
+T = datetime.time
+
+
+class HorasDeTurnoTests(SimpleTestCase):
+    DIA = (T(7, 0), T(19, 0), 'Diurno')
+    NOCHE = (T(19, 0), T(7, 0), 'Nocturno')
+
+    def test_el_puesto_tiene_el_horario_del_turno(self):
+        self.assertEqual(_horas_de_turno([self.DIA, self.NOCHE], 'Nocturno'), (T(19, 0), T(7, 0)))
+        self.assertEqual(_horas_de_turno([self.DIA, self.NOCHE], 'Diurno'), (T(7, 0), T(19, 0)))
+
+    def test_solo_de_dia_y_la_persona_de_noche_se_da_la_vuelta(self):
+        self.assertEqual(_horas_de_turno([self.DIA], 'Nocturno'), (T(19, 0), T(7, 0)))
+
+    def test_solo_de_noche_y_la_persona_de_dia_se_da_la_vuelta(self):
+        self.assertEqual(_horas_de_turno([self.NOCHE], 'Diurno'), (T(7, 0), T(19, 0)))
+
+    def test_se_respeta_una_excepcion_guardada(self):
+        self.assertEqual(_horas_de_turno([self.DIA, (T(18, 0), T(6, 0), 'Nocturno')], 'Nocturno'), (T(18, 0), T(6, 0)))
+        self.assertEqual(_horas_de_turno([(T(18, 0), T(6, 0), 'Nocturno')], 'Nocturno'), (T(18, 0), T(6, 0)))
+
+    def test_un_nocturno_mal_cargado_con_horas_de_dia_se_trata_como_de_dia(self):
+        mal = (T(7, 0), T(19, 0), 'Nocturno')
+        self.assertEqual(_horas_de_turno([mal], 'Nocturno'), (T(19, 0), T(7, 0)))
+        self.assertEqual(_horas_de_turno([mal], 'Diurno'), (T(7, 0), T(19, 0)))
+
+    def test_24_horas_y_sin_datos_no_se_tocan(self):
+        self.assertIsNone(_horas_de_turno([(T(7, 0), T(7, 0), 'Ambos')], 'Nocturno'))
+        self.assertIsNone(_horas_de_turno([(None, None, 'Diurno')], 'Nocturno'))
+        self.assertIsNone(_horas_de_turno([], 'Nocturno'))
+
+    def test_un_bloque_corto_no_se_invierte(self):
+        self.assertIsNone(_horas_de_turno([(T(16, 0), T(21, 0), 'Diurno')], 'Nocturno'))
+
+
+class HorarioEnElReporteTests(TestCase):
+    FECHA = datetime.date(2026, 9, 29)
+
+    def setUp(self):
+        User.objects.create_superuser(username='hr_user', email='e@e.com', password='HrPass123!')
+        tok = self.client.post('/api/login/', data=json.dumps({'username': 'hr_user', 'password': 'HrPass123!'}),
+                               content_type='application/json').json().get('access')
+        self.auth = {'HTTP_AUTHORIZATION': f'Bearer {tok}'}
+        cli = Cliente.objects.create(razon_social='C SA', nombre_comercial='C')
+        inst = Instalacion.objects.create(cliente=cli, nombre='I')
+        self.puesto = Puesto.objects.create(instalacion=inst, nombre='P')
+        PuestoHorario.objects.create(puesto=self.puesto, dia=self.FECHA.weekday() + 1, turno='Diurno',
+                                     hora_ingreso=T(7, 0), hora_salida=T(19, 0))
+        persona = Persona.objects.create(nombres='A', apellidos='A', cedula='0910000040', tipo='FIJOS')
+        self.asig = Asignacion.objects.create(persona=persona, cliente=cli, instalacion=inst, puesto=self.puesto,
+                                              mes=9, anio=2026, estado='ACTIVO', recurring=True,
+                                              start_date=datetime.date(2026, 9, 1), end_date=datetime.date(2026, 9, 30))
+
+    def _horario(self, letra, turno):
+        with mock.patch('CoreFisica.views.reporte_asistencia_views._calendar_dnf_for_date',
+                        return_value={self.asig.id: letra}):
+            r = self.client.get('/api/reporte-asistencia/', {'fecha': self.FECHA.isoformat(), 'turno': turno}, **self.auth)
+        self.assertEqual(r.status_code, 200, r.content)
+        d = r.json()
+        filas = d.get('results', d) if isinstance(d, dict) else d
+        filas = [f for f in filas if f.get('asignacion_id') == self.asig.id]
+        return filas[0]['horario'] if filas else None
+
+    def test_el_puesto_solo_de_dia_muestra_19_07_a_quien_trabaja_de_noche(self):
+        self.assertEqual(self._horario('N', 'Nocturno'), '19:00 - 07:00')
+
+    def test_quien_trabaja_de_dia_sigue_viendo_07_19(self):
+        self.assertEqual(self._horario('D', 'Diurno'), '07:00 - 19:00')
