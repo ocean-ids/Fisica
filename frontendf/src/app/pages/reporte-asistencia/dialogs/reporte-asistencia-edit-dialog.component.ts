@@ -418,10 +418,21 @@ export class ReporteAsistenciaEditDialogComponent {
 
     this.form.get('reemplazo_id')?.setValue(value?.id ?? null);
 
-    // Si el reemplazo elegido está en FRANCO ese día, se autocompleta el estado FR/TRABAJADO
-    // (queda editable: el usuario puede cambiarlo).
+    // Si el reemplazo elegido está en FRANCO ese día, solo puede ser ADEL/TURNO o FR/TRABAJADO: si el estado
+    // actual es uno de esos dos se respeta; si no, se autocompleta FR/TRABAJADO (queda editable). Se pone SIN
+    // disparar el aviso de cambio de estado, para que no se borre el reemplazo recién elegido.
     if (value?.id && this.personasFrancoIds.has(Number(value.id))) {
-      this.form.get('estado')?.setValue('FR/TRABAJADO');
+      const actual = (this.form.get('estado')?.value || '').toString().toUpperCase();
+      if (actual !== 'ADEL/TURNO' && actual !== 'FR/TRABAJADO') {
+        this.form.get('estado')?.setValue('FR/TRABAJADO', { emitEvent: false });
+      }
+      this.aplicarBloqueoReemplazo();
+    }
+
+    // Seguro: lo elegido se queda elegido (nada de lo anterior debe dejar el campo vacío).
+    if (value?.id) {
+      this.reemplazoCtrl.setValue(value, { emitEvent: false });
+      this.form.get('reemplazo_id')?.setValue(value.id, { emitEvent: false });
     }
   }
 
