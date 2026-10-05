@@ -1315,8 +1315,16 @@ def importar_formato_reporte(request, wb, cliente_id_filter=None):
 
     objetivo_mes = req_month or date.today().month
 
+    # El DESCARGABLE de Asignaciones trae una hoja 'DATOS' (la que se re-importa) y otras hojas
+    # (Asignaciones y Calendario, una por provincia...) que son solo la vista para leer. Si existe
+    # 'DATOS', se importa SOLO esa: las demás repiten lo mismo y no traen el mes, así que dan errores
+    # de "no se detecto el mes" y se procesarían dos veces.
+    hojas = [w for w in wb.worksheets if str(w.title or '').strip().upper().startswith('DATOS')]
+    if not hojas:
+        hojas = list(wb.worksheets)
+
     with suppress_audit(), transaction.atomic():
-        for ws in wb.worksheets:
+        for ws in hojas:
             rows = list(ws.iter_rows(values_only=True))
             ri, col = _rep_detectar_columnas(rows)
             if ri is None:

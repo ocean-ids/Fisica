@@ -37,7 +37,12 @@ class ExportReimportableTests(TestCase):
         prov, _ = Provincia.objects.get_or_create(nombre='GUAYAS')
         can, _ = Canton.objects.get_or_create(nombre='GUAYAQUIL', provincia=prov)
         cli = Cliente.objects.create(razon_social='CX', nombre_comercial='CX')
-        Instalacion.objects.create(cliente=cli, canton=can, nombre='INST', codigo='N-001')
+        inst = Instalacion.objects.create(cliente=cli, canton=can, nombre='INST', codigo='N-001')
+        # El import de horarios NO crea datos maestros (persona / puesto): deben existir de antes.
+        from CoreFisica.models import Puesto
+        Puesto.objects.create(instalacion=inst, nombre='PUESTO 1')
+        Persona.objects.create(nombres='JUAN', apellidos='PEREZ LOPEZ', cedula='0912345678', tipo='FIJOS')
+        Persona.objects.create(nombres='MARIA', apellidos='GOMEZ RUIZ', cedula='0987654321', tipo='SACAFRANCO')
 
     def _auth(self): return {'HTTP_AUTHORIZATION': f'Bearer {self.access}'}
 
