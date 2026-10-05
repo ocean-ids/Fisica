@@ -82,3 +82,14 @@ class HorarioEnElReporteTests(TestCase):
 
     def test_quien_trabaja_de_dia_sigue_viendo_07_19(self):
         self.assertEqual(self._horario('D', 'Diurno'), '07:00 - 19:00')
+
+    def test_la_fila_trae_apellidos_y_nombres_por_separado(self):
+        """Para mostrar los apellidos arriba y los nombres abajo."""
+        Persona.objects.filter(cedula='0910000040').update(apellidos='TATAMUES AGUIRRE', nombres='DIEGO ARMANDO')
+        with mock.patch('CoreFisica.views.reporte_asistencia_views._calendar_dnf_for_date',
+                        return_value={self.asig.id: 'D'}):
+            r = self.client.get('/api/reporte-asistencia/', {'fecha': self.FECHA.isoformat(), 'turno': 'Diurno'}, **self.auth)
+        d = r.json()
+        fila = [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('asignacion_id') == self.asig.id][0]
+        self.assertEqual(fila['nombre_apellidos'], 'TATAMUES AGUIRRE DIEGO ARMANDO')
+        self.assertEqual((fila['apellidos_txt'], fila['nombres_txt']), ('TATAMUES AGUIRRE', 'DIEGO ARMANDO'))

@@ -314,6 +314,20 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     });
   }
 
+  // "APELLIDOS" arriba y "NOMBRES" abajo. Se usan los apellidos y nombres que manda el servidor; si la fila
+  // acaba de editarse (el nombre cambió y esos datos ya no coinciden), se parte en 2 apellidos y el resto.
+  lineasNombre(r: ReporteAsistenciaRow): { arriba: string; abajo: string } {
+    const nombre = (r.nombre_apellidos || '').toString().trim();
+    if (!nombre) { return { arriba: '-', abajo: '' }; }
+    if (nombre.toUpperCase() === 'HUECA') { return { arriba: nombre, abajo: '' }; }
+    const ap = (r.apellidos_txt || '').toString().trim();
+    const no = (r.nombres_txt || '').toString().trim();
+    if (ap && no && `${ap} ${no}` === nombre) { return { arriba: ap, abajo: no }; }
+    const palabras = nombre.split(/\s+/);
+    const n = palabras.length <= 2 ? 1 : 2;
+    return { arriba: palabras.slice(0, n).join(' '), abajo: palabras.slice(n).join(' ') };
+  }
+
   getRowColor(row: ReporteAsistenciaRow): string {
     return row.row_color || '';
   }

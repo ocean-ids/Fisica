@@ -1033,6 +1033,7 @@ def _build_reporte_asistencia_data(
         elif asig and asig.horario:
             horario_str = f"{asig.horario.hora_ingreso.strftime('%H:%M')} - {asig.horario.hora_salida.strftime('%H:%M')}"
         nombre_apellidos = f"{p.apellidos} {p.nombres}".strip() if p else 'HUECA'
+        _persona_nombre = p      # de quién son los apellidos / nombres que se muestran (para las 2 líneas)
         auto_sacafranco = _is_auto_sacafranco_desc(getattr(override, 'descripcion', '')) if override else False
         persona_cobertura = None
         if override:
@@ -1044,11 +1045,13 @@ def _build_reporte_asistencia_data(
         mov_interno = False
         if persona_cobertura and (p is None or auto_sacafranco):
             nombre_apellidos = f"{persona_cobertura.apellidos} {persona_cobertura.nombres}".strip()
+            _persona_nombre = persona_cobertura
         elif persona_cobertura and p is not None and not auto_sacafranco:
             # MOVIMIENTO INTERNO: el titular fue reemplazado ese dia por otro guardia SOLO
             # en el reporte (no cambia la asignacion). Si ese guardia es titular de otro
             # puesto ese mes, se marca el badge "MOVIMIENTO INTERNO".
             nombre_apellidos = f"{persona_cobertura.apellidos} {persona_cobertura.nombres}".strip()
+            _persona_nombre = persona_cobertura
             _pcid = getattr(persona_cobertura, 'id', None)
             # Sacafranco: operativo por su ficha (no por Asignacion) -> siempre mov. interno.
             mov_interno = getattr(persona_cobertura, 'tipo', '') == 'SACAFRANCO'
@@ -1135,6 +1138,10 @@ def _build_reporte_asistencia_data(
             'puesto_tipo': (getattr(asig.puesto, 'tipo', '') or '') if asig else '',
             'horario': horario_str,
             'nombre_apellidos': nombre_apellidos,
+            # Para mostrar los apellidos arriba y los nombres abajo (la pantalla solo los usa si coinciden
+            # con nombre_apellidos).
+            'apellidos_txt': (_persona_nombre.apellidos or '').strip() if _persona_nombre else '',
+            'nombres_txt': (_persona_nombre.nombres or '').strip() if _persona_nombre else '',
             'cedula': getattr(p, 'cedula', '') or '',
             'reemplazo_id': reemplazo_id,
             'reemplazo': reemplazo_nombre,
@@ -1278,9 +1285,11 @@ def _build_reporte_asistencia_data(
                 # fecha (no cambia la ficha del sacafranco).
                 _sa_pc = getattr(_sa, 'persona_cobertura', None) if _sa else None
                 _saca_nombre = persona_nombre or 'HUECA'
+                _saca_persona = persona
                 _saca_mov_interno = False
                 if _sa_pc:
                     _saca_nombre = f"{_sa_pc.apellidos} {_sa_pc.nombres}".strip()
+                    _saca_persona = _sa_pc
                     _saca_mov_interno = (getattr(_sa_pc, 'tipo', '') == 'SACAFRANCO') or bool(
                         fecha_obj and _sa_pc.id and Asignacion.objects.filter(
                             persona_id=_sa_pc.id, mes=fecha_obj.month, anio=fecha_obj.year, estado='ACTIVO'
@@ -1295,6 +1304,8 @@ def _build_reporte_asistencia_data(
                     'puesto': puesto_val,
                     'horario': horario_saca,
                     'nombre_apellidos': _saca_nombre,
+                    'apellidos_txt': (_saca_persona.apellidos or '').strip() if _saca_persona else '',
+                    'nombres_txt': (_saca_persona.nombres or '').strip() if _saca_persona else '',
                     'movimiento_interno': _saca_mov_interno,
                     'reemplazo_id': _sa_rem.id if _sa_rem else None,
                     'reemplazo': f"{_sa_rem.apellidos} {_sa_rem.nombres}".strip() if _sa_rem else '',

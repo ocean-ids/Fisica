@@ -9,6 +9,8 @@ export interface ReporteAsistenciaRow {
   horario?: string;
   turno?: string;
   nombre_apellidos?: string;
+  apellidos_txt?: string;     // apellidos de la persona que se muestra (para verlos arriba)
+  nombres_txt?: string;       // nombres de la persona que se muestra (para verlos abajo)
   reemplazo_id?: number | null;
   reemplazo?: string;
   estado_asistencia?: 'ASISTIO' | 'FALTO' | '' | null;

@@ -109,7 +109,9 @@
                             <td [style.backgroundColor]="getRowColor(r)">{{ r.puesto_tipo || r.puesto || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)" style="white-space: nowrap;">{{ r.horario || '-' }}</td>
                             <td [style.backgroundColor]="getRowColor(r)">
-                                {{ r.nombre_apellidos || '-' }}
+                                <!-- Apellidos arriba y nombres abajo, siempre. -->
+                                <div>{{ lineasNombre(r).arriba }}</div>
+                                <div *ngIf="lineasNombre(r).abajo">{{ lineasNombre(r).abajo }}</div>
                                 <div *ngIf="r.sacafranco_fila_id">
                                     <span class="badge rounded-pill bg-primary mt-1" style="font-size:0.6rem; letter-spacing:0.5px;">SACAFRANCO</span>
                                 </div>
