@@ -56,3 +56,15 @@ mat-dialog-content {
     grid-column: auto;
   }
 }
+
+/* Pie del formulario: "Agregar eventual" a la izquierda; Cancelar y Guardar a la derecha. */
+.acciones-edicion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.acciones-der {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 8px;
+}

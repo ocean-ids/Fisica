@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -12,6 +12,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { ReporteAsistenciaService } from '../../../services/reporte-asistencia.service';
 import { ReporteAsistenciaRow } from '../../../models';
 import { PersonaService } from '../../../services/persona.service';
+import { AuthService } from '../../../services/auth.service';
+import { PersonaFormComponent } from '../../personas/persona-form/persona-form.component';
 import { Persona } from '../../../models';
 import Swal from 'sweetalert2';
 
@@ -72,6 +74,8 @@ export class ReporteAsistenciaEditDialogComponent {
     private fb: FormBuilder,
     private reporteSvc: ReporteAsistenciaService,
     private personaSvc: PersonaService,
+    private dialog: MatDialog,
+    private auth: AuthService,
     private dialogRef: MatDialogRef<ReporteAsistenciaEditDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: {
       row: ReporteAsistenciaRow;
@@ -269,7 +273,7 @@ export class ReporteAsistenciaEditDialogComponent {
     });
   }
 
-  private cargarReemplazos(): void {
+  private cargarReemplazos(despues?: () => void): void {
     this.cargandoReemplazos = true;
     this.personaSvc.getPersonas().subscribe({
       next: (data) => {
@@ -295,6 +299,7 @@ export class ReporteAsistenciaEditDialogComponent {
             this.reemplazoCtrl.setValue(selectedPersona, { emitEvent: false });
           }
         }
+        if (despues) { despues(); }
       },
       error: (err) => {
         console.error('Error al cargar reemplazos', err);
@@ -306,6 +311,53 @@ export class ReporteAsistenciaEditDialogComponent {
     });
   }
 
+
+  // ---------- Agregar un EVENTUAL desde aquí (sin cerrar este formulario) ----------
+  get puedeCrearPersona(): boolean { return this.auth.hasPermission('CoreFisica.add_persona'); }
+
+  agregarEventual(): void {
+    const ref = this.dialog.open(PersonaFormComponent, { width: '600px', data: { soloBasicos: true } });
+    ref.afterClosed().subscribe((result: any) => {
+      if (!result) { return; }
+      // Alta rápida: el eventual queda por validar y se notifica al validador.
+      this.personaSvc.createPersona({ ...result, requiere_validacion: true } as any).subscribe({
+        next: (res: any) => this.alCrearEventual(res?.id),
+        error: (err) => this.avisoErrorPersona(err),
+      });
+    });
+  }
+
+  // Recarga la lista de reemplazos y deja ESCOGIDO al eventual recién creado. Este formulario sigue abierto
+  // con lo que ya tenía (asistencia, hueca, descripción...). Si aún no había Estado, se pone EVENTUAL.
+  private alCrearEventual(id?: number): void {
+    this.cargarReemplazos(() => {
+      const nuevo = id ? this.reemplazos.find(p => Number(p.id) === Number(id)) : undefined;
+      if (nuevo) {
+        if (!this.form.get('estado')?.value) {
+          this.form.get('estado')?.setValue('EVENTUAL', { emitEvent: false });
+        }
+        this.aplicarBloqueoReemplazo();
+        this.reemplazoCtrl.setValue(nuevo, { emitEvent: false });
+        this.form.get('reemplazo_id')?.setValue(nuevo.id, { emitEvent: false });
+      }
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', timer: 2500, showConfirmButton: false,
+                  title: 'Eventual creado', text: 'Quedó pendiente de validación.' });
+    });
+  }
+
+  private avisoErrorPersona(err: any): void {
+    const motivo = err?.error?.error;
+    const msg = err?.status === 403 ? 'No autorizado'
+      : `No se pudo crear persona${typeof motivo === 'string' && motivo.length < 200 ? ': ' + motivo : ''}`;
+    const tipo = typeof err?.error?.tipo === 'string' ? err.error.tipo.trim() : '';
+    if (tipo) {
+      const esc = (t: string) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+      Swal.fire({ icon: 'error', title: 'Error',
+        html: `<div>${esc(msg)}</div><div style="margin-top:12px">Tipo registrado: <span style="display:inline-block; font-size:12px; font-weight:700; padding:3px 12px; border-radius:12px; background:#eef2ff; color:#4338ca;">${esc(tipo)}</span></div>` });
+      return;
+    }
+    Swal.fire({ icon: 'error', title: 'Error', text: msg });
+  }
 
   getNombrePersona(p: Persona): string {
     return `${p.nombres || ''} ${p.apellidos || ''}`.trim();

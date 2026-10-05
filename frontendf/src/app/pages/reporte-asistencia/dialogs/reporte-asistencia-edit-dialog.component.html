@@ -167,11 +167,17 @@
   <div class="error" *ngIf="error">{{ error }}</div>
 </mat-dialog-content>
 
-<mat-dialog-actions align="end">
-  <button mat-button type="button" (click)="cancelar()" [disabled]="guardando">Cancelar</button>
-  <button mat-raised-button color="primary" type="button" (click)="guardar()"
-          [disabled]="!puedeGuardar"
-          [title]="tituloGuardar">
-    {{ guardando ? 'Guardando...' : 'Guardar' }}
+<mat-dialog-actions class="acciones-edicion">
+  <!-- Crear un eventual sin salir de este registro: queda escogido como reemplazo. -->
+  <button *ngIf="puedeCrearPersona" mat-stroked-button type="button" (click)="agregarEventual()" [disabled]="guardando">
+    <mat-icon>person_add</mat-icon> Agregar eventual
   </button>
+  <span class="acciones-der">
+    <button mat-button type="button" (click)="cancelar()" [disabled]="guardando">Cancelar</button>
+    <button mat-raised-button color="primary" type="button" (click)="guardar()"
+            [disabled]="!puedeGuardar"
+            [title]="tituloGuardar">
+      {{ guardando ? 'Guardando...' : 'Guardar' }}
+    </button>
+  </span>
 </mat-dialog-actions>
