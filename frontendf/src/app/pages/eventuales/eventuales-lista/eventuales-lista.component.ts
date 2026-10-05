@@ -117,6 +117,12 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
   // El rango es un solo día (Desde = Hasta).
   get esUnDia(): boolean { return !!this.fechaDesde && this.fechaDesde === this.fechaHasta; }
 
+  // "1/10/2026" a partir de YYYY-MM-DD (para el texto Desde / Hasta del selector).
+  fechaCorta(iso: string): string {
+    const [y, m, d] = (iso || '').split('-').map(Number);
+    return (y && m && d) ? `${d}/${m}/${y}` : '';
+  }
+
   // "30/9/2026" (mismo formato que el calendario)
   get diaTexto(): string {
     const [y, m, d] = this.fechaDesde.split('-').map(Number);

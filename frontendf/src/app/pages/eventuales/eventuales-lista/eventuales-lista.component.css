@@ -23,7 +23,8 @@ tfoot th {
 /* Selector de rango de fechas en la cabecera: mismo tamaño que un input form-control-sm,
    sin título (solo se ven las fechas y el calendario). */
 .ev-rango {
-  width: 205px;
+  width: 330px;
+  flex: 0 0 auto;          /* no se encoge: el texto Desde / Hasta va en una sola línea */
   --mat-form-field-container-height: 31px;
   --mat-form-field-container-vertical-padding: 4px;
   --mat-form-field-container-text-size: 14px;
@@ -55,12 +56,30 @@ tfoot th {
   align-items: center;
   cursor: pointer;
   font-size: 14px;
+  white-space: nowrap;
   z-index: 1;
 }
 .ev-oculto {
   opacity: 0;
 }
-/* Un solo día: el campo mide lo de una fecha; al elegir un rango se agranda. */
+/* Un solo día: el campo mide lo de una fecha; con un rango elegido se agranda (Desde … – Hasta …). */
 .ev-rango.ev-rango-dia {
-  width: 115px;
+  width: 140px;
+}
+
+/* Encabezado en tres partes: fechas a la izquierda, título al CENTRO exacto (igual que el selector de
+   turno de abajo) y botones a la derecha. Los dos lados miden lo mismo para que el título quede centrado. */
+@media (min-width: 992px) {
+  .ev-izq,
+  .ev-der {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .ev-izq {
+    display: flex;
+    justify-content: flex-start;
+  }
+  .ev-der {
+    justify-content: flex-end;
+  }
 }
