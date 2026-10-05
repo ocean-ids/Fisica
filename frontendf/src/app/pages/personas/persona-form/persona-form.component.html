@@ -25,13 +25,13 @@
       <!-- Fila 2: Nombres + Apellidos -->
       <mat-form-field appearance="outline">
         <mat-label>Nombres</mat-label>
-        <input matInput formControlName="nombres" required>
+        <input matInput formControlName="nombres" required style="text-transform: uppercase;" (input)="aMayuscula('nombres')">
         <mat-error *ngIf="personaForm.get('nombres')?.hasError('required')">El nombre es requerido</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Apellidos</mat-label>
-        <input matInput formControlName="apellidos" required>
+        <input matInput formControlName="apellidos" required style="text-transform: uppercase;" (input)="aMayuscula('apellidos')">
         <mat-error *ngIf="personaForm.get('apellidos')?.hasError('required')">El apellido es requerido</mat-error>
       </mat-form-field>
     </div>
@@ -78,13 +78,13 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Nombres</mat-label>
-        <input matInput formControlName="nombres" required>
+        <input matInput formControlName="nombres" required style="text-transform: uppercase;" (input)="aMayuscula('nombres')">
         <mat-error *ngIf="personaForm.get('nombres')?.hasError('required')">El nombre es requerido</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Apellidos</mat-label>
-        <input matInput formControlName="apellidos" required>
+        <input matInput formControlName="apellidos" required style="text-transform: uppercase;" (input)="aMayuscula('apellidos')">
         <mat-error *ngIf="personaForm.get('apellidos')?.hasError('required')">El apellido es requerido</mat-error>
       </mat-form-field>
 

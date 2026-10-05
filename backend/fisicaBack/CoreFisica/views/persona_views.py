@@ -353,6 +353,15 @@ def _notificar_validacion_eventual(persona, creado_por):
         logger.exception("No se pudo crear la notificacion de validacion de eventual")
 
 
+def _cedula_duplicada(cedula, excluir_id=None):
+    """Respuesta 400 para una cédula repetida, indicando a quién pertenece (apellidos y nombres). Todo el mensaje va en mayúscula."""
+    otra = Persona.objects.filter(cedula=cedula).exclude(id=excluir_id).first()
+    quien = f" Pertenece a: {otra.apellidos} {otra.nombres}".rstrip() if otra else ''
+    # 'tipo': con qué tipo está registrada (FIJOS, SACAFRANCO, EVENTUAL...) para mostrarlo como badge.
+    return JsonResponse({'error': f'Cédula ya registrada.{quien}'.upper(),
+                         'tipo': (otra.tipo or '') if otra else ''}, status=400)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_persona(request):
@@ -394,12 +403,13 @@ def crear_persona(request):
         _aplicar_campos_persona(persona, data)
         if requiere_validacion:
             persona.validado = False
-        persona.save()
+        with transaction.atomic():      # si la cédula está repetida, el error no daña la transacción
+            persona.save()
         if requiere_validacion and (persona.tipo or '').upper() == 'EVENTUAL':
             _notificar_validacion_eventual(persona, request.user)
         return JsonResponse({'message': 'Persona creada correctamente', 'id': persona.id}, status=201)
     except IntegrityError:
-        return JsonResponse({'error': 'Cédula ya registrada'}, status=400)
+        return _cedula_duplicada(cedula)
     except Exception:
         logger.exception('Error creando persona')
         return JsonResponse({'error': 'No se pudo crear persona'}, status=500)
@@ -535,10 +545,11 @@ def actualizar_persona(request, id):
     _aplicar_campos_persona(persona, data)
 
     try:
-        persona.save()
+        with transaction.atomic():      # si la cédula está repetida, el error no daña la transacción
+            persona.save()
         return JsonResponse({'message': 'Persona actualizada correctamente', 'id': persona.id})
     except IntegrityError:
-        return JsonResponse({'error': 'Cédula ya registrada'}, status=400)
+        return _cedula_duplicada(persona.cedula, excluir_id=persona.id)
     except Exception:
         logger.exception('Error actualizando persona id=%s', id)
         return JsonResponse({'error': 'No se pudo actualizar persona'}, status=500)

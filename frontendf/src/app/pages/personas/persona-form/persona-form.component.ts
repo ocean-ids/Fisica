@@ -595,6 +595,13 @@ export class PersonaFormComponent implements OnInit {
     });
   }
 
+  // Nombres y apellidos se escriben y se guardan en MAYÚSCULA.
+  aMayuscula(campo: 'nombres' | 'apellidos'): void {
+    const ctrl = this.personaForm.get(campo);
+    const v = String(ctrl?.value ?? '');
+    if (v !== v.toUpperCase()) { ctrl?.setValue(v.toUpperCase(), { emitEvent: false }); }
+  }
+
   onFotoSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files && input.files.length ? input.files[0] : null;

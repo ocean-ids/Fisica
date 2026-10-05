@@ -437,6 +437,16 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     const motivo = err?.error?.error || err?.error?.detail;
     const msg = status === 403 ? 'No autorizado'
       : (typeof motivo === 'string' && motivo.length < 200 ? `${fallback}: ${motivo}` : fallback);
+    // Cédula repetida: se muestra además con qué TIPO está registrada la persona (badge).
+    const tipo = typeof err?.error?.tipo === 'string' ? err.error.tipo.trim() : '';
+    if (tipo) {
+      const esc = (t: string) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+      Swal.fire({
+        icon: 'error', title: 'Error',
+        html: `<div>${esc(msg)}</div><div style="margin-top:12px">Tipo registrado: <span style="display:inline-block; font-size:12px; font-weight:700; padding:3px 12px; border-radius:12px; background:#eef2ff; color:#4338ca;">${esc(tipo)}</span></div>`,
+      });
+      return;
+    }
     Swal.fire({ icon: 'error', title: 'Error', text: msg });
   }
 

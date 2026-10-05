@@ -333,3 +333,15 @@ class HorasEventualTests(TestCase):
         r = self.client.delete(f'/api/eliminar-persona/{self.ev_sin_banco.id}/', **self._auth())
         self.assertEqual(r.status_code, 200, r.content)
         self.assertFalse(Persona.objects.filter(id=self.ev_sin_banco.id).exists())
+
+    def test_cedula_duplicada_dice_a_quien_pertenece(self):
+        body = {'cedula': self.ev.cedula, 'nombres': 'Otro', 'apellidos': 'Nuevo', 'tipo': 'EVENTUAL'}
+        r = self.client.post('/api/crear-persona/', data=json.dumps(body), content_type='application/json', **self._auth())
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(r.json()['error'], 'CÉDULA YA REGISTRADA. PERTENECE A: PEREZ JUAN')
+        self.assertEqual(r.json()['tipo'], 'EVENTUAL')       # con qué tipo está registrada
+        # Al editar otra persona y ponerle esa cédula, también.
+        r = self.client.put(f'/api/actualizar-persona/{self.ev_sin_banco.id}/', data=json.dumps({'cedula': self.ev.cedula}),
+                            content_type='application/json', **self._auth())
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn('PERTENECE A: PEREZ JUAN', r.json()['error'])
