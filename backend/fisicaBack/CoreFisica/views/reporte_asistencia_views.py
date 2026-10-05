@@ -1180,7 +1180,10 @@ def _build_reporte_asistencia_data(
 
             sac_qs = SacafrancoFilaSemanal.objects.select_related(
                 'sacafranco_fila', 'sacafranco_fila__persona', 'sacafranco_fila__provincia'
-            ).filter(week_start__in=[week_start_month, week_start_iso])
+            ).filter(week_start__in=[week_start_month, week_start_iso],
+                     # Solo las filas del MES de la fecha: cada mes tiene su propia fila por persona. Una fila de
+                     # septiembre con semanas proyectadas a octubre hacía salir al sacafranco DUPLICADO.
+                     sacafranco_fila__mes=fecha_obj.month, sacafranco_fila__anio=fecha_obj.year)
 
             # Asistencia marcada del sacafranco (ASISTIO/FALTO) para ESTA fecha, por fila.
             _saca_asist = {}

@@ -93,3 +93,28 @@ class HorarioEnElReporteTests(TestCase):
         fila = [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('asignacion_id') == self.asig.id][0]
         self.assertEqual(fila['nombre_apellidos'], 'TATAMUES AGUIRRE DIEGO ARMANDO')
         self.assertEqual((fila['apellidos_txt'], fila['nombres_txt']), ('TATAMUES AGUIRRE', 'DIEGO ARMANDO'))
+
+
+class SacafrancoNoDuplicadoTests(TestCase):
+    """Una fila de sacafranco de SEPTIEMBRE con semanas proyectadas a octubre no debe hacer salir al
+    sacafranco duplicado en el reporte de un día de octubre (cada mes tiene su propia fila)."""
+
+    def test_el_sacafranco_sale_una_sola_vez(self):
+        from CoreFisica.models import SacafrancoFila, SacafrancoFilaSemanal, Instalacion as Inst
+        User.objects.create_superuser(username='sd_user', email='e@e.com', password='SdPass123!')
+        tok = self.client.post('/api/login/', data=json.dumps({'username': 'sd_user', 'password': 'SdPass123!'}),
+                               content_type='application/json').json().get('access')
+        auth = {'HTTP_AUTHORIZATION': f'Bearer {tok}'}
+        cli = Cliente.objects.create(razon_social='C SA', nombre_comercial='C')
+        Inst.objects.create(cliente=cli, nombre='ISLA', codigo='P2')
+        persona = Persona.objects.create(nombres='JOSE', apellidos='FARFAN', cedula='0910000050', tipo='SACAFRANCO')
+        dia = datetime.date(2026, 10, 5)                                   # lunes
+        for mes, anio in ((9, 2026), (10, 2026)):
+            fila = SacafrancoFila.objects.create(mes=mes, anio=anio, persona=persona, orden=1)
+            SacafrancoFilaSemanal.objects.create(sacafranco_fila=fila, week_start=datetime.date(2026, 10, 1),
+                                                 mon='DP2', tue='DP2', wed='DP2', thu='DP2', fri='DP2', sat='DP2', sun='DP2')
+        r = self.client.get('/api/reporte-asistencia/', {'fecha': dia.isoformat(), 'turno': 'Diurno'}, **auth)
+        d = r.json()
+        filas = [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('sacafranco_fila_id')]
+        self.assertEqual(len(filas), 1, [f.get('sacafranco_fila_id') for f in filas])
+        self.assertEqual(SacafrancoFila.objects.get(id=filas[0]['sacafranco_fila_id']).mes, 10)    # la de octubre
