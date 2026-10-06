@@ -203,6 +203,12 @@ class Instalacion(models.Model):
     direccion = models.CharField(max_length=200, blank=True, null=True)
     sector = models.CharField(max_length=150, blank=True, null=True)
     activo = models.BooleanField(default=True, db_index=True, verbose_name='Activa')
+    # Ubicación del puesto (para validar el GPS de las visitas del supervisor). Se fija en la primera visita y
+    # Consola la confirma; mientras no esté confirmada, las visitas se guardan sin comparar distancia.
+    latitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    radio_m = models.PositiveSmallIntegerField(default=150)          # radio permitido alrededor del puesto
+    ubicacion_confirmada = models.BooleanField(default=False)
 
     def __str__(self):
         prov = getattr(self.canton.provincia, 'nombre', '') if self.canton else ''
@@ -1922,3 +1928,37 @@ class HorasEventualHistorial(models.Model):
 
     def __str__(self):
         return f"{self.registro_id} {self.accion} {self.usuario_nombre} {self.creado_en:%Y-%m-%d %H:%M}"
+
+
+class VisitaSupervisor(models.Model):
+    """Registro de una visita (ronda) del supervisor a un puesto, con su ubicación GPS.
+
+    Se crea desde la app móvil, también sin conexión: `uuid_cliente` lo genera el celular y evita que una visita
+    reenviada se duplique. El servidor revalida el GPS (precisión y distancia al puesto)."""
+    ESTADOS_GPS = [
+        ('OK', 'Dentro del puesto'),
+        ('PRECISION_BAJA', 'Precisión baja'),
+        ('FUERA_DE_RANGO', 'Fuera de rango'),
+        ('SIN_UBICACION_PUESTO', 'El puesto aún no tiene ubicación confirmada'),
+        ('SIN_GPS', 'Sin GPS'),
+    ]
+    uuid_cliente = models.UUIDField(unique=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    instalacion = models.ForeignKey(Instalacion, on_delete=models.PROTECT, related_name='visitas')
+    puesto = models.ForeignKey(Puesto, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    fecha_hora = models.DateTimeField()                              # cuándo se hizo (hora del celular)
+    recibido_en = models.DateTimeField(auto_now_add=True)            # cuándo llegó al servidor
+    latitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    precision_m = models.FloatField(null=True, blank=True)           # error del GPS que reporta el celular
+    distancia_m = models.FloatField(null=True, blank=True)           # distancia calculada al puesto
+    estado_gps = models.CharField(max_length=24, choices=ESTADOS_GPS, default='SIN_GPS', db_index=True)
+    nota = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-fecha_hora', '-id']
+        verbose_name = 'Visita de supervisor'
+        verbose_name_plural = 'Visitas de supervisores'
+
+    def __str__(self):
+        return f"{self.fecha_hora:%Y-%m-%d %H:%M} | {self.instalacion_id} | {self.estado_gps}"
