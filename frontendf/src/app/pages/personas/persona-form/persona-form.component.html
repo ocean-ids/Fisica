@@ -489,7 +489,7 @@
                     <span class="cert-subir" [class.cert-subir-ok]="certArchivos[t.id]">
                       {{ certSubiendo === t.id ? 'Subiendo…' : (certArchivos[t.id] ? 'Cambiar' : '📎 Subir') }}
                     </span>
-                    <input type="file" class="cert-file-overlay" accept="image/*,application/pdf"
+                    <input type="file" class="cert-file-overlay" accept=".pdf,.jpg,.jpeg,.png"
                            title="Subir archivo" (change)="onCertFileSelected(t.id, $event)">
                   </span>
                 </div>

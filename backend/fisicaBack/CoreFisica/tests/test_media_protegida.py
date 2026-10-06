@@ -10,6 +10,7 @@ from django.test import TestCase, override_settings
 from CoreFisica.media_protegida import firma_de, url_media
 
 TMP = tempfile.mkdtemp(prefix='media_test_')
+URL_SUBIDA = '/api/personas/{p}/certificados/{t}/archivo/'
 
 
 def _login(c, u, p):
@@ -72,3 +73,44 @@ class MediaProtegidaTests(TestCase):
         u = url_media(None, F())
         self.assertIn('firma=', u)
         self.assertEqual(self.client.get(u).status_code, 200)
+
+
+@override_settings(MEDIA_ROOT=TMP)
+class SubidaCertificadoTests(TestCase):
+    """Los certificados solo aceptan PDF, JPG o PNG reales de hasta 10 MB."""
+
+    def setUp(self):
+        from CoreFisica.models import Persona, TipoCertificado
+        User.objects.create_superuser(username='c', password='CPass12345!', email='c@e.com')
+        self.auth = {'HTTP_AUTHORIZATION': f"Bearer {_login(self.client, 'c', 'CPass12345!')}"}
+        self.p = Persona.objects.create(nombres='A', apellidos='B', cedula='0910000099', tipo='FIJOS')
+        self.t = TipoCertificado.objects.create(nombre='CERT PRUEBA')
+
+    def _subir(self, nombre, contenido):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        f = SimpleUploadedFile(nombre, contenido)
+        return self.client.post(self._url(), {'archivo': f}, **self.auth)
+
+    def _url(self):
+        return URL_SUBIDA.format(p=self.p.id, t=self.t.id)
+
+    def test_acepta_pdf_jpg_png_reales(self):
+        for nombre, contenido in (('a.pdf', b'%PDF-1.4 x'), ('a.jpg', bytes.fromhex('ffd8ffe0') + b'x'),
+                                  ('a.png', bytes.fromhex('89504e470d0a1a0a') + b'x')):
+            r = self._subir(nombre, contenido)
+            self.assertEqual(r.status_code, 200, (nombre, r.content))
+
+    def test_rechaza_otros_tipos(self):
+        for nombre in ('a.html', 'a.svg', 'a.exe', 'a.docx', 'sin_extension'):
+            r = self._subir(nombre, b'%PDF-1.4')
+            self.assertEqual(r.status_code, 400, nombre)
+            self.assertIn('PDF, JPG o PNG', r.json()['error'])
+
+    def test_rechaza_un_html_renombrado_a_pdf(self):
+        r = self._subir('trampa.pdf', b'<html><script>alert(1)</script></html>')
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('no es un PDF', r.json()['error'])
+
+    def test_rechaza_mas_de_10_mb(self):
+        r = self._subir('grande.pdf', b'%PDF' + b'0' * (10 * 1024 * 1024 + 1))
+        self.assertEqual(r.status_code, 400)

@@ -1094,6 +1094,37 @@ def crear_tipo_certificado(request):
                          'orden': tipo.orden, 'creado': creado})
 
 
+# Certificados: solo PDF, JPG o PNG de hasta 10 MB. Se revisa la EXTENSIÓN y el CONTENIDO real (los primeros
+# bytes), para que un .html o un ejecutable renombrado a .pdf tampoco se acepte.
+CERT_MAX_BYTES = 10 * 1024 * 1024
+_CERT_FIRMAS = {
+    '.pdf': (bytes.fromhex('25504446'),),            # %PDF
+    '.jpg': (bytes.fromhex('ffd8ff'),),
+    '.jpeg': (bytes.fromhex('ffd8ff'),),
+    '.png': (bytes.fromhex('89504e470d0a1a0a'),),
+}
+CERT_MENSAJE = 'Solo se aceptan archivos PDF, JPG o PNG de hasta 10 MB.'
+
+
+def _validar_archivo_certificado(archivo):
+    """Mensaje de error si el archivo no es un PDF / JPG / PNG válido de hasta 10 MB; None si está bien."""
+    import os
+    ext = os.path.splitext(getattr(archivo, 'name', '') or '')[1].lower()
+    if ext not in _CERT_FIRMAS:
+        return CERT_MENSAJE
+    if (getattr(archivo, 'size', 0) or 0) > CERT_MAX_BYTES:
+        return CERT_MENSAJE
+    try:
+        archivo.seek(0)
+        inicio = archivo.read(16)
+        archivo.seek(0)
+    except Exception:
+        return CERT_MENSAJE
+    if not any(inicio.startswith(f) for f in _CERT_FIRMAS[ext]):
+        return 'El archivo no es un ' + ext[1:].upper() + ' válido. ' + CERT_MENSAJE
+    return None
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def subir_archivo_certificado(request, id, tipo_id):
@@ -1110,6 +1141,9 @@ def subir_archivo_certificado(request, id, tipo_id):
     archivo = request.FILES.get('archivo')
     if not archivo:
         return JsonResponse({'error': 'No se envió ningún archivo'}, status=400)
+    error = _validar_archivo_certificado(archivo)
+    if error:
+        return JsonResponse({'error': error}, status=400)
     cert, _ = EmpleadoCertificado.objects.get_or_create(persona=persona, tipo_id=tipo_id)
     cert.archivo = archivo
     cert.tiene = True
