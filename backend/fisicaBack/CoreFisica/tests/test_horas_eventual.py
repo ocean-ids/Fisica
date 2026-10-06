@@ -369,3 +369,25 @@ class HorasEventualTests(TestCase):
         self._editar(b['id'], horas=12, horas_solicitadas='')
         ws = load_workbook(_io.BytesIO(self.client.get(ex, **self._auth()).content)).active
         self.assertEqual(ws.max_row, 2)                           # ya con horas, sí entra
+
+    def test_excel_detallado_una_fila_por_registro(self):
+        import io as _io
+        from openpyxl import load_workbook
+        self._crear(horas=8)                                          # JUAN PEREZ
+        self._crear(horas=4)                                          # JUAN PEREZ otra vez
+        self._crear(persona_id=self.ev_sin_banco.id, horas=8)         # ANA LOPEZ
+        r = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29&formato=detallado', **self._auth())
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('DETALLADO', r['Content-Disposition'])
+        ws = load_workbook(_io.BytesIO(r.content)).active
+        cab = [c.value for c in ws[1]]
+        self.assertEqual(cab[:5], ['Nº', 'CLIENTE', 'INSTALACIÓN', 'NOMBRE DEL PUESTO', 'NOMBRE'])
+        self.assertEqual(len(cab), 17)                                # las columnas de la tabla, sin Última Modificación
+        self.assertNotIn('ÚLTIMA MODIFICACIÓN', cab)
+        self.assertEqual(ws.max_row, 4)                               # encabezado + 3 registros (no se suman)
+        ana = [c.value for c in ws[2]]
+        self.assertEqual(ana[:5], [1, 'CLI', 'MATRIZ', 'GARITA', 'LOPEZ ANA'])
+        self.assertEqual((ana[9], ana[10], ana[12]), ('29/09/2026', 'Diurno', 8))   # creado, turno, horas trabajadas
+        # el resumido sigue igual: una fila por eventual
+        r2 = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29', **self._auth())
+        self.assertEqual(load_workbook(_io.BytesIO(r2.content)).active.max_row, 3)

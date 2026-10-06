@@ -15,10 +15,16 @@
     </div>
     <h3 class="text-center m-0">Eventuales</h3>
     <div class="ev-der d-grid d-sm-flex gap-2 align-items-center">
-      <button type="button" class="btn btn-success btn-sm" (click)="descargarExcel()"
-              title="Descargar en Excel los datos bancarios de los eventuales del rango (con la búsqueda aplicada)">
-        <i class="bi bi-file-earmark-excel"></i> Descargar Excel
+      <!-- Descargar Excel: al pulsarlo se elige el formato. Sumarizado = archivo de pago (una fila por eventual);
+           Detallado = una fila por registro con todos los campos de la tabla. -->
+      <button type="button" class="btn btn-success btn-sm" [matMenuTriggerFor]="menuExcel"
+              title="Descargar en Excel (con las fechas, el turno y la búsqueda aplicados)">
+        <i class="bi bi-file-earmark-excel"></i> Descargar Excel <i class="bi bi-caret-down-fill ms-1"></i>
       </button>
+      <mat-menu #menuExcel="matMenu">
+        <button mat-menu-item (click)="descargarExcel('resumido')">Sumarizado</button>
+        <button mat-menu-item (click)="descargarExcel('detallado')">Detallado</button>
+      </mat-menu>
       <button *ngIf="puedeCrear" type="button" class="btn btn-primary btn-sm" (click)="nuevo()"
               [disabled]="!esUnDia || turnoFiltro === 'Ambos'"
               [attr.title]="turnoFiltro === 'Ambos' ? 'Elige Diurno o Nocturno para crear un registro (Ambos es solo para ver todos)' : (esUnDia ? 'Nuevo registro' : 'Elige un solo día para crear un registro (hay un rango de fechas seleccionado)')">

@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
@@ -19,7 +20,7 @@ import { EventualHistorialDialogComponent } from '../eventual-historial-dialog/e
 @Component({
   selector: 'app-eventuales-lista',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatDatepickerModule, MatButtonToggleModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatDatepickerModule, MatButtonToggleModule, MatMenuModule],
   templateUrl: './eventuales-lista.component.html',
   styleUrl: './eventuales-lista.component.css',
 })
@@ -198,15 +199,17 @@ export class EventualesListaComponent implements OnInit, OnDestroy {
   }
 
   // Excel del rango que se está viendo, con la búsqueda del buscador general aplicada.
-  descargarExcel(): void {
+  // formato: 'resumido' (Sumarizado: archivo de pago, una fila por eventual) o 'detallado' (un registro por fila).
+  descargarExcel(formato: 'resumido' | 'detallado' = 'resumido'): void {
     if (!this.fechaDesde || !this.fechaHasta) { return; }
-    const params: any = { desde: this.fechaDesde, hasta: this.fechaHasta };
+    const params: any = { desde: this.fechaDesde, hasta: this.fechaHasta, formato };
     if (this.texto.trim()) { params.q = this.texto.trim(); }
     if (this.turnoFiltro !== 'Ambos') { params.turno = this.turnoFiltro; }
     const dma = (v: string) => v.split('-').reverse().join('-');
+    const sufijo = formato === 'detallado' ? ' DETALLADO' : '';
     const nombre = this.fechaDesde === this.fechaHasta
-      ? `EVENTUALES ${dma(this.fechaDesde)}.xlsx`
-      : `EVENTUALES ${dma(this.fechaDesde)} AL ${dma(this.fechaHasta)}.xlsx`;
+      ? `EVENTUALES ${dma(this.fechaDesde)}${sufijo}.xlsx`
+      : `EVENTUALES ${dma(this.fechaDesde)} AL ${dma(this.fechaHasta)}${sufijo}.xlsx`;
     this.srv.exportarExcel(params).subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);

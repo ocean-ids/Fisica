@@ -536,9 +536,19 @@ def exportar_excel_horas_eventual(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'EVENTUALES'
-    columnas = [
-        ('NOMBRE', 44), ('CUENTA', 20), ('BANCO', 18), ('TIPO', 14), ('CEDULA', 16), ('VALOR', 14),
-    ]
+    # Dos formatos: RESUMIDO (una fila por eventual con sus datos bancarios y el valor sumado: el archivo de
+    # pago) y DETALLADO (una fila por registro con cliente, instalación, puesto y nombre).
+    detallado = (request.GET.get('formato') or '').strip().lower() == 'detallado'
+    if detallado:
+        # Las mismas columnas de la tabla de la pantalla (menos "Última Modificación" y "Acción").
+        columnas = [('Nº', 6), ('CLIENTE', 28), ('INSTALACIÓN', 28), ('NOMBRE DEL PUESTO', 28), ('NOMBRE', 36),
+                    ('CUENTA', 18), ('BANCO', 14), ('TIPO', 12), ('CEDULA', 14), ('CREADO', 12), ('TURNO', 11),
+                    ('HORAS SOLICITADAS', 12), ('HORAS TRABAJADAS', 12), ('RANGO DE HORAS', 12),
+                    ('HORAS ADICIONALES', 12), ('BONIFICACIÓN', 13), ('VALOR', 12)]
+    else:
+        columnas = [
+            ('NOMBRE', 44), ('CUENTA', 20), ('BANCO', 18), ('TIPO', 14), ('CEDULA', 16), ('VALOR', 14),
+        ]
     borde = Border(*(Side(style='thin', color='999999'),) * 4)
     for c, (titulo, ancho) in enumerate(columnas, start=1):
         cell = ws.cell(1, c, titulo)
@@ -548,8 +558,29 @@ def exportar_excel_horas_eventual(request):
         cell.border = borde
         ws.column_dimensions[get_column_letter(c)].width = ancho
     fila = 2
-    # Ordenados por nombre (apellidos y nombres), igual que la tabla.
-    for r in sorted(personas.values(), key=lambda x: _norm_busqueda(_nombre_persona(x['h'].persona))):
+    if detallado:
+        # Una fila por registro, ordenados por nombre y fecha (igual que la tabla de la pantalla).
+        regs = [h for h in registros if h.id in ids_ok]
+        regs.sort(key=lambda h: (_norm_busqueda(_nombre_persona(h.persona)), h.fecha, h.id))
+        for n, h in enumerate(regs, start=1):
+            f = _serialize(h)
+            valores = [
+                n, f['cliente'], f['instalacion'], f['puesto'], f['persona'], f['numero_cuenta'], f['banco'],
+                f['tipo_cuenta'], f['cedula'], h.fecha.strftime('%d/%m/%Y') if h.fecha else '', f['turno'],
+                f['horas_solicitadas'] or 0, f['horas'] or 'Pendiente', f['rango_horas'], f['horas_adicionales'] or 0,
+                f['bonificacion'], f['valor_calculado'],
+            ]
+            for c, v in enumerate(valores, start=1):
+                cell = ws.cell(fila, c, v)
+                cell.border = borde
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                if c in (6, 9):
+                    cell.number_format = '@'                 # cuenta y cédula como texto (ceros a la izquierda)
+                if c in (16, 17) and v is not None:
+                    cell.number_format = '#,##0.00'
+            fila += 1
+    # RESUMIDO: ordenados por nombre (apellidos y nombres), igual que la tabla.
+    for r in ([] if detallado else sorted(personas.values(), key=lambda x: _norm_busqueda(_nombre_persona(x['h'].persona)))):
         h = r['h']
         banco, tipo, numero = _cuenta(h.persona)
         valores = [_nombre_persona(h.persona), numero, banco, tipo, h.persona.cedula or '',
@@ -570,12 +601,13 @@ def exportar_excel_horas_eventual(request):
 
     buf = io.BytesIO()
     wb.save(buf)
+    sufijo = ' DETALLADO' if detallado else ''
     if desde and hasta and desde != hasta:
-        nombre = f"EVENTUALES {desde.strftime('%d-%m-%Y')} AL {hasta.strftime('%d-%m-%Y')}.xlsx"
+        nombre = f"EVENTUALES {desde.strftime('%d-%m-%Y')} AL {hasta.strftime('%d-%m-%Y')}{sufijo}.xlsx"
     elif desde or hasta:
-        nombre = f"EVENTUALES {(desde or hasta).strftime('%d-%m-%Y')}.xlsx"
+        nombre = f"EVENTUALES {(desde or hasta).strftime('%d-%m-%Y')}{sufijo}.xlsx"
     else:
-        nombre = 'EVENTUALES.xlsx'
+        nombre = f'EVENTUALES{sufijo}.xlsx'
     resp = HttpResponse(buf.getvalue(),
                         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     resp['Content-Disposition'] = f'attachment; filename="{nombre}"'
