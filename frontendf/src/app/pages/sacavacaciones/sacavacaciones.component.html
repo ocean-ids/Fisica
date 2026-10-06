@@ -8,7 +8,7 @@
       <button type="button" class="btn border-0 bg-transparent p-1" title="Exportar Excel" aria-label="Exportar Excel" (click)="exportar()">
         <img src="assets/images/excel-icon.png" alt="Exportar Excel" width="28" height="28" />
       </button>
-      <button type="button" class="btn btn-primary btn-sm" (click)="crear()">
+      <button *ngIf="puedeCrear" type="button" class="btn btn-primary btn-sm" (click)="crear()">
         <i class="bi bi-plus-sm"></i> Nuevo registro
       </button>
     </div>
@@ -28,7 +28,7 @@
         <th>Días</th>
         <th>Pend. Hasta</th>
         <th>Días pend.</th>
-        <th style="width:100px">Acción</th>
+        <th *ngIf="puedeEditar || puedeEliminar" style="width:100px">Acción</th>
       </tr>
     </thead>
     <tbody>
@@ -43,12 +43,12 @@
         <td>{{ f.dias }}</td>
         <td>{{ fechaDMA(f.fecha_hasta_pendiente) }}</td>
         <td>{{ f.dias_pendientes || 0 }}</td>
-        <td>
-          <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
+        <td *ngIf="puedeEditar || puedeEliminar">
+          <button *ngIf="puedeEditar" type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
                   (click)="editar(f)" title="Editar">
             <i class="bi bi-pencil"></i>
           </button>
-          <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1"
+          <button *ngIf="puedeEliminar" type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1"
                   (click)="eliminar(f)" title="Eliminar">
             <i class="bi bi-trash"></i>
           </button>

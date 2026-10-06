@@ -9,6 +9,7 @@ import { environment } from '@env/environment';
 import { ReporteVacacionesService } from '../../services/reporte-vacaciones.service';
 import { ReporteVacaciones } from '../../models/reporte-vacaciones.model';
 import { SacavacacionesDialogComponent } from './sacavacaciones-dialog/sacavacaciones-dialog.component';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-sacavacaciones',
@@ -29,7 +30,13 @@ export class SacavacacionesComponent implements OnInit {
     private srv: ReporteVacacionesService,
     private dialog: MatDialog,
     private http: HttpClient,
+    private auth: AuthService,
   ) {}
+
+  // Solo quien tiene el permiso crea / edita / elimina; los demás solo ven el reporte.
+  get puedeCrear(): boolean { return this.auth.hasPermission('CoreFisica.add_reportevacaciones'); }
+  get puedeEditar(): boolean { return this.auth.hasPermission('CoreFisica.change_reportevacaciones'); }
+  get puedeEliminar(): boolean { return this.auth.hasPermission('CoreFisica.delete_reportevacaciones'); }
 
   ngOnInit(): void {
     this.cargar();

@@ -65,6 +65,8 @@ def _enlazar_personas(fila):
 @permission_classes([IsAuthenticated])
 def listar_reporte_vacaciones(request):
     """Lista los registros del reporte de vacaciones (el creado más reciente primero)."""
+    if not request.user.has_perm('CoreFisica.view_reportevacaciones'):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
     qs = (ReporteVacaciones.objects
           .select_related('persona_sale_ref', 'sacavacaciones_ref')
           .order_by('-created_at', '-id'))
@@ -74,6 +76,8 @@ def listar_reporte_vacaciones(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def crear_reporte_vacaciones(request):
+    if not request.user.has_perm('CoreFisica.add_reportevacaciones'):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
     s = ReporteVacacionesSerializer(data=request.data)
     s.is_valid(raise_exception=True)
     fila = s.save()
@@ -84,6 +88,8 @@ def crear_reporte_vacaciones(request):
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def actualizar_reporte_vacaciones(request, id):
+    if not request.user.has_perm('CoreFisica.change_reportevacaciones'):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
     fila = get_object_or_404(ReporteVacaciones, id=id)
     s = ReporteVacacionesSerializer(fila, data=request.data, partial=True)
     s.is_valid(raise_exception=True)
@@ -95,6 +101,8 @@ def actualizar_reporte_vacaciones(request, id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_reporte_vacaciones(request, id):
+    if not request.user.has_perm('CoreFisica.delete_reportevacaciones'):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
     fila = get_object_or_404(ReporteVacaciones, id=id)
     fila.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
@@ -110,6 +118,8 @@ def _dma(fecha):
 @permission_classes([IsAuthenticated])
 def exportar_reporte_vacaciones_excel(request):
     """Genera el REPORTE DE VACACIONES DEL PERSONAL en el formato por bloques."""
+    if not request.user.has_perm('CoreFisica.view_reportevacaciones'):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
     qs = ReporteVacaciones.objects.select_related('persona_sale_ref', 'sacavacaciones_ref').all()
 
     wb = openpyxl.Workbook()
