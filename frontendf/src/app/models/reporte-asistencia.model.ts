@@ -39,6 +39,7 @@ export interface UpdateReporteAsistenciaPayload {
   hueca?: boolean;
   hueca_motivo?: string | null;
   fecha?: string | null;
+  turno?: string | null;     // filtro desde el que se guarda (para la V de 24 horas en la guardia)
 }
 
 export interface ReporteAsistenciaHistorialItem {

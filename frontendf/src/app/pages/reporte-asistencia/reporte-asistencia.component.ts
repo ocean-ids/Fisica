@@ -543,6 +543,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
         data: {
           row: { ...row },
           fecha: this.filtroFecha || null,
+          turno: this.filtroJornada,
           occupiedReemplazoIds,
           assignedPersonaIds,
           francoPersonaIds,
@@ -675,6 +676,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       hueca_motivo: null,
       row_color: color,
       fecha: this.filtroFecha || null,
+      turno: this.filtroJornada,
     };
     this.reporteSvc.updateReporteAsistencia(row.asignacion_id, payload).subscribe({
       next: (res) => {

@@ -80,6 +80,7 @@ export class ReporteAsistenciaEditDialogComponent {
     @Inject(MAT_DIALOG_DATA) public data: {
       row: ReporteAsistenciaRow;
       fecha?: string | null;
+      turno?: string | null;          // filtro (Diurno / Nocturno) desde el que se abrió: lo usa la guardia para la V (24 h)
       occupiedReemplazoIds?: number[];
       assignedPersonaIds?: number[];
       francoPersonaIds?: number[];
@@ -772,7 +773,8 @@ export class ReporteAsistenciaEditDialogComponent {
       descripcion: raw.descripcion ? raw.descripcion.toString().toUpperCase() : null,
       hueca: !!raw.hueca,
       hueca_motivo: raw.hueca ? (raw.hueca_motivo || null) : null,
-      fecha: this.data?.fecha || null
+      fecha: this.data?.fecha || null,
+      turno: this.data?.turno || null
     };
 
     // MOVIMIENTO INTERNO / cobertura de hueca: el guardia que realmente cubrió ese día se

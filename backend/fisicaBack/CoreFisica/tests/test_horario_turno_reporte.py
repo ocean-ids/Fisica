@@ -143,3 +143,48 @@ class PuestoCerradoNoSaleTests(HorarioEnElReporteTests):
         ReporteAsistencia.objects.update_or_create(
             asignacion=self.asig, defaults={'fecha_reporte': self.FECHA, 'estado': 'TURNO', 'estado_asistencia': 'FALTO'})
         self.assertEqual(len(self._filas_del_puesto()), 1)
+
+
+class BaseTarde24hTests(HorarioEnElReporteTests):
+    """DB / NB en un FIJO lo muestran en BASE; T y V solas en un SACAFRANCO lo ponen en BASE; T cuenta en Diurno
+    y V en Diurno y Nocturno; en la Guardia la T va en Diurno y la V en el turno del filtro desde el que se guarda."""
+
+    def _fila(self, letra, token, turno):
+        with mock.patch('CoreFisica.views.reporte_asistencia_views._calendar_dnf_for_date',
+                        return_value={self.asig.id: letra}), \
+             mock.patch('CoreFisica.views.reporte_asistencia_views._calendar_raw_for_date',
+                        return_value={self.asig.id: token}):
+            r = self.client.get('/api/reporte-asistencia/', {'fecha': self.FECHA.isoformat(), 'turno': turno}, **self.auth)
+        d = r.json()
+        filas = [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('asignacion_id') == self.asig.id]
+        return filas[0] if filas else None
+
+    def test_fijo_con_db_sale_en_base(self):
+        f = self._fila('D', 'DB', 'Diurno')
+        self.assertEqual((f['codigo'], f['cliente'], f['puesto_tipo']), ('BASE', 'SEGURIDAD FISICA', 'DIA BASE'))
+
+    def test_fijo_con_nb_sale_en_base_de_noche(self):
+        f = self._fila('N', 'NB', 'Nocturno')
+        self.assertEqual((f['codigo'], f['puesto_tipo']), ('BASE', 'NOCHE BASE'))
+
+    def test_fijo_normal_no_cambia(self):
+        f = self._fila('D', 'D', 'Diurno')
+        self.assertNotEqual(f['codigo'], 'BASE')
+
+    def test_el_sacafranco_no_acepta_t_ni_v_solas(self):
+        from CoreFisica.views.asignacion_semanal_views import _parse_sacafranco_token
+        self.assertEqual(_parse_sacafranco_token('T')[0], 'invalid')
+        self.assertEqual(_parse_sacafranco_token('V')[0], 'invalid')
+        self.assertEqual(_parse_sacafranco_token('DB')[:3], ('base_free', 'Diurno', 'BASE'))
+
+    def test_turno_de_la_guardia(self):
+        from CoreFisica.views.reporte_asistencia_views import _turno_guardia
+        self.assertEqual((_turno_guardia('D'), _turno_guardia('N'), _turno_guardia('T')), ('Diurno', 'Nocturno', 'Diurno'))
+        self.assertEqual((_turno_guardia('V', 'Nocturno'), _turno_guardia('V', 'Diurno'), _turno_guardia('V')), ('Nocturno', 'Diurno', 'Diurno'))
+        self.assertEqual(_turno_guardia('F'), '')
+
+    def test_la_v_sale_en_diurno_y_en_nocturno_y_la_t_en_diurno(self):
+        self.assertIsNotNone(self._fila('V', 'V', 'Diurno'))
+        self.assertIsNotNone(self._fila('V', 'V', 'Nocturno'))
+        self.assertIsNotNone(self._fila('T', 'T', 'Diurno'))
+        self.assertIsNone(self._fila('T', 'T', 'Nocturno'))
