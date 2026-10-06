@@ -261,16 +261,10 @@ def _resolve_canton_id(token, provincia_id=None):
 
 
 def _foto_url(request, foto):
-    """URL absoluta de la foto (cae a la relativa si build_absolute_uri falla)."""
-    if not foto:
-        return None
-    try:
-        return request.build_absolute_uri(foto.url)
-    except Exception:
-        try:
-            return foto.url
-        except Exception:
-            return None
+    """URL absoluta de la foto o archivo. Fotos de personas y certificados van FIRMADAS: sin la firma (o sin
+    sesión) /media/ no los entrega (ver CoreFisica/media_protegida.py)."""
+    from ..media_protegida import url_media
+    return url_media(request, foto)
 
 
 def _fecha_persona(v):
