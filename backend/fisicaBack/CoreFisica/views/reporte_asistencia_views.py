@@ -684,12 +684,26 @@ def _build_reporte_asistencia_data(
             fecha_reporte=fecha_obj,
             asignacion__estado='ACTIVO'
         ).values('asignacion_id').distinct()
+        # Solo cuenta un registro con DATOS REALES: lo guardó un usuario, o trae reemplazo, descripción, hueca,
+        # un FALTÓ o un estado distinto de TURNO. Los registros vacíos que el sistema genera por defecto
+        # (TURNO / ASISTIÓ sin usuario) NO cuentan: antes hacían salir en el reporte a puestos ya cerrados
+        # (INACTIVOS) que nadie había tocado ese día.
+        def _con_datos(campo_usuario):
+            return (
+                Q(**{f'{campo_usuario}__isnull': False}) | Q(reemplazo__isnull=False)
+                | Q(persona_cobertura__isnull=False) | Q(hueca=True)
+                | (Q(descripcion__isnull=False) & ~Q(descripcion=''))
+                | Q(estado_asistencia__iexact='FALTO')
+                | (Q(estado__isnull=False) & ~Q(estado='') & ~Q(estado='TURNO'))
+            )
         datos_ese_dia_ids = set(
             ReporteAsistenciaHistorial.objects.filter(fecha_reporte=fecha_obj)
+            .filter(_con_datos('usuario'))
             .values_list('asignacion_id', flat=True)
         )
         datos_ese_dia_ids |= set(
             ReporteAsistencia.objects.filter(fecha_reporte=fecha_obj)
+            .filter(_con_datos('modificado_por'))
             .values_list('asignacion_id', flat=True)
         )
         datos_ese_dia_ids.discard(None)

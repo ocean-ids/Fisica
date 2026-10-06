@@ -187,8 +187,14 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     this.filterSub?.unsubscribe();
   }
 
+  private esFilaBase(row: ReporteAsistenciaRow): boolean {
+    return (row.codigo || '').toString().trim().toUpperCase() === 'BASE';
+  }
+
   private getZonaOrden(zona: string): number {
     // Ordena por el número que aparezca en el nombre de la zona (Zona 1, 2, 3, 4...).
+    // "BASE" (sacafranco en base, sin zona ni provincia) va al FINAL de todo.
+    if ((zona || '').toUpperCase() === 'BASE') return 99999;
     const m = (zona || '').match(/\d+/);
     if (m) return parseInt(m[0], 10);
     return 9999;
@@ -236,6 +242,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       }
       let zona = (row.zona_titulo || '').trim() || 'SIN ZONA';
       let provincia = (row.provincia || '').trim() || 'SIN PROVINCIA';
+      // Los sacafranco en BASE no tienen zona ni provincia: van juntos, al final, bajo el título "BASE".
+      if (this.esFilaBase(row)) { zona = 'BASE'; provincia = ''; }
       if (!zonas[zona]) zonas[zona] = {};
       if (!zonas[zona][provincia]) zonas[zona][provincia] = [];
       zonas[zona][provincia].push(row);

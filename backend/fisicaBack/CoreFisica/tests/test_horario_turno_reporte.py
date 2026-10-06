@@ -118,3 +118,28 @@ class SacafrancoNoDuplicadoTests(TestCase):
         filas = [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('sacafranco_fila_id')]
         self.assertEqual(len(filas), 1, [f.get('sacafranco_fila_id') for f in filas])
         self.assertEqual(SacafrancoFila.objects.get(id=filas[0]['sacafranco_fila_id']).mes, 10)    # la de octubre
+
+
+class PuestoCerradoNoSaleTests(HorarioEnElReporteTests):
+    """Un puesto CERRADO (INACTIVO) solo sale en un día si ese día tiene datos REALES guardados; un registro
+    vacío generado por defecto no lo hace aparecer."""
+
+    def _filas_del_puesto(self):
+        with mock.patch('CoreFisica.views.reporte_asistencia_views._calendar_dnf_for_date',
+                        return_value={self.asig.id: 'D'}):
+            r = self.client.get('/api/reporte-asistencia/', {'fecha': self.FECHA.isoformat(), 'turno': 'Diurno'}, **self.auth)
+        d = r.json()
+        return [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('asignacion_id') == self.asig.id]
+
+    def test_inactivo_con_registro_vacio_no_sale(self):
+        from CoreFisica.models import ReporteAsistencia
+        Asignacion.objects.filter(id=self.asig.id).update(estado='INACTIVO')
+        ReporteAsistencia.objects.update_or_create(asignacion=self.asig, defaults={'fecha_reporte': self.FECHA, 'estado': 'TURNO'})
+        self.assertEqual(self._filas_del_puesto(), [])
+
+    def test_inactivo_con_datos_reales_ese_dia_si_sale(self):
+        from CoreFisica.models import ReporteAsistencia
+        Asignacion.objects.filter(id=self.asig.id).update(estado='INACTIVO')
+        ReporteAsistencia.objects.update_or_create(
+            asignacion=self.asig, defaults={'fecha_reporte': self.FECHA, 'estado': 'TURNO', 'estado_asistencia': 'FALTO'})
+        self.assertEqual(len(self._filas_del_puesto()), 1)

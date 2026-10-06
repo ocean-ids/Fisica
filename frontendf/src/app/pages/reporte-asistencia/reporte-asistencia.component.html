@@ -97,7 +97,7 @@
                         <td class="text-center" colspan="11">{{ getZonaTitulo(zona.zona) }}</td>
                     </tr>
                     <ng-container *ngFor="let prov of zona.provincias">
-                        <tr class="provincia-row">
+                        <tr class="provincia-row" *ngIf="prov.provincia">
                             <td colspan="11">{{ prov.provincia }}</td>
                         </tr>
                         <ng-container *ngFor="let r of prov.rows">
