@@ -213,6 +213,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   onJornadaChange(event: Event): void {
     this.filtroJornada = (event.target as HTMLSelectElement).value || '';
     this.reporteAgrupado = this.buildReporteAgrupado();
+    this.resumen = this.buildResumenAsistencia();   // 24 horas: cuenta la asistencia del turno elegido
   }
 
   private buildReporteAgrupado(): ReporteAsistenciaGrupoZona[] {
@@ -389,7 +390,9 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
   }
 
   private buildResumenAsistencia(): ResumenAsistencia {
-    const filas = this.reporte.filter(r => !! r.asignacion_id);
+    // 24 horas: viene una fila por turno; se cuenta una sola vez (la del turno elegido).
+    const filas = this.reporte.filter(r => !! r.asignacion_id
+      && (!r.turno_registro || r.turno_registro === (this.filtroJornada || 'Diurno')));
     const faltas = filas.filter(r => this.hasReemplazo(r)).length;
     // Asistencias = SOLO los marcados ASISTIO (los sin marcar quedan pendientes, no cuentan).
     const asistencias = filas.filter(r => (r.estado_asistencia || '') === 'ASISTIO').length;

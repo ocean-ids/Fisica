@@ -337,3 +337,19 @@ class Asistencia24hIndependienteTests(HorarioEnElReporteTests):
         with self._v():
             regenerar_guardia_dia(self.FECHA)
         self.assertEqual(faltos(), ['Nocturno'])
+
+    def test_excel_y_pdf_ponen_cada_fila_24h_en_su_hoja(self):
+        from CoreFisica.views.reporte_asistencia_views import _rows_por_jornada
+        filas = [{'turno': 'Veinticuatro', 'turno_registro': 'Diurno', 'id': 1},
+                 {'turno': 'Veinticuatro', 'turno_registro': 'Nocturno', 'id': 2},
+                 {'turno': 'Diurno', 'turno_registro': '', 'id': 3},
+                 {'turno': 'Nocturno', 'turno_registro': '', 'id': 4},
+                 {'turno': 'Veinticuatro', 'id': 5}]
+        self.assertEqual([f['id'] for f in _rows_por_jornada(filas, 'Diurno')], [1, 3, 5])
+        self.assertEqual([f['id'] for f in _rows_por_jornada(filas, 'Nocturno')], [2, 4, 5])
+
+    def test_consolidado_sin_turno_cuenta_una_vez_a_la_de_24h(self):
+        from CoreFisica.views.consolidado_views import _una_fila_24h
+        filas = [{'turno_registro': 'Diurno'}, {'turno_registro': 'Nocturno'}, {'turno_registro': ''}]
+        self.assertEqual(len(_una_fila_24h(filas, None)), 2)
+        self.assertEqual(len(_una_fila_24h(filas, 'Nocturno')), 3)

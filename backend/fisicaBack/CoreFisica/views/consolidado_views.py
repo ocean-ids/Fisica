@@ -52,6 +52,13 @@ def _consolidado_key(item: Consolidado):
     return item.tipo, ref_id
 
 
+def _una_fila_24h(rows, turno_val):
+    """Sin turno elegido, quien trabaja 24 horas sale una sola vez (el reporte trae una fila por turno)."""
+    if turno_val:
+        return rows
+    return [r for r in rows if (r.get('turno_registro') or 'Diurno') == 'Diurno']
+
+
 def _build_consolidado_data(fecha, turno, zona='', q=''):
     fecha_obj = _parse_fecha(fecha)
     turno_val = turno if turno in ALLOWED_TURNOS else None
@@ -91,7 +98,7 @@ def _build_consolidado_data(fecha, turno, zona='', q=''):
             'zona': 'PERSONAL DE CONSOLA'
         })
 
-    reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q)
+    reporte_rows = _una_fila_24h(_build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q), turno_val)
     asig_ids = [r.get('asignacion_id') for r in reporte_rows if r.get('asignacion_id')]
     asig_map = {}
     if asig_ids:
@@ -378,7 +385,7 @@ def obtener_consolidado_resumen(request):
     if not turno_val:
         return JsonResponse({'error': 'Turno requerido'}, status=400)
     fecha_obj = _parse_fecha(fecha)
-    reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q)
+    reporte_rows = _una_fila_24h(_build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q), turno_val)
 
     manual = _build_resumen_manual(fecha_obj, turno_val, reporte_rows)
     estados = _build_estado_agentes_counts(reporte_rows)
@@ -603,7 +610,7 @@ def exportar_consolidado_excel(request):
     def render_sheet(ws, turno_val):
         turno_label = (turno_val or 'TODOS').upper()
         data = _build_consolidado_data(fecha, turno_val, zona=zona, q=q)
-        reporte_rows = _build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q)
+        reporte_rows = _una_fila_24h(_build_reporte_asistencia_data(fecha=fecha_obj.isoformat(), turno=turno_val, zona=zona, q=q), turno_val)
         manual = _build_resumen_manual(fecha_obj, turno_val, reporte_rows) if turno_val else None
         estados = _build_estado_agentes_counts(reporte_rows)
 
@@ -785,7 +792,7 @@ def exportar_consolidado_pdf(request):
     q = (request.GET.get('q') or '').strip()
     data = _build_consolidado_data(fecha, turno, zona=zona, q=q)
     turno_val = turno if turno in ALLOWED_TURNOS else None
-    reporte_rows = _build_reporte_asistencia_data(fecha=_parse_fecha(fecha).isoformat(), turno=turno_val, zona=zona, q=q)
+    reporte_rows = _una_fila_24h(_build_reporte_asistencia_data(fecha=_parse_fecha(fecha).isoformat(), turno=turno_val, zona=zona, q=q), turno_val)
     manual = _build_resumen_manual(_parse_fecha(fecha), turno_val, reporte_rows) if turno_val else None
     estados = _build_estado_agentes_counts(reporte_rows)
 

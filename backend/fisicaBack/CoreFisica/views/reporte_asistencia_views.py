@@ -422,12 +422,15 @@ def _rows_por_jornada(data, turno_val):
     - DIURNO  incluye Diurno + Tarde + Veinticuatro.
     - NOCTURNO incluye Nocturno + Veinticuatro.
     La fila Veinticuatro (token V) cubre el dia completo, por eso aparece en ambas
-    (igual que en la web). Asi el descargable no pierde las filas Tarde/Veinticuatro."""
+    (igual que en la web). Asi el descargable no pierde las filas Tarde/Veinticuatro.
+    La de 24 horas viene una vez por turno (turno_registro), cada una con su asistencia: va la de ESA hoja."""
     if turno_val == 'Diurno':
         permitidos = ('Diurno', 'Tarde', 'Veinticuatro')
     else:
         permitidos = ('Nocturno', 'Veinticuatro')
-    return [r for r in data if (r.get('turno') or '') in permitidos]
+    jornada = 'Diurno' if turno_val == 'Diurno' else 'Nocturno'
+    return [r for r in data if (r.get('turno') or '') in permitidos
+            and (r.get('turno_registro') or jornada) == jornada]
 
 
 def _col_cliente_descargable(item):
