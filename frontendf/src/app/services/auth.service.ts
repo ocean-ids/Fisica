@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, of, tap, catchError } from 'rxjs';
@@ -20,8 +20,12 @@ export class AuthService {
   private readonly WARNING_MS = 2 * 60 * 1000; // avisar 2 min antes
   private inactivityTimerId: any = null;
   private warningActive = false;
+  // Se escucha FUERA de Angular y como mucho una vez por segundo: antes cada movimiento del mouse hacía que
+  // Angular revisara toda la pantalla abierta (la ponía lenta en tablas grandes como Asignaciones).
   private boundResetActivity = () => {
-    this.lastActivityAt = Date.now();
+    const ahora = Date.now();
+    if (ahora - this.lastActivityAt < 1000) return;
+    this.lastActivityAt = ahora;
     this.resetInactivityTimer();
   };
 
@@ -33,14 +37,15 @@ export class AuthService {
   private refreshing = false;
 
 
-  constructor(private http: HttpClient, private router: Router) {
+  constructor(private http: HttpClient, private router: Router, private zone: NgZone) {
     this.startTokenWatcher();
     this.setupInactivityWatcher();
   }
 
   private setupInactivityWatcher(): void {
     const eventos = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
-    eventos.forEach(ev => window.addEventListener(ev, this.boundResetActivity, { passive: true }));
+    this.zone.runOutsideAngular(() =>
+      eventos.forEach(ev => window.addEventListener(ev, this.boundResetActivity, { passive: true })));
     if (this.hasToken()) {
       this.resetInactivityTimer();
     }
@@ -53,10 +58,10 @@ export class AuthService {
     if (this.inactivityTimerId) {
       clearTimeout(this.inactivityTimerId);
     }
-    // Programar la ALERTA 2 min antes del cierre
-    this.inactivityTimerId = setTimeout(() => {
-      this.mostrarAvisoInactividad();
-    }, this.INACTIVITY_MS - this.WARNING_MS);
+    // Programar la ALERTA 2 min antes del cierre (el aviso sí se muestra dentro de Angular).
+    this.inactivityTimerId = this.zone.runOutsideAngular(() => setTimeout(() => {
+      this.zone.run(() => this.mostrarAvisoInactividad());
+    }, this.INACTIVITY_MS - this.WARNING_MS));
   }
 
   private mostrarAvisoInactividad(): void {

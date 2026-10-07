@@ -411,7 +411,8 @@ class Puesto(models.Model):
             horarios_qs = getattr(self, 'horarios', None)
             if not horarios_qs:
                 return None
-            turnos = [t for t in horarios_qs.values_list('turno', flat=True) if t]
+            # .all() usa los horarios ya cargados (prefetch) en vez de otra consulta por cada puesto.
+            turnos = [h.turno for h in horarios_qs.all() if h.turno]
             if not turnos:
                 return None
             unique = set([t.strip().lower() for t in turnos])
