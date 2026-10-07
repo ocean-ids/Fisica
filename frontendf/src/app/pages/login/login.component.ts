@@ -100,7 +100,6 @@ export class LoginComponent implements OnInit, OnDestroy {
 
     this.authService.login(this.username, this.password).subscribe({
       next: (response) =>  {
-        console.log(`Acceso Exitoso`, response);
         const displayName = (response?.user?.full_name ||
           `${response?.user?.first_name ?? ''} ${response?.user?.last_name ?? ''}`
         ).trim() || this.username;
@@ -115,7 +114,6 @@ export class LoginComponent implements OnInit, OnDestroy {
         });
       },
       error: (error) => {
-        console.log('Error de login', error);
         Swal.fire({
           icon: 'error',
           title: 'Error de login',

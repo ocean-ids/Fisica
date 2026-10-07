@@ -72,7 +72,6 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
       this.weekStart = this.computeCurrentMonthStart();
     }
 
-    console.log('AsignacionCalendario ngOnInit weekStart=', this.weekStart);
     this.loadWeek();
   }
 
@@ -116,7 +115,6 @@ export class AsignacionCalendarioComponent implements OnInit, OnChanges{
         this.loadSacafrancoWeek();
 
         
-        console.log('loadWeek result for', this.weekStart, 'res=', res);
         if((!this.rows || this.rows.length === 0)){
           const parts = (this.weekStart||'').split('-').map(Number);
           const base = (parts.length===3) ? new Date(parts[0], parts[1]-1, parts[2]) : new Date();

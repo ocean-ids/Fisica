@@ -195,7 +195,6 @@ export class PuestoFormComponent implements OnInit {
         horarios: horariosPayload,
         instalacion_nombre: selectedInstalacion?.nombre || null
       };
-      console.log('Payload enviado:', JSON.stringify(payload, null, 2)); 
       this.dialogRef.close(payload);
     }
   }

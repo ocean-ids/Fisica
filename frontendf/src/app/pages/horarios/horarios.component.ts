@@ -34,7 +34,6 @@ export class HorariosComponent implements OnInit{
     this.horarioService.obtenerHorarios().subscribe({
       next: (data) => {
         this.horarios = data;
-        console.log('horarios cargados:', data);
       },
       error: (err) => console.error('Error al cargar horarios', err)
     });
