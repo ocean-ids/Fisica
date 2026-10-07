@@ -412,13 +412,23 @@ def cerrar_instalacion(request, id):
     """Cierra (deshabilita) una instalacion en cascada, SIN borrar nada:
       - instalacion.activo = False
       - sus puestos.activo = False
-      - sus asignaciones ACTIVO -> INACTIVO (las personas quedan libres)
+      - sus asignaciones salen HASTA EL DÍA DEL CIERRE INCLUIDO (fecha enviada o hoy) y desde el día
+        siguiente ya no; los meses posteriores quedan INACTIVOS (no se proyecta a futuro). Igual que el
+        cierre de un puesto (novedad CIERRE). Los días anteriores al cierre siguen saliendo en el reporte.
       - libera su nominativo (se borra -> el codigo queda reutilizable)
     Es reversible con reabrir_instalacion. Conserva historial (reportes/meses pasados)."""
     if not request.user.has_perm('CoreFisica.change_instalacion'):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     from ..models import Puesto, Asignacion, Nominativo
     from django.db import transaction
+    from django.utils import timezone
+    from .novedad_puesto_views import _cerrar_asignaciones_futuras
+    import datetime
+    try:
+        _f = request.data.get('fecha') if hasattr(request, 'data') else None
+        fecha_cierre = datetime.date.fromisoformat(str(_f)) if _f else timezone.localdate()
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Fecha de cierre inválida'}, status=400)
 
     inst = Instalacion.objects.filter(id=id).first()
     if not inst:
@@ -430,7 +440,10 @@ def cerrar_instalacion(request, id):
         puestos = Puesto.objects.filter(instalacion=inst, activo=True).count()
         Puesto.objects.filter(instalacion=inst).update(activo=False)
         asigs = Asignacion.objects.filter(instalacion=inst, estado='ACTIVO').count()
-        Asignacion.objects.filter(instalacion=inst, estado='ACTIVO').update(estado='INACTIVO')
+        # Corte al día del cierre por cada puesto (antes se ponía todo INACTIVO y el reporte perdía también los
+        # días anteriores al cierre).
+        for _p in Puesto.objects.filter(instalacion=inst):
+            _cerrar_asignaciones_futuras(_p, fecha_cierre)
         libre = Nominativo.objects.filter(instalacion=inst).delete()[0]
 
     return JsonResponse({

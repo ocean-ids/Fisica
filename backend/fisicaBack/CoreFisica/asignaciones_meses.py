@@ -190,12 +190,14 @@ def alinear_meses(mes, anio, meses=MESES_POR_DEFECTO, personas=None, puestos=Non
     log = log or (lambda msg: None)
     conservar = set(conservar_personas or ())
     flt = _filtro(personas, puestos)
-    base_qs = Asignacion.objects.filter(mes=mes, anio=anio).select_related('persona')
+    base_qs = Asignacion.objects.filter(mes=mes, anio=anio).select_related('persona', 'puesto')
     if flt is not None:
         base_qs = base_qs.filter(flt)
-    base = list(base_qs)
-    if not base and flt is None:
+    base_todo = list(base_qs)
+    if not base_todo and flt is None:
         return []
+    # Un puesto CERRADO (puesto.activo=False) no se proyecta a los meses siguientes: ni su persona ni su vacante.
+    base = [a for a in base_todo if getattr(a.puesto, 'activo', True) is not False]
     base_filas = defaultdict(dict)
     for r in AsignacionSemanal.objects.filter(asignacion_id__in=[a.id for a in base]):
         base_filas[r.asignacion_id][r.week_start] = r
@@ -220,7 +222,7 @@ def alinear_meses(mes, anio, meses=MESES_POR_DEFECTO, personas=None, puestos=Non
     resultados = []
     # 0) Acotar el propio mes base.
     res0 = Counter()
-    _acotar(base, anio, mes, res0)
+    _acotar(base_todo, anio, mes, res0)
     if res0:
         resultados.append((anio, mes, res0))
     for k in range(1, meses + 1):
@@ -250,10 +252,17 @@ def _acotar(filas, anio, mes, res):
 def _alinear_mes(base, base_por_persona, personas_en_base, base_filas, bm, by, tm, ty,
                  personas, puestos, flt, log, quitar_solo_octubre=False, conservar=frozenset()):
     res = Counter()
-    destino_qs = Asignacion.objects.filter(mes=tm, anio=ty).select_related('persona')
+    destino_qs = Asignacion.objects.filter(mes=tm, anio=ty).select_related('persona', 'puesto')
     if flt is not None:
         destino_qs = destino_qs.filter(flt)
     destino = list(destino_qs)
+    # Puesto CERRADO: sus filas de los meses siguientes no deben salir (no se proyecta a futuro).
+    for a in destino:
+        if a.estado == 'ACTIVO' and getattr(a.puesto, 'activo', True) is False:
+            Asignacion.objects.filter(pk=a.pk).update(estado='INACTIVO')
+            a.estado = 'INACTIVO'
+            res['filas de puestos cerrados desactivadas'] += 1
+            log(f'DESACTIVAR (puesto cerrado) {a.persona or "VACANTE"} puesto {a.puesto_id}')
     dest_por_persona = {a.persona_id: a for a in destino if a.persona_id}
     d1, ult = datetime.date(ty, tm, 1), datetime.date(ty, tm, ultimo_dia(ty, tm))
     offset = (d1 - datetime.date(by, bm, 1)).days      # días entre el día 1 del mes base y el del destino

@@ -74,25 +74,21 @@ def _cerrar_asignaciones_futuras(puesto, fecha_cierre=None):
     """Cierra el puesto con corte EXACTO AL DÍA del cierre.
 
     Objetivo:
-      - Reporte/Consolidado: la persona se ve hasta el día ANTERIOR al cierre
-        (conserva los días ya trabajados del mes en curso) y desaparece desde el
-        día del cierre en adelante.
-      - Asignación: el puesto sigue saliendo (mes del cierre con la persona hasta
-        el corte; meses siguientes vacantes). El front lo pinta gris porque
-        puesto.activo=False.
+      - Reporte/Consolidado: el puesto (con su persona o como vacante) se ve HASTA EL DÍA DEL CIERRE INCLUIDO
+        (conserva los días ya trabajados) y desaparece desde el día siguiente.
+      - No se proyecta a futuro: los meses posteriores quedan INACTIVOS y el mes siguiente que se genere
+        tampoco lo copia (ver asignaciones_meses).
       - Meses pasados quedan intactos.
 
     Mecánica:
-      - Mes del cierre: a las asignaciones con persona se les fija
-        end_date = fecha_cierre - 1 día (el Reporte respeta end_date). Si el cierre
-        es el día 1, el mes entero queda vacante (persona=None).
-      - Meses posteriores: persona=None (vacante), se mantienen ACTIVO/visibles.
+      - Mes del cierre (y filas recurrentes de meses anteriores que se arrastran): end_date = fecha del cierre
+        (el Reporte respeta end_date).
+      - Meses posteriores: INACTIVO.
     """
     hoy = timezone.localdate()
     fc = fecha_cierre or hoy
     cy, cm = fc.year, fc.month
-    month_start = datetime.date(cy, cm, 1)
-    cutoff = fc - datetime.timedelta(days=1)  # último día que conserva persona
+    cutoff = fc  # último día que todavía sale (el día del cierre se incluye)
 
     acts = Asignacion.objects.filter(puesto=puesto, estado='ACTIVO')
 
@@ -104,20 +100,13 @@ def _cerrar_asignaciones_futuras(puesto, fecha_cierre=None):
         Q(anio__lt=cy) | Q(anio=cy, mes__lt=cm)
     ).filter(Q(end_date__isnull=True) | Q(end_date__gt=cutoff)).update(end_date=cutoff)
 
-    # 2) Mes del cierre:
-    mes_cierre = acts.filter(persona__isnull=False, anio=cy, mes=cm)
-    if fc > month_start:
-        # Corte a mitad de mes: conserva la persona hasta el día anterior al cierre.
-        mes_cierre.filter(
-            Q(end_date__isnull=True) | Q(end_date__gt=cutoff)
-        ).update(end_date=cutoff)
-    else:
-        # Cierre el día 1: el mes entero queda sin persona (vacante).
-        mes_cierre.update(persona=None, end_date=None)
+    # 2) Mes del cierre: todas sus filas (con persona o vacantes) salen hasta el día del cierre incluido.
+    acts.filter(anio=cy, mes=cm).filter(
+        Q(end_date__isnull=True) | Q(end_date__gt=cutoff)
+    ).update(end_date=cutoff)
 
-    # 3) Meses POSTERIORES al del cierre: vacante (persona=None), se mantienen ACTIVO
-    #    para que el puesto siga visible (gris) en Asignación.
-    acts.filter(Q(anio__gt=cy) | Q(anio=cy, mes__gt=cm)).update(persona=None)
+    # 3) Meses POSTERIORES al del cierre: INACTIVO (el puesto cerrado no se proyecta a futuro).
+    acts.filter(Q(anio__gt=cy) | Q(anio=cy, mes__gt=cm)).update(estado='INACTIVO')
 
 
 def _abrir_asignaciones(puesto, fecha_apertura=None):
@@ -127,10 +116,11 @@ def _abrir_asignaciones(puesto, fecha_apertura=None):
     APERTURA solo se permite sobre puestos CERRADOS, las filas vacantes existentes
     provienen del cierre previo, por lo que es seguro reordenarlas:
 
-      - Meses ANTERIORES al de la apertura: las filas vacantes pasan a INACTIVO
-        (el periodo cerrado no debe notificar vacante ni reaparecer).
+      - Meses ANTERIORES al de la apertura: las filas vacantes SIN fecha de corte pasan a INACTIVO
+        (el periodo cerrado no debe notificar vacante ni reaparecer). Las que el cierre ya acotó
+        (end_date anterior a la apertura) se conservan: siguen saliendo en sus días, hasta el cierre.
       - Mes de la apertura: se garantiza UNA fila vacante que arranca en la fecha
-        exacta de apertura (start_date = fecha_apertura), disponible por cubrir.
+        exacta de apertura (start_date = vigente_desde = fecha_apertura): no sale antes de ese día.
       - Meses POSTERIORES: quedan vacantes (persona=None) y sin tope (end_date=None).
     """
     hoy = timezone.localdate()
@@ -142,15 +132,18 @@ def _abrir_asignaciones(puesto, fecha_apertura=None):
     # 1) Periodo cerrado anterior a la apertura: vacantes -> INACTIVO (no notifica).
     acts.filter(persona__isnull=True).filter(
         Q(anio__lt=ay) | Q(anio=ay, mes__lt=am)
-    ).update(estado='INACTIVO')
+    ).filter(Q(end_date__isnull=True) | Q(end_date__gte=fa)).update(estado='INACTIVO')
 
     # 2) Mes de la apertura: una fila vacante que arranca en la fecha exacta.
-    vacante_mes = acts.filter(persona__isnull=True, anio=ay, mes=am).first()
+    # (una vacante que el cierre ya acotó antes de la apertura se conserva tal cual: guarda los días previos)
+    vacante_mes = acts.filter(persona__isnull=True, anio=ay, mes=am).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=fa)).first()
     if vacante_mes:
         vacante_mes.start_date = fa
+        vacante_mes.vigente_desde = fa
         vacante_mes.end_date = None
         vacante_mes.recurring = True
-        vacante_mes.save(update_fields=['start_date', 'end_date', 'recurring'])
+        vacante_mes.save(update_fields=['start_date', 'vigente_desde', 'end_date', 'recurring'])
     else:
         ref = Asignacion.objects.filter(puesto=puesto).order_by('-anio', '-mes').first()
         if ref:
@@ -165,6 +158,7 @@ def _abrir_asignaciones(puesto, fecha_apertura=None):
                 estado='ACTIVO',
                 recurring=True,
                 start_date=fa,
+                vigente_desde=fa,
                 end_date=None,
             )
 

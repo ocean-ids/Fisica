@@ -175,7 +175,9 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
       title: '¿Cerrar instalación?',
       html: `Se cerrará <b>${instalacion.nombre || ''}</b>.<br><br>` +
             'Se desactivarán sus puestos y asignaciones y se ' +
-            'liberará su Nominativo por Zona.',
+            'liberará su Nominativo por Zona.<br><br>' +
+            'En el Reporte de Asistencia seguirá saliendo <b>hasta hoy incluido</b>; ' +
+            'desde mañana ya no sale ni se proyecta a los meses siguientes.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Sí, cerrar',
