@@ -48,7 +48,7 @@ def _serialize_user(request, user: User):
         "cargo": profile.cargo,
         "is_superuser": user.is_superuser,
         "groups": list(user.groups.values_list('name', flat=True)),
-        "permissions": sorted(list(user.get_all_permissions())),
+        "permissions": sorted(user.get_all_permissions()),
         # Módulos ocultos del menú (no afecta el acceso a datos, solo el menú/rutas).
         "modulos_ocultos": list(profile.modulos_ocultos or []),
     }
@@ -59,6 +59,48 @@ def _get_client_ip(request):
     if forwarded_for:
         return forwarded_for.split(',')[0].strip()
     return request.META.get('REMOTE_ADDR', '')
+
+# BLOQUEO DEL LOGIN: tras 5 intentos fallidos del mismo usuario desde la misma conexión (IP), ese usuario queda
+# bloqueado 1 minuto desde esa IP. Así nadie puede probar contraseñas sin fin. Un login correcto borra el conteo.
+LOGIN_MAX_INTENTOS = 5
+LOGIN_BLOQUEO_SEG = 1 * 60
+
+
+def _ip_login(request):
+    """IP real para el bloqueo. Se usa X-Real-IP, que la pone nuestro nginx (no la puede inventar el cliente,
+    a diferencia del primer valor de X-Forwarded-For); sin nginx (local), la IP de la conexión."""
+    return (request.META.get('HTTP_X_REAL_IP') or request.META.get('REMOTE_ADDR') or '').strip()
+
+
+def _clave_login(request, username):
+    return f"login_fallos:{(username or '').strip().lower()}:{_ip_login(request)}"
+
+
+def _minutos_bloqueo(request, username):
+    """Minutos que faltan si el usuario está bloqueado desde esta IP; 0 si no lo está."""
+    import time
+    hasta = cache.get(_clave_login(request, username) + ':hasta')
+    if not hasta:
+        return 0
+    falta = int(hasta - time.time())
+    return max(1, (falta + 59) // 60) if falta > 0 else 0
+
+
+def _registrar_fallo(request, username):
+    import time
+    clave = _clave_login(request, username)
+    fallos = int(cache.get(clave, 0)) + 1
+    cache.set(clave, fallos, timeout=LOGIN_BLOQUEO_SEG)
+    if fallos >= LOGIN_MAX_INTENTOS:
+        cache.set(clave + ':hasta', time.time() + LOGIN_BLOQUEO_SEG, timeout=LOGIN_BLOQUEO_SEG)
+        cache.delete(clave)
+        logger.warning("login bloqueado: usuario=%s ip=%s", (username or '')[:150], _ip_login(request))
+
+
+def _mensaje_bloqueo(minutos):
+    return (f"Demasiados intentos fallidos. Por seguridad este usuario quedó bloqueado; "
+            f"intenta de nuevo en {minutos} minuto{'s' if minutos != 1 else ''}.")
+
 
 #csrf_exempt para permitir peticiones sin token csrf, recibe un request con username y password en el body, intenta autenticar al usuario y devuelve un token de acceso y refresh si es exitoso, o un error si no lo es
 @csrf_exempt
@@ -76,10 +118,15 @@ def login_view(request):
         if not username or not password:
             return JsonResponse({"error": "Username and password required."}, status=400)
 
+        # Bloqueado por intentos fallidos: no se revisa la contraseña hasta que pase el tiempo.
+        minutos = _minutos_bloqueo(request, username)
+        if minutos:
+            return JsonResponse({"error": _mensaje_bloqueo(minutos), "bloqueado": True}, status=429)
+
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            
+            cache.delete(_clave_login(request, username))
             refresh = RefreshToken.for_user(user)
             
             return JsonResponse({
@@ -89,6 +136,10 @@ def login_view(request):
                 "user": _serialize_user(request, user)
             })
         else:
+            _registrar_fallo(request, username)
+            minutos = _minutos_bloqueo(request, username)
+            if minutos:
+                return JsonResponse({"error": _mensaje_bloqueo(minutos), "bloqueado": True}, status=429)
             return JsonResponse({"error": "Credenciales inválidas."}, status=400)
 
 @csrf_exempt
@@ -180,8 +231,7 @@ def solicitar_reset_password(request):
     # generar token de restablecimiento de contraseña y uid para el usuario
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    
-   #
+
     base_url = getattr(settings, 'PASSWORD_RESET_BASE_URL', 'http://localhost:4200').rstrip('/')
     reset_link = f"{base_url}/reset-password/{uid}/{token}"
     
@@ -199,7 +249,7 @@ def solicitar_reset_password(request):
         logger.error("Error sending password reset email", exc_info=e)
        
         if settings.DEBUG:
-            return JsonResponse({'error': f'Error al enviar email: {str(e)}'}, status=500)
+            return JsonResponse({'error': f'Error al enviar email: {e!s}'}, status=500)
     
     return JsonResponse({'message': 'Si el email existe, recibirás un correo'})
 

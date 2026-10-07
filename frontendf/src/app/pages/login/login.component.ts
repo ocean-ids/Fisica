@@ -114,10 +114,13 @@ export class LoginComponent implements OnInit, OnDestroy {
         });
       },
       error: (error) => {
+        // 429 = bloqueado por demasiados intentos fallidos: se muestra el mensaje del servidor (con los minutos).
+        const bloqueado = error?.status === 429;
         Swal.fire({
-          icon: 'error',
-          title: 'Error de login',
-          text: 'Usuario o contraseña incorrectos'
+          icon: bloqueado ? 'warning' : 'error',
+          title: bloqueado ? 'Usuario bloqueado' : 'Error de login',
+          text: bloqueado ? (error?.error?.error || 'Demasiados intentos fallidos. Intenta más tarde.')
+                          : 'Usuario o contraseña incorrectos'
         });
         this.isLoading = false;
       },
