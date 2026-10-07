@@ -264,3 +264,76 @@ class SacafrancoTardeTests(TestCase):
                 {'sacafranco_fila': fila.id, 'week_start': ws.isoformat(), 'mon': token}),
                 content_type='application/json', **self.auth)
             self.assertIn(r.status_code, (200, 201), (token, r.content))
+
+
+class Asistencia24hIndependienteTests(HorarioEnElReporteTests):
+    """24 horas (V): el Diurno y el Nocturno tienen cada uno su asistencia. Marcar FALTÓ en el Diurno no cambia el
+    Nocturno (ni al revés); un registro anterior sin turno sale en los dos hasta que se cambie."""
+
+    def _v(self):
+        return mock.patch('CoreFisica.views.reporte_asistencia_views._calendar_dnf_for_date',
+                          return_value={self.asig.id: 'V'})
+
+    def _guardar(self, turno, **datos):
+        with self._v():
+            r = self.client.put(f'/api/reporte-asistencia/{self.asig.id}/',
+                                data=json.dumps({'fecha': self.FECHA.isoformat(), 'turno': turno, **datos}),
+                                content_type='application/json', **self.auth)
+        self.assertEqual(r.status_code, 200, r.content)
+
+    def _filas(self, turno=None):
+        params = {'fecha': self.FECHA.isoformat()}
+        if turno:
+            params['turno'] = turno
+        with self._v():
+            d = self.client.get('/api/reporte-asistencia/', params, **self.auth).json()
+        return [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('asignacion_id') == self.asig.id]
+
+    def _estado(self, turno):
+        f = self._filas(turno)
+        self.assertEqual(len(f), 1)
+        self.assertEqual(f[0]['turno_registro'], turno)
+        return f[0]['estado_asistencia']
+
+    def test_falto_en_diurno_no_cambia_el_nocturno(self):
+        self._guardar('Diurno', estado_asistencia='FALTO')
+        self.assertEqual(self._estado('Diurno'), 'FALTO')
+        self.assertIn(self._estado('Nocturno'), (None, ''))
+        self._guardar('Nocturno', estado_asistencia='ASISTIO', estado='TURNO')
+        self.assertEqual(self._estado('Diurno'), 'FALTO')
+        self.assertEqual(self._estado('Nocturno'), 'ASISTIO')
+
+    def test_un_cambio_parcial_no_arrastra_lo_del_otro_turno(self):
+        self._guardar('Diurno', estado_asistencia='FALTO', descripcion='ENFERMO')
+        self._guardar('Nocturno', row_color='#fff8b3')
+        f = self._filas('Nocturno')[0]
+        self.assertIn(f['estado_asistencia'], (None, ''))
+        self.assertIn(f['descripcion'] or '', ('',))
+
+    def test_sin_filtro_salen_las_dos_filas(self):
+        self._guardar('Diurno', estado_asistencia='FALTO')
+        self.assertEqual(sorted(f['turno_registro'] for f in self._filas()), ['Diurno', 'Nocturno'])
+
+    def test_un_registro_anterior_sin_turno_sale_en_los_dos(self):
+        from CoreFisica.models import ReporteAsistencia, ReporteAsistenciaHistorial
+        ra = ReporteAsistencia.objects.create(asignacion=self.asig, fecha_reporte=self.FECHA,
+                                              estado_asistencia='ASISTIO')
+        ReporteAsistenciaHistorial.objects.create(reporte=ra, asignacion=self.asig, fecha_reporte=self.FECHA,
+                                                  estado_asistencia='ASISTIO')
+        self.assertEqual((self._estado('Diurno'), self._estado('Nocturno')), ('ASISTIO', 'ASISTIO'))
+        self._guardar('Nocturno', estado_asistencia='FALTO')
+        self.assertEqual((self._estado('Diurno'), self._estado('Nocturno')), ('ASISTIO', 'FALTO'))
+
+    def test_la_guardia_tiene_un_falto_por_turno(self):
+        from CoreFisica.models import ReporteGuardia
+        from CoreFisica.views.reporte_guardia_views import regenerar_guardia_dia
+        self._guardar('Diurno', estado_asistencia='FALTO')
+        self._guardar('Nocturno', estado_asistencia='FALTO')
+        faltos = lambda: sorted(ReporteGuardia.objects.filter(fecha=self.FECHA, seccion='FALTOS')
+                                .values_list('turno', flat=True))
+        self.assertEqual(faltos(), ['Diurno', 'Nocturno'])
+        self._guardar('Diurno', estado_asistencia='ASISTIO', estado='TURNO')
+        self.assertEqual(faltos(), ['Nocturno'])
+        with self._v():
+            regenerar_guardia_dia(self.FECHA)
+        self.assertEqual(faltos(), ['Nocturno'])

@@ -1349,6 +1349,9 @@ class ReporteAsistenciaHistorial(models.Model):
     reporte = models.ForeignKey(ReporteAsistencia, on_delete=models.CASCADE, related_name='historial')
     asignacion = models.ForeignKey(Asignacion, on_delete=models.CASCADE, related_name='historial_asistencia')
     fecha_reporte = models.DateField(null=True, blank=True)
+    # Turno del registro SOLO para quien trabaja 24 horas (V) ese día: 'Diurno' o 'Nocturno', cada uno con su
+    # propia asistencia. Vacío = un solo registro del día (todos los demás, y los registros anteriores).
+    turno = models.CharField(max_length=10, blank=True, default='', db_index=True)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     codigo = models.CharField(max_length=20, blank=True, null=True)
     estado = models.CharField(max_length=12, blank=True, null=True)

@@ -8,6 +8,7 @@ export interface ReporteAsistenciaRow {
   puesto_tipo?: string;
   horario?: string;
   turno?: string;
+  turno_registro?: string;   // 24 horas: a qué turno (Diurno / Nocturno) es esta fila; '' en las demás
   nombre_apellidos?: string;
   apellidos_txt?: string;     // apellidos de la persona que se muestra (para verlos arriba)
   nombres_txt?: string;       // nombres de la persona que se muestra (para verlos abajo)

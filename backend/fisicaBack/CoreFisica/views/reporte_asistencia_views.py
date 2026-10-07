@@ -877,28 +877,40 @@ def _build_reporte_asistencia_data(
         hist_qs = ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo', 'persona_cobertura')
         hist_qs = hist_qs.filter(id__in=Subquery(latest_hist_ids)).order_by('asignacion_id')
         for h in hist_qs:
-            is_auto_sacafranco = _is_auto_sacafranco_desc(h.descripcion)
-            overrides[h.asignacion_id] = SimpleNamespace(
-                codigo=h.codigo,
-                estado=h.estado,
-                estado_asistencia=getattr(h, 'estado_asistencia', None),
-                descripcion=h.descripcion,
-                reemplazo=h.reemplazo,
-                persona_cobertura=h.persona_cobertura or (h.reemplazo if is_auto_sacafranco else None),
-                auto_sacafranco=is_auto_sacafranco,
-                modificado_por=h.usuario,
-                modificado_en=h.creado_en,
-                row_color=h.row_color,
-                hueca=bool(getattr(h, 'hueca', False)),
-                hueca_motivo=getattr(h, 'hueca_motivo', '') or '',
-            )
+            overrides[h.asignacion_id] = _ns_historial(h)
 
+    reporte_fallback = {}
     reporte_iter = reporte_qs
     if use_db_pagination and asig_ids:
         reporte_iter = reporte_iter.filter(asignacion_id__in=asig_ids)
     for r in reporte_iter:
         if r.asignacion_id not in overrides:
             overrides[r.asignacion_id] = r
+            reporte_fallback[r.asignacion_id] = r
+
+    # 24 HORAS (V): el Diurno y el Nocturno tienen cada uno SU registro ese día (independientes). Para cada
+    # turno se usa el último registro de ese turno; si no hay, el último del día sin turno (registros anteriores).
+    overrides_turno, overrides_dia_v = {}, {}
+    if fecha_obj:
+        _ids_v = [aid for aid, lt in dnf.items() if lt == 'V']
+        if _ids_v:
+            for h in (ReporteAsistenciaHistorial.objects.select_related('usuario', 'reemplazo', 'persona_cobertura')
+                      .filter(fecha_reporte=fecha_obj, asignacion_id__in=_ids_v)
+                      .order_by('asignacion_id', '-creado_en', '-id')):
+                if h.turno in ('Diurno', 'Nocturno'):
+                    overrides_turno.setdefault((h.asignacion_id, h.turno), _ns_historial(h))
+                else:
+                    overrides_dia_v.setdefault(h.asignacion_id, _ns_historial(h))
+
+    def _filas_a_armar():
+        """(asignación, registro, turno_registro). Las de 24 horas salen una vez por turno, cada una con el suyo."""
+        for _a in asig_list:
+            if fecha_obj and dnf.get(_a.id) == 'V':
+                for _t in ([turno] if turno in ('Diurno', 'Nocturno') else ['Diurno', 'Nocturno']):
+                    yield _a, (overrides_turno.get((_a.id, _t)) or overrides_dia_v.get(_a.id)
+                               or reporte_fallback.get(_a.id)), _t
+            else:
+                yield _a, overrides.get(_a.id), ''
 
     data = []
     personas_con_asignacion = set()
@@ -996,7 +1008,7 @@ def _build_reporte_asistencia_data(
     # Sirve para marcar el badge "MOVIMIENTO INTERNO" sin repetir consultas.
     _mov_interno_cache = {}
 
-    for asig in asig_list:
+    for asig, _registro, turno_registro in _filas_a_armar():
         # Persona vigente en la fecha del reporte (historial por período). Si la asignación
         # no tiene períodos (dato previo), se usa Asignacion.persona (la actual).
         p = asig.persona   # None = HUECA (puesto sin guardia)
@@ -1014,7 +1026,7 @@ def _build_reporte_asistencia_data(
                 p = _sup
         if p:
             personas_con_asignacion.add(p.id)
-        override = overrides.get(asig.id)
+        override = _registro
         # Si el fijo TRABAJA ese dia (token D/N), ignorar una cobertura AUTO de sacafranco
         # (pudo quedar de cuando estaba de franco): se muestra al FIJO, no al reemplazo.
         if override and asig.id in working_ids and _is_auto_sacafranco_desc(getattr(override, 'descripcion', '')):
@@ -1185,6 +1197,8 @@ def _build_reporte_asistencia_data(
             'zona_titulo': zona_titulo,
             'provincia': provincia_nombre,
             'turno': _TURNO_LABEL.get((dnf.get(asig.id) or '')[:1].upper(), ''),
+            # 24 horas: a qué turno (Diurno / Nocturno) corresponde ESTA fila y su registro; '' en las demás.
+            'turno_registro': turno_registro,
         })
 
     # Filas de SACAFRANCO desde su calendario semanal, ruteadas por el token del dia.
@@ -1518,6 +1532,25 @@ def _turno_guardia(letra, turno_vista=None):
     return ''
 
 
+def _ns_historial(h):
+    """Registro del historial de asistencia como objeto con los campos que usa el reporte."""
+    is_auto_sacafranco = _is_auto_sacafranco_desc(h.descripcion)
+    return SimpleNamespace(
+        codigo=h.codigo,
+        estado=h.estado,
+        estado_asistencia=getattr(h, 'estado_asistencia', None),
+        descripcion=h.descripcion,
+        reemplazo=h.reemplazo,
+        persona_cobertura=h.persona_cobertura or (h.reemplazo if is_auto_sacafranco else None),
+        auto_sacafranco=is_auto_sacafranco,
+        modificado_por=h.usuario,
+        modificado_en=h.creado_en,
+        row_color=h.row_color,
+        hueca=bool(getattr(h, 'hueca', False)),
+        hueca_motivo=getattr(h, 'hueca_motivo', '') or '',
+    )
+
+
 def _titular_en_fecha(asignacion, fecha):
     """Persona que ocupaba la fila ESE día (por el historial de periodos). Si la fila ya cambió de
     persona o quedó vacante, el Reporte de Guardia de un día pasado sigue mostrando a quien faltó."""
@@ -1536,12 +1569,18 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
     Puede generar 2 filas (titular faltó + reemplazo cubrió). Idempotente por reporte+fecha."""
     from ..models import ReporteGuardia, ReporteGuardiaOculta
 
+    # 24 HORAS (V): el Diurno y el Nocturno son registros independientes -> cada uno toca solo SUS filas.
+    letra = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id) if fecha_reporte else None
+    turno = _turno_guardia(letra, getattr(override, '_turno_vista', None))
+    solo_turno = turno if (letra == 'V' and turno in ('Diurno', 'Nocturno')) else None
+
     # Preservar el motivo escrito a mano en la HUECA antes de regenerar (se borra y recrea).
     hueca_motivo = ''
     if fecha_reporte:
-        _h = ReporteGuardia.objects.filter(
+        _hq = ReporteGuardia.objects.filter(
             reporte_asistencia=override, fecha=fecha_reporte, seccion='HUECA', auto=True
-        ).first()
+        )
+        _h = (_hq.filter(turno=solo_turno) if solo_turno else _hq).first()
         if _h:
             hueca_motivo = _h.motivo or ''
 
@@ -1552,6 +1591,8 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
     _auto_qs = ReporteGuardia.objects.filter(reporte_asistencia=override, auto=True)
     if fecha_reporte:
         _auto_qs = _auto_qs.filter(fecha=fecha_reporte)
+    if solo_turno:
+        _auto_qs = _auto_qs.filter(turno=solo_turno)
     prev_overrides = {}
     for _r in _auto_qs:
         if _r.overrides:
@@ -1563,9 +1604,7 @@ def _sync_reporte_guardia(override, asignacion, fecha_reporte):
         ReporteGuardiaOculta.objects.filter(reporte_asistencia=override).delete()
         return
 
-    # Turno desde el calendario D/N de esa fecha.
-    letra = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id)
-    turno = _turno_guardia(letra, getattr(override, '_turno_vista', None))
+    # Turno desde el calendario D/N de esa fecha (calculado arriba).
     if turno not in ('Diurno', 'Nocturno'):
         ReporteGuardiaOculta.objects.filter(reporte_asistencia=override).delete()
         return
@@ -1678,6 +1717,12 @@ def _sync_hueca_reporte_guardia(override, asignacion, fecha_reporte):
     qs = ReporteGuardia.objects.filter(reporte_asistencia=override, seccion='HUECA', auto=False)
     if fecha_reporte:
         qs = qs.filter(fecha=fecha_reporte)      # solo ESE día (los demás días conservan la suya)
+    # Turno según el calendario de esa fecha (D/T -> Diurno, N -> Nocturno, V -> el filtro desde el que se guarda).
+    # 24 h (V): el Diurno y el Nocturno son independientes -> solo se toca la fila de ESE turno.
+    letra = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id) if fecha_reporte else None
+    turno = _turno_guardia(letra, getattr(override, '_turno_vista', None)) or 'Diurno'
+    if letra == 'V':
+        qs = qs.filter(turno=turno)
     # Sin check, sin fecha o SIN MOTIVO: no debe existir la hueca manual. La hueca solo se
     # refleja en el Reporte de Guardia si tiene un motivo (si no, no sale).
     motivo = (getattr(override, 'hueca_motivo', '') or '').strip()
@@ -1686,8 +1731,6 @@ def _sync_hueca_reporte_guardia(override, asignacion, fecha_reporte):
         return
 
     # Turno según el calendario D/N de esa fecha; si no hay, Diurno por defecto.
-    letra = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id)
-    turno = 'Diurno' if letra == 'D' else ('Nocturno' if letra == 'N' else 'Diurno')
 
     cliente = getattr(asignacion.cliente, 'nombre_comercial', '') or ''
     puesto = getattr(asignacion.puesto, 'nombre', '') or ''
@@ -1723,14 +1766,18 @@ def _sync_frtrabajado_dobladas(override, asignacion, fecha_reporte):
     )
     if fecha_reporte:
         qs = qs.filter(fecha=fecha_reporte)      # solo ESE día (los demás días conservan la suya)
+    # Turno según el calendario de esa fecha (D/T -> Diurno, N -> Nocturno, V -> el filtro desde el que se guarda).
+    # 24 h (V): el Diurno y el Nocturno son independientes -> solo se toca la fila de ESE turno.
+    letra = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id) if fecha_reporte else None
+    turno = _turno_guardia(letra, getattr(override, '_turno_vista', None)) or 'Diurno'
+    if letra == 'V':
+        qs = qs.filter(turno=turno)
     estado = (getattr(override, 'estado', '') or '').upper()
     rem = getattr(override, 'reemplazo', None)
     if estado != 'FR/TRABAJADO' or not fecha_reporte or not rem:
         qs.delete()
         return
 
-    letra = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id)
-    turno = 'Diurno' if letra == 'D' else ('Nocturno' if letra == 'N' else 'Diurno')
     cliente = getattr(asignacion.cliente, 'nombre_comercial', '') or ''
     puesto = getattr(asignacion.puesto, 'nombre', '') or ''
 
@@ -1939,6 +1986,27 @@ def insertar_reporte_asistencia(request, asignacion_id):
 
     override.codigo = getattr(asignacion.instalacion, 'codigo', None)
 
+    # 24 HORAS (V): cada turno es independiente. Lo que no se envía se toma del último registro de ESE
+    # turno ese día (o del registro anterior sin turno); nunca de lo que se guardó en el otro turno.
+    _turno_req = str(request.data.get('turno') or '')
+    if _turno_req in ('Diurno', 'Nocturno') and request.data.get('fecha') not in (None, '', 'null'):
+        try:
+            _f = datetime.date.fromisoformat(str(request.data.get('fecha')))
+        except ValueError:
+            _f = None
+        if _f and _calendar_dnf_for_date(_f).get(asignacion.id) == 'V':
+            _hs = ReporteAsistenciaHistorial.objects.filter(asignacion_id=asignacion.id, fecha_reporte=_f)
+            _base = (_hs.filter(turno=_turno_req).order_by('-creado_en', '-id').first()
+                     or _hs.filter(turno='').order_by('-creado_en', '-id').first())
+            override.estado = _base.estado if _base else None
+            override.estado_asistencia = _base.estado_asistencia if _base else None
+            override.descripcion = _base.descripcion if _base else None
+            override.row_color = _base.row_color if _base else None
+            override.reemplazo = _base.reemplazo if _base else None
+            override.persona_cobertura = _base.persona_cobertura if _base else None
+            override.hueca = bool(_base.hueca) if _base else False
+            override.hueca_motivo = (_base.hueca_motivo or '') if _base else ''
+
     for field in ['estado', 'estado_asistencia', 'descripcion', 'row_color']:
         if field in request.data:
             val = request.data.get(field) or None
@@ -1998,9 +2066,15 @@ def insertar_reporte_asistencia(request, asignacion_id):
     override.modificado_en = timezone.now()
     override.save()
 
+    # 24 HORAS (V): cada turno (Diurno / Nocturno) guarda su propio registro del día.
+    _turno_hist = ''
+    if fecha_reporte and str(request.data.get('turno') or '') in ('Diurno', 'Nocturno'):
+        if _calendar_dnf_for_date(fecha_reporte).get(asignacion.id) == 'V':
+            _turno_hist = str(request.data.get('turno'))
     try:
         ReporteAsistenciaHistorial.objects.create(
             reporte=override,
+            turno=_turno_hist,
             asignacion=asignacion,
             fecha_reporte=override.fecha_reporte,
             usuario=request.user if request.user and request.user.is_authenticated else None,
@@ -2228,6 +2302,7 @@ def historial_reporte_asistencia(request, asignacion_id):
             reemplazo_nombre = f"{h.reemplazo.apellidos} {h.reemplazo.nombres}".strip()
         data.append({
             'fecha_reporte': h.fecha_reporte.isoformat() if h.fecha_reporte else None,
+            'turno': h.turno or '',   # solo 24 horas: Diurno / Nocturno
             'usuario': usuario_nombre,
             'codigo': h.codigo or '',
             'estado_asistencia': _normalize_estado_asistencia(h.estado_asistencia),

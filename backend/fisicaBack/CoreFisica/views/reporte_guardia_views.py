@@ -231,7 +231,12 @@ def regenerar_guardia_dia(fecha_obj):
                .filter(fecha_reporte=fecha_obj, asignacion__isnull=False)
                .order_by('asignacion_id', '-creado_en'))
     for h in hist_qs:
-        ultimo.setdefault(h.asignacion_id, h)
+        # 24 horas (V): el Diurno y el Nocturno tienen cada uno su registro (turno); los demás, uno solo ('').
+        ultimo.setdefault((h.asignacion_id, h.turno or ''), h)
+    # Un registro anterior sin turno de un 24 horas vale para el Diurno solo si ese turno no tiene el suyo.
+    for (asig_id, t) in [k for k in ultimo if k[1] == '']:
+        if (asig_id, 'Diurno') in ultimo:
+            del ultimo[(asig_id, '')]
 
     # Asignaciones que ya tienen filas ese día (para limpiar las que dejaron de aplicar).
     con_filas = set(ReporteGuardia.objects.filter(
@@ -240,7 +245,7 @@ def regenerar_guardia_dia(fecha_obj):
     estados_guardia = {'DOBLA', 'DOBLADO', 'ADICIONAL', 'ADEL/TURNO', 'EVENTUAL', 'FR/TRABAJADO'}
 
     procesadas = errores = 0
-    for asig_id, h in ultimo.items():
+    for (asig_id, turno_h), h in ultimo.items():
         relevante = ((h.estado_asistencia or '').upper() == 'FALTO'
                      or (h.estado or '').upper() in estados_guardia
                      or h.hueca or asig_id in con_filas)
@@ -257,6 +262,7 @@ def regenerar_guardia_dia(fecha_obj):
         ov.descripcion = h.descripcion
         ov.hueca = bool(h.hueca)
         ov.hueca_motivo = h.hueca_motivo or ''
+        ov._turno_vista = turno_h or None
         for sync in (_sync_reporte_guardia, _sync_hueca_reporte_guardia, _sync_frtrabajado_dobladas):
             try:
                 sync(ov, h.asignacion, fecha_obj)

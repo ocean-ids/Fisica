@@ -151,9 +151,11 @@ def _motivos_asistencia(registros):
         ultimo = {}
         for h in (ReporteAsistenciaHistorial.objects
                   .filter(asignacion_id__in={a for a, _ in claves}, fecha_reporte__in={f for _, f in claves})
-                  .only('asignacion_id', 'fecha_reporte', 'reemplazo_id', 'descripcion', 'hueca', 'hueca_motivo')
+                  .only('asignacion_id', 'fecha_reporte', 'turno', 'reemplazo_id', 'descripcion', 'hueca',
+                        'hueca_motivo')
                   .order_by('asignacion_id', 'fecha_reporte', '-creado_en', '-id')):
-            ultimo.setdefault((h.asignacion_id, h.fecha_reporte), h)
+            # 24 horas: el Diurno y el Nocturno tienen cada uno su último registro.
+            ultimo.setdefault((h.asignacion_id, h.fecha_reporte, h.turno or ''), h)
         for h in ultimo.values():
             if (h.reemplazo_id, h.fecha_reporte) in pares:
                 t = _texto_motivo(h.descripcion, h.hueca, h.hueca_motivo)

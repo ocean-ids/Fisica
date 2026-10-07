@@ -219,13 +219,14 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     const zonas: Record<string, Record<string, ReporteAsistenciaRow[]>> = {};
     for (const row of this.reporte) {
       // Filtro por jornada (siempre activo: Diurno o Nocturno).
-      // - Veinticuatro (token V) cubre el dia completo -> aparece en Diurno y Nocturno.
+      // - Veinticuatro (token V) cubre el dia completo -> aparece en Diurno y Nocturno, cada turno
+      //   con SU propia fila y asistencia (turno_registro); el otro turno no se ve aqui.
       // - Tarde se incluye dentro de Diurno.
       if (this.filtroJornada) {
         const t = (row.turno || '');
         const coincide =
           t === this.filtroJornada ||
-          t === 'Veinticuatro' ||
+          (t === 'Veinticuatro' && (!row.turno_registro || row.turno_registro === this.filtroJornada)) ||
           (this.filtroJornada === 'Diurno' && t === 'Tarde');
         if (!coincide) {
           continue;
@@ -310,6 +311,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       const payload = {
         row_color: selectedColor,
         fecha: this.filtroFecha || null,
+        turno: this.filtroJornada,
       };
 
       // SACAFRANCO: no tiene asignacion; el color se guarda por su fila.
