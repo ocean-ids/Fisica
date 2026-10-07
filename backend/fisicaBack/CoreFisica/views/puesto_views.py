@@ -144,7 +144,7 @@ def _secuencia_dnf_puesto(puesto_id):
         runs = _runs_de(filas)
         if len(runs) <= 1:
             continue
-        score = (len(set(r[0] for r in runs)), -len(runs))
+        score = (len({r[0] for r in runs}), -len(runs))
         if score > mejor_score:
             mejor_score = score
             mejor = runs
