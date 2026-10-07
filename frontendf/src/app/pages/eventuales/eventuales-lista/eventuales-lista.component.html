@@ -53,6 +53,7 @@
           <th>Nombre del puesto</th>
           <!-- Datos del eventual: mismos nombres y orden que el Excel (formato de pago). -->
           <th>Nombre</th>
+          <th>Motivo</th>  <!-- descripción del Reporte de Asistencia donde cubrió -->
           <th>Cuenta</th>
           <th>Banco</th>
           <th>Tipo</th>
@@ -71,7 +72,7 @@
       </thead>
       <tbody>
         <tr *ngIf="loading">
-          <td colspan="19" class="text-muted">Cargando…</td>
+          <td colspan="20" class="text-muted">Cargando…</td>
         </tr>
         <ng-container *ngIf="!loading">
           <tr *ngFor="let f of filasFiltradas; let i = index">
@@ -80,6 +81,7 @@
             <td>{{ f.instalacion }}</td>
             <td>{{ f.puesto || '—' }}</td>
             <td class="text-start">{{ f.persona }}</td>
+            <td class="text-start">{{ f.motivo || '—' }}</td>
             <td>{{ f.numero_cuenta || '—' }}</td>
             <td>{{ f.banco || '—' }}</td>
             <td>{{ f.tipo_cuenta || '—' }}</td>
@@ -105,13 +107,13 @@
             </td>
           </tr>
           <tr *ngIf="!filasFiltradas.length">
-            <td colspan="19" class="text-muted">Sin registros en estas fechas.</td>
+            <td colspan="20" class="text-muted">Sin registros en estas fechas.</td>
           </tr>
         </ng-container>
       </tbody>
       <tfoot *ngIf="!loading && filasFiltradas.length">
         <tr>
-          <th colspan="11" class="text-end">Totales</th>
+          <th colspan="12" class="text-end">Totales</th>
           <th>{{ totalSolicitadas }}</th>
           <th>{{ totalHoras }}</th>
           <th></th>

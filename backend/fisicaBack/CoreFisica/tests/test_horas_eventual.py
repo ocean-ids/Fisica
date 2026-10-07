@@ -382,12 +382,31 @@ class HorasEventualTests(TestCase):
         ws = load_workbook(_io.BytesIO(r.content)).active
         cab = [c.value for c in ws[1]]
         self.assertEqual(cab[:5], ['Nº', 'CLIENTE', 'INSTALACIÓN', 'NOMBRE DEL PUESTO', 'NOMBRE'])
-        self.assertEqual(len(cab), 17)                                # las columnas de la tabla, sin Última Modificación
+        self.assertEqual(len(cab), 18)                                # las columnas de la tabla (con Motivo), sin Última Modificación
+        self.assertEqual(cab[5], 'MOTIVO')
         self.assertNotIn('ÚLTIMA MODIFICACIÓN', cab)
         self.assertEqual(ws.max_row, 4)                               # encabezado + 3 registros (no se suman)
         ana = [c.value for c in ws[2]]
         self.assertEqual(ana[:5], [1, 'CLI', 'MATRIZ', 'GARITA', 'LOPEZ ANA'])
-        self.assertEqual((ana[9], ana[10], ana[12]), ('29/09/2026', 'Diurno', 8))   # creado, turno, horas trabajadas
+        self.assertEqual((ana[10], ana[11], ana[13]), ('29/09/2026', 'Diurno', 8))  # creado, turno, horas trabajadas
         # el resumido sigue igual: una fila por eventual
         r2 = self.client.get('/api/horas-eventual/exportar-excel/?fecha=2026-09-29', **self._auth())
         self.assertEqual(load_workbook(_io.BytesIO(r2.content)).active.max_row, 3)
+
+    # ---------- Motivo: descripción del Reporte de Asistencia donde cubrió ----------
+    def test_motivo_sale_de_la_descripcion_del_reporte_de_asistencia(self):
+        from CoreFisica.models import Asignacion
+        fijo = Persona.objects.create(nombres='LUIS', apellidos='LUNA', cedula='0944444444', tipo='FIJOS')
+        asig = Asignacion.objects.create(persona=fijo, cliente=self.cli, instalacion=self.inst, puesto=self.puesto,
+                                         mes=9, anio=2026, estado='ACTIVO')
+        body = {'fecha': '2026-09-29', 'estado_asistencia': 'FALTO', 'estado': 'EVENTUAL', 'reemplazo_id': self.ev.id,
+                'descripcion': 'CUBRE POR ADELANTO', 'hueca': True, 'hueca_motivo': 'HUECA POR UNIDAD FIJA'}
+        r = self.client.put(f'/api/reporte-asistencia/{asig.id}/', data=json.dumps(body),
+                            content_type='application/json', **self._auth())
+        self.assertEqual(r.status_code, 200, r.content)
+        self._crear()                                                       # JUAN PEREZ el 29/09
+        self._crear(fecha='2026-09-30')                                     # otro día: sin motivo
+        filas = self.client.get('/api/horas-eventual/?desde=2026-09-29&hasta=2026-09-30', **self._auth()).json()
+        por_fecha = {f['fecha']: f['motivo'] for f in filas}
+        self.assertEqual(por_fecha['2026-09-29'], 'HUECA POR UNIDAD FIJA · CUBRE POR ADELANTO')
+        self.assertEqual(por_fecha['2026-09-30'], '')

@@ -17,7 +17,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from ..models import HorasEventual, HorasEventualHistorial, Persona, Cliente, Instalacion, Puesto, TarifaPago
+from ..models import (HorasEventual, HorasEventualHistorial, Persona, Cliente, Instalacion, Puesto, TarifaPago,
+                      ReporteAsistenciaHistorial, SacafrancoAsistencia)
 
 # Tipo de servicio de Tarifas de Pago con el que se valoran las horas adicionales.
 TIPO_SERVICIO_EVENTUAL = 'Eventuales'
@@ -123,6 +124,48 @@ def _serialize(h):
         'modificado_por': _nombre_usuario(h.modificado_por or h.creado_por),
         'modificado_en': h.actualizado_en.isoformat() if h.actualizado_en else None,
     }
+
+
+def _texto_motivo(descripcion, hueca, hueca_motivo):
+    """Igual que la columna Descripción del Reporte de Asistencia: si es hueca, su motivo va primero."""
+    desc = (descripcion or '').strip()
+    mot = (hueca_motivo or '').strip() if hueca else ''
+    if mot:
+        return f'{mot} · {desc}' if desc else mot
+    return desc
+
+
+def _motivos_asistencia(registros):
+    """{(persona_id, fecha): motivo}: la DESCRIPCIÓN del Reporte de Asistencia del registro donde ese eventual
+    fue el reemplazo ese día (fijos y sacafranco). Se toma el último guardado de cada puesto ese día."""
+    pares = {(h.persona_id, h.fecha) for h in registros if h.persona_id and h.fecha}
+    if not pares:
+        return {}
+    pids = {p for p, _ in pares}
+    fechas = {f for _, f in pares}
+    textos = {}
+
+    claves = set(ReporteAsistenciaHistorial.objects.filter(fecha_reporte__in=fechas, reemplazo_id__in=pids)
+                 .values_list('asignacion_id', 'fecha_reporte'))
+    if claves:
+        ultimo = {}
+        for h in (ReporteAsistenciaHistorial.objects
+                  .filter(asignacion_id__in={a for a, _ in claves}, fecha_reporte__in={f for _, f in claves})
+                  .only('asignacion_id', 'fecha_reporte', 'reemplazo_id', 'descripcion', 'hueca', 'hueca_motivo')
+                  .order_by('asignacion_id', 'fecha_reporte', '-creado_en', '-id')):
+            ultimo.setdefault((h.asignacion_id, h.fecha_reporte), h)
+        for h in ultimo.values():
+            if (h.reemplazo_id, h.fecha_reporte) in pares:
+                t = _texto_motivo(h.descripcion, h.hueca, h.hueca_motivo)
+                if t:
+                    textos.setdefault((h.reemplazo_id, h.fecha_reporte), []).append(t)
+    for sa in SacafrancoAsistencia.objects.filter(fecha__in=fechas, reemplazo_id__in=pids).only(
+            'reemplazo_id', 'fecha', 'descripcion', 'hueca', 'hueca_motivo'):
+        if (sa.reemplazo_id, sa.fecha) in pares:
+            t = _texto_motivo(sa.descripcion, sa.hueca, sa.hueca_motivo)
+            if t:
+                textos.setdefault((sa.reemplazo_id, sa.fecha), []).append(t)
+    return {k: ' / '.join(dict.fromkeys(v)) for k, v in textos.items()}
 
 
 def _parse_fecha(v):
@@ -330,7 +373,14 @@ def listar_horas_eventual(request):
     turno = _turno(request.GET.get('turno'))   # sin turno = ambos
     if turno:
         qs = qs.filter(turno=turno)
-    return Response([_serialize(h) for h in qs])
+    regs = list(qs)
+    motivos = _motivos_asistencia(regs)          # descripción del Reporte de Asistencia (columna Motivo)
+    out = []
+    for h in regs:
+        f = _serialize(h)
+        f['motivo'] = motivos.get((h.persona_id, h.fecha), '')
+        out.append(f)
+    return Response(out)
 
 
 @api_view(['GET'])
@@ -542,7 +592,7 @@ def exportar_excel_horas_eventual(request):
     if detallado:
         # Las mismas columnas de la tabla de la pantalla (menos "Última Modificación" y "Acción").
         columnas = [('Nº', 6), ('CLIENTE', 28), ('INSTALACIÓN', 28), ('NOMBRE DEL PUESTO', 28), ('NOMBRE', 36),
-                    ('CUENTA', 18), ('BANCO', 14), ('TIPO', 12), ('CEDULA', 14), ('CREADO', 12), ('TURNO', 11),
+                    ('MOTIVO', 40), ('CUENTA', 18), ('BANCO', 14), ('TIPO', 12), ('CEDULA', 14), ('CREADO', 12), ('TURNO', 11),
                     ('HORAS SOLICITADAS', 12), ('HORAS TRABAJADAS', 12), ('RANGO DE HORAS', 12),
                     ('HORAS ADICIONALES', 12), ('BONIFICACIÓN', 13), ('VALOR', 12)]
     else:
@@ -562,10 +612,12 @@ def exportar_excel_horas_eventual(request):
         # Una fila por registro, ordenados por nombre y fecha (igual que la tabla de la pantalla).
         regs = [h for h in registros if h.id in ids_ok]
         regs.sort(key=lambda h: (_norm_busqueda(_nombre_persona(h.persona)), h.fecha, h.id))
+        motivos = _motivos_asistencia(regs)
         for n, h in enumerate(regs, start=1):
             f = _serialize(h)
             valores = [
-                n, f['cliente'], f['instalacion'], f['puesto'], f['persona'], f['numero_cuenta'], f['banco'],
+                n, f['cliente'], f['instalacion'], f['puesto'], f['persona'], motivos.get((h.persona_id, h.fecha), ''),
+                f['numero_cuenta'], f['banco'],
                 f['tipo_cuenta'], f['cedula'], h.fecha.strftime('%d/%m/%Y') if h.fecha else '', f['turno'],
                 f['horas_solicitadas'] or 0, f['horas'] or 'Pendiente', f['rango_horas'], f['horas_adicionales'] or 0,
                 f['bonificacion'], f['valor_calculado'],
@@ -574,9 +626,9 @@ def exportar_excel_horas_eventual(request):
                 cell = ws.cell(fila, c, v)
                 cell.border = borde
                 cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-                if c in (6, 9):
+                if c in (7, 10):
                     cell.number_format = '@'                 # cuenta y cédula como texto (ceros a la izquierda)
-                if c in (16, 17) and v is not None:
+                if c in (17, 18) and v is not None:
                     cell.number_format = '#,##0.00'
             fila += 1
     # RESUMIDO: ordenados por nombre (apellidos y nombres), igual que la tabla.
