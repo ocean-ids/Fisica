@@ -130,3 +130,62 @@ class CierrePuestoFechaTests(TestCase):
         self.assertEqual(self._sale(D(2026, 9, 10)), 2)     # antes del cierre: persona + vacante
         self.assertEqual(self._sale(D(2026, 9, 17)), 0)     # cerrado
         self.assertEqual(self._sale(D(2026, 9, 22)), 1)     # reabierto: vacante nueva
+
+
+class LimpiarPuestosCerradosTests(CierrePuestoFechaTests):
+    """Comando limpiar_puestos_cerrados: corrige los puestos que se cerraron ANTES de la corrección (seguían
+    saliendo como vacante y proyectándose a los meses siguientes)."""
+
+    def _como_quedaba_antes(self):
+        """Cierre viejo el 15/09: persona hasta el 14, vacante sin corte y octubre con filas ACTIVAS."""
+        from CoreFisica.asignaciones_meses import alinear_meses
+        from CoreFisica.models import NovedadPuesto
+        alinear_meses(9, 2026, 1, crear_meses=True)
+        NovedadPuesto.objects.create(puesto=self.puesto, instalacion=self.inst, fecha=D(2026, 9, 15), novedad='CIERRE')
+        Puesto.objects.filter(id=self.puesto.id).update(activo=False)
+        Asignacion.objects.filter(id=self.asig.id).update(end_date=D(2026, 9, 14))
+        Asignacion.objects.filter(puesto=self.puesto, mes=10).update(persona=None)
+
+    def _correr(self, *args):
+        from io import StringIO
+        from django.core.management import call_command
+        out = StringIO()
+        call_command('limpiar_puestos_cerrados', *args, stdout=out)
+        return out.getvalue()
+
+    def test_antes_seguia_saliendo(self):
+        self._como_quedaba_antes()
+        self.assertEqual(self._sale(D(2026, 9, 20)), 1)      # la vacante seguía saliendo después del cierre
+        self.assertEqual(self._sale(D(2026, 10, 5)), 2)      # y se proyectaba a octubre
+
+    def test_la_prueba_no_guarda_nada(self):
+        self._como_quedaba_antes()
+        salida = self._correr('--dry-run', '--detalle')
+        self.assertIn('no se guardó nada', salida)
+        self.assertIn('1 puestos corregidos', salida)
+        self.assertEqual(self._sale(D(2026, 10, 5)), 2)
+
+    def test_corrige_el_cierre_viejo(self):
+        self._como_quedaba_antes()
+        salida = self._correr()
+        self.assertIn('2 filas de meses futuros desactivadas', salida)
+        self.assertEqual(self._sale(D(2026, 9, 10)), 2)      # antes del cierre: igual que siempre
+        self.assertEqual(self._sale(D(2026, 9, 15)), 1)      # el día del cierre: la vacante (la persona ya cortaba el 14)
+        self.assertEqual(self._sale(D(2026, 9, 20)), 0)
+        self.assertEqual(self._sale(D(2026, 10, 5)), 0)
+        self.assertIn('0 puestos corregidos', self._correr())  # repetirlo no cambia nada
+
+    def test_puesto_cerrado_sin_novedad_corta_hoy(self):
+        from django.utils import timezone
+        hoy = timezone.localdate()
+        Asignacion.objects.filter(id__in=[self.asig.id, self.vacante.id]).update(
+            mes=hoy.month, anio=hoy.year, start_date=hoy.replace(day=1))
+        Puesto.objects.filter(id=self.puesto.id).update(activo=False)
+        self._correr()
+        self.asig.refresh_from_db()
+        self.assertEqual((self.asig.estado, self.asig.end_date), ('ACTIVO', hoy))
+
+    def test_no_toca_puestos_abiertos(self):
+        self._correr()
+        self.asig.refresh_from_db()
+        self.assertIsNone(self.asig.end_date)
