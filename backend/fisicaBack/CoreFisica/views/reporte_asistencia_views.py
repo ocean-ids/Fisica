@@ -2068,9 +2068,9 @@ def insertar_reporte_asistencia(request, asignacion_id):
 
     # 24 HORAS (V): cada turno (Diurno / Nocturno) guarda su propio registro del día.
     _turno_hist = ''
-    if fecha_reporte and str(request.data.get('turno') or '') in ('Diurno', 'Nocturno'):
-        if _calendar_dnf_for_date(fecha_reporte).get(asignacion.id) == 'V':
-            _turno_hist = str(request.data.get('turno'))
+    if (fecha_reporte and str(request.data.get('turno') or '') in ('Diurno', 'Nocturno')
+            and _calendar_dnf_for_date(fecha_reporte).get(asignacion.id) == 'V'):
+        _turno_hist = str(request.data.get('turno'))
     try:
         ReporteAsistenciaHistorial.objects.create(
             reporte=override,
