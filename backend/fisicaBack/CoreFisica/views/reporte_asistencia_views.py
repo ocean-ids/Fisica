@@ -1352,7 +1352,11 @@ def _build_reporte_asistencia_data(
                 })
 
     if term:
+        import re as _re_q
         tokens = [t for t in term.split() if t]
+        # Un texto con forma de NOMINATIVO (1 a 3 letras + número, ej. G3, K37) busca ESE nominativo exacto:
+        # "G3" trae solo G3, no G30, G31... Los demás textos se buscan como antes (contenido en la fila).
+        _nom = _re_q.compile(r'^[a-z]{1,3}\d+$')
         filtered = []
         for item in data:
             haystack = ' '.join([
@@ -1368,7 +1372,8 @@ def _build_reporte_asistencia_data(
                 str(item.get('zona_titulo') or ''),
                 str(item.get('provincia') or ''),
             ]).lower()
-            if all(token in haystack for token in tokens):
+            codigo_item = str(item.get('codigo') or '').strip().lower()
+            if all((codigo_item == token) if _nom.match(token) else (token in haystack) for token in tokens):
                 filtered.append(item)
         data = filtered
 

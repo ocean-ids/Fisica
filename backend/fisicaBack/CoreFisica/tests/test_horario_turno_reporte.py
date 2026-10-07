@@ -188,3 +188,23 @@ class BaseTarde24hTests(HorarioEnElReporteTests):
         self.assertIsNotNone(self._fila('V', 'V', 'Nocturno'))
         self.assertIsNotNone(self._fila('T', 'T', 'Diurno'))
         self.assertIsNone(self._fila('T', 'T', 'Nocturno'))
+
+
+class BusquedaNominativoTests(HorarioEnElReporteTests):
+    """Buscar un nominativo (ej. G3) trae ESE nominativo exacto, no G30, G31..."""
+
+    def test_nominativo_exacto(self):
+        Instalacion.objects.filter(id=self.asig.instalacion_id).update(codigo='G3')
+        cli = Cliente.objects.create(razon_social='D SA', nombre_comercial='D')
+        inst30 = Instalacion.objects.create(cliente=cli, nombre='OTRA', codigo='G30')
+        p30 = Puesto.objects.create(instalacion=inst30, nombre='P30')
+        per = Persona.objects.create(nombres='B', apellidos='B', cedula='0910000041', tipo='FIJOS')
+        a30 = Asignacion.objects.create(persona=per, cliente=cli, instalacion=inst30, puesto=p30, mes=9, anio=2026,
+                                        estado='ACTIVO', recurring=True,
+                                        start_date=datetime.date(2026, 9, 1), end_date=datetime.date(2026, 9, 30))
+        with mock.patch('CoreFisica.views.reporte_asistencia_views._calendar_dnf_for_date',
+                        return_value={self.asig.id: 'D', a30.id: 'D'}):
+            r = self.client.get('/api/reporte-asistencia/', {'fecha': self.FECHA.isoformat(), 'q': 'g3'}, **self.auth)
+        d = r.json()
+        filas = d.get('results', d) if isinstance(d, dict) else d
+        self.assertEqual({f.get('codigo') for f in filas}, {'G3'})

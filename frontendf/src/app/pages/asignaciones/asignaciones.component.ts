@@ -785,7 +785,13 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       a?.persona_detalle?.cedula,
       this.getCodigoInstalacionAsignacion(a),
     ].map(c => (c || '').toString().toLowerCase()).join(' ');
-    return tokens.every(t => hay.includes(t));
+    // Un texto con forma de NOMINATIVO (ej. G3, K37) busca ESE nominativo exacto: "G3" no trae G30, G31...
+    const codigo = (this.getCodigoInstalacionAsignacion(a) || '').toString().toLowerCase();
+    return tokens.every(t => this.esNominativo(t) ? codigo === t : hay.includes(t));
+  }
+
+  private esNominativo(t: string): boolean {
+    return /^[a-z]{1,3}\d+$/.test((t || '').toLowerCase());
   }
 
   // ¿La fila de SACAFRANCO coincide con el texto? (persona asignada al sacafranco)
@@ -797,7 +803,8 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
       fila?.persona_detalle?.apellidos,
       fila?.persona_detalle?.cedula,
     ].map(c => (c || '').toString().toLowerCase()).join(' ');
-    return tokens.every(t => hay.includes(t));
+    // El sacafranco no tiene un nominativo fijo en la grilla: un texto de nominativo no lo trae.
+    return tokens.every(t => !this.esNominativo(t) && hay.includes(t));
   }
 
   // Busca en lo ya cargado TODAS las coincidencias (asignaciones Y sacafranco) y va a la primera.
