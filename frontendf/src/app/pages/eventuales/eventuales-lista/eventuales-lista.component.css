@@ -83,3 +83,20 @@ tfoot th {
     justify-content: flex-end;
   }
 }
+
+/* Botón "Descargar Excel" y su menú (Sumarizado / Detallado) con el MISMO ancho y las opciones centradas. */
+.ev-btn-excel {
+  width: 170px;
+}
+::ng-deep .ev-menu-excel.mat-mdc-menu-panel {
+  min-width: 170px !important;
+  max-width: 170px !important;
+}
+::ng-deep .ev-menu-excel .mat-mdc-menu-item {
+  justify-content: center;
+  text-align: center;
+  min-height: 40px;
+}
+::ng-deep .ev-menu-excel .mat-mdc-menu-item .mat-mdc-menu-item-text {
+  flex: 0 0 auto;
+}

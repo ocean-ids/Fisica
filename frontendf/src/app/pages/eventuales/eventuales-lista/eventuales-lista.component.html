@@ -17,11 +17,11 @@
     <div class="ev-der d-grid d-sm-flex gap-2 align-items-center">
       <!-- Descargar Excel: al pulsarlo se elige el formato. Sumarizado = archivo de pago (una fila por eventual);
            Detallado = una fila por registro con todos los campos de la tabla. -->
-      <button type="button" class="btn btn-success btn-sm" [matMenuTriggerFor]="menuExcel"
+      <button type="button" class="btn btn-success btn-sm ev-btn-excel" [matMenuTriggerFor]="menuExcel"
               title="Descargar en Excel (con las fechas, el turno y la búsqueda aplicados)">
         <i class="bi bi-file-earmark-excel"></i> Descargar Excel <i class="bi bi-caret-down-fill ms-1"></i>
       </button>
-      <mat-menu #menuExcel="matMenu">
+      <mat-menu #menuExcel="matMenu" class="ev-menu-excel" xPosition="before">
         <button mat-menu-item (click)="descargarExcel('resumido')">Sumarizado</button>
         <button mat-menu-item (click)="descargarExcel('detallado')">Detallado</button>
       </mat-menu>
