@@ -171,9 +171,9 @@ class BaseTarde24hTests(HorarioEnElReporteTests):
         f = self._fila('D', 'D', 'Diurno')
         self.assertNotEqual(f['codigo'], 'BASE')
 
-    def test_el_sacafranco_no_acepta_t_ni_v_solas(self):
+    def test_el_sacafranco_acepta_t_sola_en_base_y_no_la_v(self):
         from CoreFisica.views.asignacion_semanal_views import _parse_sacafranco_token
-        self.assertEqual(_parse_sacafranco_token('T')[0], 'invalid')
+        self.assertEqual(_parse_sacafranco_token('T')[:3], ('base_free', 'Tarde', 'BASE'))
         self.assertEqual(_parse_sacafranco_token('V')[0], 'invalid')
         self.assertEqual(_parse_sacafranco_token('DB')[:3], ('base_free', 'Diurno', 'BASE'))
 
@@ -208,3 +208,59 @@ class BusquedaNominativoTests(HorarioEnElReporteTests):
         d = r.json()
         filas = d.get('results', d) if isinstance(d, dict) else d
         self.assertEqual({f.get('codigo') for f in filas}, {'G3'})
+
+
+class SacafrancoTardeTests(TestCase):
+    """La T (tarde) del sacafranco: sale en BASE como TARDE BASE, en el filtro Diurno, y no en Nocturno."""
+    FECHA = datetime.date(2026, 10, 5)
+
+    def setUp(self):
+        from CoreFisica.models import SacafrancoFila, SacafrancoFilaSemanal
+        User.objects.create_superuser(username='st_user', email='e@e.com', password='StPass123!')
+        tok = self.client.post('/api/login/', data=json.dumps({'username': 'st_user', 'password': 'StPass123!'}),
+                               content_type='application/json').json().get('access')
+        self.auth = {'HTTP_AUTHORIZATION': f'Bearer {tok}'}
+        p = Persona.objects.create(nombres='T', apellidos='TARDE', cedula='0910000060', tipo='SACAFRANCO')
+        self.fila = SacafrancoFila.objects.create(mes=10, anio=2026, persona=p, orden=1)
+        SacafrancoFilaSemanal.objects.create(sacafranco_fila=self.fila, week_start=datetime.date(2026, 10, 1),
+                                             mon='T', tue='T', wed='T', thu='T', fri='T', sat='T', sun='T')
+
+    def _filas(self, turno):
+        r = self.client.get('/api/reporte-asistencia/', {'fecha': self.FECHA.isoformat(), 'turno': turno}, **self.auth)
+        d = r.json()
+        return [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('sacafranco_fila_id') == self.fila.id]
+
+    def test_t_sale_en_diurno_como_tarde_base(self):
+        f = self._filas('Diurno')
+        self.assertEqual(len(f), 1)
+        self.assertEqual((f[0]['codigo'], f[0]['puesto'], f[0]['turno']), ('BASE', 'TARDE BASE', 'Tarde'))
+        self.assertEqual(self._filas('Nocturno'), [])
+
+    def test_la_guardia_de_la_t_va_en_diurno(self):
+        from CoreFisica.views.reporte_asistencia_views import _saca_guardia_ctx
+        self.assertEqual(_saca_guardia_ctx(self.fila, self.FECHA), ('Diurno', 'SEGURIDAD FISICA', ''))
+
+    def test_t_con_nominativo_cubre_ese_puesto_en_diurno(self):
+        from CoreFisica.models import SacafrancoFilaSemanal
+        from CoreFisica.views.asignacion_semanal_views import _parse_sacafranco_token
+        self.assertEqual(_parse_sacafranco_token('TG15')[:3], ('coverage', 'Tarde', 'G15'))
+        cli = Cliente.objects.create(razon_social='C SA', nombre_comercial='CLIENTE T')
+        Instalacion.objects.create(cliente=cli, nombre='INST T', codigo='G15')
+        SacafrancoFilaSemanal.objects.filter(sacafranco_fila=self.fila).update(mon='TG15')
+        f = self._filas('Diurno')
+        self.assertEqual(len(f), 1)
+        self.assertEqual((f[0]['codigo'], f[0]['cliente'], f[0]['turno']), ('G15', 'CLIENTE T', 'Tarde'))
+        self.assertEqual(self._filas('Nocturno'), [])
+
+    def test_el_cronograma_acepta_t_y_t_con_nominativo(self):
+        cli = Cliente.objects.create(razon_social='C2 SA', nombre_comercial='C2')
+        Instalacion.objects.create(cliente=cli, nombre='INST 16', codigo='G16')
+        from CoreFisica.models import SacafrancoFila
+        hoy = datetime.date.today()
+        ws = hoy.replace(day=1)
+        fila = SacafrancoFila.objects.create(mes=hoy.month, anio=hoy.year, persona=self.fila.persona, orden=2)
+        for token in ('T', 'TG16'):
+            r = self.client.post('/api/sacafranco-fila-semanal/guardar/', data=json.dumps(
+                {'sacafranco_fila': fila.id, 'week_start': ws.isoformat(), 'mon': token}),
+                content_type='application/json', **self.auth)
+            self.assertIn(r.status_code, (200, 201), (token, r.content))

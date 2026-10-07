@@ -1198,7 +1198,8 @@ def _build_reporte_asistencia_data(
         if day_key:
             # Sin filtro de turno -> se muestran TODOS los sacafranco (tokens D y N).
             # Con filtro Diurno/Nocturno -> solo los de ese turno.
-            _turno_letters = ('D',) if turno == 'Diurno' else (('N',) if turno == 'Nocturno' else ('D', 'N'))
+            # La T (tarde) del sacafranco cuenta en Diurno, como la tarde de los fijos.
+            _turno_letters = ('D', 'T') if turno == 'Diurno' else (('N',) if turno == 'Nocturno' else ('D', 'N', 'T'))
             month_base = fecha_obj.replace(day=1)
             week_start_month = month_base + datetime.timedelta(days=((fecha_obj.day - 1) // 7) * 7)
             week_start_iso = fecha_obj - datetime.timedelta(days=fecha_obj.weekday())
@@ -1500,8 +1501,8 @@ def _horas_de_turno(entradas, turno_nombre):
     return None
 
 
-# Nombre del puesto "en base" según la letra del turno (DB, NB).
-_PUESTO_BASE = {'D': 'DIA BASE', 'N': 'NOCHE BASE'}
+# Nombre del puesto "en base" según la letra del turno (DB, NB, T).
+_PUESTO_BASE = {'D': 'DIA BASE', 'N': 'NOCHE BASE', 'T': 'TARDE BASE'}
 
 
 def _turno_guardia(letra, turno_vista=None):
@@ -1787,6 +1788,8 @@ def _saca_guardia_ctx(fila, fecha_reporte):
     from .asignacion_semanal_views import _parse_sacafranco_token
     token = _sacafranco_token_for_date(fila.id, fecha_reporte)
     _t, tturno, tcode, _i, _p = _parse_sacafranco_token(token)
+    if tturno == 'Tarde':
+        tturno = 'Diurno'                              # la tarde se registra en Diurno
     if tturno not in ('Diurno', 'Nocturno'):
         return None
     cliente = ''

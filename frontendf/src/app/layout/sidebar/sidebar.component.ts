@@ -22,7 +22,7 @@ export class SidebarComponent implements OnInit {
         { key: 'sacavacaciones', path: '/dashboard/sacavacaciones', label: 'Sacavacaciones', permission: 'CoreFisica.view_asignacion' },
       ],
     },
-    { key: 'eventuales', path: '/dashboard/eventuales', label: 'Eventuales', icon: 'E', permission: 'CoreFisica.view_horaseventual' },
+    { key: 'eventuales', path: '/dashboard/eventuales', label: 'Servicios Eventuales', icon: 'E', permission: 'CoreFisica.view_horaseventual' },
     { key: 'reporte-asistencia', path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'how_to_reg', permission: 'CoreFisica.view_reporteasistencia' },
     { key: 'consolidado', path: '/dashboard/consolidado', label: 'Consolidado', icon: 'assignment', permission: 'CoreFisica.view_consolidado' },
     { key: 'reporte-guardia', path: '/dashboard/reporte-guardia', label: 'Reporte Guardia', icon: 'summarize', permission: 'CoreFisica.view_reporteguardia' },

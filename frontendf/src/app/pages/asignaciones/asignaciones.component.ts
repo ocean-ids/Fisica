@@ -1548,7 +1548,7 @@ export class AsignacionesComponent implements OnInit, OnDestroy {
     calRow[dayKey] = v;
     // Evita validar mientras el usuario aún no completa el token D/N + código[#n].
     if (v && /^[DN]$/.test(v)) return;
-    if (v && /^[DN][A-Z0-9]+#$/.test(v)) return;
+    if (v && /^[DNT][A-Z0-9]+#$/.test(v)) return;
     const payload: any = {
       sacafranco_fila: row.id,
       week_start: weekStart

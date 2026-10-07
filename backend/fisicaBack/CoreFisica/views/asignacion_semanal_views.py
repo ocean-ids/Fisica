@@ -26,9 +26,9 @@ import re
 DAY_INDEX_TO_KEY = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 DAY_KEY_TO_INDEX = {k: i for i, k in enumerate(DAY_INDEX_TO_KEY)}
 # Token: turno(D/N) + nominativo(letra+numero) + puesto opcional(letra+numero) + #indice opcional.
-# Ej: DG15 (turno D, instalacion G15) | DG15G2 (ademas puesto G2=Garita 2) | NG15R1#2.
+# Ej: DG15 (turno D, instalacion G15) | DG15G2 (ademas puesto G2=Garita 2) | NG15R1#2 | TG15 (tarde).
 SACAFRANCO_TOKEN_REGEX = re.compile(
-    r'^(?P<prefix>[DN])(?P<code>[A-Z]{1,3}\d+)(?P<puesto>[A-Z]{1,3}\d+)?(?:#(?P<index>\d+))?$'
+    r'^(?P<prefix>[DNT])(?P<code>[A-Z]{1,3}\d+)(?P<puesto>[A-Z]{1,3}\d+)?(?:#(?P<index>\d+))?$'
 )
 
 # Deriva el codigo corto del puesto (G1/R1/F1/I1/C1...) desde su TIPO (y, si el
@@ -178,6 +178,9 @@ def _parse_sacafranco_token(value):
         return 'base_free', 'Diurno', 'BASE', None, None
     if raw == 'NB':
         return 'base_free', 'Nocturno', 'BASE', None, None
+    # T (tarde) sola: el sacafranco está en base en la tarde (cuenta en Diurno, como la tarde de los fijos).
+    if raw == 'T':
+        return 'base_free', 'Tarde', 'BASE', None, None
     match = SACAFRANCO_TOKEN_REGEX.fullmatch(raw)
     if match:
         prefix = match.group('prefix')
@@ -185,7 +188,7 @@ def _parse_sacafranco_token(value):
         puesto_cod = match.group('puesto')
         index_raw = match.group('index')
         index_val = int(index_raw) if index_raw else None
-        return 'coverage', ('Diurno' if prefix == 'D' else 'Nocturno'), code, index_val, puesto_cod
+        return 'coverage', {'D': 'Diurno', 'N': 'Nocturno', 'T': 'Tarde'}[prefix], code, index_val, puesto_cod
     return 'invalid', None, None, None, None
 
 
@@ -267,13 +270,16 @@ def _validate_sacafranco_tokens(data, week_start_date):
         if token_type == 'invalid':
             return (
                 f"Token inválido en {day_key.upper()}: '{raw_value}'. "
-                "Use F, NB, DB o D/N + código y opcional #n "
+                "Use F, NB, DB, T o D/N/T + código y opcional #n "
                 "(ej: DG5, NG28, DAQ1#2)."
             ), None
 
         target_date = _get_calendar_day_date(week_start_date, day_key)
         if not target_date:
             return f"No se pudo resolver la fecha para {day_key.upper()}", None
+        # La TARDE (T, TG15) se registra como Diurno en el consolidado y en la cobertura automática.
+        if token_turno == 'Tarde':
+            token_turno = 'Diurno'
 
         if token_type == 'base_free':
             resolved[day_key] = {
@@ -563,6 +569,8 @@ def _cleanup_auto_sacafranco_from_token_map(sacafranco_fila_id, week_start_date,
 
     for day_key, token_value in (token_map or {}).items():
         token_type, token_turno, token_code, token_index, token_puesto = _parse_sacafranco_token(token_value)
+        if token_turno == 'Tarde':
+            token_turno = 'Diurno'          # la tarde se limpia igual que lo de Diurno
         target_date = _get_calendar_day_date(week_start_date, day_key)
         if not target_date:
             continue
