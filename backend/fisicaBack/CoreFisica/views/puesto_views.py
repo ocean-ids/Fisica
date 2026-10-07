@@ -39,7 +39,7 @@ def _reescribir_codigo_puesto_sacafranco(inst_cod, old_cod, new_cod):
             if not cel:
                 continue
             cu = cel.upper()
-            turno = cu[0] if cu[:1] in ('D', 'N') else ''
+            turno = cu[0] if cu[:1] in ('D', 'N', 'T', 'V') else ''   # tambien tarde (T) y 24 horas (V)
             if not turno:
                 continue
             resto = cu[1:]  # sin el turno

@@ -26,9 +26,9 @@ import re
 DAY_INDEX_TO_KEY = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 DAY_KEY_TO_INDEX = {k: i for i, k in enumerate(DAY_INDEX_TO_KEY)}
 # Token: turno(D/N) + nominativo(letra+numero) + puesto opcional(letra+numero) + #indice opcional.
-# Ej: DG15 (turno D, instalacion G15) | DG15G2 (ademas puesto G2=Garita 2) | NG15R1#2 | TG15 (tarde).
+# Ej: DG15 (turno D, instalacion G15) | DG15G2 (ademas puesto G2=Garita 2) | NG15R1#2 | TG15 (tarde) | VG15 (24 h).
 SACAFRANCO_TOKEN_REGEX = re.compile(
-    r'^(?P<prefix>[DNT])(?P<code>[A-Z]{1,3}\d+)(?P<puesto>[A-Z]{1,3}\d+)?(?:#(?P<index>\d+))?$'
+    r'^(?P<prefix>[DNTV])(?P<code>[A-Z]{1,3}\d+)(?P<puesto>[A-Z]{1,3}\d+)?(?:#(?P<index>\d+))?$'
 )
 
 # Deriva el codigo corto del puesto (G1/R1/F1/I1/C1...) desde su TIPO (y, si el
@@ -178,9 +178,6 @@ def _parse_sacafranco_token(value):
         return 'base_free', 'Diurno', 'BASE', None, None
     if raw == 'NB':
         return 'base_free', 'Nocturno', 'BASE', None, None
-    # T (tarde) sola: el sacafranco está en base en la tarde (cuenta en Diurno, como la tarde de los fijos).
-    if raw == 'T':
-        return 'base_free', 'Tarde', 'BASE', None, None
     match = SACAFRANCO_TOKEN_REGEX.fullmatch(raw)
     if match:
         prefix = match.group('prefix')
@@ -188,7 +185,10 @@ def _parse_sacafranco_token(value):
         puesto_cod = match.group('puesto')
         index_raw = match.group('index')
         index_val = int(index_raw) if index_raw else None
-        return 'coverage', {'D': 'Diurno', 'N': 'Nocturno', 'T': 'Tarde'}[prefix], code, index_val, puesto_cod
+        # T + nominativo (TG15): cubre el puesto en la tarde (sale en Diurno). V + nominativo (VG15): cubre el puesto
+        # las 24 horas (sale en Diurno y en Nocturno, cada uno con su asistencia). La T y la V solas NO se aceptan.
+        return ('coverage', {'D': 'Diurno', 'N': 'Nocturno', 'T': 'Tarde', 'V': 'Veinticuatro'}[prefix], code,
+                index_val, puesto_cod)
     return 'invalid', None, None, None, None
 
 
@@ -270,8 +270,8 @@ def _validate_sacafranco_tokens(data, week_start_date):
         if token_type == 'invalid':
             return (
                 f"Token inválido en {day_key.upper()}: '{raw_value}'. "
-                "Use F, NB, DB, T o D/N/T + código y opcional #n "
-                "(ej: DG5, NG28, DAQ1#2)."
+                "Use F, NB, DB o D/N/T/V + código y opcional #n "
+                "(ej: DG5, NG28, DAQ1#2, TG15, VG15)."
             ), None
 
         target_date = _get_calendar_day_date(week_start_date, day_key)
@@ -443,8 +443,10 @@ def _sync_sacafranco_to_reporte_y_consolidado(sacafranco_fila_id, week_start_dat
 
         asig = info.get('asignacion')
         token = str(info.get('token') or '').strip().upper()
-        if not asig or not target_date or not token or turno not in ['Diurno', 'Nocturno']:
+        if not asig or not target_date or not token or turno not in ['Diurno', 'Nocturno', 'Veinticuatro']:
             continue
+        # 24 horas (V + nominativo): el puesto queda cubierto en el Diurno y en el Nocturno.
+        turnos_cons = ['Diurno', 'Nocturno'] if turno == 'Veinticuatro' else [turno]
 
         codigo = str(getattr(getattr(asig, 'instalacion', None), 'codigo', '') or '').strip()
         cliente = getattr(asig, 'cliente', None)
@@ -523,32 +525,33 @@ def _sync_sacafranco_to_reporte_y_consolidado(sacafranco_fila_id, week_start_dat
                 row_color=(latest.row_color if latest else None),
             )
 
-        cons = Consolidado.objects.filter(
-            fecha=target_date,
-            turno=turno,
-            tipo='GUARDIA',
-            asignacion_ref_id=asig.id,
-        ).first()
-        if cons:
-            if cons.observacion and not str(cons.observacion).upper().startswith('COBERTURA SACAFRANCO AUTO'):
-                continue
-            cons.nominativo = cons.nominativo or (codigo or None)
-            cons.proyecto = cons.proyecto or (getattr(cliente, 'nombre_comercial', None) if cliente else None)
-            cons.puesto = ''
-            cons.observacion = ''
-            cons.save()
-        else:
-            Consolidado.objects.create(
+        for turno_c in turnos_cons:
+            cons = Consolidado.objects.filter(
                 fecha=target_date,
-                turno=turno,
+                turno=turno_c,
                 tipo='GUARDIA',
-                persona_ref=None,
                 asignacion_ref_id=asig.id,
-                nominativo=(codigo or None),
-                proyecto=(getattr(cliente, 'nombre_comercial', None) if cliente else None),
-                puesto='',
-                observacion='',
-            )
+            ).first()
+            if cons:
+                if cons.observacion and not str(cons.observacion).upper().startswith('COBERTURA SACAFRANCO AUTO'):
+                    continue
+                cons.nominativo = cons.nominativo or (codigo or None)
+                cons.proyecto = cons.proyecto or (getattr(cliente, 'nombre_comercial', None) if cliente else None)
+                cons.puesto = ''
+                cons.observacion = ''
+                cons.save()
+            else:
+                Consolidado.objects.create(
+                    fecha=target_date,
+                    turno=turno_c,
+                    tipo='GUARDIA',
+                    persona_ref=None,
+                    asignacion_ref_id=asig.id,
+                    nominativo=(codigo or None),
+                    proyecto=(getattr(cliente, 'nombre_comercial', None) if cliente else None),
+                    puesto='',
+                    observacion='',
+                )
 
 
 def _cleanup_auto_sacafranco_from_token_map(sacafranco_fila_id, week_start_date, token_map):
@@ -593,8 +596,9 @@ def _cleanup_auto_sacafranco_from_token_map(sacafranco_fila_id, week_start_date,
             ).delete()
             continue
 
-        if token_type != 'coverage' or token_turno not in ['Diurno', 'Nocturno']:
+        if token_type != 'coverage' or token_turno not in ['Diurno', 'Nocturno', 'Veinticuatro']:
             continue
+        turnos_cons = ['Diurno', 'Nocturno'] if token_turno == 'Veinticuatro' else [token_turno]
 
         token_raw = str(token_value or '').strip().upper()
         auto_desc = f"Cobertura SACAFRANCO AUTO {token_raw}"
@@ -611,7 +615,7 @@ def _cleanup_auto_sacafranco_from_token_map(sacafranco_fila_id, week_start_date,
         if asig_ids:
             Consolidado.objects.filter(
                 fecha=target_date,
-                turno=token_turno,
+                turno__in=turnos_cons,
                 tipo='GUARDIA',
                 asignacion_ref_id__in=asig_ids,
             ).filter(

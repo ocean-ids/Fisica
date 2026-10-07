@@ -1215,8 +1215,10 @@ def _build_reporte_asistencia_data(
         if day_key:
             # Sin filtro de turno -> se muestran TODOS los sacafranco (tokens D y N).
             # Con filtro Diurno/Nocturno -> solo los de ese turno.
-            # La T (tarde) del sacafranco cuenta en Diurno, como la tarde de los fijos.
-            _turno_letters = ('D', 'T') if turno == 'Diurno' else (('N',) if turno == 'Nocturno' else ('D', 'N', 'T'))
+            # La T (tarde) del sacafranco cuenta en Diurno, como la tarde de los fijos. La V + nominativo (24 horas)
+            # sale en los dos, una fila por turno, cada una con su propia asistencia.
+            _turno_letters = (('D', 'T', 'V') if turno == 'Diurno'
+                              else (('N', 'V') if turno == 'Nocturno' else ('D', 'N', 'T', 'V')))
             month_base = fecha_obj.replace(day=1)
             week_start_month = month_base + datetime.timedelta(days=((fecha_obj.day - 1) // 7) * 7)
             week_start_iso = fecha_obj - datetime.timedelta(days=fecha_obj.weekday())
@@ -1229,11 +1231,11 @@ def _build_reporte_asistencia_data(
                      # septiembre con semanas proyectadas a octubre hacía salir al sacafranco DUPLICADO.
                      sacafranco_fila__mes=fecha_obj.month, sacafranco_fila__anio=fecha_obj.year)
 
-            # Asistencia marcada del sacafranco (ASISTIO/FALTO) para ESTA fecha, por fila.
+            # Asistencia marcada del sacafranco (ASISTIO/FALTO) para ESTA fecha, por fila (y por turno si es 24 h).
             _saca_asist = {}
             for _sa in SacafrancoAsistencia.objects.filter(fecha=fecha_obj).select_related(
                     'modificado_por', 'reemplazo', 'persona_cobertura'):
-                _saca_asist[_sa.sacafranco_fila_id] = _sa
+                _saca_asist[(_sa.sacafranco_fila_id, _sa.turno or '')] = _sa
 
             inst_cache = {}
 
@@ -1262,6 +1264,9 @@ def _build_reporte_asistencia_data(
             for srow in sac_qs:
                 token_val = str(getattr(srow, day_key, '') or '').strip().upper()
                 if not token_val or token_val[0] not in _turno_letters:
+                    continue
+                # La T y la V solo valen con nominativo (TG15, VG15); solas no se aceptan en el sacafranco.
+                if token_val[0] in ('T', 'V') and _parse_tok(token_val)[0] != 'coverage':
                     continue
                 fila = getattr(srow, 'sacafranco_fila', None)
                 if not fila:
@@ -1311,63 +1316,70 @@ def _build_reporte_asistencia_data(
                 if _hi or _ho:
                     horario_saca = f"{_hi.strftime('%H:%M') if _hi else ''} {_ho.strftime('%H:%M') if _ho else ''}".strip()
 
-                # Asistencia/edicion marcada del sacafranco para esta fecha (si existe).
-                _sa = _saca_asist.get(fila.id)
-                _sa_estado = _normalize_estado_asistencia(getattr(_sa, 'estado_asistencia', '')) if _sa else ''
-                _sa_modpor = ''
-                _sa_moden = None
-                _sa_rem = getattr(_sa, 'reemplazo', None) if _sa else None
-                if _sa:
-                    _u = getattr(_sa, 'modificado_por', None)
-                    if _u:
-                        _sa_modpor = f"{_u.first_name} {_u.last_name}".strip() or _u.get_username()
-                    _sa_moden = _sa.modificado_en.isoformat() if _sa.modificado_en else None
+                # 24 horas (V + nominativo): una fila por turno, cada una con su propia asistencia.
+                if token_val[0] == 'V':
+                    _turnos_reg = [turno] if turno in ('Diurno', 'Nocturno') else ['Diurno', 'Nocturno']
+                else:
+                    _turnos_reg = ['']
+                for _t_reg in _turnos_reg:
+                    # Asistencia/edicion marcada del sacafranco para esta fecha (si existe).
+                    _sa = (_saca_asist.get((fila.id, _t_reg)) if _t_reg else None) or _saca_asist.get((fila.id, ''))
+                    _sa_estado = _normalize_estado_asistencia(getattr(_sa, 'estado_asistencia', '')) if _sa else ''
+                    _sa_modpor = ''
+                    _sa_moden = None
+                    _sa_rem = getattr(_sa, 'reemplazo', None) if _sa else None
+                    if _sa:
+                        _u = getattr(_sa, 'modificado_por', None)
+                        if _u:
+                            _sa_modpor = f"{_u.first_name} {_u.last_name}".strip() or _u.get_username()
+                        _sa_moden = _sa.modificado_en.isoformat() if _sa.modificado_en else None
 
-                # Sacafranco sin persona: sale como "HUECA" en el nombre, pero la asistencia y
-                # el check "Hueca" quedan en blanco para que el supervisor los marque.
-                _saca_hueca = bool(getattr(_sa, 'hueca', False)) if _sa else False
+                    # Sacafranco sin persona: sale como "HUECA" en el nombre, pero la asistencia y
+                    # el check "Hueca" quedan en blanco para que el supervisor los marque.
+                    _saca_hueca = bool(getattr(_sa, 'hueca', False)) if _sa else False
 
-                # MOVIMIENTO INTERNO en sacafranco: si se eligió un guardia del día
-                # (persona_cobertura), ese es el nombre mostrado SOLO en el reporte de esa
-                # fecha (no cambia la ficha del sacafranco).
-                _sa_pc = getattr(_sa, 'persona_cobertura', None) if _sa else None
-                _saca_nombre = persona_nombre or 'HUECA'
-                _saca_persona = persona
-                _saca_mov_interno = False
-                if _sa_pc:
-                    _saca_nombre = f"{_sa_pc.apellidos} {_sa_pc.nombres}".strip()
-                    _saca_persona = _sa_pc
-                    _saca_mov_interno = (getattr(_sa_pc, 'tipo', '') == 'SACAFRANCO') or bool(
-                        fecha_obj and _sa_pc.id and Asignacion.objects.filter(
-                            persona_id=_sa_pc.id, mes=fecha_obj.month, anio=fecha_obj.year, estado='ACTIVO'
-                        ).exists()
-                    )
+                    # MOVIMIENTO INTERNO en sacafranco: si se eligió un guardia del día
+                    # (persona_cobertura), ese es el nombre mostrado SOLO en el reporte de esa
+                    # fecha (no cambia la ficha del sacafranco).
+                    _sa_pc = getattr(_sa, 'persona_cobertura', None) if _sa else None
+                    _saca_nombre = persona_nombre or 'HUECA'
+                    _saca_persona = persona
+                    _saca_mov_interno = False
+                    if _sa_pc:
+                        _saca_nombre = f"{_sa_pc.apellidos} {_sa_pc.nombres}".strip()
+                        _saca_persona = _sa_pc
+                        _saca_mov_interno = (getattr(_sa_pc, 'tipo', '') == 'SACAFRANCO') or bool(
+                            fecha_obj and _sa_pc.id and Asignacion.objects.filter(
+                                persona_id=_sa_pc.id, mes=fecha_obj.month, anio=fecha_obj.year, estado='ACTIVO'
+                            ).exists()
+                        )
 
-                data.append({
-                    'asignacion_id': None,
-                    'sacafranco_fila_id': fila.id,
-                    'codigo': codigo_val,
-                    'cliente': cliente_val,
-                    'puesto': puesto_val,
-                    'horario': horario_saca,
-                    'nombre_apellidos': _saca_nombre,
-                    'apellidos_txt': (_saca_persona.apellidos or '').strip() if _saca_persona else '',
-                    'nombres_txt': (_saca_persona.nombres or '').strip() if _saca_persona else '',
-                    'movimiento_interno': _saca_mov_interno,
-                    'reemplazo_id': _sa_rem.id if _sa_rem else None,
-                    'reemplazo': f"{_sa_rem.apellidos} {_sa_rem.nombres}".strip() if _sa_rem else '',
-                    'estado_asistencia': _sa_estado,
-                    'estado': (getattr(_sa, 'estado', '') or 'TURNO') if _sa else 'TURNO',
-                    'descripcion': (getattr(_sa, 'descripcion', '') or '') if _sa else '',
-                    'modificado_por': _sa_modpor,
-                    'row_color': (getattr(_sa, 'row_color', '') or '') if _sa else '',
-                    'hueca': _saca_hueca,
-                    'hueca_motivo': (getattr(_sa, 'hueca_motivo', '') or '') if _sa else '',
-                    'modificado_en': _sa_moden,
-                    'zona_titulo': zona_val,
-                    'provincia': provincia_val,
-                    'turno': _TURNO_LABEL.get((token_val[0] if token_val else ''), ''),
-                })
+                    data.append({
+                        'asignacion_id': None,
+                        'sacafranco_fila_id': fila.id,
+                        'codigo': codigo_val,
+                        'cliente': cliente_val,
+                        'puesto': puesto_val,
+                        'horario': horario_saca,
+                        'nombre_apellidos': _saca_nombre,
+                        'apellidos_txt': (_saca_persona.apellidos or '').strip() if _saca_persona else '',
+                        'nombres_txt': (_saca_persona.nombres or '').strip() if _saca_persona else '',
+                        'movimiento_interno': _saca_mov_interno,
+                        'reemplazo_id': _sa_rem.id if _sa_rem else None,
+                        'reemplazo': f"{_sa_rem.apellidos} {_sa_rem.nombres}".strip() if _sa_rem else '',
+                        'estado_asistencia': _sa_estado,
+                        'estado': (getattr(_sa, 'estado', '') or 'TURNO') if _sa else 'TURNO',
+                        'descripcion': (getattr(_sa, 'descripcion', '') or '') if _sa else '',
+                        'modificado_por': _sa_modpor,
+                        'row_color': (getattr(_sa, 'row_color', '') or '') if _sa else '',
+                        'hueca': _saca_hueca,
+                        'hueca_motivo': (getattr(_sa, 'hueca_motivo', '') or '') if _sa else '',
+                        'modificado_en': _sa_moden,
+                        'zona_titulo': zona_val,
+                        'provincia': provincia_val,
+                        'turno': _TURNO_LABEL.get((token_val[0] if token_val else ''), ''),
+                        'turno_registro': _t_reg,
+                    })
 
     if term:
         import re as _re_q
@@ -1518,8 +1530,8 @@ def _horas_de_turno(entradas, turno_nombre):
     return None
 
 
-# Nombre del puesto "en base" según la letra del turno (DB, NB, T).
-_PUESTO_BASE = {'D': 'DIA BASE', 'N': 'NOCHE BASE', 'T': 'TARDE BASE'}
+# Nombre del puesto "en base" según la letra del turno (DB, NB).
+_PUESTO_BASE = {'D': 'DIA BASE', 'N': 'NOCHE BASE'}
 
 
 def _turno_guardia(letra, turno_vista=None):
@@ -1831,15 +1843,18 @@ def _sacafranco_token_for_date(sacafranco_fila_id, fecha):
     return str(getattr(row, day_field, '') or '').strip().upper()
 
 
-def _saca_guardia_ctx(fila, fecha_reporte):
+def _saca_guardia_ctx(fila, fecha_reporte, turno_marca=''):
     """(turno, cliente, puesto) del nominativo que cubre el sacafranco ese dia, segun su
-    token. Devuelve None si ese dia no tiene cobertura Diurno/Nocturno."""
+    token. Devuelve None si ese dia no tiene cobertura Diurno/Nocturno.
+    24 horas (VG15): el turno es el de la marca (Diurno / Nocturno), cada uno por separado."""
     from ..models import Instalacion
     from .asignacion_semanal_views import _parse_sacafranco_token
     token = _sacafranco_token_for_date(fila.id, fecha_reporte)
     _t, tturno, tcode, _i, _p = _parse_sacafranco_token(token)
     if tturno == 'Tarde':
         tturno = 'Diurno'                              # la tarde se registra en Diurno
+    if tturno == 'Veinticuatro':
+        tturno = turno_marca if turno_marca in ('Diurno', 'Nocturno') else 'Diurno'
     if tturno not in ('Diurno', 'Nocturno'):
         return None
     cliente = ''
@@ -1863,17 +1878,22 @@ def _sync_reporte_guardia_sacafranco(sa, fecha_reporte):
     if not fila:
         return
 
+    # 24 horas (VG15): el Diurno y el Nocturno son independientes -> solo se tocan las filas de ESE turno.
+    solo_turno = sa.turno if getattr(sa, 'turno', '') in ('Diurno', 'Nocturno') else None
     hueca_motivo_prev = ''
     if fecha_reporte:
-        _h = ReporteGuardia.objects.filter(
+        _hq = ReporteGuardia.objects.filter(
             sacafranco_fila=fila, fecha=fecha_reporte, seccion='HUECA', auto=True
-        ).first()
+        )
+        _h = (_hq.filter(turno=solo_turno) if solo_turno else _hq).first()
         if _h:
             hueca_motivo_prev = _h.motivo or ''
     # SOLO las filas de ESE día (guardar un día no borra las filas de los demás).
     _auto_qs = ReporteGuardia.objects.filter(sacafranco_fila=fila, auto=True)
     if fecha_reporte:
         _auto_qs = _auto_qs.filter(fecha=fecha_reporte)
+    if solo_turno:
+        _auto_qs = _auto_qs.filter(turno=solo_turno)
     prev_overrides = {}
     for _r in _auto_qs:
         if _r.overrides:
@@ -1883,7 +1903,7 @@ def _sync_reporte_guardia_sacafranco(sa, fecha_reporte):
     if not fecha_reporte:
         ReporteGuardiaOculta.objects.filter(sacafranco_fila=fila).delete()
         return
-    ctx = _saca_guardia_ctx(fila, fecha_reporte)
+    ctx = _saca_guardia_ctx(fila, fecha_reporte, getattr(sa, 'turno', ''))
     if not ctx:
         ReporteGuardiaOculta.objects.filter(sacafranco_fila=fila, fecha=fecha_reporte).delete()
         return
@@ -1953,10 +1973,12 @@ def _sync_hueca_reporte_guardia_sacafranco(sa, fecha_reporte):
     qs = ReporteGuardia.objects.filter(sacafranco_fila=fila, seccion='HUECA', auto=False)
     if fecha_reporte:
         qs = qs.filter(fecha=fecha_reporte)      # solo ESE día
+    if getattr(sa, 'turno', '') in ('Diurno', 'Nocturno'):
+        qs = qs.filter(turno=sa.turno)           # 24 horas: solo la de ESE turno
     if not getattr(sa, 'hueca', False) or not fecha_reporte:
         qs.delete()
         return
-    ctx = _saca_guardia_ctx(fila, fecha_reporte)
+    ctx = _saca_guardia_ctx(fila, fecha_reporte, getattr(sa, 'turno', ''))
     turno, cliente, puesto = ctx if ctx else ('Diurno', '', '')
     qs.delete()
     ReporteGuardia.objects.create(
@@ -2176,7 +2198,13 @@ def marcar_sacafranco_asistencia(request, sacafranco_fila_id):
     except (ValueError, TypeError):
         return JsonResponse({'error': 'Fecha invalida'}, status=status.HTTP_400_BAD_REQUEST)
 
-    obj, _ = SacafrancoAsistencia.objects.get_or_create(sacafranco_fila=fila, fecha=fecha)
+    # 24 horas (V + nominativo): el Diurno y el Nocturno tienen cada uno su propia marca (independientes).
+    turno_marca = ''
+    if str(request.data.get('turno') or '') in ('Diurno', 'Nocturno'):
+        from .asignacion_semanal_views import _parse_sacafranco_token
+        if _parse_sacafranco_token(_sacafranco_token_for_date(fila.id, fecha))[1] == 'Veinticuatro':
+            turno_marca = str(request.data.get('turno'))
+    obj, _ = SacafrancoAsistencia.objects.get_or_create(sacafranco_fila=fila, fecha=fecha, turno=turno_marca)
 
     if 'estado_asistencia' in request.data:
         est_a = str(request.data.get('estado_asistencia') or '').strip().upper()
@@ -2222,6 +2250,7 @@ def marcar_sacafranco_asistencia(request, sacafranco_fila_id):
         SacafrancoAsistenciaHistorial.objects.create(
             sacafranco_fila=fila,
             fecha_reporte=fecha,
+            turno=turno_marca,
             usuario=request.user if request.user and request.user.is_authenticated else None,
             estado=obj.estado,
             estado_asistencia=obj.estado_asistencia,
@@ -2348,6 +2377,7 @@ def historial_sacafranco_asistencia(request, sacafranco_fila_id):
             reemplazo_nombre = f"{h.reemplazo.apellidos} {h.reemplazo.nombres}".strip()
         data.append({
             'fecha_reporte': h.fecha_reporte.isoformat() if h.fecha_reporte else None,
+            'turno': h.turno or '',   # solo 24 horas: Diurno / Nocturno
             'usuario': usuario_nombre,
             'codigo': '',
             'estado_asistencia': _normalize_estado_asistencia(h.estado_asistencia),
@@ -2498,7 +2528,7 @@ def historial_puesto_sacafranco(request, sacafranco_fila_id):
             if sem:
                 token = str(getattr(sem, day_field_map[d.weekday()], '') or '').strip().upper()
                 _t, turno, code, _i, _p = _parse_sacafranco_token(token)
-                if turno in ('Diurno', 'Nocturno'):
+                if turno in ('Diurno', 'Nocturno', 'Tarde', 'Veinticuatro'):
                     if code and code != 'BASE':
                         cliente, puesto = _resolve(code)
                     else:

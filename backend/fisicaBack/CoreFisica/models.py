@@ -998,6 +998,9 @@ class SacafrancoAsistencia(models.Model):
         SacafrancoFila, on_delete=models.CASCADE, related_name='asistencias'
     )
     fecha = models.DateField()
+    # Turno SOLO cuando ese día cubre 24 horas (V + nominativo): 'Diurno' o 'Nocturno', cada uno con su propia
+    # asistencia. Vacío = una sola marca del día (todos los demás).
+    turno = models.CharField(max_length=10, blank=True, default='')
     estado_asistencia = models.CharField(max_length=10, blank=True, default='')
     estado = models.CharField(max_length=30, blank=True, default='')
     descripcion = models.TextField(blank=True, default='')
@@ -1018,7 +1021,7 @@ class SacafrancoAsistencia(models.Model):
     modificado_en = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [('sacafranco_fila', 'fecha')]
+        unique_together = [('sacafranco_fila', 'fecha', 'turno')]
         indexes = [models.Index(fields=['fecha'])]
 
     def __str__(self):
@@ -1033,6 +1036,7 @@ class SacafrancoAsistenciaHistorial(models.Model):
         SacafrancoFila, on_delete=models.CASCADE, related_name='historial_asistencia'
     )
     fecha_reporte = models.DateField(null=True, blank=True)
+    turno = models.CharField(max_length=10, blank=True, default='')   # solo 24 horas: Diurno / Nocturno
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     estado = models.CharField(max_length=30, blank=True, default='')
     estado_asistencia = models.CharField(max_length=10, blank=True, default='')

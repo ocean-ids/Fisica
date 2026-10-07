@@ -657,6 +657,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
         fecha: this.filtroFecha || null,
         estado_asistencia: siguiente || null,
         row_color: colorSaca,
+        turno: this.filtroJornada,   // 24 horas (VG15): cada turno tiene su propia asistencia
       } as any).subscribe({
         next: (res) => {
           row.estado_asistencia = res.estado_asistencia;

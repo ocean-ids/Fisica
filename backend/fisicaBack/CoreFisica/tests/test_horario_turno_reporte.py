@@ -167,13 +167,19 @@ class BaseTarde24hTests(HorarioEnElReporteTests):
         f = self._fila('N', 'NB', 'Nocturno')
         self.assertEqual((f['codigo'], f['puesto_tipo']), ('BASE', 'NOCHE BASE'))
 
+    def test_fijo_con_t_sola_se_queda_en_su_nominativo(self):
+        f = self._fila('T', 'T', 'Diurno')
+        self.assertNotEqual(f['codigo'], 'BASE')
+        self.assertNotIn(f['cliente'], ('SEGURIDAD FISICA',))
+        self.assertEqual(f['turno'], 'Tarde')
+
     def test_fijo_normal_no_cambia(self):
         f = self._fila('D', 'D', 'Diurno')
         self.assertNotEqual(f['codigo'], 'BASE')
 
-    def test_el_sacafranco_acepta_t_sola_en_base_y_no_la_v(self):
+    def test_el_sacafranco_no_acepta_t_ni_v_solas(self):
         from CoreFisica.views.asignacion_semanal_views import _parse_sacafranco_token
-        self.assertEqual(_parse_sacafranco_token('T')[:3], ('base_free', 'Tarde', 'BASE'))
+        self.assertEqual(_parse_sacafranco_token('T')[0], 'invalid')
         self.assertEqual(_parse_sacafranco_token('V')[0], 'invalid')
         self.assertEqual(_parse_sacafranco_token('DB')[:3], ('base_free', 'Diurno', 'BASE'))
 
@@ -211,7 +217,8 @@ class BusquedaNominativoTests(HorarioEnElReporteTests):
 
 
 class SacafrancoTardeTests(TestCase):
-    """La T (tarde) del sacafranco: sale en BASE como TARDE BASE, en el filtro Diurno, y no en Nocturno."""
+    """La T (tarde) del sacafranco: solo con nominativo (TG15), como la D; sale en el filtro Diurno y no en Nocturno.
+    La T sola no se acepta (no pasa a BASE / Seguridad Física)."""
     FECHA = datetime.date(2026, 10, 5)
 
     def setUp(self):
@@ -230,15 +237,17 @@ class SacafrancoTardeTests(TestCase):
         d = r.json()
         return [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('sacafranco_fila_id') == self.fila.id]
 
-    def test_t_sale_en_diurno_como_tarde_base(self):
-        f = self._filas('Diurno')
-        self.assertEqual(len(f), 1)
-        self.assertEqual((f[0]['codigo'], f[0]['puesto'], f[0]['turno']), ('BASE', 'TARDE BASE', 'Tarde'))
+    def test_la_t_sola_no_sale(self):
+        self.assertEqual(self._filas('Diurno'), [])
         self.assertEqual(self._filas('Nocturno'), [])
 
-    def test_la_guardia_de_la_t_va_en_diurno(self):
+    def test_la_guardia_de_la_t_con_nominativo_va_en_diurno_con_su_cliente(self):
+        from CoreFisica.models import SacafrancoFilaSemanal
         from CoreFisica.views.reporte_asistencia_views import _saca_guardia_ctx
-        self.assertEqual(_saca_guardia_ctx(self.fila, self.FECHA), ('Diurno', 'SEGURIDAD FISICA', ''))
+        cli = Cliente.objects.create(razon_social='C SA', nombre_comercial='CLIENTE T')
+        Instalacion.objects.create(cliente=cli, nombre='INST T', codigo='G15')
+        SacafrancoFilaSemanal.objects.filter(sacafranco_fila=self.fila).update(mon='TG15')
+        self.assertEqual(_saca_guardia_ctx(self.fila, self.FECHA), ('Diurno', 'CLIENTE T', 'INST T'))
 
     def test_t_con_nominativo_cubre_ese_puesto_en_diurno(self):
         from CoreFisica.models import SacafrancoFilaSemanal
@@ -252,18 +261,18 @@ class SacafrancoTardeTests(TestCase):
         self.assertEqual((f[0]['codigo'], f[0]['cliente'], f[0]['turno']), ('G15', 'CLIENTE T', 'Tarde'))
         self.assertEqual(self._filas('Nocturno'), [])
 
-    def test_el_cronograma_acepta_t_y_t_con_nominativo(self):
+    def test_el_cronograma_acepta_t_con_nominativo_y_no_la_t_sola(self):
         cli = Cliente.objects.create(razon_social='C2 SA', nombre_comercial='C2')
         Instalacion.objects.create(cliente=cli, nombre='INST 16', codigo='G16')
         from CoreFisica.models import SacafrancoFila
         hoy = datetime.date.today()
         ws = hoy.replace(day=1)
         fila = SacafrancoFila.objects.create(mes=hoy.month, anio=hoy.year, persona=self.fila.persona, orden=2)
-        for token in ('T', 'TG16'):
+        for token, esperado in (('TG16', (200, 201)), ('T', (400,))):
             r = self.client.post('/api/sacafranco-fila-semanal/guardar/', data=json.dumps(
                 {'sacafranco_fila': fila.id, 'week_start': ws.isoformat(), 'mon': token}),
                 content_type='application/json', **self.auth)
-            self.assertIn(r.status_code, (200, 201), (token, r.content))
+            self.assertIn(r.status_code, esperado, (token, r.content))
 
 
 class Asistencia24hIndependienteTests(HorarioEnElReporteTests):
@@ -353,3 +362,91 @@ class Asistencia24hIndependienteTests(HorarioEnElReporteTests):
         filas = [{'turno_registro': 'Diurno'}, {'turno_registro': 'Nocturno'}, {'turno_registro': ''}]
         self.assertEqual(len(_una_fila_24h(filas, None)), 2)
         self.assertEqual(len(_una_fila_24h(filas, 'Nocturno')), 3)
+
+
+class SacafrancoVeinticuatroTests(TestCase):
+    """V + nominativo (VG15) en el sacafranco: cubre el puesto las 24 horas, sale en Diurno y en Nocturno y cada turno
+    tiene su propia asistencia (marcar en uno no cambia el otro). La V sola sigue sin aceptarse."""
+    FECHA = datetime.date(2026, 10, 5)
+
+    def setUp(self):
+        from CoreFisica.models import SacafrancoFila, SacafrancoFilaSemanal
+        User.objects.create_superuser(username='sv_user', email='e@e.com', password='SvPass123!')
+        tok = self.client.post('/api/login/', data=json.dumps({'username': 'sv_user', 'password': 'SvPass123!'}),
+                               content_type='application/json').json().get('access')
+        self.auth = {'HTTP_AUTHORIZATION': f'Bearer {tok}'}
+        cli = Cliente.objects.create(razon_social='C SA', nombre_comercial='CLIENTE V')
+        Instalacion.objects.create(cliente=cli, nombre='INST V', codigo='G15')
+        p = Persona.objects.create(nombres='V', apellidos='VEINTI', cedula='0910000070', tipo='SACAFRANCO')
+        self.fila = SacafrancoFila.objects.create(mes=10, anio=2026, persona=p, orden=1)
+        SacafrancoFilaSemanal.objects.create(sacafranco_fila=self.fila, week_start=datetime.date(2026, 10, 1),
+                                             mon='VG15', tue='V')
+
+    def _filas(self, turno=None, fecha=None):
+        params = {'fecha': (fecha or self.FECHA).isoformat()}
+        if turno:
+            params['turno'] = turno
+        d = self.client.get('/api/reporte-asistencia/', params, **self.auth).json()
+        return [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('sacafranco_fila_id') == self.fila.id]
+
+    def _marcar(self, turno, **datos):
+        r = self.client.put(f'/api/reporte-asistencia/sacafranco/{self.fila.id}/',
+                            data=json.dumps({'fecha': self.FECHA.isoformat(), 'turno': turno, **datos}),
+                            content_type='application/json', **self.auth)
+        self.assertEqual(r.status_code, 200, r.content)
+
+    def _estado(self, turno):
+        f = self._filas(turno)
+        self.assertEqual(len(f), 1)
+        self.assertEqual((f[0]['turno'], f[0]['turno_registro']), ('Veinticuatro', turno))
+        return f[0]['estado_asistencia']
+
+    def test_el_token(self):
+        from CoreFisica.views.asignacion_semanal_views import _parse_sacafranco_token
+        self.assertEqual(_parse_sacafranco_token('VG15')[:3], ('coverage', 'Veinticuatro', 'G15'))
+        self.assertEqual(_parse_sacafranco_token('V')[0], 'invalid')
+
+    def test_sale_en_diurno_y_en_nocturno_con_el_puesto(self):
+        for t in ('Diurno', 'Nocturno'):
+            f = self._filas(t)
+            self.assertEqual(len(f), 1)
+            self.assertEqual((f[0]['codigo'], f[0]['cliente']), ('G15', 'CLIENTE V'))
+        self.assertEqual(sorted(f['turno_registro'] for f in self._filas()), ['Diurno', 'Nocturno'])
+
+    def test_la_v_sola_no_sale(self):
+        self.assertEqual(self._filas('Diurno', fecha=datetime.date(2026, 10, 6)), [])
+
+    def test_asiste_en_diurno_no_cambia_el_nocturno(self):
+        self._marcar('Diurno', estado_asistencia='ASISTIO')
+        self.assertEqual(self._estado('Diurno'), 'ASISTIO')
+        self.assertIn(self._estado('Nocturno'), (None, ''))
+        self._marcar('Nocturno', estado_asistencia='FALTO')
+        self.assertEqual((self._estado('Diurno'), self._estado('Nocturno')), ('ASISTIO', 'FALTO'))
+
+    def test_la_guardia_tiene_cada_turno_por_separado(self):
+        from CoreFisica.models import ReporteGuardia
+        from CoreFisica.views.reporte_guardia_views import regenerar_guardia_dia
+        faltos = lambda: sorted(ReporteGuardia.objects.filter(fecha=self.FECHA, seccion='FALTOS',
+                                                              sacafranco_fila=self.fila).values_list('turno', flat=True))
+        self._marcar('Diurno', estado_asistencia='FALTO')
+        self._marcar('Nocturno', estado_asistencia='FALTO')
+        self.assertEqual(faltos(), ['Diurno', 'Nocturno'])
+        self._marcar('Nocturno', estado_asistencia='ASISTIO')
+        self.assertEqual(faltos(), ['Diurno'])
+        regenerar_guardia_dia(self.FECHA)
+        self.assertEqual(faltos(), ['Diurno'])
+
+    def test_el_cronograma_acepta_v_con_nominativo_y_no_la_v_sola(self):
+        from CoreFisica.models import SacafrancoFila
+        hoy = datetime.date.today()
+        cli = Cliente.objects.create(razon_social='C2 SA', nombre_comercial='C2')
+        Instalacion.objects.create(cliente=cli, nombre='INST 16', codigo='G16')
+        fila = SacafrancoFila.objects.create(mes=hoy.month, anio=hoy.year, persona=self.fila.persona, orden=2)
+        ok = self.client.post('/api/sacafranco-fila-semanal/guardar/', data=json.dumps(
+            {'sacafranco_fila': fila.id, 'week_start': hoy.replace(day=1).isoformat(), 'mon': 'VG16'}),
+            content_type='application/json', **self.auth)
+        self.assertIn(ok.status_code, (200, 201), ok.content)
+        mal = self.client.post('/api/sacafranco-fila-semanal/guardar/', data=json.dumps(
+            {'sacafranco_fila': fila.id, 'week_start': hoy.replace(day=1).isoformat(), 'tue': 'V'}),
+            content_type='application/json', **self.auth)
+        self.assertEqual(mal.status_code, 400, mal.content)
