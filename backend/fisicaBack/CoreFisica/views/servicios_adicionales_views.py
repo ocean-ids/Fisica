@@ -30,7 +30,7 @@ MAX_DIAS = 366   # rango máximo que se puede pedir de una vez
 # Encabezado del formato FR (como la hoja impresa).
 FR_TITULO = 'FR-REPORTE DE PUESTO ADICIONAL'
 FR_VERSION = '.03'
-FR_FECHA_APROBACION = ''
+FR_FECHA_APROBACION = '14-dic-21'
 _DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 _MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre',
           'noviembre', 'diciembre']
@@ -118,6 +118,82 @@ def _serializar(sa):
 
 
 _SELECT = ('cliente', 'instalacion', 'creado_por', 'modificado_por')
+
+
+def _horas_entre(hi, ho):
+    """Horas entre el ingreso y la salida (si la salida es antes, cruza la medianoche)."""
+    if not hi or not ho:
+        return Decimal(0)
+    a, b = hi.hour * 60 + hi.minute, ho.hour * 60 + ho.minute
+    d = b - a if b > a else b - a + 24 * 60
+    return (Decimal(d) / 60).quantize(Decimal('0.01'))
+
+
+def _defectos(fecha, turno, asignacion=None, sacafranco_fila=None):
+    """(cliente_id, instalacion_id, hora_ingreso, hora_salida) por defecto de una fila de la asistencia: el cliente
+    donde se pone el adicional y el horario que sale en el registro (el del puesto para ese turno)."""
+    from ..models import PuestoHorario
+    from .reporte_asistencia_views import _horas_de_turno
+    cliente_id = instalacion_id = hi = ho = None
+    if asignacion is not None:
+        cliente_id, instalacion_id = asignacion.cliente_id, asignacion.instalacion_id
+        entradas = [(ph.hora_ingreso, ph.hora_salida, ph.turno) for ph in PuestoHorario.objects.filter(
+            puesto_id=asignacion.puesto_id, dia=fecha.weekday() + 1) if ph.hora_ingreso]
+        horas = (_horas_de_turno(entradas, turno)
+                 or next(((e[0], e[1]) for e in entradas if e[2] == turno), None)
+                 or ((entradas[0][0], entradas[0][1]) if entradas else None))
+        if not horas and asignacion.horario_id:
+            horas = (asignacion.horario.hora_ingreso, asignacion.horario.hora_salida)
+        if horas:
+            hi, ho = horas
+    elif sacafranco_fila is not None:
+        from .reporte_asistencia_views import _sacafranco_token_for_date
+        from .asignacion_semanal_views import _parse_sacafranco_token
+        code = _parse_sacafranco_token(_sacafranco_token_for_date(sacafranco_fila.id, fecha))[2]
+        inst = Instalacion.objects.filter(codigo__iexact=code).first() if code and code != 'BASE' else None
+        if inst:
+            cliente_id, instalacion_id = inst.cliente_id, inst.id
+        hi, ho = sacafranco_fila.hora_ingreso, sacafranco_fila.hora_salida
+    return cliente_id, instalacion_id, hi, ho
+
+
+def _origen(asignacion=None, sacafranco_fila=None):
+    if asignacion is not None:
+        return {'asignacion_id': asignacion.id}
+    if sacafranco_fila is not None:
+        return {'sacafranco_fila_id': sacafranco_fila.id}
+    return None
+
+
+def asegurar_servicio_adicional(fecha, turno, asignacion=None, sacafranco_fila=None, usuario=None):
+    """Una fila de la asistencia guardada como ADICIONAL ese día y turno aparece en el módulo: si no tiene su
+    servicio adicional, se crea INCOMPLETO (cliente, horario por defecto, H calculada y C = 1; lo demás vacío
+    hasta que lo completen). Devuelve (registro, creado)."""
+    origen = _origen(asignacion, sacafranco_fila)
+    if not origen or not fecha or turno not in ('Diurno', 'Nocturno'):
+        return None, False
+    existente = ServicioAdicional.objects.filter(fecha=fecha, turno=turno, **origen).first()
+    if existente:
+        return existente, False
+    cliente_id, instalacion_id, hi, ho = _defectos(fecha, turno, asignacion, sacafranco_fila)
+    if not cliente_id and not instalacion_id:
+        return None, False
+    sa = ServicioAdicional.objects.create(
+        fecha=fecha, turno=turno, cliente_id=cliente_id, instalacion_id=instalacion_id, cantidad=1,
+        horas=_horas_entre(hi, ho), hora_ingreso=hi, hora_salida=ho, creado_por=usuario, modificado_por=usuario,
+        **origen)
+    return sa, True
+
+
+def quitar_servicio_adicional_sin_completar(fecha, turno, asignacion=None, sacafranco_fila=None):
+    """La fila dejó de ser ADICIONAL ese día y turno: se quita su servicio adicional solo si nadie lo completó
+    (sin Solicitado por, Recibido por, Medio ni Precio). Uno ya completado se conserva."""
+    origen = _origen(asignacion, sacafranco_fila)
+    if not origen or not fecha:
+        return 0
+    return ServicioAdicional.objects.filter(
+        fecha=fecha, turno=turno, solicitado_por='', recibido_por='', medio='', precio__isnull=True, **origen
+    ).delete()[0]
 
 
 def _rango(request):
@@ -248,22 +324,13 @@ def prellenar_servicio_adicional(request):
                  .filter(fecha=fecha, turno=turno, **origen).order_by('-id').first())
     if existente:
         return Response({'existe': True, 'registro': _serializar(existente)})
-    cliente_id = instalacion_id = None
-    if asig_id:
-        a = Asignacion.objects.filter(id=asig_id).values('cliente_id', 'instalacion_id').first()
-        if a:
-            cliente_id, instalacion_id = a['cliente_id'], a['instalacion_id']
-    else:
-        from .reporte_asistencia_views import _sacafranco_token_for_date
-        from .asignacion_semanal_views import _parse_sacafranco_token
-        if SacafrancoFila.objects.filter(id=saca_id).exists():
-            code = _parse_sacafranco_token(_sacafranco_token_for_date(int(saca_id), fecha))[2]
-            inst = Instalacion.objects.filter(codigo__iexact=code).first() if code and code != 'BASE' else None
-            if inst:
-                cliente_id, instalacion_id = inst.cliente_id, inst.id
+    asignacion = Asignacion.objects.select_related('horario').filter(id=asig_id).first() if asig_id else None
+    fila = SacafrancoFila.objects.filter(id=saca_id).first() if (saca_id and not asig_id) else None
+    cliente_id, instalacion_id, hi, ho = _defectos(fecha, turno, asignacion, fila)
     return Response({'existe': False, 'registro': {
         'fecha': fecha.isoformat(), 'turno': turno, 'cliente_id': cliente_id, 'instalacion_id': instalacion_id,
-        'cantidad': 1, 'asignacion_id': int(asig_id) if asig_id else None,
+        'cantidad': 1, 'hora_ingreso': _hhmm(hi), 'hora_salida': _hhmm(ho), 'horas': float(_horas_entre(hi, ho)),
+        'asignacion_id': int(asig_id) if asig_id else None,
         'sacafranco_fila_id': int(saca_id) if saca_id else None,
         'recibido_por': _nombre_usuario(request.user).upper(),
     }})
@@ -314,8 +381,38 @@ def actualizar_servicio_adicional(request, id):
     return Response(_serializar(sa))
 
 
+def _proporcion_logo(logo):
+    """Ancho / alto real del logo, para no deformarlo (si no se puede leer, el del logo de la empresa)."""
+    try:
+        from PIL import Image as PILImage
+        with PILImage.open(str(logo)) as im:
+            w, h = im.size
+        return w / h if h else 1.26
+    except Exception:
+        return 1.26
+
+
 def _fecha_larga(f):
     return f"{_DIAS[f.weekday()]}, {f.day} de {_MESES[f.month - 1]} de {f.year}"
+
+
+ENCABEZADOS_FR = ['CLIENTE', 'C', 'H', 'HORARIO', 'SOLICITADO POR', 'RECIBIDO POR', 'MEDIO', 'PRECIO']
+MIN_FILAS_FR = 10    # renglones por turno, como la hoja impresa (los vacíos sirven para llenar a mano)
+
+
+def _por_dia(filas, desde):
+    """[(fecha, {'Diurno': [filas], 'Nocturno': [filas]})]: un día por hoja / página. Sin registros: el primer día
+    vacío (para llenarlo a mano)."""
+    por_dia = {}
+    for f in filas:
+        por_dia.setdefault(f['fecha'], {'Diurno': [], 'Nocturno': []})[f['turno']].append(f)
+    dias = sorted(por_dia) or [desde.isoformat()]
+    return [(datetime.date.fromisoformat(d), por_dia.get(d, {'Diurno': [], 'Nocturno': []})) for d in dias]
+
+
+def _valores_fr(r):
+    return [r['cliente_texto'], r['cantidad'], r['horas'], r['horario'], r['solicitado_por'], r['recibido_por'],
+            r['medio'], r['precio']]
 
 
 @api_view(['GET'])
@@ -334,11 +431,7 @@ def exportar_servicios_adicionales_excel(request):
     filas, desde, error = _filas(request)
     if error:
         return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
-    por_dia = {}
-    for f in filas:
-        por_dia.setdefault(f['fecha'], []).append(f)
-    # Sin registros: la hoja del primer día, vacía (para llenarla a mano). Con registros: un día por pestaña.
-    dias = sorted(por_dia) or [desde.isoformat()]
+    dias = _por_dia(filas, desde)
 
     delgado = Side(style='thin', color='000000')
     borde = Border(left=delgado, right=delgado, top=delgado, bottom=delgado)
@@ -346,14 +439,11 @@ def exportar_servicios_adicionales_excel(request):
     negrita = Font(bold=True)
     gris = PatternFill('solid', fgColor='D9D9D9')
     anchos = {1: 46, 2: 6, 3: 6, 4: 16, 5: 26, 6: 26, 7: 16, 8: 12}
-    encabezados = ['CLIENTE', 'C', 'H', 'HORARIO', 'SOLICITADO POR', 'RECIBIDO POR', 'MEDIO', 'PRECIO']
-    min_filas = 10    # renglones por turno, como la hoja impresa (los vacíos sirven para llenar a mano)
     logo = _find_logo_path()
 
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
-    for dia in dias:
-        f_dia = datetime.date.fromisoformat(dia)
+    for f_dia, turnos_dia in dias:
         ws = wb.create_sheet(f_dia.strftime('%d-%m-%Y'))
         for c, w in anchos.items():
             ws.column_dimensions[get_column_letter(c)].width = w
@@ -378,10 +468,22 @@ def exportar_servicios_adicionales_excel(request):
                     ws.cell(r, c).alignment = centro
         if logo:
             try:
+                # Logo CENTRADO dentro de su recuadro (A1:A3): se calcula el espacio libre a cada lado.
                 from openpyxl.drawing.image import Image as XLImage
+                from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
+                from openpyxl.drawing.xdr import XDRPositiveSize2D
+                from openpyxl.utils.units import pixels_to_EMU
+                h_px = 60                                             # alto; el ancho sale de su proporción
+                w_px = round(h_px * _proporcion_logo(logo))
+                ancho_px = round(anchos[1] * 7) + 5                  # ancho de la columna A en píxeles
+                alto_px = round(3 * 20 * 96 / 72)                    # 3 filas de 20 pt
+                off_x = max(int((ancho_px - w_px) / 2), 0)
+                off_y = max(int((alto_px - h_px) / 2), 0)
                 img = XLImage(str(logo))
-                img.width, img.height = 130, 47
-                ws.add_image(img, 'A1')
+                img.anchor = OneCellAnchor(
+                    _from=AnchorMarker(col=0, colOff=pixels_to_EMU(off_x), row=0, rowOff=pixels_to_EMU(off_y)),
+                    ext=XDRPositiveSize2D(pixels_to_EMU(w_px), pixels_to_EMU(h_px)))
+                ws.add_image(img)
             except Exception:
                 pass
         ws.cell(5, 1, 'FECHA:').font = negrita
@@ -392,18 +494,16 @@ def exportar_servicios_adicionales_excel(request):
             ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=8)
             ws.cell(fila, 1, f'TURNO {turno.upper()}').font = negrita
             fila += 1
-            for c, titulo in enumerate(encabezados, start=1):
+            for c, titulo in enumerate(ENCABEZADOS_FR, start=1):
                 cell = ws.cell(fila, c, titulo)
                 cell.font = negrita
                 cell.fill = gris
                 cell.alignment = centro
                 cell.border = borde
             fila += 1
-            regs = [r for r in por_dia.get(dia, []) if r['turno'] == turno]
-            for i in range(max(min_filas, len(regs))):
-                r = regs[i] if i < len(regs) else None
-                valores = ([r['cliente_texto'], r['cantidad'], r['horas'], r['horario'], r['solicitado_por'],
-                            r['recibido_por'], r['medio'], r['precio']] if r else [''] * 8)
+            regs = turnos_dia[turno]
+            for i in range(max(MIN_FILAS_FR, len(regs))):
+                valores = _valores_fr(regs[i]) if i < len(regs) else [''] * 8
                 for c, v in enumerate(valores, start=1):
                     cell = ws.cell(fila, c, v)
                     cell.border = borde
@@ -423,4 +523,99 @@ def exportar_servicios_adicionales_excel(request):
     resp = HttpResponse(out.getvalue(),
                         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     resp['Content-Disposition'] = 'attachment; filename="servicios_adicionales.xlsx"'
+    return resp
+
+
+def _texto_celda(v):
+    """Valor para una celda del PDF: números sin decimales de más, precio con 2 decimales, vacío si no hay."""
+    if v is None or v == '':
+        return ''
+    if isinstance(v, float):
+        return str(int(v)) if v == int(v) else str(v)
+    return str(v)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def exportar_servicios_adicionales_pdf(request):
+    """PDF en el formato FR-REPORTE DE PUESTO ADICIONAL: una página por día (horizontal), con el TURNO DIURNO y el
+    TURNO NOCTURNO y las firmas. Mismos datos y filtros que el Excel (fechas y ?q=)."""
+    if not request.user.has_perm(VER):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import landscape, letter
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from .reporte_asistencia_views import _find_logo_path
+
+    filas, desde, error = _filas(request)
+    if error:
+        return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+    dias = _por_dia(filas, desde)
+    logo = _find_logo_path()
+
+    celda = ParagraphStyle('celda', fontName='Helvetica', fontSize=7.5, leading=9)
+    celda_c = ParagraphStyle('celda_c', parent=celda, alignment=1)
+    titulo = ParagraphStyle('titulo', fontName='Helvetica-Bold', fontSize=14, alignment=1)
+    negrita = ParagraphStyle('negrita', fontName='Helvetica-Bold', fontSize=9)
+    anchos = [7.2 * cm, 1.0 * cm, 1.1 * cm, 2.6 * cm, 4.0 * cm, 4.0 * cm, 2.4 * cm, 1.9 * cm]
+    total = sum(anchos)
+
+    historia = []
+    for n, (f_dia, turnos_dia) in enumerate(dias):
+        if n:
+            historia.append(PageBreak())
+        img = Image(str(logo), width=1.4 * cm * _proporcion_logo(logo), height=1.4 * cm) if logo else ''
+        cab = Table([[img, Paragraph(FR_TITULO, titulo), 'Versión:', FR_VERSION],
+                     ['', '', 'Fecha de aprobación:', FR_FECHA_APROBACION]],
+                    colWidths=[5.0 * cm, total - 12.0 * cm, 3.6 * cm, 3.4 * cm], rowHeights=[0.8 * cm] * 2,
+                    hAlign='LEFT')
+        cab.setStyle(TableStyle([
+            ('SPAN', (0, 0), (0, 1)), ('SPAN', (1, 0), (1, 1)),
+            ('GRID', (0, 0), (-1, -1), 0.6, colors.black),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTSIZE', (2, 0), (-1, -1), 8),
+        ]))
+        fecha_t = Table([[Paragraph('FECHA:', negrita), _fecha_larga(f_dia)]],
+                        colWidths=[2.0 * cm, total - 2.0 * cm], hAlign='LEFT')
+        fecha_t.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 9), ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+            ('LINEBELOW', (1, 0), (1, 0), 0.6, colors.black),
+        ]))
+        historia += [cab, Spacer(1, 0.25 * cm), fecha_t, Spacer(1, 0.25 * cm)]
+        for turno in ('Diurno', 'Nocturno'):
+            regs = turnos_dia[turno]
+            datos = [ENCABEZADOS_FR]
+            for i in range(max(MIN_FILAS_FR, len(regs))):
+                if i < len(regs):
+                    v = _valores_fr(regs[i])
+                    precio = f'{v[7]:,.2f}' if v[7] is not None else ''
+                    datos.append([Paragraph(_texto_celda(v[0]), celda)]
+                                 + [Paragraph(_texto_celda(x), celda_c) for x in v[1:7]]
+                                 + [Paragraph(precio, celda_c)])
+                else:
+                    datos.append([''] * 8)
+            t = Table(datos, colWidths=anchos, rowHeights=[0.5 * cm] * len(datos), repeatRows=1, hAlign='LEFT')
+            t.setStyle(TableStyle([
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#D9D9D9')),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'), ('FONTSIZE', (0, 0), (-1, 0), 7.5),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+            historia += [Paragraph(f'TURNO {turno.upper()}', negrita), Spacer(1, 0.1 * cm), t, Spacer(1, 0.3 * cm)]
+        firmas = Table([['ELABORA:', '', 'REVISA:', '', 'AUTORIZA:', '']],
+                       colWidths=[2.0 * cm, 6.0 * cm, 2.0 * cm, 6.0 * cm, 2.2 * cm, total - 18.2 * cm], hAlign='LEFT')
+        firmas.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'), ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('LINEBELOW', (1, 0), (1, 0), 0.6, colors.black), ('LINEBELOW', (3, 0), (3, 0), 0.6, colors.black),
+            ('LINEBELOW', (5, 0), (5, 0), 0.6, colors.black),
+        ]))
+        historia += [Spacer(1, 0.6 * cm), firmas]
+
+    out = BytesIO()
+    SimpleDocTemplate(out, pagesize=landscape(letter), leftMargin=1.2 * cm, rightMargin=1.2 * cm,
+                      topMargin=1.0 * cm, bottomMargin=1.0 * cm, title=FR_TITULO).build(historia)
+    resp = HttpResponse(out.getvalue(), content_type='application/pdf')
+    resp['Content-Disposition'] = 'attachment; filename="servicios_adicionales.pdf"'
     return resp

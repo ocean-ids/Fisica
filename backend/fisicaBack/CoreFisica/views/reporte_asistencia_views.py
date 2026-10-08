@@ -6,6 +6,7 @@ from django.utils import timezone
 from io import BytesIO
 from collections import defaultdict
 import datetime
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 from rest_framework import status
@@ -2122,6 +2123,22 @@ def insertar_reporte_asistencia(request, asignacion_id):
     # que el usuario eliminó a mano no reaparecen (ReporteGuardiaOculta).
     # El botón "Regenerar desde asistencia" queda como respaldo (días pasados / reparar).
     override._turno_vista = request.data.get('turno')   # filtro (Diurno/Nocturno) desde el que se guarda
+    # SERVICIOS ADICIONALES: guardada como ADICIONAL, la fila aparece en el módulo (incompleta hasta que la llenen);
+    # si deja de serlo, se quita su registro solo si nadie lo había completado.
+    if fecha_reporte:
+        try:
+            from .servicios_adicionales_views import (
+                asegurar_servicio_adicional, quitar_servicio_adicional_sin_completar)
+            _tr = str(request.data.get('turno') or '')
+            _letra_sa = _calendar_dnf_for_date(fecha_reporte).get(asignacion.id)
+            _turno_sa = _turno_guardia(_letra_sa, _tr) or (_tr if _tr in ('Diurno', 'Nocturno') else 'Diurno')
+            if (override.estado or '').strip().upper() == 'ADICIONAL':
+                asegurar_servicio_adicional(fecha_reporte, _turno_sa, asignacion=asignacion,
+                                            usuario=request.user if request.user.is_authenticated else None)
+            else:
+                quitar_servicio_adicional_sin_completar(fecha_reporte, _turno_sa, asignacion=asignacion)
+        except Exception:
+            logging.getLogger(__name__).exception('servicio adicional desde la asistencia')
     try:
         _sync_reporte_guardia(override, asignacion, fecha_reporte)
     except Exception:
@@ -2269,6 +2286,19 @@ def marcar_sacafranco_asistencia(request, sacafranco_fila_id):
         _sync_hueca_reporte_guardia_sacafranco(obj, fecha)
     except Exception:
         pass
+
+    # SERVICIOS ADICIONALES: igual que en los fijos (aparece al guardarla como ADICIONAL).
+    try:
+        from .servicios_adicionales_views import asegurar_servicio_adicional, quitar_servicio_adicional_sin_completar
+        _ctx = _saca_guardia_ctx(fila, fecha, turno_marca)
+        _tr = str(request.data.get('turno') or '')
+        _turno_sa = _ctx[0] if _ctx else (_tr if _tr in ('Diurno', 'Nocturno') else 'Diurno')
+        if (obj.estado or '').strip().upper() == 'ADICIONAL':
+            asegurar_servicio_adicional(fecha, _turno_sa, sacafranco_fila=fila, usuario=request.user)
+        else:
+            quitar_servicio_adicional_sin_completar(fecha, _turno_sa, sacafranco_fila=fila)
+    except Exception:
+        logging.getLogger(__name__).exception('servicio adicional desde la asistencia (sacafranco)')
 
     _u = obj.modificado_por
     _rem = obj.reemplazo

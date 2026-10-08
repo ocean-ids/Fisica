@@ -5,7 +5,8 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,)
 from .views.servicios_adicionales_views import (
-    listar_servicios_adicionales, exportar_servicios_adicionales_excel, catalogo_servicios_adicionales,
+    listar_servicios_adicionales, exportar_servicios_adicionales_excel, exportar_servicios_adicionales_pdf,
+    catalogo_servicios_adicionales,
     prellenar_servicio_adicional, crear_servicio_adicional, actualizar_servicio_adicional,
 )
 from .views.auth_views import login_view, logout_view, user_view, user_profile_view, solicitar_reset_password, reset_password
@@ -220,6 +221,7 @@ urlpatterns = [
     path('visitas/<int:id>/confirmar-ubicacion/', confirmar_ubicacion_visita),
     path('servicios-adicionales/', listar_servicios_adicionales),
     path('servicios-adicionales/exportar-excel/', exportar_servicios_adicionales_excel),
+    path('servicios-adicionales/exportar-pdf/', exportar_servicios_adicionales_pdf),
     path('servicios-adicionales/catalogo/', catalogo_servicios_adicionales),
     path('servicios-adicionales/prellenar/', prellenar_servicio_adicional),
     path('servicios-adicionales/crear/', crear_servicio_adicional),

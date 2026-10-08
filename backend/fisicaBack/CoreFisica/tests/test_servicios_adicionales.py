@@ -140,3 +140,94 @@ class ServiciosAdicionalesTests(TestCase):
         mig.asignar(apps, None)
         cods = set(g.permissions.filter(content_type__model='servicioadicional').values_list('codename', flat=True))
         self.assertEqual(cods, {'view_servicioadicional', 'add_servicioadicional', 'change_servicioadicional'})
+
+    def test_pdf_formato_fr_una_pagina_por_dia(self):
+        self._crear(fecha='2026-10-07', precio=30)
+        self._crear(fecha='2026-10-08', turno='Nocturno')
+        r = self.client.get('/api/servicios-adicionales/exportar-pdf/', {'desde': '2026-10-07', 'hasta': '2026-10-09'},
+                            **self.auth)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r['Content-Type'], 'application/pdf')
+        self.assertTrue(r.content.startswith(b'%PDF'))
+        import re
+        self.assertEqual(len(re.findall(rb'/Type\s*/Page[^s]', r.content)), 2)     # 2 días con registros
+
+    def test_pdf_sin_permiso(self):
+        self._usuario()
+        self.assertEqual(self.client.get('/api/servicios-adicionales/exportar-pdf/', {'fecha': '2026-10-07'},
+                                         **self.auth).status_code, 403)
+
+
+class AdicionalDesdeLaAsistenciaTests(ServiciosAdicionalesTests):
+    """Guardar la asistencia como ADICIONAL crea el servicio adicional INCOMPLETO (aunque no llenen el formulario);
+    si deja de ser ADICIONAL y nadie lo completó, se quita. Y el comando pasa los adicionales que ya existían."""
+
+    def setUp(self):
+        super().setUp()
+        from CoreFisica.models import PuestoHorario
+        PuestoHorario.objects.create(puesto=self.puesto, dia=D(2026, 10, 7).weekday() + 1, turno='Diurno',
+                                     hora_ingreso=datetime.time(7), hora_salida=datetime.time(19))
+        self.rem = Persona.objects.create(nombres='PEDRO', apellidos='ADIC', cedula='0910000802', tipo='FIJOS')
+
+    def _guardar(self, **datos):
+        from unittest import mock
+        with mock.patch('CoreFisica.views.reporte_asistencia_views._calendar_dnf_for_date',
+                        return_value={self.asig.id: 'D'}):
+            r = self.client.put(f'/api/reporte-asistencia/{self.asig.id}/', data=json.dumps(
+                {'fecha': '2026-10-07', 'turno': 'Diurno', **datos}), content_type='application/json', **self.auth)
+        self.assertEqual(r.status_code, 200, r.content)
+
+    def _registros(self):
+        from CoreFisica.models import ServicioAdicional
+        return list(ServicioAdicional.objects.filter(asignacion=self.asig, fecha=D(2026, 10, 7)))
+
+    def test_guardar_como_adicional_lo_crea_incompleto(self):
+        self._guardar(estado='ADICIONAL', estado_asistencia='ASISTIO', reemplazo_id=self.rem.id)
+        regs = self._registros()
+        self.assertEqual(len(regs), 1)
+        sa = regs[0]
+        self.assertEqual((sa.turno, sa.instalacion_id, sa.cantidad, sa.horas), ('Diurno', self.inst.id, 1, 12))
+        self.assertEqual((sa.hora_ingreso, sa.hora_salida), (datetime.time(7), datetime.time(19)))
+        self.assertEqual((sa.solicitado_por, sa.recibido_por, sa.medio, sa.precio), ('', '', '', None))
+        self._guardar(estado='ADICIONAL', estado_asistencia='ASISTIO', reemplazo_id=self.rem.id)
+        self.assertEqual(len(self._registros()), 1)                           # no se duplica
+
+    def test_si_deja_de_ser_adicional_se_quita_solo_si_no_lo_completaron(self):
+        self._guardar(estado='ADICIONAL', estado_asistencia='ASISTIO', reemplazo_id=self.rem.id)
+        self._guardar(estado='TURNO', estado_asistencia='ASISTIO', reemplazo_id=None)
+        self.assertEqual(self._registros(), [])
+        self._guardar(estado='ADICIONAL', estado_asistencia='ASISTIO', reemplazo_id=self.rem.id)
+        sa = self._registros()[0]
+        sa.solicitado_por = 'GILDA'
+        sa.save()
+        self._guardar(estado='TURNO', estado_asistencia='ASISTIO', reemplazo_id=None)
+        self.assertEqual(len(self._registros()), 1)                           # completado: se conserva
+
+    def test_el_comando_pasa_los_que_ya_existian(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from CoreFisica.models import ReporteAsistencia, ReporteGuardia, ServicioAdicional
+        ra = ReporteAsistencia.objects.create(asignacion=self.asig, fecha_reporte=D(2026, 10, 7))
+        ReporteGuardia.objects.create(fecha=D(2026, 10, 7), turno='Diurno', seccion='ADICIONALES', cliente='PECHICHAL',
+                                      puesto='GARITA', persona_nombre='PEDRO ADIC', reporte_asistencia=ra, auto=True)
+        ReporteGuardia.objects.create(fecha=D(2026, 10, 6), turno='Nocturno', seccion='ADICIONALES', cliente='pechichal',
+                                      puesto='X', persona_nombre='A MANO', auto=False)
+        ReporteGuardia.objects.create(fecha=D(2026, 10, 6), turno='Nocturno', seccion='ADICIONALES', cliente='PECHICHAL',
+                                      puesto='Y', persona_nombre='A MANO 2', auto=False)
+        ReporteGuardia.objects.create(fecha=D(2026, 10, 6), turno='Diurno', seccion='ADICIONALES', cliente='NO EXISTE',
+                                      puesto='Z', persona_nombre='?', auto=False)
+        out = StringIO()
+        call_command('pasar_adicionales_existentes', '--dry-run', stdout=out)
+        self.assertEqual(ServicioAdicional.objects.count(), 0)                # la prueba no guarda
+        out = StringIO()
+        call_command('pasar_adicionales_existentes', stdout=out)
+        texto = out.getvalue()
+        self.assertIn('1 pasados desde la asistencia', texto)
+        self.assertIn('1 pasados desde filas a mano', texto)
+        self.assertIn('1 omitidos (cliente no encontrado)', texto)
+        sa = ServicioAdicional.objects.get(asignacion=self.asig)
+        self.assertEqual((sa.horas, sa.hora_ingreso), (12, datetime.time(7)))
+        self.assertEqual(ServicioAdicional.objects.get(asignacion__isnull=True).cantidad, 2)   # 2 filas a mano
+        out = StringIO()
+        call_command('pasar_adicionales_existentes', stdout=out)              # repetirlo no duplica
+        self.assertEqual(ServicioAdicional.objects.count(), 2)

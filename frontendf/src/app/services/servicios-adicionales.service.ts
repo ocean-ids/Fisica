@@ -70,4 +70,9 @@ export class ServiciosAdicionalesService {
   exportarExcel(params: any): Observable<Blob> {
     return this.api.getBlob('/servicios-adicionales/exportar-excel/', params);
   }
+
+  // PDF en formato FR (una página por día, Diurno y Nocturno). params: desde/hasta, q.
+  exportarPdf(params: any): Observable<Blob> {
+    return this.api.getBlob('/servicios-adicionales/exportar-pdf/', params);
+  }
 }

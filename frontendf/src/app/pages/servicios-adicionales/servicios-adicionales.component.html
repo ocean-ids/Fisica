@@ -14,10 +14,15 @@
     </div>
     <h3 class="text-center m-0">Adicionales</h3>
     <div class="ev-der d-grid d-sm-flex gap-2 align-items-center">
-      <button type="button" class="btn btn-success btn-sm ev-btn-excel" (click)="descargarExcel()"
-              title="Descargar en Excel (formato FR: una pestaña por día, con el turno Diurno y Nocturno)">
-        <i class="bi bi-file-earmark-excel"></i> Descargar Excel
+      <!-- Descargar: al pulsarlo se elige PDF o Excel (los dos en formato FR, un día por página / pestaña). -->
+      <button type="button" class="btn btn-success btn-sm ev-btn-excel" [matMenuTriggerFor]="menuDescargar"
+              title="Descargar en formato FR (con las fechas y la búsqueda aplicadas)">
+        <i class="bi bi-download"></i> Descargar <i class="bi bi-caret-down-fill ms-1"></i>
       </button>
+      <mat-menu #menuDescargar="matMenu" class="ev-menu-excel" xPosition="before">
+        <button mat-menu-item (click)="descargarPdf()">PDF</button>
+        <button mat-menu-item (click)="descargarExcel()">Excel</button>
+      </mat-menu>
       <button *ngIf="puedeCrear" type="button" class="btn btn-primary btn-sm" (click)="nuevo()"
               [disabled]="!esUnDia || turnoFiltro === 'Ambos'"
               [attr.title]="turnoFiltro === 'Ambos' ? 'Elige Diurno o Nocturno para crear un registro' : (esUnDia ? 'Nuevo registro' : 'Elige un solo día para crear un registro')">

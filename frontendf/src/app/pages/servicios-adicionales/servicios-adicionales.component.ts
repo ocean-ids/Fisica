@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
@@ -19,7 +20,7 @@ import { ServicioAdicionalDialogComponent } from './servicio-adicional-dialog/se
 @Component({
   selector: 'app-servicios-adicionales',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatDatepickerModule, MatButtonToggleModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatDatepickerModule, MatButtonToggleModule, MatMenuModule],
   templateUrl: './servicios-adicionales.component.html',
   styleUrl: './servicios-adicionales.component.css',
 })
@@ -148,15 +149,21 @@ export class ServiciosAdicionalesComponent implements OnInit, OnDestroy {
   }
 
   // Excel del rango que se está viendo (formato FR: una pestaña por día con el turno Diurno y Nocturno).
-  descargarExcel(): void {
+  descargarExcel(): void { this.descargar('xlsx'); }
+
+  // PDF del rango que se está viendo (formato FR: una página por día con el turno Diurno y Nocturno).
+  descargarPdf(): void { this.descargar('pdf'); }
+
+  private descargar(tipo: 'xlsx' | 'pdf'): void {
     if (!this.fechaDesde || !this.fechaHasta) { return; }
     const params: any = { desde: this.fechaDesde, hasta: this.fechaHasta };
     if (this.texto.trim()) { params.q = this.texto.trim(); }
     const dma = (v: string) => v.split('-').reverse().join('-');
     const nombre = this.esUnDia
-      ? `SERVICIOS ADICIONALES ${dma(this.fechaDesde)}.xlsx`
-      : `SERVICIOS ADICIONALES ${dma(this.fechaDesde)} AL ${dma(this.fechaHasta)}.xlsx`;
-    this.srv.exportarExcel(params).subscribe({
+      ? `SERVICIOS ADICIONALES ${dma(this.fechaDesde)}.${tipo}`
+      : `SERVICIOS ADICIONALES ${dma(this.fechaDesde)} AL ${dma(this.fechaHasta)}.${tipo}`;
+    const obs = tipo === 'pdf' ? this.srv.exportarPdf(params) : this.srv.exportarExcel(params);
+    obs.subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -167,7 +174,7 @@ export class ServiciosAdicionalesComponent implements OnInit, OnDestroy {
       },
       error: (err) => Swal.fire({
         icon: 'error', title: 'Error',
-        text: err?.status === 403 ? 'No autorizado' : 'No se pudo descargar el Excel',
+        text: err?.status === 403 ? 'No autorizado' : (tipo === 'pdf' ? 'No se pudo descargar el PDF' : 'No se pudo descargar el Excel'),
       }),
     });
   }
