@@ -231,6 +231,9 @@ def obtener_instalaciones(request):
         except Exception:
             qs = qs.filter(zonas__titulo__iexact=str(zona_token).strip())
 
+    # Cuántos puestos ACTIVOS tiene cada instalación (columna "Puestos" de la pantalla).
+    from django.db.models import Count
+    qs = qs.annotate(puestos_count=Count('puestos', filter=Q(puestos__activo=True), distinct=True))
     qs = qs.distinct().order_by('cliente__nombre_comercial', 'nombre', 'id')
 
 
@@ -265,6 +268,7 @@ def obtener_instalaciones(request):
             'direccion': inst.direccion or '',
             'sector': inst.sector or '',
             'activo': inst.activo,
+            'puestos_count': getattr(inst, 'puestos_count', 0),
             'zonas': [
                 {
                     'id': z.id,

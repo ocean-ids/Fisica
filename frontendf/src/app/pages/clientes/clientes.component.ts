@@ -5,6 +5,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
+import { MatMenuModule } from '@angular/material/menu';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { ClienteService } from '../../services/cliente.service';
 import { Cliente } from '../../models/cliente.model';
@@ -13,11 +14,12 @@ import { ClienteFormComponent } from './cliente-form/cliente-form.component';
 import Swal from 'sweetalert2';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
 import { Router } from '@angular/router';
+import { exportarTablaExcel } from '../../utils/exportar-tabla';
 
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule, MatMenuModule],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.css'
 })
@@ -28,6 +30,10 @@ export class ClientesComponent implements OnInit, OnDestroy {
   filtroTexto = '';
   private filterSub?: Subscription;
   filtroSize = '';
+  // Rediseño: Activos / Retirados (con fecha de salida) / Todos, y "Ingresaron este año".
+  filtroEstado: 'activos' | 'retirados' | 'todos' = 'activos';
+  soloEsteAnio = false;
+  private readonly anioActual = new Date().getFullYear();
 
   sizeLabels: Record<string, string> = {
     PEQUENO: 'Pequeño',
@@ -44,15 +50,48 @@ export class ClientesComponent implements OnInit, OnDestroy {
         (c.razon_social || '').toLowerCase().includes(texto) ||
         (c.nombre_comercial || '').toLowerCase().includes(texto);
       const matchSize = !this.filtroSize || c.size === this.filtroSize;
-      return matchTexto && matchSize;
+      const retirado = this.esRetirado(c);
+      const matchEstado = this.filtroEstado === 'todos' || (this.filtroEstado === 'retirados' ? retirado : !retirado);
+      const matchAnio = !this.soloEsteAnio || this.ingresoEsteAnio(c);
+      return matchTexto && matchSize && matchEstado && matchAnio;
     });
+  }
+
+  // Retirado = tiene fecha de salida.
+  esRetirado(c: Cliente): boolean { return !!c.fecha_retiro; }
+  private ingresoEsteAnio(c: Cliente): boolean { return Number(String(c.fecha_ingreso || '').slice(0, 4)) === this.anioActual; }
+
+  get totalActivos(): number { return this.clientes.filter(c => !this.esRetirado(c)).length; }
+  get totalRetirados(): number { return this.clientes.filter(c => this.esRetirado(c)).length; }
+  get totalInstalaciones(): number { return this.clientes.reduce((t, c) => t + (Number(c.instalaciones_count) || 0), 0); }
+  get nuevosEsteAnio(): number { return this.clientes.filter(c => this.ingresoEsteAnio(c)).length; }
+
+  // Iniciales del nombre comercial para el cuadrito de la izquierda ("AGROCAMARON" -> "AG", "ARROZ IMPERIAL" -> "AI").
+  iniciales(nombre: string): string {
+    const p = (nombre || '').trim().split(/\s+/).filter(Boolean);
+    if (!p.length) { return '—'; }
+    return (p.length === 1 ? p[0].slice(0, 2) : p[0][0] + p[1][0]).toUpperCase();
+  }
+
+  // Descarga en Excel la lista que se está viendo (con los filtros aplicados).
+  descargar(): void {
+    const f = (v: any) => v ? String(v).slice(0, 10).split('-').reverse().join('/') : '';
+    const filas = this.clientesFiltrados.map(c => [
+      c.nombre_comercial, c.razon_social, c.ruc || '', c.instalaciones_count || 0, f(c.fecha_ingreso),
+      this.sizeLabels[c.size || 'PEQUENO'], this.esRetirado(c) ? 'Salió ' + f(c.fecha_retiro) : 'Activo',
+    ]);
+    exportarTablaExcel('Clientes', [
+      { titulo: 'NOMBRE COMERCIAL', ancho: 34 }, { titulo: 'RAZÓN SOCIAL', ancho: 46 }, { titulo: 'RUC', ancho: 16 },
+      { titulo: 'INSTALACIONES', ancho: 14 }, { titulo: 'INGRESO', ancho: 12 }, { titulo: 'TAMAÑO', ancho: 12 },
+      { titulo: 'ESTADO', ancho: 18 },
+    ], filas, 'CLIENTES.xlsx');
   }
 
   constructor(
     private clienteService: ClienteService,
     private dialog: MatDialog,
     private globalFilter: GlobalFilterStateService,
-    private router: Router
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
@@ -71,7 +110,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
   loadClientes(): void {
     const params: any = {};
     if (this.filtroTexto) params.q = this.filtroTexto;
-    if (this.filtroSize) params.size = this.filtroSize;
+    // El tamaño ahora se filtra en la pantalla (así los totales de arriba son de todos los clientes).
     this.clienteService.getClientes(params).subscribe({
       next: data => this.clientes = data,
       error: err => console.error('Error al cargar clientes:', err)
@@ -81,6 +120,8 @@ export class ClientesComponent implements OnInit, OnDestroy {
   limpiarFiltros(): void {
     this.filtroTexto = '';
     this.filtroSize = '';
+    this.filtroEstado = 'activos';
+    this.soloEsteAnio = false;
     this.loadClientes();
   }
 

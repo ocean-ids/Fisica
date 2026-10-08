@@ -124,14 +124,19 @@ def obtener_clientes(request):
     if size:
         qs = qs.filter(size=size)
 
-    qs = qs.values(
+    # Cuántas instalaciones ABIERTAS tiene cada cliente (columna "Instalaciones" de la pantalla).
+    from django.db.models import Count
+    qs = qs.annotate(
+        instalaciones_count=Count('instalaciones', filter=Q(instalaciones__activo=True), distinct=True)
+    ).values(
         'id',
         'razon_social',
         'nombre_comercial',
         'ruc',
         'size',
         'fecha_ingreso',
-        'fecha_retiro'
+        'fecha_retiro',
+        'instalaciones_count',
     ).order_by('nombre_comercial')
     try:
         count = qs.count()

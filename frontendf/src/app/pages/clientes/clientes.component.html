@@ -1,79 +1,103 @@
-<div class="container-fluid px-0 px-md-2">
-  <h2 class="mb-2 text-center">Gestión de Clientes</h2>
-  <div class="d-flex flex-column flex-lg-row justify-content-lg-between align-items-lg-center gap-2 mb-4">
-    <div class="d-grid d-sm-flex gap-2">
-      <input type="file" #fileInput class="d-none" accept=".xlsx" (change)="onFileSelected($event)">
-      <button class="btn btn-outline-secondary" (click)="fileInput.click()">
-        <i class="bi bi-upload"></i> Importar Excel
-      </button>
-      <button class="btn btn-outline-primary" (click)="openDialog()">
-        <i class="bi bi-plus-circle"></i> Nuevo Cliente
-      </button>
+<div class="rd-page">
+  <!-- Título a la izquierda, botones a la derecha -->
+  <div class="rd-cab">
+    <div>
+      <h1>Clientes</h1>
+      <p>{{ clientes.length }} clientes · {{ totalActivos }} activos</p>
     </div>
-    <div class="d-grid d-sm-flex gap-2">
-      <select class="form-select" [(ngModel)]="filtroSize">
-        <option value="">Tamaño del Cliente</option>
-        <option value="PEQUENO">Pequeño</option>
-        <option value="MEDIANO">Mediano</option>
-        <option value="GRANDE">Grande</option>
-        <option value="OFICINA">Oficina</option>
-      </select>
-      <button class="btn btn-outline-secondary" (click)="limpiarFiltros()">Limpiar</button>
+    <div class="rd-acc">
+      <input type="file" #fileInput class="d-none" accept=".xlsx" (change)="onFileSelected($event)">
+      <button type="button" class="rd-btn" (click)="fileInput.click()"><i class="bi bi-upload"></i> Importar Excel</button>
+      <button type="button" class="rd-btn" (click)="descargar()"><i class="bi bi-download"></i> Descargar</button>
+      <button type="button" class="rd-btn rd-pri" (click)="openDialog()"><i class="bi bi-plus-lg"></i> Nuevo cliente</button>
     </div>
   </div>
-  <!--filtro de busqueda de cliente por los diferentes campos-->
-  <!--<div class="row g-2 align-items-center mb-3">
-    <div class="col-12 col-md-9">
-      <div class="input-group">
-        <span class="input-group-text"><i class="bi bi-search"></i></span>
-        <input class="form-control"
-              placeholder="Razón Social o Nombre Comercial"
-              [(ngModel)]="filtroTexto">
-      </div>
-    </div>
-  </div>-->
 
-  <div class="card">
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover table-bordered text-center align-middle">
-          <thead class="table-light">
-            <tr class="text-center align-middle m-0">
-              <th>RUC</th>
-              <th class="d-none d-lg-table-cell">Fecha Ingreso</th>
-              <th class="d-none d-lg-table-cell">Fecha Salida</th>
-              <th>Razón Social</th>
-              <th>Nombre Comercial</th>
-              <th class="d-none d-lg-table-cell">Clasificación</th>
-              <th class="text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="text-center " *ngFor="let c of clientesFiltrados">
-              <td>{{ c.ruc || '-' }}</td>
-              <td class="d-none d-lg-table-cell">{{ c.fecha_ingreso ? (c.fecha_ingreso | date: 'dd/MM/yyyy') : '-' }}</td>
-              <td class="d-none d-lg-table-cell">{{ c.fecha_retiro ? (c.fecha_retiro | date: 'dd/MM/yyyy') : '-' }}</td>
-              <td>{{ c.razon_social }}</td>
-              <td>{{ c.nombre_comercial }}</td>
-              <td class="d-none d-lg-table-cell">{{ sizeLabels[c.size || 'PEQUENO'] }}</td>
-              <td class="d-flex justify-content-around align-items-center">
-                <button class="btn btn-sm btn-outline-primary me-2" (click)="openDialog(c)">
-                  <i class="bi bi-pencil"></i> <span class="d-none d-lg-inline">Editar</span>
-                </button>
-                <button class="btn btn-sm btn-outline-danger" (click)="confirmarEliminar(c)">
-                  <i class="bi bi-trash"></i> <span class="d-none d-lg-inline">Eliminar</span>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div *ngIf="clientes.length === 0" class="text-center text-muted py-4">
-          <p>No hay clientes registrados</p>
-        </div>
+  <!-- Resumen -->
+  <div class="rd-kpis">
+    <div class="rd-kpi"><div class="rd-ic" style="background:#dcfce7;color:#16a34a"><i class="bi bi-building-check"></i></div>
+      <div><b>{{ totalActivos }}</b><span>Clientes activos</span></div></div>
+    <div class="rd-kpi"><div class="rd-ic" style="background:#f1f5f9;color:#6b7280"><i class="bi bi-building-x"></i></div>
+      <div><b>{{ totalRetirados }}</b><span>Con fecha de salida</span></div></div>
+    <div class="rd-kpi"><div class="rd-ic" style="background:#dbeafe;color:#2563eb"><i class="bi bi-geo-alt"></i></div>
+      <div><b>{{ totalInstalaciones }}</b><span>Instalaciones</span></div></div>
+    <div class="rd-kpi"><div class="rd-ic" style="background:#ede9fe;color:#7c3aed"><i class="bi bi-calendar-plus"></i></div>
+      <div><b>{{ nuevosEsteAnio }}</b><span>Nuevos este año</span></div></div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="rd-filtros">
+    <div class="rd-seg">
+      <button type="button" [class.on]="filtroEstado === 'activos'" (click)="filtroEstado = 'activos'">Activos</button>
+      <button type="button" [class.on]="filtroEstado === 'retirados'" (click)="filtroEstado = 'retirados'">Retirados</button>
+      <button type="button" [class.on]="filtroEstado === 'todos'" (click)="filtroEstado = 'todos'">Todos</button>
+    </div>
+    <select class="rd-select" [(ngModel)]="filtroSize">
+      <option value="">Tamaño: Todos</option>
+      <option value="PEQUENO">Pequeño</option>
+      <option value="MEDIANO">Mediano</option>
+      <option value="GRANDE">Grande</option>
+      <option value="OFICINA">Oficina</option>
+    </select>
+    <button type="button" class="rd-chipf" [class.on]="soloEsteAnio" (click)="soloEsteAnio = !soloEsteAnio">
+      <i class="bi bi-funnel"></i> Ingresaron este año
+    </button>
+    <span class="rd-info">Ordenado por nombre comercial</span>
+  </div>
+
+  <!-- Tabla -->
+  <div class="rd-card">
+    <div class="table-responsive">
+      <table class="rd-tabla">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>RUC</th>
+            <th>Instalaciones</th>
+            <th>Ingreso</th>
+            <th>Tamaño</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let c of clientesFiltrados" [class.rd-apagada]="esRetirado(c)">
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="rd-ini">{{ iniciales(c.nombre_comercial) }}</div>
+                <div class="rd-nom"><b>{{ c.nombre_comercial }}</b><small>{{ c.razon_social }}</small></div>
+              </div>
+            </td>
+            <td>{{ c.ruc || '—' }}</td>
+            <td><span class="rd-chip rd-az"><i class="bi bi-geo-alt"></i>{{ c.instalaciones_count || 0 }}</span></td>
+            <td>{{ c.fecha_ingreso ? (c.fecha_ingreso | date: 'dd/MM/yyyy') : '—' }}</td>
+            <td><span class="rd-chip" [ngClass]="c.size === 'MEDIANO' ? 'rd-am' : (c.size === 'GRANDE' ? 'rd-az' : 'rd-pen')">{{ sizeLabels[c.size || 'PEQUENO'] }}</span></td>
+            <td>
+              <span *ngIf="esRetirado(c); else activo" class="rd-chip rd-pen">Salió {{ c.fecha_retiro | date: 'dd/MM/yyyy' }}</span>
+              <ng-template #activo><span class="rd-chip rd-ok">● Activo</span></ng-template>
+            </td>
+            <td class="text-nowrap text-end">
+              <button type="button" class="rd-ib" title="Editar" (click)="openDialog(c)"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="rd-ib" title="Más acciones" [matMenuTriggerFor]="menuFila" [matMenuTriggerData]="{ c: c }">
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="!clientesFiltrados.length" class="rd-vacio">
+        <i class="bi bi-building" style="font-size:28px"></i>
+        <p class="mt-2 mb-0">No hay clientes con estos filtros.</p>
       </div>
     </div>
+    <div class="rd-pie"><span>Mostrando {{ clientesFiltrados.length }} de {{ clientes.length }} clientes</span></div>
   </div>
 </div>
 
-
+<!-- Acciones de la fila: Eliminar va aquí (con confirmación) para no borrar por error -->
+<mat-menu #menuFila="matMenu" xPosition="before">
+  <ng-template matMenuContent let-c="c">
+    <button mat-menu-item (click)="openDialog(c)"><i class="bi bi-pencil me-2"></i>Editar</button>
+    <button mat-menu-item class="rd-menu-peligro" (click)="confirmarEliminar(c)"><i class="bi bi-trash me-2"></i>Eliminar</button>
+  </ng-template>
+</mat-menu>

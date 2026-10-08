@@ -5,6 +5,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { map, distinctUntilChanged, debounceTime, switchMap } from 'rxjs/operators';
@@ -15,13 +16,14 @@ import { InstalacionFormComponent } from './instalacion-form/instalacion-form.co
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
+import { exportarTablaExcel } from '../../utils/exportar-tabla';
 
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-instalaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatTableModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule, MatMenuModule],
   templateUrl: './instalaciones.component.html',
   styleUrl: './instalaciones.component.css'
 })
@@ -31,13 +33,61 @@ export class InstalacionesComponent implements OnInit, OnDestroy {
 
   filtroTexto = '';
   private filterSub?: Subscription;
+  // Rediseño: Abiertas / Cerradas / Todas (por defecto solo las abiertas) y filtros por zona, provincia y cliente.
+  filtroEstado: 'abiertas' | 'cerradas' | 'todas' = 'abiertas';
+  filtroZona = '';
+  filtroProvincia = '';
+  filtroCliente = '';
+
+  get instalacionesFiltradas(): any[] {
+    return this.instalaciones.filter(i => {
+      const cerrada = i.activo === false;
+      if (this.filtroEstado === 'abiertas' && cerrada) { return false; }
+      if (this.filtroEstado === 'cerradas' && !cerrada) { return false; }
+      if (this.filtroZona && this.zonaDe(i) !== this.filtroZona) { return false; }
+      if (this.filtroProvincia && (i.provincia_nombre || '') !== this.filtroProvincia) { return false; }
+      if (this.filtroCliente && this.getNombreCliente(i.cliente_id) !== this.filtroCliente) { return false; }
+      return true;
+    });
+  }
+
+  get totalCerradas(): number { return this.instalaciones.filter(i => i.activo === false).length; }
+
+  private unicos(valores: string[]): string[] {
+    return Array.from(new Set(valores.filter(Boolean))).sort((a, b) => a.localeCompare(b, 'es'));
+  }
+  get opcionesZona(): string[] { return this.unicos(this.instalaciones.map(i => this.zonaDe(i))); }
+  get opcionesProvincia(): string[] { return this.unicos(this.instalaciones.map(i => i.provincia_nombre || '')); }
+  get opcionesCliente(): string[] { return this.unicos(this.instalaciones.map(i => this.getNombreCliente(i.cliente_id))); }
+
+  // Zona del NOMINATIVO (modelo nuevo); si no tiene, las zonas del modelo viejo.
+  zonaDe(i: any): string {
+    return i.nominativo_zona || (i.zonas || []).map((z: any) => z.titulo).filter(Boolean).join(', ');
+  }
+
+  ubicacion(i: any): string {
+    return [i.provincia_nombre, i.canton_nombre].filter(Boolean).join(' · ') || '—';
+  }
+
+  // Descarga en Excel la lista que se está viendo (con los filtros aplicados).
+  descargar(): void {
+    const filas = this.instalacionesFiltradas.map(i => [
+      i.codigo || '', i.nombre || '', this.getNombreCliente(i.cliente_id), i.provincia_nombre || '', i.canton_nombre || '',
+      i.direccion || '', this.zonaDe(i), i.puestos_count || 0, i.activo === false ? 'Cerrada' : 'Abierta',
+    ]);
+    exportarTablaExcel('Instalaciones', [
+      { titulo: 'NOMINATIVO', ancho: 12 }, { titulo: 'INSTALACIÓN', ancho: 38 }, { titulo: 'CLIENTE', ancho: 30 },
+      { titulo: 'PROVINCIA', ancho: 16 }, { titulo: 'CANTÓN', ancho: 16 }, { titulo: 'DIRECCIÓN', ancho: 34 },
+      { titulo: 'ZONA', ancho: 12 }, { titulo: 'PUESTOS', ancho: 10 }, { titulo: 'ESTADO', ancho: 11 },
+    ], filas, 'INSTALACIONES.xlsx');
+  }
 
   constructor(
     private instalacionService: InstalacionService,
     private clienteService: ClienteService,
     private dialog: MatDialog,
     private globalFilter: GlobalFilterStateService,
-    private router: Router
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
