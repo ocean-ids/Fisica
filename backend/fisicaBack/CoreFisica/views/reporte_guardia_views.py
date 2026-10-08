@@ -30,7 +30,7 @@ FR_ANCHOS = {1: 5.0, 2: 5.3, 3: 50.3, 4: 35.1, 5: 56.3, 6: 52.3, 7: 28.0, 8: 21.
 # La última columna de cada sección se combina hasta H, igual que el formato original.
 FR_SECCIONES = [
     ('DOBLADAS',     'DOBLADAS',     [('1 NOMBRE Y 2 APELLIDOS', 'persona_nombre', 5, 5), ('PROVIENE', 'proviene', 6, 6), ('VALOR', 'valor', 7, 8)]),
-    ('ADICIONALES',  'ADICIONALES',  [('1 NOMBRE Y 2 APELLIDOS', 'persona_nombre', 5, 5), ('PROVIENE', 'proviene', 6, 8)]),
+    ('ADICIONALES',  'ADICIONALES',  [('NOMBRES Y APELLIDOS', 'persona_nombre', 5, 5), ('PROVIENE', 'proviene', 6, 8)]),
     ('ADELANTOS',    'ADELANTOS',    [('1 NOMBRE Y 2 APELLIDOS', 'persona_nombre', 5, 5), ('PROVIENE', 'proviene', 6, 6), ('TIPO', 'tipo', 7, 8)]),
     ('NO_CUBIERTOS', 'NO CUBIERTOS', [('AUTORIZACION', 'autorizacion', 5, 5), ('MOTIVO', 'motivo', 6, 8)]),
     ('FALTOS',       'FALTOS',       [('1 NOMBRE Y 2 APELLIDOS', 'persona_nombre', 5, 5), ('MOTIVO', 'motivo', 6, 8)]),

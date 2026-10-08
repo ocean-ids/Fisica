@@ -72,7 +72,7 @@ class ServiciosAdicionalesTests(TestCase):
         self.assertEqual(r.status_code, 200)
         ws = openpyxl.load_workbook(io.BytesIO(r.content)).active
         filas = list(ws.iter_rows(values_only=True))
-        self.assertEqual(filas[0], ('Nº', 'FECHA', 'TURNO', 'CLIENTE', 'PUESTO', '1 NOMBRE Y 2 APELLIDOS', 'PROVIENE'))
+        self.assertEqual(filas[0], ('Nº', 'FECHA', 'TURNO', 'CLIENTE', 'PUESTO', 'NOMBRES Y APELLIDOS', 'PROVIENE'))
         self.assertEqual(filas[1], (1, '01/10/2026', 'Diurno', 'CLIENTE A', 'GARITA 1', 'JUAN PEREZ LOPEZ', 'FIJOS'))
         self.assertEqual(len(filas), 3)                    # cabecera + 2 diurnos
 

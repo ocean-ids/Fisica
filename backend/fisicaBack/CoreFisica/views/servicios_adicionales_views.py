@@ -94,7 +94,7 @@ def exportar_servicios_adicionales_excel(request):
     ws = wb.active
     ws.title = 'ADICIONALES'
     columnas = [('Nº', 6), ('FECHA', 12), ('TURNO', 11), ('CLIENTE', 34), ('PUESTO', 34),
-                ('1 NOMBRE Y 2 APELLIDOS', 38), ('PROVIENE', 30)]
+                ('NOMBRES Y APELLIDOS', 38), ('PROVIENE', 30)]
     borde = Border(*(Side(style='thin', color='999999'),) * 4)
     for c, (titulo, ancho) in enumerate(columnas, start=1):
         cell = ws.cell(1, c, titulo)
