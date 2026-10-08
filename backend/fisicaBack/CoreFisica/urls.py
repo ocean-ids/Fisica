@@ -4,6 +4,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,)
+from .views.servicios_adicionales_views import listar_servicios_adicionales, exportar_servicios_adicionales_excel
 from .views.auth_views import login_view, logout_view, user_view, user_profile_view, solicitar_reset_password, reset_password
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
 from .views.importar_clientes import importar_clientes
@@ -214,6 +215,8 @@ urlpatterns = [
     # Modulo EVENTUALES: horas trabajadas por eventuales.
     path('visitas/', visitas),
     path('visitas/<int:id>/confirmar-ubicacion/', confirmar_ubicacion_visita),
+    path('servicios-adicionales/', listar_servicios_adicionales),
+    path('servicios-adicionales/exportar-excel/', exportar_servicios_adicionales_excel),
     path('horas-eventual/', listar_horas_eventual),
     path('horas-eventual/catalogo/', catalogo_horas_eventual),
     path('horas-eventual/exportar-excel/', exportar_excel_horas_eventual),

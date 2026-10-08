@@ -16,6 +16,7 @@ const dashboardRoutesByPermission = [
   { path: '/dashboard/reporte-guardia', permission: 'CoreFisica.view_reporteguardia', key: 'reporte-guardia' },
   { path: '/dashboard/sacavacaciones', permission: 'CoreFisica.view_asignacion', key: 'sacavacaciones' },
   { path: '/dashboard/eventuales', permission: 'CoreFisica.view_horaseventual', key: 'eventuales' },
+  { path: '/dashboard/servicios-adicionales', permission: 'CoreFisica.view_reporteguardia', key: 'servicios-adicionales' },
 ];
 
 function getFirstAccessibleDashboardRoute(authService: AuthService): string | null {

@@ -1659,6 +1659,7 @@ MODULOS_MENU = [
     ('asignaciones', 'Asignaciones'),
     ('sacavacaciones', 'Sacavacaciones'),
     ('eventuales', 'Eventuales'),
+    ('servicios-adicionales', 'Servicios Adicionales'),
     ('reporte-asistencia', 'Reportes Asistencia'),
     ('consolidado', 'Consolidado'),
     ('reporte-guardia', 'Reporte Guardia'),

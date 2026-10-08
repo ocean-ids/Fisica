@@ -23,6 +23,7 @@ export class SidebarComponent implements OnInit {
       ],
     },
     { key: 'eventuales', path: '/dashboard/eventuales', label: 'Servicios Eventuales', icon: 'E', permission: 'CoreFisica.view_horaseventual' },
+    { key: 'servicios-adicionales', path: '/dashboard/servicios-adicionales', label: 'Servicios Adicional', icon: 'A', permission: 'CoreFisica.view_reporteguardia' },
     { key: 'reporte-asistencia', path: '/dashboard/reporte-asistencia', label: 'Reportes Asistencia', icon: 'how_to_reg', permission: 'CoreFisica.view_reporteasistencia' },
     { key: 'consolidado', path: '/dashboard/consolidado', label: 'Consolidado', icon: 'assignment', permission: 'CoreFisica.view_consolidado' },
     { key: 'reporte-guardia', path: '/dashboard/reporte-guardia', label: 'Reporte Guardia', icon: 'summarize', permission: 'CoreFisica.view_reporteguardia' },

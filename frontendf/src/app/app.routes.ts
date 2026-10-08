@@ -18,6 +18,7 @@ import { SacavacacionesComponent } from './pages/sacavacaciones/sacavacaciones.c
 import { ReportePagoComponent } from './pages/reporte-pago/reporte-pago.component';
 import { TarifasPagoComponent } from './pages/tarifas-pago/tarifas-pago.component';
 import { EventualesListaComponent } from './pages/eventuales/eventuales-lista/eventuales-lista.component';
+import { ServiciosAdicionalesComponent } from './pages/servicios-adicionales/servicios-adicionales.component';
 
 export const routes: Routes = [
   {path: '', component: LoginComponent},
@@ -43,6 +44,7 @@ export const routes: Routes = [
       { path: 'reporte-pago', component: ReportePagoComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia', moduleKey: 'reporte-pago' }},
       { path: 'tarifas-pago', component: TarifasPagoComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia', moduleKey: 'tarifas-pago' }},
       { path: 'eventuales', component: EventualesListaComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_horaseventual', moduleKey: 'eventuales' }},
+      { path: 'servicios-adicionales', component: ServiciosAdicionalesComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia', moduleKey: 'servicios-adicionales' }},
     ]
   },
   { path: '**', redirectTo: ''}

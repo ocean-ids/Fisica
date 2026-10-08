@@ -1,0 +1,75 @@
+/* Mismo estilo que Servicios Eventuales. */
+.tabla-adicionales td,
+.tabla-adicionales th {
+  font-size: 12px;
+  padding: 3px 6px;
+}
+.tabla-adicionales thead th {
+  line-height: 1.15;
+  vertical-align: middle;
+}
+
+/* Selector de rango de fechas en la cabecera: mismo tamaño que un input form-control-sm,
+   sin título (solo se ven las fechas y el calendario). */
+.ev-rango {
+  width: 330px;
+  flex: 0 0 auto;          /* no se encoge: el texto Desde / Hasta va en una sola línea */
+  --mat-form-field-container-height: 31px;
+  --mat-form-field-container-vertical-padding: 4px;
+  --mat-form-field-container-text-size: 14px;
+  --mat-form-field-outlined-container-shape: 6px;
+}
+.ev-rango ::ng-deep .mat-mdc-form-field-infix {
+  min-height: 31px;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  position: relative;
+}
+.ev-rango ::ng-deep .mat-mdc-form-field-icon-suffix .mat-mdc-icon-button {
+  width: 30px;
+  height: 30px;
+  padding: 3px;
+  --mat-icon-button-state-layer-size: 30px;
+}
+.ev-rango ::ng-deep .mat-mdc-form-field-icon-suffix .mat-mdc-icon-button svg {
+  width: 20px;
+  height: 20px;
+}
+/* Texto de las fechas encima del campo (el campo de rango sigue ahí, oculto, para abrir el calendario) */
+.ev-mes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+  z-index: 1;
+}
+.ev-oculto {
+  opacity: 0;
+}
+/* Un solo día: el campo mide lo de una fecha; con un rango elegido se agranda (Desde … – Hasta …). */
+.ev-rango.ev-rango-dia {
+  width: 140px;
+}
+
+/* Encabezado en tres partes: fechas a la izquierda, título al CENTRO exacto y botón a la derecha. */
+@media (min-width: 992px) {
+  .ev-izq,
+  .ev-der {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .ev-izq {
+    display: flex;
+    justify-content: flex-start;
+  }
+  .ev-der {
+    justify-content: flex-end;
+  }
+}
+
+.ev-btn-excel {
+  width: 170px;
+}
