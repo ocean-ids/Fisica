@@ -17,7 +17,7 @@ from rest_framework.response import Response
 
 from ..models import ReporteGuardia
 
-PERMISO = 'CoreFisica.view_reporteguardia'
+PERMISO = 'CoreFisica.view_servicioadicional'   # permiso propio de solo lectura
 MAX_DIAS = 366   # rango máximo que se puede pedir de una vez
 
 

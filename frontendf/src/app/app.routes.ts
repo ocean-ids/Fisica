@@ -44,7 +44,7 @@ export const routes: Routes = [
       { path: 'reporte-pago', component: ReportePagoComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia', moduleKey: 'reporte-pago' }},
       { path: 'tarifas-pago', component: TarifasPagoComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia', moduleKey: 'tarifas-pago' }},
       { path: 'eventuales', component: EventualesListaComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_horaseventual', moduleKey: 'eventuales' }},
-      { path: 'servicios-adicionales', component: ServiciosAdicionalesComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_reporteguardia', moduleKey: 'servicios-adicionales' }},
+      { path: 'servicios-adicionales', component: ServiciosAdicionalesComponent, canActivate: [permissionGuard], data: { permission: 'CoreFisica.view_servicioadicional', moduleKey: 'servicios-adicionales' }},
     ]
   },
   { path: '**', redirectTo: ''}

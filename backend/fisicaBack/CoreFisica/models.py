@@ -1516,6 +1516,17 @@ class ReporteGuardia(models.Model):
         indexes = [models.Index(fields=['fecha', 'turno', 'seccion'])]
 
 
+class ServicioAdicional(ReporteGuardia):
+    """Módulo Servicios Adicionales: los ADICIONALES del Reporte de Guardia (misma tabla, no guarda nada aparte).
+    Existe solo para tener su PROPIO permiso de solo lectura (view_servicioadicional), independiente del
+    permiso del Reporte de Guardia."""
+    class Meta:
+        proxy = True
+        default_permissions = ('view',)
+        verbose_name = 'servicio adicional'
+        verbose_name_plural = 'servicios adicionales'
+
+
 class ReporteGuardiaOculta(models.Model):
     """Fila AUTOMÁTICA del Reporte de Guardia que el usuario ELIMINÓ a mano.
 

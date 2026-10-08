@@ -1,5 +1,6 @@
 """Servicios Adicionales: los ADICIONALES del Reporte de Guardia (que salen de la asistencia) en un rango de
-fechas, con filtro de turno y búsqueda, y su Excel. Sin valores. Solo con permiso de ver el Reporte de Guardia."""
+fechas, con filtro de turno y búsqueda, y su Excel. Sin valores. Tiene su PROPIO permiso de solo lectura
+(view_servicioadicional), independiente del Reporte de Guardia."""
 import datetime
 import io
 import json
@@ -58,13 +59,39 @@ class ServiciosAdicionalesTests(TestCase):
         self.assertEqual(self._listar().status_code, 400)
         self.assertEqual(self._listar(desde='2025-01-01', hasta='2026-10-31').status_code, 400)
 
-    def test_sin_permiso_no_ve(self):
+    def test_permiso_propio_de_solo_lectura(self):
         User.objects.create_user(username='sin_perm', password='SinPerm123!x')
         self.auth = self._token('sin_perm', 'SinPerm123!x')
         self.assertEqual(self._listar(fecha='2026-10-01').status_code, 403)
         u = User.objects.get(username='sin_perm')
+        # El permiso del Reporte de Guardia ya no basta: el módulo tiene el suyo.
         u.user_permissions.add(Permission.objects.get(codename='view_reporteguardia'))
+        self.assertEqual(self._listar(fecha='2026-10-01').status_code, 403)
+        u.user_permissions.add(Permission.objects.get(codename='view_servicioadicional'))
         self.assertEqual(self._listar(fecha='2026-10-01').status_code, 200)
+        self.assertEqual(self.client.get('/api/servicios-adicionales/exportar-excel/', {'fecha': '2026-10-01'},
+                                         **self.auth).status_code, 200)
+
+    def test_solo_existe_el_permiso_de_ver(self):
+        self.assertEqual(sorted(Permission.objects.filter(content_type__model='servicioadicional')
+                                .values_list('codename', flat=True)), ['view_servicioadicional'])
+
+    def test_la_migracion_lo_da_a_quien_ve_el_reporte_de_guardia(self):
+        import importlib
+        from django.apps import apps
+        from django.contrib.auth.models import Group
+        mig = importlib.import_module('CoreFisica.migrations.0208_permiso_servicios_adicionales')
+        guardia = Permission.objects.get(codename='view_reporteguardia')
+        propio = Permission.objects.get(codename='view_servicioadicional')
+        g = Group.objects.create(name='CONSOLA_TEST')
+        g.permissions.add(guardia)
+        u = User.objects.create_user(username='con_guardia', password='x')
+        u.user_permissions.add(guardia)
+        otro = User.objects.create_user(username='sin_guardia', password='x')
+        mig.asignar(apps, None)
+        self.assertIn(propio, g.permissions.all())
+        self.assertIn(propio, u.user_permissions.all())
+        self.assertNotIn(propio, otro.user_permissions.all())
 
     def test_excel_con_las_mismas_columnas(self):
         r = self.client.get('/api/servicios-adicionales/exportar-excel/',
