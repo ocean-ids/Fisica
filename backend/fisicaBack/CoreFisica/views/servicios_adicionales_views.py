@@ -80,7 +80,8 @@ def listar_servicios_adicionales(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def exportar_servicios_adicionales_excel(request):
-    """Excel con las mismas columnas de la tabla (fechas, turno y búsqueda aplicados)."""
+    """Excel en dos pestañas, DIURNO y NOCTURNO, con las mismas columnas de la tabla (fechas y búsqueda
+    aplicadas). Con ?turno= sale solo la pestaña de ese turno."""
     if not request.user.has_perm(PERMISO):
         return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
     import openpyxl
@@ -91,26 +92,28 @@ def exportar_servicios_adicionales_excel(request):
     if error:
         return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
     wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = 'ADICIONALES'
-    columnas = [('Nº', 6), ('FECHA', 12), ('TURNO', 11), ('CLIENTE', 34), ('PUESTO', 34),
+    wb.remove(wb.active)
+    columnas = [('Nº', 6), ('FECHA', 12), ('CLIENTE', 34), ('PUESTO', 34),
                 ('NOMBRES Y APELLIDOS', 38), ('PROVIENE', 30)]
     borde = Border(*(Side(style='thin', color='999999'),) * 4)
-    for c, (titulo, ancho) in enumerate(columnas, start=1):
-        cell = ws.cell(1, c, titulo)
-        cell.font = Font(bold=True, color='FFFFFF')
-        cell.fill = PatternFill('solid', fgColor='1F4E78')
-        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        cell.border = borde
-        ws.column_dimensions[get_column_letter(c)].width = ancho
-    for n, f in enumerate(filas, start=1):
-        fecha = datetime.date.fromisoformat(f['fecha']).strftime('%d/%m/%Y')
-        valores = [n, fecha, f['turno'], f['cliente'], f['puesto'], f['persona_nombre'], f['proviene']]
-        for c, v in enumerate(valores, start=1):
-            cell = ws.cell(n + 1, c, v)
-            cell.border = borde
+    turno = request.GET.get('turno')
+    for turno_hoja in ([turno] if turno in ('Diurno', 'Nocturno') else ['Diurno', 'Nocturno']):
+        ws = wb.create_sheet(turno_hoja.upper())
+        for c, (titulo, ancho) in enumerate(columnas, start=1):
+            cell = ws.cell(1, c, titulo)
+            cell.font = Font(bold=True, color='FFFFFF')
+            cell.fill = PatternFill('solid', fgColor='1F4E78')
             cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    ws.freeze_panes = 'A2'
+            cell.border = borde
+            ws.column_dimensions[get_column_letter(c)].width = ancho
+        for n, f in enumerate([f for f in filas if f['turno'] == turno_hoja], start=1):
+            fecha = datetime.date.fromisoformat(f['fecha']).strftime('%d/%m/%Y')
+            valores = [n, fecha, f['cliente'], f['puesto'], f['persona_nombre'], f['proviene']]
+            for c, v in enumerate(valores, start=1):
+                cell = ws.cell(n + 1, c, v)
+                cell.border = borde
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        ws.freeze_panes = 'A2'
     out = BytesIO()
     wb.save(out)
     resp = HttpResponse(out.getvalue(),

@@ -93,15 +93,24 @@ class ServiciosAdicionalesTests(TestCase):
         self.assertIn(propio, u.user_permissions.all())
         self.assertNotIn(propio, otro.user_permissions.all())
 
-    def test_excel_con_las_mismas_columnas(self):
+    def test_excel_en_dos_pestanas_diurno_y_nocturno(self):
         r = self.client.get('/api/servicios-adicionales/exportar-excel/',
-                            {'desde': '2026-10-01', 'hasta': '2026-10-31', 'turno': 'Diurno'}, **self.auth)
+                            {'desde': '2026-10-01', 'hasta': '2026-10-31'}, **self.auth)
         self.assertEqual(r.status_code, 200)
-        ws = openpyxl.load_workbook(io.BytesIO(r.content)).active
-        filas = list(ws.iter_rows(values_only=True))
-        self.assertEqual(filas[0], ('Nº', 'FECHA', 'TURNO', 'CLIENTE', 'PUESTO', 'NOMBRES Y APELLIDOS', 'PROVIENE'))
-        self.assertEqual(filas[1], (1, '01/10/2026', 'Diurno', 'CLIENTE A', 'GARITA 1', 'JUAN PEREZ LOPEZ', 'FIJOS'))
-        self.assertEqual(len(filas), 3)                    # cabecera + 2 diurnos
+        wb = openpyxl.load_workbook(io.BytesIO(r.content))
+        self.assertEqual(wb.sheetnames, ['DIURNO', 'NOCTURNO'])
+        diurno = list(wb['DIURNO'].iter_rows(values_only=True))
+        self.assertEqual(diurno[0], ('Nº', 'FECHA', 'CLIENTE', 'PUESTO', 'NOMBRES Y APELLIDOS', 'PROVIENE'))
+        self.assertEqual(diurno[1], (1, '01/10/2026', 'CLIENTE A', 'GARITA 1', 'JUAN PEREZ LOPEZ', 'FIJOS'))
+        self.assertEqual(len(diurno), 3)                   # cabecera + 2 diurnos
+        nocturno = list(wb['NOCTURNO'].iter_rows(values_only=True))
+        self.assertEqual(nocturno[1], (1, '02/10/2026', 'CLIENTE B', 'RONDA', 'ANA RUIZ MORA', 'EVENTUAL'))
+        self.assertEqual(len(nocturno), 2)
+
+    def test_excel_con_un_turno_solo_esa_pestana(self):
+        r = self.client.get('/api/servicios-adicionales/exportar-excel/',
+                            {'desde': '2026-10-01', 'hasta': '2026-10-31', 'turno': 'Nocturno'}, **self.auth)
+        self.assertEqual(openpyxl.load_workbook(io.BytesIO(r.content)).sheetnames, ['NOCTURNO'])
 
     def test_sale_lo_que_viene_de_la_asistencia(self):
         """Un ADICIONAL marcado en la asistencia llega al Reporte de Guardia y de ahí a este módulo."""

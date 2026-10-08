@@ -15,7 +15,7 @@
     <h3 class="text-center m-0">Adicionales</h3>
     <div class="ev-der d-grid d-sm-flex gap-2 align-items-center">
       <button type="button" class="btn btn-success btn-sm ev-btn-excel" (click)="descargarExcel()"
-              title="Descargar en Excel (con las fechas, el turno y la búsqueda aplicados)">
+              title="Descargar en Excel: una pestaña Diurno y otra Nocturno (con las fechas y la búsqueda aplicadas)">
         <i class="bi bi-file-earmark-excel"></i> Descargar Excel
       </button>
     </div>
@@ -36,7 +36,6 @@
         <tr>
           <th>Nº</th>
           <th>Fecha</th>
-          <th>Turno</th>
           <!-- Mismas columnas que la sección ADICIONALES del Reporte de Guardia. -->
           <th>Cliente</th>
           <th>Puesto</th>
@@ -46,20 +45,19 @@
       </thead>
       <tbody>
         <tr *ngIf="loading">
-          <td colspan="7" class="text-muted">Cargando…</td>
+          <td colspan="6" class="text-muted">Cargando…</td>
         </tr>
         <ng-container *ngIf="!loading">
           <tr *ngFor="let f of filasFiltradas; let i = index">
             <td>{{ i + 1 }}</td>
             <td>{{ fechaDMA(f.fecha) }}</td>
-            <td>{{ f.turno }}</td>
             <td>{{ f.cliente || '—' }}</td>
             <td>{{ f.puesto || '—' }}</td>
             <td class="text-center">{{ f.persona_nombre || '—' }}</td>
             <td>{{ f.proviene || '—' }}</td>
           </tr>
           <tr *ngIf="!filasFiltradas.length">
-            <td colspan="7" class="text-muted">Sin servicios adicionales en estas fechas.</td>
+            <td colspan="6" class="text-muted">Sin servicios adicionales en estas fechas.</td>
           </tr>
         </ng-container>
       </tbody>

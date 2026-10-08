@@ -138,12 +138,11 @@ export class ServiciosAdicionalesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Excel del rango que se está viendo, con el turno y la búsqueda aplicados.
+  // Excel del rango que se está viendo, con la búsqueda aplicada: siempre en dos pestañas, DIURNO y NOCTURNO.
   descargarExcel(): void {
     if (!this.fechaDesde || !this.fechaHasta) { return; }
     const params: any = { desde: this.fechaDesde, hasta: this.fechaHasta };
     if (this.texto.trim()) { params.q = this.texto.trim(); }
-    if (this.turnoFiltro !== 'Ambos') { params.turno = this.turnoFiltro; }
     const dma = (v: string) => v.split('-').reverse().join('-');
     const nombre = this.esUnDia
       ? `SERVICIOS ADICIONALES ${dma(this.fechaDesde)}.xlsx`
