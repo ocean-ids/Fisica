@@ -240,7 +240,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       // el backend y deben mostrarse. Antes solo se mostraban las de "libre en base" y
       // se descartaban las de cobertura (S6, K66...). Ahora se muestra toda fila con
       // contenido (nombre o codigo); solo se saltan las filas null realmente vacias.
-      if (!row.asignacion_id
+      if (!row.asignacion_id && !row.servicio_adicional_id
         && !(row.nombre_apellidos || '').toString().trim()
         && !(row.codigo || '').toString().trim()) {
         continue;

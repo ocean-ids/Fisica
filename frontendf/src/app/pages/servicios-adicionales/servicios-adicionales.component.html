@@ -67,10 +67,8 @@
             <td>{{ i + 1 }}</td>
             <td class="text-start">
               {{ f.cliente_texto || '—' }}
-              <!-- Agregado con el botón de la asistencia: su puesto y el guardia que lo cubrió -->
-              <div *ngIf="f.manual && (f.puesto || f.persona)" class="text-muted" style="font-size: 11px">
-                {{ f.puesto || '' }}<span *ngIf="f.puesto && f.persona"> · </span>{{ f.persona || '' }}
-              </div>
+              <!-- Agregado con el botón de la asistencia: su puesto -->
+              <div *ngIf="f.manual && f.puesto" class="text-muted" style="font-size: 11px">{{ f.puesto }}</div>
             </td>
             <td>{{ f.cantidad }}</td>
             <td>{{ f.horas }}</td>

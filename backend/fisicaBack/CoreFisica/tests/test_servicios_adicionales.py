@@ -297,8 +297,8 @@ class AdicionalManualTests(TestCase):
         filas = [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('servicio_adicional_id') == sid]
         self.assertEqual(len(filas), 1)
         f = filas[0]
-        self.assertEqual((f['cliente'], f['puesto'], f['nombre_apellidos'], f['estado'], f['horario'], f['codigo']),
-                         ('FERIA DEL HOGAR', 'STAND 4', 'TORRES ARIAS MARIO', 'ADICIONAL', '08:00 - 16:00', 'ADIC'))
+        self.assertEqual((f['cliente'], f['puesto'], f['reemplazo'], f['nombre_apellidos'], f['estado'], f['horario'], f['codigo']),
+                         ('FERIA DEL HOGAR', 'STAND 4', 'TORRES ARIAS MARIO', '', 'ADICIONAL', '08:00 - 16:00', ''))
         d = self.client.get('/api/reporte-asistencia/', {'fecha': '2026-10-07', 'turno': 'Nocturno'}, **self.auth).json()
         self.assertFalse([f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('servicio_adicional_id') == sid])
 
