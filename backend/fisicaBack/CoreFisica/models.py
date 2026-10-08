@@ -1485,6 +1485,9 @@ class ReporteGuardia(models.Model):
     # Para filas originadas por un SACAFRANCO (no tiene Asignacion ni ReporteAsistencia):
     # su asistencia se marca en SacafrancoAsistencia y se refleja aqui por su fila.
     sacafranco_fila = models.ForeignKey('SacafrancoFila', on_delete=models.SET_NULL, null=True, blank=True, related_name='reporte_guardia')
+    # Fila que viene de un Servicio Adicional agregado con el botón de la asistencia (sin puesto en el sistema).
+    servicio_adicional = models.ForeignKey('ServicioAdicional', on_delete=models.CASCADE, null=True, blank=True,
+                                           related_name='filas_guardia')
     auto = models.BooleanField(default=False)
 
     # PROVIENE = tipo de la persona (se autocompleta al elegir la persona), o para
@@ -1529,6 +1532,13 @@ class ServicioAdicional(models.Model):
     turno = models.CharField(max_length=10, choices=TURNOS, default='Diurno')
     cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True, related_name='servicios_adicionales')
     instalacion = models.ForeignKey(Instalacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='servicios_adicionales')
+    # Agregado con el botón de la asistencia: el cliente, la instalación y el puesto pueden no existir en el
+    # sistema (se escriben a mano y solo quedan en este registro). Y el guardia que lo cubrió.
+    cliente_texto = models.CharField(max_length=200, blank=True, default='')
+    instalacion_texto = models.CharField(max_length=200, blank=True, default='')
+    puesto = models.ForeignKey(Puesto, on_delete=models.SET_NULL, null=True, blank=True, related_name='servicios_adicionales')
+    puesto_texto = models.CharField(max_length=200, blank=True, default='')
+    persona = models.ForeignKey(Persona, on_delete=models.SET_NULL, null=True, blank=True, related_name='servicios_adicionales')
     cantidad = models.PositiveIntegerField(default=1)                                   # C
     horas = models.DecimalField(max_digits=5, decimal_places=2, default=0)              # H
     hora_ingreso = models.TimeField(null=True, blank=True)

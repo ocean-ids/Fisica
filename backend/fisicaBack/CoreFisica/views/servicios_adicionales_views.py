@@ -19,7 +19,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from ..models import Asignacion, Cliente, Instalacion, SacafrancoFila, ServicioAdicional
+from ..models import Asignacion, Cliente, Instalacion, Persona, Puesto, ReporteGuardia, SacafrancoFila, ServicioAdicional
 
 VER = 'CoreFisica.view_servicioadicional'
 CREAR = 'CoreFisica.add_servicioadicional'
@@ -79,7 +79,22 @@ def _cliente_texto(sa):
     """Columna CLIENTE del formato: la instalación (donde se pone el adicional) o, si no hay, el cliente."""
     if sa.instalacion_id and sa.instalacion:
         return sa.instalacion.nombre or ''
-    return (getattr(sa.cliente, 'nombre_comercial', '') or '') if sa.cliente_id else ''
+    if sa.instalacion_texto:
+        return sa.instalacion_texto
+    return ((getattr(sa.cliente, 'nombre_comercial', '') or '') if sa.cliente_id else '') or sa.cliente_texto
+
+
+def _nombre_cliente(sa):
+    return ((getattr(sa.cliente, 'nombre_comercial', '') or '') if sa.cliente_id else '') or sa.cliente_texto
+
+
+def _nombre_puesto(sa):
+    return ((getattr(sa.puesto, 'nombre', '') or '') if sa.puesto_id else '') or sa.puesto_texto
+
+
+def _es_manual(sa):
+    """Agregado con el botón de la asistencia (no sale de una fila de asignación ni de sacafranco)."""
+    return not sa.asignacion_id and not sa.sacafranco_fila_id
 
 
 def _hhmm(t):
@@ -100,6 +115,15 @@ def _serializar(sa):
         'instalacion_id': sa.instalacion_id,
         'instalacion': (getattr(sa.instalacion, 'nombre', '') or '') if sa.instalacion_id else '',
         'cliente_texto': _cliente_texto(sa),
+        'cliente_libre': sa.cliente_texto if not sa.cliente_id else '',
+        'instalacion_libre': sa.instalacion_texto if not sa.instalacion_id else '',
+        'puesto_id': sa.puesto_id,
+        'puesto': _nombre_puesto(sa),
+        'puesto_libre': sa.puesto_texto if not sa.puesto_id else '',
+        'persona_id': sa.persona_id,
+        'persona': (f"{sa.persona.apellidos} {sa.persona.nombres}".strip() if sa.persona_id else ''),
+        'persona_tipo': (getattr(sa.persona, 'tipo', '') or '') if sa.persona_id else '',
+        'manual': _es_manual(sa),
         'cantidad': sa.cantidad,
         'horas': float(sa.horas or 0),
         'hora_ingreso': _hhmm(sa.hora_ingreso),
@@ -117,7 +141,7 @@ def _serializar(sa):
     }
 
 
-_SELECT = ('cliente', 'instalacion', 'creado_por', 'modificado_por')
+_SELECT = ('cliente', 'instalacion', 'puesto', 'persona', 'creado_por', 'modificado_por')
 
 
 def _horas_entre(hi, ho):
@@ -196,6 +220,35 @@ def quitar_servicio_adicional_sin_completar(fecha, turno, asignacion=None, sacaf
     ).delete()[0]
 
 
+def sincronizar_guardia(sa):
+    """Los agregados A MANO (botón de la asistencia) tienen su fila en el Reporte de Guardia, sección ADICIONALES,
+    con el cliente, el puesto, el guardia y de dónde proviene. Se crea o se actualiza al guardar (y se borra con el
+    registro). Los que salen de una fila de la asistencia ya los pone la asistencia."""
+    if not _es_manual(sa):
+        return
+    persona = sa.persona
+    if persona is None:
+        # Sin guardia no hay a quién poner en el Reporte de Guardia.
+        ReporteGuardia.objects.filter(servicio_adicional=sa).delete()
+        return
+    campos = {
+        'fecha': sa.fecha, 'turno': sa.turno, 'seccion': 'ADICIONALES',
+        'cliente': _nombre_cliente(sa)[:120] or _cliente_texto(sa)[:120],
+        'puesto': (_nombre_puesto(sa) or _cliente_texto(sa))[:160],
+        'persona_nombre': (f"{persona.nombres} {persona.apellidos}".strip() if persona else '')[:160],
+        'persona_ref': persona,
+        'proviene': (getattr(persona, 'tipo', '') or '') if persona else '',
+        'auto': False,
+    }
+    fila = ReporteGuardia.objects.filter(servicio_adicional=sa).first()
+    if fila:
+        for k, v in campos.items():
+            setattr(fila, k, v)
+        fila.save()
+    else:
+        ReporteGuardia.objects.create(servicio_adicional=sa, **campos)
+
+
 def _rango(request):
     """(desde, hasta, error) a partir de ?desde=&hasta= (o ?fecha=)."""
     fecha = _fecha(request.GET.get('fecha'))
@@ -222,7 +275,7 @@ def _filas(request):
     filas = [_serializar(sa) for sa in qs.order_by('fecha', 'turno', 'id')]
     tokens = _norm(request.GET.get('q')).split()
     if tokens:
-        claves = ('cliente_texto', 'cliente', 'solicitado_por', 'recibido_por', 'medio', 'horario')
+        claves = ('cliente_texto', 'cliente', 'puesto', 'persona', 'solicitado_por', 'recibido_por', 'medio', 'horario')
         filas = [f for f in filas
                  if all(t in _norm(' '.join(str(f.get(k) or '') for k in claves)) for t in tokens)]
     return filas, desde, None
@@ -244,10 +297,30 @@ def _aplicar(sa, data, user):
         sa.instalacion = Instalacion.objects.select_related('cliente').filter(id=iid).first() if iid else None
         if sa.instalacion and not data.get('cliente_id'):
             sa.cliente = sa.instalacion.cliente
-    if 'cliente_id' in data and data.get('cliente_id'):
-        sa.cliente = Cliente.objects.filter(id=data.get('cliente_id')).first()
-    if not sa.cliente_id and not sa.instalacion_id:
-        return 'Elige el cliente.'
+    if 'cliente_id' in data:
+        cid = data.get('cliente_id')
+        if cid:
+            sa.cliente = Cliente.objects.filter(id=cid).first()
+        elif 'cliente_texto' in data:
+            sa.cliente = None
+    # Escritos a mano (no existen en el sistema): solo quedan en este registro.
+    for campo in ('cliente_texto', 'instalacion_texto', 'puesto_texto'):
+        if campo in data:
+            setattr(sa, campo, str(data.get(campo) or '').strip().upper()[:200])
+    if sa.cliente_id:
+        sa.cliente_texto = ''
+    if sa.instalacion_id:
+        sa.instalacion_texto = ''
+    if 'puesto_id' in data:
+        pid = data.get('puesto_id')
+        sa.puesto = Puesto.objects.filter(id=pid).first() if pid else None
+        if sa.puesto_id:
+            sa.puesto_texto = ''
+    if not sa.cliente_id and not sa.instalacion_id and not sa.cliente_texto:
+        return 'Elige o escribe el cliente.'
+    if 'persona_id' in data:
+        pid = data.get('persona_id')
+        sa.persona = Persona.objects.filter(id=pid).first() if pid else None
     if 'cantidad' in data:
         try:
             c = int(data.get('cantidad'))
@@ -301,7 +374,12 @@ def catalogo_servicios_adicionales(request):
                 for c in Cliente.objects.order_by('nombre_comercial')]
     instalaciones = [{'id': i.id, 'nombre': i.nombre or '', 'cliente_id': i.cliente_id, 'codigo': i.codigo or ''}
                      for i in Instalacion.objects.filter(activo=True).order_by('nombre')]
-    return Response({'clientes': clientes, 'instalaciones': instalaciones, 'puede_precio': u.has_perm(PRECIO)})
+    puestos = [{'id': p.id, 'nombre': p.nombre or '', 'instalacion_id': p.instalacion_id}
+               for p in Puesto.objects.filter(activo=True).order_by('nombre')]
+    personal = [{'id': p.id, 'nombre': f"{p.apellidos} {p.nombres}".strip(), 'cedula': p.cedula or '', 'tipo': p.tipo or ''}
+                for p in Persona.objects.filter(is_active=True).order_by('apellidos', 'nombres')]
+    return Response({'clientes': clientes, 'instalaciones': instalaciones, 'puestos': puestos, 'personal': personal,
+                     'puede_precio': u.has_perm(PRECIO)})
 
 
 @api_view(['GET'])
@@ -359,6 +437,7 @@ def crear_servicio_adicional(request):
         return Response({'error': 'Esta fila ya tiene su servicio adicional en esa fecha y turno; edítalo.'},
                         status=status.HTTP_409_CONFLICT)
     sa.save()
+    sincronizar_guardia(sa)
     return Response(_serializar(sa), status=status.HTTP_201_CREATED)
 
 
@@ -378,7 +457,36 @@ def actualizar_servicio_adicional(request, id):
         return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
     sa.modificado_por = request.user
     sa.save()
+    sincronizar_guardia(sa)
     return Response(_serializar(sa))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def detalle_servicio_adicional(request, id):
+    if not (request.user.has_perm(VER) or request.user.has_perm(EDITAR)):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+    sa = ServicioAdicional.objects.select_related(*_SELECT).filter(id=id).first()
+    if not sa:
+        return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    return Response(_serializar(sa))
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def eliminar_servicio_adicional(request, id):
+    """Solo los agregados a mano (con el botón de la asistencia): los que salen de una fila de la asistencia se
+    quitan cambiando esa asistencia. Borra también su fila del Reporte de Guardia."""
+    if not request.user.has_perm(EDITAR):
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+    sa = ServicioAdicional.objects.filter(id=id).first()
+    if not sa:
+        return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    if not _es_manual(sa):
+        return Response({'error': 'Este adicional sale de la asistencia: quítalo cambiando el estado en el Reporte de Asistencia.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    sa.delete()          # su fila del Reporte de Guardia se borra con él
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def _proporcion_logo(logo):

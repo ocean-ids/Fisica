@@ -610,6 +610,41 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     });
   }
 
+  get puedeAgregarAdicional(): boolean { return this.auth.hasPermission('CoreFisica.add_servicioadicional'); }
+
+  // Botón "Agregar Adicional": un adicional de un cliente / puesto de la lista o escrito a mano (si no existe en el
+  // sistema), con el guardia que lo cubrió. Sale como fila en este reporte, en el Reporte de Guardia y en Adicionales.
+  agregarAdicional(): void {
+    const turno = this.filtroJornada === 'Nocturno' ? 'Nocturno' : 'Diurno';
+    const ref = this.dialog.open(ServicioAdicionalDialogComponent, {
+      width: '900px', maxWidth: '95vw', autoFocus: false,
+      data: { row: { fecha: this.filtroFecha, turno, asignacion_id: null, sacafranco_fila_id: null },
+              occupiedReemplazoIds: this.reemplazosEnUso() },
+    });
+    ref.afterClosed().subscribe((res: any) => { if (res) { this.cargarReporte(); } });
+  }
+
+  // Personas que ya cubren otro registro del reporte (reemplazos) = EN USO en la lista del guardia.
+  private reemplazosEnUso(): number[] {
+    return Array.from(new Set((this.reporte || []).map(r => Number(r?.reemplazo_id)).filter(id => Number.isFinite(id) && id > 0)));
+  }
+
+  // Fila de un adicional agregado con el botón: se edita con su propio formulario.
+  editarAdicional(row: ReporteAsistenciaRow): void {
+    const id = row.servicio_adicional_id;
+    if (!id) { return; }
+    this.servAdicSvc.detalle(id).subscribe({
+      next: (reg) => {
+        const ref = this.dialog.open(ServicioAdicionalDialogComponent, {
+          width: '900px', maxWidth: '95vw', autoFocus: false,
+          data: { row: reg, occupiedReemplazoIds: this.reemplazosEnUso() },
+        });
+        ref.afterClosed().subscribe((res: any) => { if (res) { this.cargarReporte(); } });
+      },
+      error: (err) => this.handleActionError(err, 'No se pudo abrir el servicio adicional'),
+    });
+  }
+
   // Abre el formulario del Servicio Adicional de ESTA fila, fecha y turno: el que ya existe (para corregirlo) o uno
   // nuevo prellenado con el cliente de la fila y su horario (editable). Lo demás lo llena Consola; el precio no.
   private ofrecerServicioAdicional(row: ReporteAsistenciaRow): void {

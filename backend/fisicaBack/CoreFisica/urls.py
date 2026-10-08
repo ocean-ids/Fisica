@@ -8,6 +8,7 @@ from .views.servicios_adicionales_views import (
     listar_servicios_adicionales, exportar_servicios_adicionales_excel, exportar_servicios_adicionales_pdf,
     catalogo_servicios_adicionales,
     prellenar_servicio_adicional, crear_servicio_adicional, actualizar_servicio_adicional,
+    detalle_servicio_adicional, eliminar_servicio_adicional,
 )
 from .views.auth_views import login_view, logout_view, user_view, user_profile_view, solicitar_reset_password, reset_password
 from .views.cliente_views import actualizar_cliente, obtener_clientes,crear_cliente, obtener_cliente_id, eliminar_cliente
@@ -226,6 +227,8 @@ urlpatterns = [
     path('servicios-adicionales/prellenar/', prellenar_servicio_adicional),
     path('servicios-adicionales/crear/', crear_servicio_adicional),
     path('servicios-adicionales/<int:id>/', actualizar_servicio_adicional),
+    path('servicios-adicionales/<int:id>/detalle/', detalle_servicio_adicional),
+    path('servicios-adicionales/<int:id>/eliminar/', eliminar_servicio_adicional),
     path('horas-eventual/', listar_horas_eventual),
     path('horas-eventual/catalogo/', catalogo_horas_eventual),
     path('horas-eventual/exportar-excel/', exportar_excel_horas_eventual),

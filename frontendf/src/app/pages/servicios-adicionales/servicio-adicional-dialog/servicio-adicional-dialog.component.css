@@ -45,3 +45,61 @@
   .sa-form { min-width: 0; }
   .sa-row > mat-form-field { flex: 1 1 100%; min-width: 0; }
 }
+.sa-libre {
+  color: #b45309;
+}
+
+/* Cuadrícula pareja de 3 columnas (igual que el formulario de Eventuales). */
+.sa-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 14px;
+  row-gap: 2px;
+  padding: 4px 8px 0;
+}
+.sa-grid mat-form-field {
+  width: 100%;
+}
+@media (max-width: 700px) {
+  .sa-grid { grid-template-columns: 1fr; }
+}
+
+/* Todo en MAYÚSCULA mientras se escribe (cliente, puesto, guardia, solicitado por, recibido por, medio).
+   Además se guarda en mayúscula (el servidor también lo convierte). */
+.sa-form input[type="text"],
+.sa-form input:not([type]) {
+  text-transform: uppercase;
+}
+
+/* Lista del guardia: del ancho del campo, sin desbordarse; nombre arriba y tipo / estado abajo. */
+::ng-deep .sa-panel-guardia .mat-mdc-option {
+  min-height: 52px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+::ng-deep .sa-panel-guardia .mat-mdc-option .mdc-list-item__primary-text {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+::ng-deep .sa-panel-guardia .sa-op-nombre {
+  font-size: 13.5px;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+::ng-deep .sa-panel-guardia .sa-op-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+::ng-deep .sa-panel-guardia .sa-op-tipo {
+  padding: 0 7px;
+  border-radius: 10px;
+  background: #eef2ff;
+  color: #4338ca;
+}

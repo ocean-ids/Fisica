@@ -1382,6 +1382,58 @@ def _build_reporte_asistencia_data(
                         'turno_registro': _t_reg,
                     })
 
+    # SERVICIOS ADICIONALES agregados con el botón de la asistencia (cliente / puesto que pueden no existir en el
+    # sistema): salen como su propia fila ese día y turno, con el guardia que lo cubrió. Se editan con su formulario.
+    if fecha_obj and (turno in ('Diurno', 'Nocturno') or not turno):
+        from ..models import ServicioAdicional
+        _adic = (ServicioAdicional.objects.select_related(
+                    'cliente', 'instalacion', 'instalacion__canton__provincia', 'instalacion__nominativo__zona',
+                    'puesto', 'persona', 'modificado_por')
+                 .filter(fecha=fecha_obj, asignacion__isnull=True, sacafranco_fila__isnull=True)
+                 .order_by('id'))
+        if turno in ('Diurno', 'Nocturno'):
+            _adic = _adic.filter(turno=turno)
+        if cliente_id:
+            _adic = _adic.filter(cliente_id=cliente_id)
+        _zona_norm = _normalize_zona_filter(zona) if zona else ''
+        for _ad in _adic:
+            _inst = _ad.instalacion
+            _nz = getattr(_inst, 'nominativo', None) if _inst else None
+            _zona_ad = (_nz.zona.nombre if (_nz and getattr(_nz, 'zona_id', None)) else '') or 'SERVICIOS ADICIONALES'
+            if _zona_norm and _normalize_zona_filter(_zona_ad) != _zona_norm:
+                continue
+            _prov_ad = (getattr(getattr(getattr(_inst, 'canton', None), 'provincia', None), 'nombre', '') if _inst else '')                 or 'SIN PROVINCIA'
+            _per = _ad.persona
+            _u = _ad.modificado_por
+            _hi, _ho = _ad.hora_ingreso, _ad.hora_salida
+            data.append({
+                'asignacion_id': None,
+                'sacafranco_fila_id': None,
+                'servicio_adicional_id': _ad.id,
+                'codigo': ((getattr(_inst, 'codigo', '') or '') if _inst else '') or 'ADIC',
+                'cliente': (getattr(_ad.cliente, 'nombre_comercial', '') or '') if _ad.cliente_id else _ad.cliente_texto,
+                'instalacion_nombre': (_inst.nombre if _inst else _ad.instalacion_texto) or '',
+                'puesto': ((_ad.puesto.nombre if _ad.puesto_id else _ad.puesto_texto) or 'ADICIONAL'),
+                'horario': f"{_hi.strftime('%H:%M')} - {_ho.strftime('%H:%M')}" if (_hi and _ho) else '',
+                'nombre_apellidos': f"{_per.apellidos} {_per.nombres}".strip() if _per else 'SIN GUARDIA',
+                'apellidos_txt': (_per.apellidos or '').strip() if _per else '',
+                'nombres_txt': (_per.nombres or '').strip() if _per else '',
+                'reemplazo_id': None,
+                'reemplazo': '',
+                'estado_asistencia': 'ASISTIO',
+                'estado': 'ADICIONAL',
+                'descripcion': '',
+                'modificado_por': (f"{_u.first_name} {_u.last_name}".strip() or _u.get_username()) if _u else '',
+                'modificado_en': _ad.modificado_en.isoformat() if _ad.modificado_en else None,
+                'row_color': '',
+                'hueca': False,
+                'hueca_motivo': '',
+                'zona_titulo': _zona_ad,
+                'provincia': _prov_ad,
+                'turno': _ad.turno,
+                'turno_registro': '',
+            })
+
     if term:
         import re as _re_q
         tokens = [t for t in term.split() if t]

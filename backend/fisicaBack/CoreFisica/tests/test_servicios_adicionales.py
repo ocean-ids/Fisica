@@ -231,3 +231,92 @@ class AdicionalDesdeLaAsistenciaTests(ServiciosAdicionalesTests):
         out = StringIO()
         call_command('pasar_adicionales_existentes', stdout=out)              # repetirlo no duplica
         self.assertEqual(ServicioAdicional.objects.count(), 2)
+
+
+class AdicionalManualTests(TestCase):
+    """Adicional agregado con el botón de la asistencia: cliente / instalación / puesto de la lista o escritos a mano,
+    guardia obligatorio; sale como fila en el Reporte de Asistencia y en el Reporte de Guardia (ADICIONALES)."""
+
+    def setUp(self):
+        User.objects.create_superuser(username='am_admin', email='e@e.com', password='AmPass123!x')
+        tok = self.client.post('/api/login/', data=json.dumps({'username': 'am_admin', 'password': 'AmPass123!x'}),
+                               content_type='application/json').json().get('access')
+        self.auth = {'HTTP_AUTHORIZATION': f'Bearer {tok}'}
+        self.guardia = Persona.objects.create(nombres='MARIO', apellidos='TORRES ARIAS', cedula='0910000811', tipo='RETEN')
+
+    def _crear(self, **datos):
+        base = {'fecha': '2026-10-07', 'turno': 'Diurno', 'cliente_texto': 'feria del hogar', 'puesto_texto': 'stand 4',
+                'persona_id': self.guardia.id, 'cantidad': 1, 'horas': 8, 'hora_ingreso': '08:00', 'hora_salida': '16:00'}
+        base.update(datos)
+        return self.client.post('/api/servicios-adicionales/crear/', data=json.dumps(base),
+                                content_type='application/json', **self.auth)
+
+    def _guardia(self):
+        from CoreFisica.models import ReporteGuardia
+        return list(ReporteGuardia.objects.filter(seccion='ADICIONALES', fecha=D(2026, 10, 7)))
+
+    def test_cliente_y_puesto_escritos_a_mano(self):
+        r = self._crear()
+        self.assertEqual(r.status_code, 201, r.content)
+        f = r.json()
+        self.assertEqual((f['cliente_texto'], f['puesto'], f['persona'], f['manual']),
+                         ('FERIA DEL HOGAR', 'STAND 4', 'TORRES ARIAS MARIO', True))
+
+    def test_sin_guardia_no_va_al_reporte_de_guardia(self):
+        sid = self._crear(persona_id=None).json()['id']
+        self.assertEqual(self._guardia(), [])
+        self.client.put(f'/api/servicios-adicionales/{sid}/', data=json.dumps({'persona_id': self.guardia.id}),
+                        content_type='application/json', **self.auth)
+        self.assertEqual(len(self._guardia()), 1)                         # al ponerle guardia, aparece
+
+    def test_crea_su_fila_en_el_reporte_de_guardia_y_la_actualiza(self):
+        sid = self._crear().json()['id']
+        filas = self._guardia()
+        self.assertEqual(len(filas), 1)
+        g = filas[0]
+        self.assertEqual((g.turno, g.cliente, g.puesto, g.persona_nombre, g.proviene, g.auto),
+                         ('Diurno', 'FERIA DEL HOGAR', 'STAND 4', 'MARIO TORRES ARIAS', 'RETEN', False))
+        self.client.put(f'/api/servicios-adicionales/{sid}/', data=json.dumps({'turno': 'Nocturno', 'puesto_texto': 'stand 9'}),
+                        content_type='application/json', **self.auth)
+        g = self._guardia()[0]
+        self.assertEqual((g.turno, g.puesto), ('Nocturno', 'STAND 9'))
+        # Regenerar el reporte de guardia no la borra (es manual).
+        from CoreFisica.views.reporte_guardia_views import regenerar_guardia_dia
+        regenerar_guardia_dia(D(2026, 10, 7))
+        self.assertEqual(len(self._guardia()), 1)
+
+    def test_eliminar_borra_tambien_la_fila_de_guardia(self):
+        sid = self._crear().json()['id']
+        r = self.client.delete(f'/api/servicios-adicionales/{sid}/eliminar/', **self.auth)
+        self.assertEqual(r.status_code, 204)
+        self.assertEqual(self._guardia(), [])
+
+    def test_sale_como_fila_en_el_reporte_de_asistencia(self):
+        sid = self._crear().json()['id']
+        d = self.client.get('/api/reporte-asistencia/', {'fecha': '2026-10-07', 'turno': 'Diurno'}, **self.auth).json()
+        filas = [f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('servicio_adicional_id') == sid]
+        self.assertEqual(len(filas), 1)
+        f = filas[0]
+        self.assertEqual((f['cliente'], f['puesto'], f['nombre_apellidos'], f['estado'], f['horario'], f['codigo']),
+                         ('FERIA DEL HOGAR', 'STAND 4', 'TORRES ARIAS MARIO', 'ADICIONAL', '08:00 - 16:00', 'ADIC'))
+        d = self.client.get('/api/reporte-asistencia/', {'fecha': '2026-10-07', 'turno': 'Nocturno'}, **self.auth).json()
+        self.assertFalse([f for f in (d.get('results', d) if isinstance(d, dict) else d) if f.get('servicio_adicional_id') == sid])
+
+    def test_con_cliente_de_la_lista(self):
+        cli = Cliente.objects.create(razon_social='X SA', nombre_comercial='CLIENTE X')
+        inst = Instalacion.objects.create(cliente=cli, nombre='INST X', codigo='X9')
+        r = self._crear(cliente_texto='', instalacion_id=inst.id)
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual((r.json()['cliente'], r.json()['cliente_texto']), ('CLIENTE X', 'INST X'))
+        self.assertEqual(self._guardia()[0].cliente, 'CLIENTE X')
+
+    def test_los_que_salen_de_la_asistencia_no_se_eliminan_aqui(self):
+        cli = Cliente.objects.create(razon_social='Y SA', nombre_comercial='Y')
+        inst = Instalacion.objects.create(cliente=cli, nombre='INST Y')
+        puesto = Puesto.objects.create(instalacion=inst, nombre='P')
+        tit = Persona.objects.create(nombres='T', apellidos='T', cedula='0910000812', tipo='FIJOS')
+        asig = Asignacion.objects.create(persona=tit, cliente=cli, instalacion=inst, puesto=puesto, mes=10, anio=2026,
+                                         estado='ACTIVO', start_date=D(2026, 10, 1))
+        sid = self._crear(asignacion_id=asig.id, instalacion_id=inst.id, cliente_texto='', persona_id=None).json()['id']
+        r = self.client.delete(f'/api/servicios-adicionales/{sid}/eliminar/', **self.auth)
+        self.assertEqual(r.status_code, 400)

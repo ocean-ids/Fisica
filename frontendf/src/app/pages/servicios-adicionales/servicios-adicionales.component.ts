@@ -143,7 +143,7 @@ export class ServiciosAdicionalesComponent implements OnInit, OnDestroy {
     const tokens = this.norm(this.texto).split(/\s+/).filter(Boolean);
     if (!tokens.length) { return base; }
     return base.filter(f => {
-      const h = this.norm([f.cliente_texto, f.cliente, f.solicitado_por, f.recibido_por, f.medio, f.horario].join(' '));
+      const h = this.norm([f.cliente_texto, f.cliente, f.puesto, f.persona, f.solicitado_por, f.recibido_por, f.medio, f.horario].join(' '));
       return tokens.every(t => h.includes(t));
     });
   }
@@ -186,6 +186,21 @@ export class ServiciosAdicionalesComponent implements OnInit, OnDestroy {
   }
 
   editar(f: ServicioAdicional): void { this.abrir({ ...f }); }
+
+  // Solo los agregados con el botón de la asistencia (los demás se quitan cambiando la asistencia).
+  eliminar(f: ServicioAdicional): void {
+    if (!f.id) { return; }
+    Swal.fire({
+      title: '¿Eliminar servicio adicional?', text: `${f.cliente_texto || ''} · ${f.persona || ''}`.trim(),
+      icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+    }).then(r => {
+      if (!r.isConfirmed) { return; }
+      this.srv.eliminar(f.id!).subscribe({
+        next: () => { this.cargar(); Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1300, showConfirmButton: false }); },
+        error: (err) => Swal.fire({ icon: 'error', title: 'No se pudo eliminar', text: err?.error?.error || '' }),
+      });
+    });
+  }
 
   private abrir(row: Partial<ServicioAdicional>): void {
     const ref = this.dialog.open(ServicioAdicionalDialogComponent, {

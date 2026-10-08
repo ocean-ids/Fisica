@@ -11,7 +11,18 @@ export interface ServicioAdicional {
   cliente?: string;
   instalacion_id: number | null;
   instalacion?: string;
-  cliente_texto?: string;   // columna CLIENTE: la instalación (o el cliente)
+  cliente_texto?: string;   // columna CLIENTE: la instalación (o el cliente). Al guardar: cliente escrito a mano
+  instalacion_texto?: string; // al guardar: instalación escrita a mano
+  cliente_libre?: string;     // cliente escrito a mano (no está en el sistema)
+  instalacion_libre?: string;
+  puesto_id?: number | null;
+  puesto?: string;
+  puesto_texto?: string;      // al guardar: puesto escrito a mano
+  puesto_libre?: string;
+  persona_id?: number | null; // guardia que cubrió (los agregados con el botón de la asistencia)
+  persona?: string;
+  persona_tipo?: string;
+  manual?: boolean;           // agregado con el botón (no sale de una fila de la asistencia)
   cantidad: number;         // C: cantidad de guardias
   horas: number;            // H
   hora_ingreso: string;     // HH:MM
@@ -31,6 +42,8 @@ export interface ServicioAdicional {
 export interface CatalogoServiciosAdicionales {
   clientes: Array<{ id: number; nombre: string }>;
   instalaciones: Array<{ id: number; nombre: string; cliente_id: number; codigo: string }>;
+  puestos: Array<{ id: number; nombre: string; instalacion_id: number }>;
+  personal: Array<{ id: number; nombre: string; cedula: string; tipo: string }>;
   puede_precio: boolean;
 }
 
@@ -64,6 +77,15 @@ export class ServiciosAdicionalesService {
 
   actualizar(id: number, data: Partial<ServicioAdicional>): Observable<ServicioAdicional> {
     return this.api.put<ServicioAdicional>(`/servicios-adicionales/${id}/`, data);
+  }
+
+  detalle(id: number): Observable<ServicioAdicional> {
+    return this.api.get<ServicioAdicional>(`/servicios-adicionales/${id}/detalle/`);
+  }
+
+  // Solo los agregados a mano (botón de la asistencia); borra también su fila del Reporte de Guardia.
+  eliminar(id: number): Observable<any> {
+    return this.api.delete(`/servicios-adicionales/${id}/eliminar/`);
   }
 
   // Excel en formato FR (una pestaña por día, Diurno y Nocturno). params: desde/hasta, q.

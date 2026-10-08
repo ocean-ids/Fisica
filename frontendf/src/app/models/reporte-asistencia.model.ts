@@ -8,6 +8,7 @@ export interface ReporteAsistenciaRow {
   puesto_tipo?: string;
   horario?: string;
   turno?: string;
+  servicio_adicional_id?: number | null;  // fila de un adicional agregado con el botón (se edita con su formulario)
   turno_registro?: string;   // 24 horas: a qué turno (Diurno / Nocturno) es esta fila; '' en las demás
   nombre_apellidos?: string;
   apellidos_txt?: string;     // apellidos de la persona que se muestra (para verlos arriba)

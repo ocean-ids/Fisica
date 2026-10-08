@@ -15,6 +15,12 @@
                 <i class="bi bi-person-plus-fill"></i> Agregar Eventual
             </button>
 
+            <!-- Adicional de un cliente / puesto que puede no estar en el sistema: va al Reporte de Guardia y a Adicionales -->
+            <button *ngIf="puedeAgregarAdicional" type="button" class="btn btn-sm btn-outline-primary" (click)="agregarAdicional()"
+                    title="Agregar un servicio adicional (cliente o puesto de la lista o escrito a mano)">
+                <i class="bi bi-plus-square"></i> Agregar Adicional
+            </button>
+
             <button class="btn btn-sm btn-outline-secondary" (click)="openBottomSheet()">
                 <i class="bi bi-receipt"></i> Estado Reporte
             </button>
@@ -141,6 +147,7 @@
                                     type="button"
                                     class="btn btn-link p-0 mt-1"
                                     (click)="abrirHistorialModal(r)"
+                                    *ngIf="!r.servicio_adicional_id"
                                     [disabled]="!r.asignacion_id && !r.sacafranco_fila_id">
                                     Historial
                                 </button>
@@ -151,8 +158,9 @@
                                     mat-stroked-button
                                     type="button"
                                     color="primary"
-                                    [disabled]="!r.asignacion_id && !r.sacafranco_fila_id"
-                                    (click)="abrirModalEdicion(r)">
+                                    [disabled]="!r.asignacion_id && !r.sacafranco_fila_id && !r.servicio_adicional_id"
+                                    [title]="r.servicio_adicional_id ? 'Editar el servicio adicional' : ''"
+                                    (click)="r.servicio_adicional_id ? editarAdicional(r) : abrirModalEdicion(r)">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <span *ngIf="!puedeEditar" class="text-muted">-</span>

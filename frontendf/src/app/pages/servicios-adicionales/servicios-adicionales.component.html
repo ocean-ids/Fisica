@@ -65,7 +65,13 @@
         <ng-container *ngIf="!loading">
           <tr *ngFor="let f of filasFiltradas; let i = index">
             <td>{{ i + 1 }}</td>
-            <td class="text-start">{{ f.cliente_texto || '—' }}</td>
+            <td class="text-start">
+              {{ f.cliente_texto || '—' }}
+              <!-- Agregado con el botón de la asistencia: su puesto y el guardia que lo cubrió -->
+              <div *ngIf="f.manual && (f.puesto || f.persona)" class="text-muted" style="font-size: 11px">
+                {{ f.puesto || '' }}<span *ngIf="f.puesto && f.persona"> · </span>{{ f.persona || '' }}
+              </div>
+            </td>
             <td>{{ f.cantidad }}</td>
             <td>{{ f.horas }}</td>
             <td class="text-nowrap">{{ f.horario || '—' }}</td>
@@ -80,6 +86,8 @@
             <td *ngIf="puedeEditar || puedePrecio" class="text-nowrap">
               <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" (click)="editar(f)"
                       [title]="puedeEditar ? 'Editar' : 'Poner el precio'"><i class="bi bi-pencil"></i></button>
+              <button *ngIf="f.manual && puedeEditar" type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1"
+                      (click)="eliminar(f)" title="Eliminar (también sale del Reporte de Guardia)"><i class="bi bi-trash"></i></button>
             </td>
           </tr>
           <tr *ngIf="!filasFiltradas.length">
