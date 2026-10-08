@@ -1,116 +1,74 @@
-/* Sidebar en azul oscuro (igual al botón de login) con texto blanco, en ambos temas */
-:host ::ng-deep mat-nav-list {
-	background-color: #0c2f5a;
-	color: #ffffff;
+/* Menú lateral en azul marino, agrupado por secciones (Operación / Servicios / Catálogos / Pagos). */
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-:host ::ng-deep mat-nav-list a,
-:host ::ng-deep mat-nav-list mat-icon,
-:host ::ng-deep mat-nav-list span,
-:host ::ng-deep mat-nav-list .mdc-list-item__primary-text,
-:host ::ng-deep mat-nav-list .fw-semibold {
-	color: #ffffff !important;
+.side {
+  background-color: #0c2f5a;
+  color: #ffffff;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Bordes/separadores en blanco translúcido para que se vean sobre el azul */
-:host ::ng-deep mat-nav-list .border-end,
-:host ::ng-deep mat-nav-list .border-bottom,
-:host ::ng-deep mat-nav-list .border {
-	border-color: rgba(255, 255, 255, 0.18) !important;
+.side-perfil {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
-
-/* Ítem activo / hover: un azul un poco más claro para resaltar */
-:host ::ng-deep mat-nav-list a[mat-list-item].active,
-:host ::ng-deep mat-nav-list a[mat-list-item].active .mdc-list-item__primary-text {
-	background-color: #133e73;
-}
-:host ::ng-deep mat-nav-list a[mat-list-item]:hover {
-	background-color: rgba(255, 255, 255, 0.08);
+.side-perfil mat-icon {
+  color: #ffffff;
 }
 
 .bg-color {
   background-color: #be9a57;
 }
 
-/* El menú puede scrollear si no cabe (para llegar a todos los módulos)
-   y SEPARA los módulos con gap (el contenedor es flex column). */
-:host ::ng-deep mat-nav-list {
+/* El menú puede bajar con scroll si no cabe. */
+.side-menu {
+  flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  gap: 10px;
-  padding-top: 6px;
-  padding-bottom: 12px;
+  padding: 4px 0 14px;
 }
 
-/* Ítems como "píldora": margen lateral, más alto y fondo tenue para
-   que cada módulo se distinga bien (sobre todo en móvil). */
-:host ::ng-deep mat-nav-list a[mat-list-item] {
-  margin-left: 8px !important;
-  margin-right: 8px !important;
-  border-radius: 8px;
-  min-height: 46px !important;
-  background-color: rgba(255, 255, 255, 0.05);
+/* Título del grupo: pequeño, en mayúsculas y gris azulado. */
+.side-grupo {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8aa0bf;
+  padding: 14px 20px 6px;
 }
 
-/* Iconos del menú: crecen suavemente al pasar el mouse */
-:host ::ng-deep mat-nav-list a[mat-list-item] mat-icon {
-  transition: transform 0.18s ease;
-}
-:host ::ng-deep mat-nav-list a[mat-list-item]:hover mat-icon {
-  transform: scale(1.28);
-}
-
-/* Botón chevron del submenú (a la derecha del ítem padre) */
-.chevron-btn {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: inherit;
-}
-.chevron-btn mat-icon {
-  transition: transform 0.25s ease;
-  margin: 0;
-}
-.chevron-btn mat-icon.rotated {
-  transform: rotate(180deg);
-}
-/* evitar que el hover-scale de iconos afecte al chevron */
-:host ::ng-deep mat-nav-list a[mat-list-item]:hover .chevron-btn mat-icon {
-  transform: none;
-}
-:host ::ng-deep mat-nav-list a[mat-list-item]:hover .chevron-btn mat-icon.rotated {
-  transform: rotate(180deg);
-}
-
-/* Contenedor del submenú: se despliega con animación */
-/* Submenú: oculto por defecto, se muestra al desplegar.
-   Uso display (no max-height) porque dentro de un contenedor flex el
-   max-height es poco fiable y a veces no despliega en móvil. */
-.submenu {
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-}
-.submenu.open {
+/* Opción del menú: ícono de línea + texto; la activa con fondo claro y barra dorada a la izquierda. */
+.side-item {
   display: flex;
-}
-
-/* Ítems hijos: indentados, con viñeta (círculo pequeño) */
-:host ::ng-deep .submenu-item {
-  padding-left: 18px !important;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 20px;
+  color: #dbe4f0;
+  text-decoration: none;
   font-size: 14px;
+  border-left: 3px solid transparent;
+  transition: background-color 0.15s ease;
 }
-:host ::ng-deep .submenu-item .submenu-bullet {
-  font-size: 10px;
-  width: 10px;
-  height: 10px;
-  color: rgba(255, 255, 255, 0.75) !important;
+.side-item i {
+  font-size: 16px;
+  width: 18px;
+  text-align: center;
+  color: #9fb3cf;
 }
-/* el círculo no debe crecer con el hover de iconos */
-:host ::ng-deep mat-nav-list a.submenu-item:hover .submenu-bullet {
-  transform: none;
+.side-item:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+.side-item.active {
+  background-color: rgba(255, 255, 255, 0.09);
+  border-left-color: #c9a45c;
+  color: #ffffff;
+  font-weight: 600;
+}
+.side-item.active i {
+  color: #c9a45c;
 }

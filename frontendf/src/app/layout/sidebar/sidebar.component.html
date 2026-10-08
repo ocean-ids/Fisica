@@ -1,5 +1,5 @@
-<mat-nav-list class="w-100 h-100 d-flex flex-column border-end">
-  <div class="d-flex flex-column align-items-center text-center p-4 border-bottom">
+<nav class="side w-100 h-100 d-flex flex-column">
+  <div class="d-flex flex-column align-items-center text-center p-4 side-perfil">
     <div class="d-flex align-items-center justify-content-center">
       @if (photoUrl) {
         <img class="rounded-circle border" width="48" height="48" [src]="photoUrl" alt="Foto de perfil" />
@@ -15,30 +15,16 @@
     </div>
   </div>
 
-  @for (item of menuItems; track item.label) {
-    @if (item.children?.length) {
-      <a mat-list-item [routerLink]="item.path" routerLinkActive="active" class="text-decoration-none">
-        <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-        <span matListItemTitle>{{ item.label }}</span>
-        <button matListItemMeta type="button" class="chevron-btn" (click)="toggle(item.label, $event)"
-                [attr.aria-label]="'Desplegar ' + item.label">
-          <mat-icon [class.rotated]="isExpanded(item.label)">expand_more</mat-icon>
-        </button>
-      </a>
-      <div class="submenu" [class.open]="isExpanded(item.label)">
-        @for (child of item.children; track child.label) {
-          <a mat-list-item [routerLink]="child.path" [queryParams]="child.queryParams || null"
-             routerLinkActive="active" class="text-decoration-none submenu-item">
-            <mat-icon matListItemIcon class="submenu-bullet">radio_button_unchecked</mat-icon>
-            <span matListItemTitle>{{ child.label }}</span>
-          </a>
-        }
-      </div>
-    } @else {
-      <a mat-list-item [routerLink]="item.path" routerLinkActive="active" class="text-decoration-none">
-        <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-        <span matListItemTitle>{{ item.label }}</span>
-      </a>
+  <!-- Menú agrupado: Operación / Servicios / Catálogos / Pagos -->
+  <div class="side-menu">
+    @for (grupo of gruposVisibles; track grupo.titulo) {
+      <div class="side-grupo">{{ grupo.titulo }}</div>
+      @for (item of grupo.items; track item.key) {
+        <a class="side-item" [routerLink]="item.path" routerLinkActive="active">
+          <i class="bi bi-{{ item.icon }}"></i>
+          <span>{{ item.label }}</span>
+        </a>
+      }
     }
-  }
-</mat-nav-list>
+  </div>
+</nav>
