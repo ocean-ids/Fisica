@@ -5,14 +5,17 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { Subscription, debounceTime, distinctUntilChanged, map } from 'rxjs';
 import Swal from 'sweetalert2';
 import { ServicioAdicional, ServiciosAdicionalesService } from '../../services/servicios-adicionales.service';
 import { GlobalFilterStateService } from '../../services/global-filter-state.service';
+import { AuthService } from '../../services/auth.service';
+import { ServicioAdicionalDialogComponent } from './servicio-adicional-dialog/servicio-adicional-dialog.component';
 
-// Servicios Adicionales: los ADICIONALES de un rango de fechas (como Servicios Eventuales, pero sin valores).
-// Salen del Reporte de Guardia, que se llena desde la asistencia. Solo lectura.
+// Servicios Adicionales (formato FR-REPORTE DE PUESTO ADICIONAL): lista por rango de fechas, Nuevo registro y
+// editar. También se llenan desde la asistencia al guardar una fila como ADICIONAL. El precio, solo con su permiso.
 @Component({
   selector: 'app-servicios-adicionales',
   standalone: true,
@@ -41,7 +44,13 @@ export class ServiciosAdicionalesComponent implements OnInit, OnDestroy {
     private srv: ServiciosAdicionalesService,
     private globalFilter: GlobalFilterStateService,
     private router: Router,
+    private dialog: MatDialog,
+    private auth: AuthService,
   ) {}
+
+  get puedeCrear(): boolean { return this.auth.hasPermission('CoreFisica.add_servicioadicional'); }
+  get puedeEditar(): boolean { return this.auth.hasPermission('CoreFisica.change_servicioadicional'); }
+  get puedePrecio(): boolean { return this.auth.hasPermission('CoreFisica.editar_precio_servicioadicional'); }
 
   ngOnInit(): void {
     // Por defecto: HOY (un solo día). En el calendario se puede elegir un rango.
@@ -133,12 +142,12 @@ export class ServiciosAdicionalesComponent implements OnInit, OnDestroy {
     const tokens = this.norm(this.texto).split(/\s+/).filter(Boolean);
     if (!tokens.length) { return base; }
     return base.filter(f => {
-      const h = this.norm([f.cliente, f.puesto, f.persona_nombre, f.proviene].join(' '));
+      const h = this.norm([f.cliente_texto, f.cliente, f.solicitado_por, f.recibido_por, f.medio, f.horario].join(' '));
       return tokens.every(t => h.includes(t));
     });
   }
 
-  // Excel del rango que se está viendo, con la búsqueda aplicada: siempre en dos pestañas, DIURNO y NOCTURNO.
+  // Excel del rango que se está viendo (formato FR: una pestaña por día con el turno Diurno y Nocturno).
   descargarExcel(): void {
     if (!this.fechaDesde || !this.fechaHasta) { return; }
     const params: any = { desde: this.fechaDesde, hasta: this.fechaHasta };
@@ -161,5 +170,20 @@ export class ServiciosAdicionalesComponent implements OnInit, OnDestroy {
         text: err?.status === 403 ? 'No autorizado' : 'No se pudo descargar el Excel',
       }),
     });
+  }
+
+  // Nuevo registro: con UN día y un turno elegidos (con un rango o en Ambos no se sabe la fecha o el turno).
+  nuevo(): void {
+    if (!this.esUnDia || this.turnoFiltro === 'Ambos') { return; }
+    this.abrir({ fecha: this.fechaDesde, turno: this.turnoFiltro });
+  }
+
+  editar(f: ServicioAdicional): void { this.abrir({ ...f }); }
+
+  private abrir(row: Partial<ServicioAdicional>): void {
+    const ref = this.dialog.open(ServicioAdicionalDialogComponent, {
+      width: '900px', maxWidth: '95vw', autoFocus: false, data: { row },
+    });
+    ref.afterClosed().subscribe((res?: ServicioAdicional) => { if (res) { this.cargar(); } });
   }
 }

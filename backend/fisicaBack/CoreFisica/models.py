@@ -1516,15 +1516,45 @@ class ReporteGuardia(models.Model):
         indexes = [models.Index(fields=['fecha', 'turno', 'seccion'])]
 
 
-class ServicioAdicional(ReporteGuardia):
-    """Módulo Servicios Adicionales: los ADICIONALES del Reporte de Guardia (misma tabla, no guarda nada aparte).
-    Existe solo para tener su PROPIO permiso de solo lectura (view_servicioadicional), independiente del
-    permiso del Reporte de Guardia."""
+class ServicioAdicional(models.Model):
+    """Servicio Adicional (formato FR-REPORTE DE PUESTO ADICIONAL): un pedido de guardias adicionales para un cliente.
+
+    Se llena desde la asistencia (al guardar una fila como ADICIONAL se abre el formulario ya prellenado) o con
+    "Nuevo registro" en el módulo. C = cantidad de guardias, H = horas, Horario = ingreso y salida (por defecto el
+    del registro de asistencia, editable). El PRECIO solo lo pone quien tiene el permiso editar_precio.
+    """
+    TURNOS = [('Diurno', 'Diurno'), ('Nocturno', 'Nocturno')]
+
+    fecha = models.DateField(db_index=True)
+    turno = models.CharField(max_length=10, choices=TURNOS, default='Diurno')
+    cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True, related_name='servicios_adicionales')
+    instalacion = models.ForeignKey(Instalacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='servicios_adicionales')
+    cantidad = models.PositiveIntegerField(default=1)                                   # C
+    horas = models.DecimalField(max_digits=5, decimal_places=2, default=0)              # H
+    hora_ingreso = models.TimeField(null=True, blank=True)
+    hora_salida = models.TimeField(null=True, blank=True)
+    solicitado_por = models.CharField(max_length=150, blank=True, default='')
+    recibido_por = models.CharField(max_length=150, blank=True, default='')
+    medio = models.CharField(max_length=100, blank=True, default='')
+    precio = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # De qué fila de la asistencia salió (para no duplicarlo si se vuelve a guardar como ADICIONAL).
+    asignacion = models.ForeignKey('Asignacion', on_delete=models.SET_NULL, null=True, blank=True, related_name='servicios_adicionales')
+    sacafranco_fila = models.ForeignKey(SacafrancoFila, on_delete=models.SET_NULL, null=True, blank=True, related_name='servicios_adicionales')
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    modificado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    creado_en = models.DateTimeField(auto_now_add=True)
+    modificado_en = models.DateTimeField(auto_now=True)
+
     class Meta:
-        proxy = True
-        default_permissions = ('view',)
+        ordering = ['fecha', 'turno', 'id']
+        indexes = [models.Index(fields=['fecha', 'turno'])]
+        default_permissions = ('view', 'add', 'change')
+        permissions = [('editar_precio_servicioadicional', 'Puede poner el precio del servicio adicional')]
         verbose_name = 'servicio adicional'
         verbose_name_plural = 'servicios adicionales'
+
+    def __str__(self):
+        return f"Adicional {self.fecha} {self.turno} {self.cliente_id}"
 
 
 class ReporteGuardiaOculta(models.Model):

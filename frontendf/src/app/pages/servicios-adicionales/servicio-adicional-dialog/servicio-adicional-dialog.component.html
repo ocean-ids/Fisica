@@ -1,0 +1,100 @@
+<h2 mat-dialog-title>{{ esEdicion ? 'Editar servicio adicional' : 'Registrar servicio adicional' }}</h2>
+
+<mat-dialog-content class="sa-form">
+  <div *ngIf="cargando" class="text-muted sa-nota">Cargando datos…</div>
+
+  <!-- Fecha y turno -->
+  <div class="sa-row m-2">
+    <mat-form-field appearance="outline">
+      <mat-label>Fecha</mat-label>
+      <input matInput type="date" [(ngModel)]="f.fecha" [disabled]="!puedeEditar" required>
+    </mat-form-field>
+    <div class="sa-turno">
+      <mat-button-toggle-group [(ngModel)]="f.turno" [disabled]="!puedeEditar" aria-label="Turno">
+        <mat-button-toggle value="Diurno">Diurno</mat-button-toggle>
+        <mat-button-toggle value="Nocturno">Nocturno</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+  </div>
+
+  <!-- Cliente (donde se pone el adicional) -->
+  <div class="sa-row m-2">
+    <mat-form-field appearance="outline">
+      <mat-label>Cliente</mat-label>
+      <input type="text" matInput required [formControl]="clienteCtrl" [matAutocomplete]="autoCli"
+             #trigCli="matAutocompleteTrigger" (focus)="trigCli.openPanel()" placeholder="Escribe para filtrar…">
+      <button matSuffix mat-icon-button type="button" *ngIf="clienteCtrl.value && puedeEditar"
+              (click)="limpiar(clienteCtrl, $event, true)" aria-label="Limpiar"><span class="sa-x">×</span></button>
+      <mat-autocomplete #autoCli="matAutocomplete" [displayWith]="displayOpcion" (optionSelected)="onClienteSel()">
+        <mat-option *ngFor="let c of clientesFiltrados" [value]="c">{{ c.nombre }}</mat-option>
+        <mat-option *ngIf="!clientesFiltrados.length" disabled>Sin clientes que coincidan</mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Instalación</mat-label>
+      <input type="text" matInput [formControl]="instalacionCtrl" [matAutocomplete]="autoInst"
+             #trigInst="matAutocompleteTrigger" (focus)="trigInst.openPanel()" placeholder="Escribe para filtrar…">
+      <button matSuffix mat-icon-button type="button" *ngIf="instalacionCtrl.value && puedeEditar"
+              (click)="limpiar(instalacionCtrl, $event)" aria-label="Limpiar"><span class="sa-x">×</span></button>
+      <mat-autocomplete #autoInst="matAutocomplete" [displayWith]="displayOpcion" (optionSelected)="onInstalacionSel()">
+        <mat-option *ngFor="let i of instalacionesFiltradas" [value]="i">{{ i.nombre }}</mat-option>
+        <mat-option *ngIf="!instalacionesFiltradas.length" disabled>Sin instalaciones que coincidan</mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+  </div>
+
+  <!-- C | H | Ingreso | Salida -->
+  <div class="sa-row m-2">
+    <mat-form-field appearance="outline" class="sa-corto">
+      <mat-label>C (guardias)</mat-label>
+      <input matInput type="number" min="1" step="1" [(ngModel)]="f.cantidad" [disabled]="!puedeEditar" required>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="sa-corto">
+      <mat-label>Hora de ingreso</mat-label>
+      <input matInput type="time" [(ngModel)]="f.hora_ingreso" (ngModelChange)="recalcularHoras()" [disabled]="!puedeEditar">
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="sa-corto">
+      <mat-label>Hora de salida</mat-label>
+      <input matInput type="time" [(ngModel)]="f.hora_salida" (ngModelChange)="recalcularHoras()" [disabled]="!puedeEditar">
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="sa-corto">
+      <mat-label>H (horas)</mat-label>
+      <input matInput type="number" min="0" step="0.5" [(ngModel)]="f.horas" [disabled]="!puedeEditar">
+    </mat-form-field>
+  </div>
+
+  <!-- Solicitado por | Recibido por | Medio -->
+  <div class="sa-row m-2">
+    <mat-form-field appearance="outline">
+      <mat-label>Solicitado por</mat-label>
+      <input matInput [(ngModel)]="f.solicitado_por" [disabled]="!puedeEditar" class="sa-mayus">
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Recibido por</mat-label>
+      <input matInput [(ngModel)]="f.recibido_por" [disabled]="!puedeEditar" class="sa-mayus">
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Medio</mat-label>
+      <input matInput [(ngModel)]="f.medio" [disabled]="!puedeEditar" placeholder="Correo, WhatsApp…" class="sa-mayus">
+    </mat-form-field>
+  </div>
+
+  <!-- Precio: solo quien tiene ese permiso (Consola no lo pone) -->
+  <div class="sa-row m-2" *ngIf="puedePrecio">
+    <mat-form-field appearance="outline" class="sa-corto">
+      <mat-label>Precio</mat-label>
+      <input matInput type="number" min="0" step="0.01" [(ngModel)]="f.precio">
+    </mat-form-field>
+    <div class="sa-hueco"></div>
+  </div>
+
+  <div *ngIf="error" class="text-danger sa-nota">{{ error }}</div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cerrar()">Cancelar</button>
+  <button mat-raised-button color="primary" type="button" (click)="guardar()"
+          *ngIf="puedeEditar || puedePrecio" [disabled]="cargando || guardando">
+    {{ guardando ? 'Guardando…' : 'Guardar' }}
+  </button>
+</mat-dialog-actions>

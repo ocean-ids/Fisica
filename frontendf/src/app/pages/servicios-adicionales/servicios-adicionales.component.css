@@ -73,3 +73,8 @@
 .ev-btn-excel {
   width: 170px;
 }
+
+/* Columna "Última Modificación" (igual que Eventuales) */
+.ult-mod {
+  font-size: 12px;
+}

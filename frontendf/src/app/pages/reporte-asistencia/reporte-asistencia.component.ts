@@ -22,6 +22,8 @@ import { NominativoService, ZonaOperativa } from '../../services/nominativo.serv
 import { ZonasNominativosDialogComponent } from './dialogs/zonas-nominativos-dialog.component';
 import { AuthService } from '../../services/auth.service';
 import { HorasEventualService } from '../../services/horas-eventual.service';
+import { ServiciosAdicionalesService } from '../../services/servicios-adicionales.service';
+import { ServicioAdicionalDialogComponent } from '../servicios-adicionales/servicio-adicional-dialog/servicio-adicional-dialog.component';
 import { EventualHorasDialogComponent } from '../eventuales/eventual-horas-dialog/eventual-horas-dialog.component';
 import { HorasEventual } from '../../models/horas-eventual.model';
 
@@ -99,7 +101,8 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
     private router: Router,
     private nominativoSvc: NominativoService,
     private auth: AuthService,
-    private eventualSvc: HorasEventualService
+    private eventualSvc: HorasEventualService,
+    private servAdicSvc: ServiciosAdicionalesService,
   ) {}
 
   // Solo Consola (permiso change_reporteasistencia) edita la asistencia. Los demas
@@ -600,6 +603,39 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
       if (res.reemplazo_id && res.reemplazo_id !== reemplazoAntes) {
         this.ofrecerHorasEventual(row, Number(res.reemplazo_id));
       }
+      // Guardado como ADICIONAL: se abre el formulario del Servicio Adicional (FR-REPORTE DE PUESTO ADICIONAL).
+      if ((res.estado || '').toString().toUpperCase() === 'ADICIONAL') {
+        this.ofrecerServicioAdicional(row);
+      }
+    });
+  }
+
+  // Abre el formulario del Servicio Adicional de ESTA fila, fecha y turno: el que ya existe (para corregirlo) o uno
+  // nuevo prellenado con el cliente de la fila y su horario (editable). Lo demás lo llena Consola; el precio no.
+  private ofrecerServicioAdicional(row: ReporteAsistenciaRow): void {
+    const fecha = this.filtroFecha;
+    const puedeCrear = this.auth.hasPermission('CoreFisica.add_servicioadicional');
+    const puedeEditar = this.auth.hasPermission('CoreFisica.change_servicioadicional');
+    if (!fecha || !(puedeCrear || puedeEditar)) { return; }
+    const turno = this.filtroJornada === 'Nocturno' ? 'Nocturno' : 'Diurno';
+    this.servAdicSvc.prellenar({
+      fecha, turno,
+      asignacion_id: row.asignacion_id || null,
+      sacafranco_fila_id: row.asignacion_id ? null : (row.sacafranco_fila_id || null),
+    }).subscribe({
+      next: (r) => {
+        if (r.existe ? !puedeEditar : !puedeCrear) { return; }
+        const reg: any = { ...r.registro };
+        if (!r.existe) {
+          // Horario por defecto: el del registro de asistencia ("07:00 - 19:00").
+          const m = /(\d{1,2}:\d{2})\D+(\d{1,2}:\d{2})/.exec((row.horario || '').toString());
+          if (m) { reg.hora_ingreso = m[1].padStart(5, '0'); reg.hora_salida = m[2].padStart(5, '0'); }
+        }
+        this.dialog.open(ServicioAdicionalDialogComponent, {
+          width: '900px', maxWidth: '95vw', autoFocus: false, data: { row: reg },
+        });
+      },
+      error: () => { /* sin permiso o sin datos: no se ofrece */ },
     });
   }
 

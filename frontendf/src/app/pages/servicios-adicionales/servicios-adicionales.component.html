@@ -15,8 +15,13 @@
     <h3 class="text-center m-0">Adicionales</h3>
     <div class="ev-der d-grid d-sm-flex gap-2 align-items-center">
       <button type="button" class="btn btn-success btn-sm ev-btn-excel" (click)="descargarExcel()"
-              title="Descargar en Excel: una pestaña Diurno y otra Nocturno (con las fechas y la búsqueda aplicadas)">
+              title="Descargar en Excel (formato FR: una pestaña por día, con el turno Diurno y Nocturno)">
         <i class="bi bi-file-earmark-excel"></i> Descargar Excel
+      </button>
+      <button *ngIf="puedeCrear" type="button" class="btn btn-primary btn-sm" (click)="nuevo()"
+              [disabled]="!esUnDia || turnoFiltro === 'Ambos'"
+              [attr.title]="turnoFiltro === 'Ambos' ? 'Elige Diurno o Nocturno para crear un registro' : (esUnDia ? 'Nuevo registro' : 'Elige un solo día para crear un registro')">
+        <i class="bi bi-plus-lg"></i> Nuevo registro
       </button>
     </div>
   </div>
@@ -35,29 +40,45 @@
       <thead class="table-light">
         <tr>
           <th>Nº</th>
-          <th>Fecha</th>
-          <!-- Mismas columnas que la sección ADICIONALES del Reporte de Guardia. -->
+          <!-- Mismas columnas que el FR-REPORTE DE PUESTO ADICIONAL. -->
           <th>Cliente</th>
-          <th>Puesto</th>
-          <th>Nombres y Apellidos</th>
-          <th>Proviene</th>
+          <th title="Cantidad de guardias">C</th>
+          <th title="Horas">H</th>
+          <th>Horario</th>
+          <th>Solicitado por</th>
+          <th>Recibido por</th>
+          <th>Medio</th>
+          <th>Precio</th>
+          <th>Última Modificación</th>
+          <th *ngIf="puedeEditar || puedePrecio">Acción</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngIf="loading">
-          <td colspan="6" class="text-muted">Cargando…</td>
+          <td colspan="11" class="text-muted">Cargando…</td>
         </tr>
         <ng-container *ngIf="!loading">
           <tr *ngFor="let f of filasFiltradas; let i = index">
             <td>{{ i + 1 }}</td>
-            <td>{{ fechaDMA(f.fecha) }}</td>
-            <td>{{ f.cliente || '—' }}</td>
-            <td>{{ f.puesto || '—' }}</td>
-            <td class="text-center">{{ f.persona_nombre || '—' }}</td>
-            <td>{{ f.proviene || '—' }}</td>
+            <td class="text-start">{{ f.cliente_texto || '—' }}</td>
+            <td>{{ f.cantidad }}</td>
+            <td>{{ f.horas }}</td>
+            <td class="text-nowrap">{{ f.horario || '—' }}</td>
+            <td>{{ f.solicitado_por || '—' }}</td>
+            <td>{{ f.recibido_por || '—' }}</td>
+            <td>{{ f.medio || '—' }}</td>
+            <td>{{ f.precio != null ? (f.precio | number:'1.2-2') : '—' }}</td>
+            <td class="text-start ult-mod">
+              <div><strong>{{ f.modificado_por || '-' }}</strong></div>
+              <div class="text-muted">{{ f.modificado_en ? (f.modificado_en | date:'dd/MM/yyyy h:mm a') : '-' }}</div>
+            </td>
+            <td *ngIf="puedeEditar || puedePrecio" class="text-nowrap">
+              <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" (click)="editar(f)"
+                      [title]="puedeEditar ? 'Editar' : 'Poner el precio'"><i class="bi bi-pencil"></i></button>
+            </td>
           </tr>
           <tr *ngIf="!filasFiltradas.length">
-            <td colspan="6" class="text-muted">Sin servicios adicionales en estas fechas.</td>
+            <td colspan="11" class="text-muted">Sin servicios adicionales en estas fechas.</td>
           </tr>
         </ng-container>
       </tbody>

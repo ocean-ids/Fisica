@@ -1,0 +1,47 @@
+.sa-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 640px;
+  padding-top: 6px;
+}
+.sa-form mat-form-field {
+  width: 100%;
+}
+.sa-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.sa-row > mat-form-field,
+.sa-row > .sa-hueco {
+  flex: 1 1 0;
+  min-width: 200px;
+}
+.sa-row > mat-form-field.sa-corto {
+  min-width: 130px;
+}
+.sa-turno {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+}
+.sa-x {
+  font-size: 20px;
+  line-height: 1;
+  color: #6c757d;
+}
+.sa-nota {
+  font-size: 12px;
+  margin: -2px 8px 6px;
+}
+.sa-mayus {
+  text-transform: uppercase;
+}
+@media (max-width: 700px) {
+  .sa-form { min-width: 0; }
+  .sa-row > mat-form-field { flex: 1 1 100%; min-width: 0; }
+}
