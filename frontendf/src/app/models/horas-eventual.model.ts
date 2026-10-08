@@ -3,7 +3,7 @@ export interface HorasEventual {
   id?: number;
   fecha: string;              // YYYY-MM-DD (día elegido en la pantalla del módulo)
   turno?: 'Diurno' | 'Nocturno'; // turno en que trabajó
-  motivo?: string;            // (solo lectura) descripción del Reporte de Asistencia donde cubrió
+  motivo?: string;            // se escribe en el formulario; en los de antes, la descripción de la asistencia
   persona_id: number;
   persona?: string;           // "APELLIDOS NOMBRES"
   cedula?: string;

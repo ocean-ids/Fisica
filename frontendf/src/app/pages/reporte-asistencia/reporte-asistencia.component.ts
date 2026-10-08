@@ -659,6 +659,7 @@ export class ReporteAsistenciaComponent implements OnInit, OnDestroy {
           const turno = (row.turno === 'Nocturno' || this.filtroTurno === 'Nocturno') ? 'Nocturno' : 'Diurno';
           const datos = {
             fecha, turno, persona_id: ev.id, persona: ev.nombre,
+            motivo: (row.descripcion || '').toString(),   // la Descripción escrita en la asistencia
             cliente_id: cli?.id ?? null, instalacion_id: inst?.id ?? null, puesto_id: pue?.id ?? null,
           } as unknown as HorasEventual;
           this.dialog.open(EventualHorasDialogComponent, {

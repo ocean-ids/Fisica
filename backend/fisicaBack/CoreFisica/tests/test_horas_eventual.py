@@ -8,6 +8,7 @@ Reglas:
 - Bonificación opcional. Banco de solo lectura (vacío si la persona no lo tiene).
 Además: validaciones, historial y permisos.
 """
+import datetime
 import json
 
 from django.test import TestCase
@@ -410,3 +411,55 @@ class HorasEventualTests(TestCase):
         por_fecha = {f['fecha']: f['motivo'] for f in filas}
         self.assertEqual(por_fecha['2026-09-29'], 'HUECA POR UNIDAD FIJA · CUBRE POR ADELANTO')
         self.assertEqual(por_fecha['2026-09-30'], '')
+
+
+class MotivoEventualTests(HorasEventualTests):
+    """Motivo escrito en el formulario de Eventuales. Los registros de ANTES (sin motivo guardado) siguen mostrando
+    la Descripción de la asistencia: no se pierde nada."""
+
+    def _lista(self):
+        return self.client.get('/api/horas-eventual/', {'desde': '2026-09-29', 'hasta': '2026-09-29'}, **self._auth()).json()
+
+    def _registro_viejo_con_descripcion_en_la_asistencia(self):
+        """Como quedaron los de antes: el motivo vacío y la razón escrita en la Descripción de la asistencia."""
+        from CoreFisica.models import Asignacion, HorasEventual, ReporteAsistencia, ReporteAsistenciaHistorial
+        hid = self._crear().json()['id']
+        HorasEventual.objects.filter(id=hid).update(motivo='')
+        titular = Persona.objects.create(nombres='TIT', apellidos='ULAR', cedula='0944444444', tipo='FIJOS')
+        asig = Asignacion.objects.create(persona=titular, cliente=self.cli, instalacion=self.inst, puesto=self.puesto,
+                                         mes=9, anio=2026, estado='ACTIVO')
+        ra = ReporteAsistencia.objects.create(asignacion=asig, fecha_reporte=datetime.date(2026, 9, 29))
+        ReporteAsistenciaHistorial.objects.create(reporte=ra, asignacion=asig, fecha_reporte=datetime.date(2026, 9, 29),
+                                                  reemplazo=self.ev, descripcion='CUBRE VACACIONES')
+        return hid
+
+    def test_se_guarda_el_motivo_del_formulario(self):
+        r = self._crear(motivo='pedido del cliente')
+        self.assertEqual(r.json()['motivo'], 'PEDIDO DEL CLIENTE')
+        self.assertEqual(self._lista()[0]['motivo'], 'PEDIDO DEL CLIENTE')
+
+    def test_los_registros_viejos_no_pierden_su_motivo(self):
+        self._registro_viejo_con_descripcion_en_la_asistencia()
+        self.assertEqual(self._lista()[0]['motivo'], 'CUBRE VACACIONES')
+
+    def test_editar_sin_el_campo_no_borra_el_motivo(self):
+        hid = self._crear(motivo='falta').json()['id']
+        self.assertEqual(self._editar(hid, horas=10).status_code, 200)        # el envío no trae 'motivo'
+        self.assertEqual(self._lista()[0]['motivo'], 'FALTA')
+
+    def test_al_editar_un_viejo_su_motivo_queda_guardado(self):
+        from CoreFisica.models import HorasEventual
+        hid = self._registro_viejo_con_descripcion_en_la_asistencia()
+        motivo_lista = self._lista()[0]['motivo']                           # lo que el formulario abre
+        self._editar(hid, motivo=motivo_lista)
+        self.assertEqual(HorasEventual.objects.get(id=hid).motivo, 'CUBRE VACACIONES')
+
+    def test_el_excel_detallado_trae_el_motivo(self):
+        import io as _io
+        import openpyxl
+        self._crear(motivo='calamidad')
+        r = self.client.get('/api/horas-eventual/exportar-excel/', {'fecha': '2026-09-29', 'formato': 'detallado'},
+                            **self._auth())
+        ws = openpyxl.load_workbook(_io.BytesIO(r.content)).active
+        cab = [c.value for c in ws[1]]
+        self.assertEqual(ws.cell(2, cab.index('MOTIVO') + 1).value, 'CALAMIDAD')

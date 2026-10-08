@@ -1913,6 +1913,9 @@ class HorasEventual(models.Model):
     cliente_texto = models.CharField(max_length=200, blank=True, default='')
     instalacion_texto = models.CharField(max_length=200, blank=True, default='')
     puesto_texto = models.CharField(max_length=200, blank=True, default='')
+    # Motivo del servicio (se escribe en el formulario; desde la asistencia viene con su Descripción).
+    # Vacío en los registros de antes: la pantalla muestra entonces la Descripción de la asistencia.
+    motivo = models.CharField(max_length=255, blank=True, default='')
     horas_solicitadas = models.PositiveSmallIntegerField(default=0)   # las que pidió el cliente
     horas = models.PositiveSmallIntegerField()                       # horas trabajadas
     # Horas adicionales: por defecto trabajadas - solicitadas (mínimo 0); se pueden cambiar.
@@ -1966,6 +1969,7 @@ class HorasEventualHistorial(models.Model):
     cliente = models.CharField(max_length=200, blank=True, default='')
     instalacion = models.CharField(max_length=200, blank=True, default='')
     puesto = models.CharField(max_length=200, blank=True, default='')
+    motivo = models.CharField(max_length=255, blank=True, default='')
     horas_solicitadas = models.PositiveSmallIntegerField(null=True, blank=True)
     horas = models.PositiveSmallIntegerField(null=True, blank=True)
     horas_adicionales = models.PositiveSmallIntegerField(null=True, blank=True)

@@ -107,6 +107,7 @@ def _serialize(h):
         'instalacion': _nombre_instalacion(h),
         'puesto_id': h.puesto_id,
         'puesto': _nombre_puesto(h),
+        'motivo': h.motivo or '',
         # True = escrito a mano (no está en la lista del sistema).
         'cliente_libre': not h.cliente_id and bool(h.cliente_texto),
         'instalacion_libre': not h.instalacion_id and bool(h.instalacion_texto),
@@ -307,7 +308,7 @@ def _validar(data):
     if valor < 0:
         return None, 'El valor calculado no puede ser negativo.'
 
-    return {
+    campos = {
         'fecha': fecha, 'turno': turno, 'persona': persona,
         'cliente': cliente, 'cliente_texto': cliente_texto,
         'instalacion': instalacion, 'instalacion_texto': instalacion_texto,
@@ -315,7 +316,11 @@ def _validar(data):
         'horas_solicitadas': solicitadas, 'horas': horas, 'horas_adicionales': adicionales,
         'rango_horas': _rango_txt(tramo),
         'valor_calculado': valor, 'valor_manual': manual, 'bonificacion': bonificacion,
-    }, None
+    }
+    # Motivo: solo si el formulario lo envía (así un envío sin el campo no borra el que ya tenía).
+    if 'motivo' in data:
+        campos['motivo'] = _texto(data.get('motivo'), 255).upper()
+    return campos, None
 
 
 _SELECT = ('persona', 'persona__otros_datos', 'cliente', 'instalacion', 'puesto',
@@ -334,6 +339,7 @@ def _guardar_historial(h, accion, user):
         cliente=_nombre_cliente(h),
         instalacion=_nombre_instalacion(h),
         puesto=_nombre_puesto(h),
+        motivo=h.motivo or '',
         horas_solicitadas=h.horas_solicitadas,
         horas=h.horas,
         horas_adicionales=h.horas_adicionales,
@@ -350,6 +356,7 @@ _CAMPOS_HISTORIAL = [
     ('instalacion', 'Instalación'),
     ('puesto', 'Nombre del puesto'),
     ('persona', 'Eventual'),
+    ('motivo', 'Motivo'),
     ('horas_solicitadas', 'Horas solicitadas'),
     ('horas', 'Horas trabajadas'),
     ('horas_adicionales', 'Horas adicionales'),
@@ -380,7 +387,8 @@ def listar_horas_eventual(request):
     out = []
     for h in regs:
         f = _serialize(h)
-        f['motivo'] = motivos.get((h.persona_id, h.fecha), '')
+        # El motivo escrito en el formulario; si el registro es de antes y no lo tiene, el de la asistencia.
+        f['motivo'] = h.motivo or motivos.get((h.persona_id, h.fecha), '')
         out.append(f)
     return Response(out)
 
@@ -618,7 +626,7 @@ def exportar_excel_horas_eventual(request):
         for n, h in enumerate(regs, start=1):
             f = _serialize(h)
             valores = [
-                n, f['cliente'], f['instalacion'], f['puesto'], f['persona'], motivos.get((h.persona_id, h.fecha), ''),
+                n, f['cliente'], f['instalacion'], f['puesto'], f['persona'], h.motivo or motivos.get((h.persona_id, h.fecha), ''),
                 f['numero_cuenta'], f['banco'],
                 f['tipo_cuenta'], f['cedula'], h.fecha.strftime('%d/%m/%Y') if h.fecha else '', f['turno'],
                 f['horas_solicitadas'] or 0, f['horas'] or 'Pendiente', f['rango_horas'], f['horas_adicionales'] or 0,

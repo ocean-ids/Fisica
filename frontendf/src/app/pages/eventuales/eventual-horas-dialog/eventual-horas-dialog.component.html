@@ -103,6 +103,15 @@
     </mat-form-field>
   </div>
 
+  <!-- Motivo del servicio (desde la asistencia viene con lo escrito en su Descripción) -->
+  <div class="ev-row m-2">
+    <mat-form-field appearance="outline">
+      <mat-label>Motivo</mat-label>
+      <input matInput [(ngModel)]="motivo" maxlength="255" placeholder="Ej. Cubre vacaciones, falta, pedido del cliente…"
+             style="text-transform: uppercase">
+    </mat-form-field>
+  </div>
+
   <!-- Fila 4: Horas solicitadas | Horas trabajadas | Rango de horas (se marca solo) -->
   <div class="ev-row m-2">
     <mat-form-field appearance="outline">

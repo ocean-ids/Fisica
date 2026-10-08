@@ -51,6 +51,9 @@ export class EventualHorasDialogComponent implements OnInit {
   horasSolicitadas: number | null = null;
   horas: number | null = null;             // horas trabajadas
   bonificacion: number | null = null;      // opcional
+  // Motivo: se escribe aquí. Desde la asistencia viene con su Descripción; un registro de antes sin motivo
+  // guardado viene con el que mostraba la lista (el de la asistencia), así al guardarlo no se pierde.
+  motivo = '';
   // Horas adicionales: se llenan con trabajadas - solicitadas y se pueden cambiar a mano.
   horasAdic: number | null = null;
   adicManual = false;
@@ -82,6 +85,7 @@ export class EventualHorasDialogComponent implements OnInit {
     if (row?.id && !row.horas) { this.horas = null; }       // pendiente de horas: se abre vacío para completarlo
     this.horas = row?.horas ?? null;
     this.bonificacion = row?.bonificacion ?? null;
+    this.motivo = (row?.motivo || '').toString();
     this.bonoAnterior = Number(this.bonificacion) || 0;
     if (this.data?.catalogo) {
       this.catalogo = this.data.catalogo;
@@ -386,6 +390,7 @@ export class EventualHorasDialogComponent implements OnInit {
       horas: h,
       horas_adicionales: adic ?? undefined,
       bonificacion: bono,
+      motivo: (this.motivo || '').trim().toUpperCase(),
       valor_calculado: valor ?? undefined,
       valor_manual: this.valorManual,
       tarifa_id: this.tarifaSel ?? undefined,
@@ -393,8 +398,13 @@ export class EventualHorasDialogComponent implements OnInit {
     this.guardando = true;
     const id = this.data?.row?.id;
     const req = (this.esEdicion && id) ? this.srv.actualizar(id, payload) : this.srv.crear(payload);
+    const editando = this.esEdicion && !!id;
     req.subscribe({
-      next: (res) => this.ref.close(res),
+      next: (res) => {
+        this.ref.close(res);
+        Swal.fire({ icon: 'success', title: editando ? 'Registro actualizado' : 'Registro guardado',
+          timer: 1500, showConfirmButton: false });
+      },
       error: (err) => {
         this.guardando = false;
         Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: err?.error?.error || 'Revisa los datos e intenta de nuevo.' });
