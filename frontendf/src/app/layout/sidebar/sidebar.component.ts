@@ -10,9 +10,15 @@ import { AuthService } from '../../services/auth.service';
   styleUrl: './sidebar.component.css'
 })
 export class SidebarComponent implements OnInit {
-  // Menú agrupado (Operación / Servicios / Catálogos / Pagos). Cada opción mantiene su clave (para ocultarla por
+  // Menú agrupado (Administración / Operación / Servicios / Pagos). Cada opción mantiene su clave (para ocultarla por
   // usuario desde el admin) y su permiso; un grupo sin opciones visibles no se muestra.
   grupos: Array<{ titulo: string; items: Array<{ key: string; path: string; label: string; icon: string; permission: string }> }> = [
+    { titulo: 'Administración', items: [
+      { key: 'clientes', path: '/dashboard/clientes', label: 'Clientes', icon: 'building', permission: 'CoreFisica.view_cliente' },
+      { key: 'instalaciones', path: '/dashboard/instalaciones', label: 'Instalaciones', icon: 'geo-alt', permission: 'CoreFisica.view_instalacion' },
+      { key: 'puestos', path: '/dashboard/puestos', label: 'Puestos', icon: 'briefcase', permission: 'CoreFisica.view_puesto' },
+      { key: 'personas', path: '/dashboard/personas', label: 'Personal', icon: 'people', permission: 'CoreFisica.view_persona' },
+    ] },
     { titulo: 'Operación', items: [
       { key: 'reporte-asistencia', path: '/dashboard/reporte-asistencia', label: 'Reporte de Asistencia', icon: 'clipboard-check', permission: 'CoreFisica.view_reporteasistencia' },
       { key: 'asignaciones', path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'calendar3', permission: 'CoreFisica.view_asignacion' },
@@ -23,12 +29,6 @@ export class SidebarComponent implements OnInit {
       { key: 'eventuales', path: '/dashboard/eventuales', label: 'Eventuales', icon: 'person-plus', permission: 'CoreFisica.view_horaseventual' },
       { key: 'servicios-adicionales', path: '/dashboard/servicios-adicionales', label: 'Adicionales', icon: 'plus-square', permission: 'CoreFisica.view_servicioadicional' },
       { key: 'sacavacaciones', path: '/dashboard/sacavacaciones', label: 'Vacaciones', icon: 'airplane', permission: 'CoreFisica.view_asignacion' },
-    ] },
-    { titulo: 'Catálogos', items: [
-      { key: 'personas', path: '/dashboard/personas', label: 'Personal', icon: 'people', permission: 'CoreFisica.view_persona' },
-      { key: 'clientes', path: '/dashboard/clientes', label: 'Clientes', icon: 'building', permission: 'CoreFisica.view_cliente' },
-      { key: 'instalaciones', path: '/dashboard/instalaciones', label: 'Instalaciones', icon: 'geo-alt', permission: 'CoreFisica.view_instalacion' },
-      { key: 'puestos', path: '/dashboard/puestos', label: 'Puestos', icon: 'briefcase', permission: 'CoreFisica.view_puesto' },
     ] },
     { titulo: 'Pagos', items: [
       { key: 'reporte-pago', path: '/dashboard/reporte-pago', label: 'Reporte de Pagos', icon: 'cash-coin', permission: 'CoreFisica.view_reporteguardia' },
