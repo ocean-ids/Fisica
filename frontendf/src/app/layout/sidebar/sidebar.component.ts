@@ -20,8 +20,8 @@ export class SidebarComponent implements OnInit {
       { key: 'personas', path: '/dashboard/personas', label: 'Personal', icon: 'people', permission: 'CoreFisica.view_persona' },
     ] },
     { titulo: 'Operación', items: [
-      { key: 'reporte-asistencia', path: '/dashboard/reporte-asistencia', label: 'Reporte de Asistencia', icon: 'clipboard-check', permission: 'CoreFisica.view_reporteasistencia' },
       { key: 'asignaciones', path: '/dashboard/asignaciones', label: 'Asignaciones', icon: 'calendar3', permission: 'CoreFisica.view_asignacion' },
+      { key: 'reporte-asistencia', path: '/dashboard/reporte-asistencia', label: 'Reporte de Asistencia', icon: 'clipboard-check', permission: 'CoreFisica.view_reporteasistencia' },
       { key: 'consolidado', path: '/dashboard/consolidado', label: 'Consolidado', icon: 'journal-text', permission: 'CoreFisica.view_consolidado' },
       { key: 'reporte-guardia', path: '/dashboard/reporte-guardia', label: 'Reporte de Guardia', icon: 'shield-check', permission: 'CoreFisica.view_reporteguardia' },
     ] },
